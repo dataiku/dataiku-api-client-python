@@ -4,7 +4,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
-from dss.dataset import DSSDataset
+from dss.project import DSSProject
 
 from .utils import DataikuException
 
@@ -16,36 +16,39 @@ class DSSClient(object):
         self.host = host
         self._session = Session()
 
-
     ########################################################
-    # Datasets
+    # Projects
     ########################################################
 
-    def list_datasets(self, project_key):
+    def list_projects(self):
         return self._perform_json(
-            "GET", "/projects/%s/datasets/" % project_key)
+            "GET", "/projects/")
 
-    def dataset(self, project_key, dataset_name):
+    def get_project(self, project_key):
         """
-        Get a handler to interact with a specific dataset
+        Get a handler to interact with a specific project
         """
-        return DSSDataset(self, project_key, dataset_name)
+        return DSSProject(self, project_key)
 
-    def create_dataset(self, project_key, dataset_name, type,
-                    params={}, formatType=None, formatParams={}):
+    def create_project(self, projectKey, name, owner, description=None, settings=None):
+        """
+        Creates a project, and return a DSSProject object
+        """
+        resp = self._perform_text(
+               "POST", "/projects/", body={
+                   "projectKey" : projectKey,    
+                   "name" : name,    
+                   "owner" : owner,    
+                   "settings" : settings,    
+                   "description" : description
+               })
+        return DSSProject(self, projectKey)
 
-        obj = {
-            "name" : dataset_name,
-            "projectKey" : project_key,
-            "type" : type,
-            "params" : params,
-            "formatType" : formatType,
-            "formatParams" : formatParams
-        }
-        self._perform_json("POST", "/projects/%s/datasets/" % project_key,
-                            body = obj)
+    ########################################################
+    # Request handling
+    ########################################################
 
-    def _perform_json(self, method, path, params=None, body=None):
+    def _perform_http(self, method, path, params=None, body=None, stream=False):
         if body:
             body = json.dumps(body)
 
@@ -53,29 +56,23 @@ class DSSClient(object):
 
         try:
             http_res = self._session.request(
-                    method, "%s/%s" % (self.host, path),
+                    method, "%s/dip/publicapi%s" % (self.host, path),
                     params=params, data=body,
-                    auth=auth)
-            http_res.raise_for_status()
-            return http_res.json()
-        except exceptions.HTTPError:
-            ex = http_res.json()
-            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
-
-    def _perform_raw(self, method, path, params=None, body=None):
-        if body:
-            body = json.dumps(body)
-
-        auth = HTTPBasicAuth(self.api_key, "")
-
-        try:
-            http_res = self._session.request(
-                    method, "%s/%s" % (self.host, path),
-                    params=params, data=body,
-                    auth=auth, stream  = True)
+                    auth=auth, stream = stream)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
             ex = http_res.json()
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
+    def _perform_empty(self, method, path, params=None, body=None):
+        self._perform_http(method, path, params, body, False)
+            
+    def _perform_text(self, method, path, params=None, body=None):
+        return self._perform_http(method, path, params, body, False).text
+
+    def _perform_json(self, method, path, params=None, body=None):
+        return self._perform_http(method, path, params, body, False).json()
+
+    def _perform_raw(self, method, path, params=None, body=None):
+        return self._perform_http(method, path, params, body, True)

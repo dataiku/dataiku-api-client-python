@@ -1,19 +1,7 @@
-import csv
-from dateutil import parser as date_iso_parser
-from itertools import izip_longest
-
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
+from ..utils import DataikuStreamedHttpUTF8CSVReader
 
-from contextlib import closing
-
-def none_if_throws(f):
-    def aux(*args, **kargs):
-        try:
-            return f(*args, **kargs)
-        except:
-            return None
-    return aux
 
 class DSSDataset(object):
 
@@ -22,6 +10,22 @@ class DSSDataset(object):
         self.project_key = project_key
         self.dataset_name = dataset_name
 
+    ########################################################
+    # Dataset deletion
+    ########################################################
+    
+    def delete(self):
+        """
+        Delete the dataset
+        """
+        return self.client._perform_empty(
+            "DELETE", "/projects/%s/datasets/%s" % self.project_key, self.dataset_name)
+
+
+    ########################################################
+    # Dataset metadata
+    ########################################################
+    
     def get_schema(self):
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/schema" % (self.project_key, self.dataset_name))
@@ -31,47 +35,25 @@ class DSSDataset(object):
                 "PUT", "/projects/%s/datasets/%s/schema" % (self.project_key, self.dataset_name),
                 body=schema)
 
-    def get_config(self):
+    def get_metadata(self):
         return self.client._perform_json(
-                "GET", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name))
+                "GET", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name))
 
-    def set_config(self, config):
+    def set_metadata(self, metadata):
         return self.client._perform_json(
-                "PUT", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name),
-                body=config)
+                "PUT", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name),
+                body=metadata)
+
+
+    ########################################################
+    # Dataset data
+    ########################################################
 
     def iter_rows(self):
-
         csv_stream = self.client._perform_raw(
                 "GET" , "/projects/%s/datasets/%s/data/" %(self.project_key, self.dataset_name),
                 params = {
                     "format" : "tsv-excel-noheader"
                 })
 
-        def decode(x):
-            return unicode(x, "utf8")
-
-        def parse_iso_date(s):
-            if s == "":
-                return None
-            else:
-                return date_iso_parser.parse(s)
-        CASTERS = {
-            "int": int,
-            "bigint": int,
-            "float": float,
-            "double": float,
-            "date": parse_iso_date,
-            "boolean": bool,
-        }
-        schema = self.get_schema()
-        casters = [
-            CASTERS.get(col["type"], decode) for col in schema["columns"]
-        ]
-        with closing(csv_stream) as r:
-            for uncasted_tuple in csv.reader(r.raw,
-                                         delimiter='\t',
-                                         quotechar='"',
-                                         doublequote=True):
-                yield [none_if_throws(caster)(val)
-                       for (caster, val) in izip_longest(casters, uncasted_tuple)]
+        return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream).iter_rows()
