@@ -130,6 +130,30 @@ class DSSClient(object):
         return DSSConnection(self, name)
 
     ########################################################
+    # Logs
+    ########################################################
+
+    def list_logs(self):
+        return self._perform_json(
+            "GET", "/admin/logs/")
+
+    def get_log(self, name):
+        return self._perform_json(
+            "GET", "/admin/logs/%s" % name)
+
+    ########################################################
+    # Variables
+    ########################################################
+
+    def get_variables(self):
+        return self._perform_json(
+            "GET", "/admin/variables/")
+
+    def set_variables(self, variables):
+        return self._perform_empty(
+            "PUT", "/admin/variables/", body=variables)
+
+    ########################################################
     # Request handling
     ########################################################
 
