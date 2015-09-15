@@ -19,8 +19,22 @@ class DSSDataset(object):
         Delete the dataset
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s/datasets/%s" % self.project_key, self.dataset_name)
+            "DELETE", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
+
+
+    ########################################################
+    # Dataset definition
+    ########################################################
+    
+    def get_definition(self):
+        return self.client._perform_json(
+                "GET", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name))
+
+    def set_definition(self, definition):
+        return self.client._perform_json(
+                "PUT", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name),
+                body=definition)
 
     ########################################################
     # Dataset metadata
@@ -57,3 +71,23 @@ class DSSDataset(object):
                 })
 
         return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream).iter_rows()
+
+
+    def list_partitions(self):
+        return self.client._perform_json(
+                "GET", "/projects/%s/datasets/%s/partitions" % (self.project_key, self.dataset_name))
+
+
+    def clear(self, partitions=None):
+        return self.client._perform_json(
+                "DELETE", "/projects/%s/datasets/%s/data" % (self.project_key, self.dataset_name),
+                params={"partitions" : partitions})
+
+    ########################################################
+    # Dataset actions
+    ########################################################
+
+    def synchronize_hive_metastore(self):
+        self.client._perform_empty(
+                "POST" , "/projects/%s/datasets/%s/actions/synchronizeHiveMetastore" %(self.project_key, self.dataset_name))
+        

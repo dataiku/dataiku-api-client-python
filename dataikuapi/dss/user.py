@@ -21,14 +21,14 @@ class DSSUser(object):
     # User description
     ########################################################
     
-    def get(self):
+    def get_definition(self):
         """
         Get infos on the user
         """
         return self.client._perform_json(
             "GET", "/admin/users/%s" % self.login)
     
-    def set(self, description):
+    def set_definition(self, description):
         """
         Set infos on the user
         """
