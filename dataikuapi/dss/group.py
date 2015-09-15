@@ -21,14 +21,14 @@ class DSSGroup(object):
     # User description
     ########################################################
     
-    def get_description(self):
+    def get(self):
         """
         Get infos on the group
         """
         return self.client._perform_json(
             "GET", "/admin/groups/%s" % self.name)
     
-    def set_description(self, description):
+    def set(self, description):
         """
         Set infos on the group
         """

@@ -1,9 +1,9 @@
 
-class DSSUser(object):
+class DSSConnection(object):
 
-    def __init__(self, client, login):
+    def __init__(self, client, name):
         self.client = client
-        self.login = login
+        self.name = name
     
     ########################################################
     # User deletion
@@ -14,7 +14,7 @@ class DSSUser(object):
         Delete the user
         """
         return self.client._perform_empty(
-            "DELETE", "/admin/users/%s" % self.login)
+            "DELETE", "/admin/connections/%s" % self.name)
     
         
     ########################################################
@@ -26,14 +26,14 @@ class DSSUser(object):
         Get infos on the user
         """
         return self.client._perform_json(
-            "GET", "/admin/users/%s" % self.login)
+            "GET", "/admin/connections/%s" % self.name)
     
     def set(self, description):
         """
         Set infos on the user
         """
         return self.client._perform_json(
-            "PUT", "/admin/users/%s" % self.login,
+            "PUT", "/admin/connections/%s" % self.name,
             body = description)
     
         

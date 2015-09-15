@@ -7,6 +7,7 @@ from requests.auth import HTTPBasicAuth
 from dss.project import DSSProject
 from dss.user import DSSUser
 from dss.group import DSSGroup
+from dss.connection import DSSConnection
 
 from .utils import DataikuException
 
@@ -99,6 +100,34 @@ class DSSClient(object):
                    "sourceType" : source_type
                })
         return DSSGroup(self, name)
+
+    ########################################################
+    # Connections
+    ########################################################
+
+    def list_connections(self):
+        return self._perform_json(
+            "GET", "/admin/connections/")
+
+    def get_connection(self, name):
+        """
+        Get a handler to interact with a specific connection
+        """
+        return DSSConnection(self, name)
+
+    def create_connection(self, name, type=None, params=None, usable_by='ALL', allowed_groups=None):
+        """
+        Creates a connection, and return a DSSConnection object
+        """
+        resp = self._perform_text(
+               "POST", "/admin/connections/", body={
+                   "name" : name,
+                   "type" : type,
+                   "params" : params,
+                   "usableBy" : usable_by,
+                   "allowedGroups" : allowed_groups
+               })
+        return DSSConnection(self, name)
 
     ########################################################
     # Request handling
