@@ -5,6 +5,8 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from dss.project import DSSProject
+from dss.user import DSSUser
+from dss.group import DSSGroup
 
 from .utils import DataikuException
 
@@ -30,19 +32,73 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
-    def create_project(self, projectKey, name, owner, description=None, settings=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None):
         """
         Creates a project, and return a DSSProject object
         """
         resp = self._perform_text(
                "POST", "/projects/", body={
-                   "projectKey" : projectKey,    
+                   "projectKey" : project_key,    
                    "name" : name,    
                    "owner" : owner,    
                    "settings" : settings,    
                    "description" : description
                })
-        return DSSProject(self, projectKey)
+        return DSSProject(self, project_key)
+
+    ########################################################
+    # Users
+    ########################################################
+
+    def list_users(self):
+        return self._perform_json(
+            "GET", "/admin/users/")
+
+    def get_user(self, login):
+        """
+        Get a handler to interact with a specific user
+        """
+        return DSSUser(self, login)
+
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[]):
+        """
+        Creates a user, and return a DSSUser object
+        """
+        resp = self._perform_text(
+               "POST", "/admin/users/", body={
+                   "login" : login,
+                   "password" : password,
+                   "displayName" : display_name,
+                   "sourceType" : source_type,
+                   "groups" : groups
+               })
+        return DSSUser(self, login)
+
+    ########################################################
+    # Groups
+    ########################################################
+
+    def list_groups(self):
+        return self._perform_json(
+            "GET", "/admin/groups/")
+
+    def get_group(self, name):
+        """
+        Get a handler to interact with a specific group
+        """
+        return DSSGroup(self, name)
+
+    def create_group(self, name, description=None, source_type='LOCAL'):
+        """
+        Creates a group, and return a DSSGroup object
+        """
+        resp = self._perform_text(
+               "POST", "/admin/groups/", body={
+                   "name" : name,
+                   "description" : description,
+                   "sourceType" : source_type
+               })
+        return DSSGroup(self, name)
 
     ########################################################
     # Request handling
