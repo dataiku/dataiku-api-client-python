@@ -46,17 +46,21 @@ class DSSProject(object):
     ########################################################
     # Project infos
     ########################################################
-    
+
     def get_metadata(self):
        """
-       Get the metadata attached to this project
+       Get the metadata attached to this project.
+       Metadata is retrieved as a dict object. For more information on available metadata, please see
+       https://doc.dataiku.com/dss/api/latest
        """
        return self.client._perform_json(
           "GET", "/projects/%s/metadata" % self.project_key)
 
     def set_metadata(self, metadata):
        """
-       Set the metadata on the project with key 'projectKey'
+       Set the metadata on this project.
+
+       You should only set a metadata object that has been retrieved using the get_metadata call.
        """
        return self.client._perform_empty(
           "PUT", "/projects/%s/metadata" % self.project_key, body = metadata)
@@ -70,7 +74,7 @@ class DSSProject(object):
 
     def set_permissions(self, permissions):
        """
-       Set the permissions on the project with key 'projectKey'
+       Set the permissions on this project
        """
        return self.client._perform_empty(
           "PUT", "/projects/%s/permissions" % self.project_key, body = permissions)
@@ -134,10 +138,6 @@ class DSSProject(object):
        return DSSJob(self.client, self.project_key, id)
 
     def start_job(self, definition):
-        definition['projectKey'] = self.project_key
-        definition['triggeredFrom'] = 'API'
 
-        id = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
-        return DSSJob(self.client, self.project_key, id['id'])
-
-   
+        job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
+        return DSSJob(self.client, self.project_key, job_def['id'])

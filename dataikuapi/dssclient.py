@@ -23,26 +23,32 @@ class DSSClient(object):
     # Projects
     ########################################################
 
-    def list_projects(self):
-        return self._perform_json(
-            "GET", "/projects/")
+    def list_project_keys(self):
+        """Lists the project keys.
+
+        This method returns a list of strings"""
+        return [x["projectKey"] for x in self._perform_json("GET", "/projects/")]
 
     def get_project(self, project_key):
         """
-        Get a handler to interact with a specific project
+        Get a handle to interact with a specific project.
+
+        The returned class is a :class:`dataikuapi.dss.project.DSSProject`
         """
         return DSSProject(self, project_key)
 
     def create_project(self, project_key, name, owner, description=None, settings=None):
         """
-        Creates a project, and return a DSSProject object
+        Creates a project, and return a project handle to interact with it.
+
+        :return: A :class:`dataikuapi.dss.project.DSSProject` project handle
         """
         resp = self._perform_text(
                "POST", "/projects/", body={
-                   "projectKey" : project_key,    
-                   "name" : name,    
-                   "owner" : owner,    
-                   "settings" : settings,    
+                   "projectKey" : project_key,
+                   "name" : name,
+                   "owner" : owner,
+                   "settings" : settings,
                    "description" : description
                })
         return DSSProject(self, project_key)

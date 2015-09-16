@@ -14,9 +14,9 @@ class DSSSQLQuery(object):
         self.pre_queries = pre_queries
         self.post_queries = post_queries
         self.type = type
-        
+
         self.streaming_session = self.client._perform_json(
-                "GET", "/projects/%s/sql/start-streaming" % (self.project_key),
+                "POST", "/projects/%s/sql/queries/" % (self.project_key),
                 params = {
                     "query" : self.query,
                     "preQueries" : self.pre_queries,
@@ -39,23 +39,17 @@ class DSSSQLQuery(object):
         Iterator over the query's result set
         """
         csv_stream = self.client._perform_raw(
-                "GET", "/projects/%s/sql/stream" % (self.project_key),
+                "GET", "/projects/%s/sql/queries/%s/stream" % (self.project_key, self.queryId),
                 params = {
-                    "queryId" : self.queryId,
-                    "format" : "tsv-excel-noheader",
-                    "formatParams" : ""
+                    "format" : "tsv-excel-noheader"
                 })
 
         return DataikuStreamedHttpUTF8CSVReader(self.get_schema(), csv_stream).iter_rows()
-        
+
     def verify(self):
         """
         Verify that the result set streaming completed successfully and was not truncated
         """
         resp = self.client._perform_empty(
-                "GET", "/projects/%s/sql/finish-streaming" % (self.project_key),
-                params = {
-                    "queryId" : self.queryId,
-                })
-        # exception raising is done in _perform_empty()   
- 
+                "GET", "/projects/%s/sql/queries/%s/finish-streaming" % (self.project_key, self.queryId))
+        # exception raising is done in _perform_empty()

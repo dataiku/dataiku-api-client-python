@@ -39,7 +39,7 @@ class DSSDataset(object):
     ########################################################
     # Dataset metadata
     ########################################################
-    
+
     def get_schema(self):
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/schema" % (self.project_key, self.dataset_name))

@@ -5,21 +5,21 @@ class DSSJob(object):
         self.client = client
         self.id = id
         self.project_key = project_key
-    
+
     def abort(self):
         """
-        Delete the group
+        Aborts the job
         """
         return self.client._perform_json(
             "POST", "/projects/%s/jobs/%s/abort" % (self.project_key, self.id))
-    
+
     def get_status(self):
         """
         Get the current status of the job
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/jobs/%s/status" % (self.project_key, self.id))
-    
+            "GET", "/projects/%s/jobs/%s/" % (self.project_key, self.id))
+
     def get_log(self, activity=None):
         """
         Get the logs of the job
@@ -29,7 +29,3 @@ class DSSJob(object):
             params={
                 "activity" : activity
             })
-    
-        
-    
-        
