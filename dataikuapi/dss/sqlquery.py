@@ -17,7 +17,7 @@ class DSSSQLQuery(object):
 
         self.streaming_session = self.client._perform_json(
                 "POST", "/projects/%s/sql/queries/" % (self.project_key),
-                params = {
+                body = {
                     "query" : self.query,
                     "preQueries" : self.pre_queries,
                     "postQueries" : self.post_queries,
