@@ -8,6 +8,7 @@ from dss.project import DSSProject
 from dss.user import DSSUser
 from dss.group import DSSGroup
 from dss.connection import DSSConnection
+from dss.sqlquery import DSSSQLQuery
 
 from .utils import DataikuException
 
@@ -52,6 +53,15 @@ class DSSClient(object):
                    "description" : description
                })
         return DSSProject(self, project_key)
+
+
+    ########################################################
+    # SQL queries
+    ########################################################
+
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql'):
+        """Get handle to perform a SQL, Hive or Impala query"""
+        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type)
 
     ########################################################
     # Users
@@ -160,7 +170,7 @@ class DSSClient(object):
             "PUT", "/admin/variables/", body=variables)
 
     ########################################################
-    # Request handling
+    # Internal Request handling
     ########################################################
 
     def _perform_http(self, method, path, params=None, body=None, stream=False):
@@ -182,7 +192,7 @@ class DSSClient(object):
 
     def _perform_empty(self, method, path, params=None, body=None):
         self._perform_http(method, path, params, body, False)
-            
+
     def _perform_text(self, method, path, params=None, body=None):
         return self._perform_http(method, path, params, body, False).text
 

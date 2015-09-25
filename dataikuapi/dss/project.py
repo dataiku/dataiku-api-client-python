@@ -1,5 +1,4 @@
 from dataset import DSSDataset
-from sqlquery import DSSSQLQuery
 from job import DSSJob
 
 
@@ -78,14 +77,6 @@ class DSSProject(object):
        """
        return self.client._perform_empty(
           "PUT", "/projects/%s/permissions" % self.project_key, body = permissions)
-
-    ########################################################
-    # SQL queries
-    ########################################################
-
-    def sql_query(self, query, connection=None, database=None, dataset_name=None, pre_queries=None, post_queries=None, type='sql'):
-       return DSSSQLQuery(self.client, self.project_key, query, connection, database, dataset_name, pre_queries, post_queries, type)
-
 
     ########################################################
     # Datasets
