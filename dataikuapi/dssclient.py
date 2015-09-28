@@ -114,7 +114,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
         
         Returns:
-            A list of user identifiers (=their logins)
+            A list of users, as an array of JSON object
         """
         return self._perform_json(
             "GET", "/admin/users/")
@@ -168,7 +168,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
         
         Returns:
-            A list of group identifiers (=their names)
+            A list of groups, as an array of JSON objects
         """
         return self._perform_json(
             "GET", "/admin/groups/")
@@ -218,7 +218,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
         
         Returns:
-            A list of connection identifiers (=their names)
+			All connections, as a map of connection name to connection definition
         """
         return self._perform_json(
             "GET", "/admin/connections/")

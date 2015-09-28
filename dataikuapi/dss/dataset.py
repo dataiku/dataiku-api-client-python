@@ -106,7 +106,7 @@ class DSSDataset(object):
     # Dataset data
     ########################################################
 
-    def iter_rows(self):
+    def iter_rows(self, partitions=None):
         """
         Get the dataset's data
         
@@ -117,7 +117,8 @@ class DSSDataset(object):
         csv_stream = self.client._perform_raw(
                 "GET" , "/projects/%s/datasets/%s/data/" %(self.project_key, self.dataset_name),
                 params = {
-                    "format" : "tsv-excel-noheader"
+                    "format" : "tsv-excel-noheader",
+                    "partitions" : partitions
                 })
 
         return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream).iter_rows()
