@@ -4,15 +4,15 @@ from nose.tools import ok_
 from nose.tools import eq_
 
 host="http://localhost:8082"
-apiKey="aa"
-testProjectKey="IO_HARMO"
-testDataset="train_set_pg"
-testHiveDataset="train_set_hived"
+apiKey="ZZYqWxPnc2nWMJMUXwykn6wzA7jokbp5"
+testProjectKey="IMPALA"
+testDataset="tube"
+testHiveDataset="cat_train_hdfs"
 testPartitionedProjectKey="PARTITIONED"
-testPartitionedDataset="random_data"
-testDropPartitionedDataset="random_data_prepared"
-testDropPartition="2014-11-08|fr"
-
+testPartitionedDataset="rundec2"
+testDropPartitionedDataset="rundec2"
+testDropPartition="access"
+testClearDataset = 'train_set_pg2'
 
 def list_datasets_test():
 	client = DSSClient(host, apiKey)
@@ -40,7 +40,7 @@ def sync_metastore_test():
 
 def clear_test():
 	client = DSSClient(host, apiKey)
-	dataset = client.get_project(testProjectKey).get_dataset('train_set_pg2')
+	dataset = client.get_project(testProjectKey).get_dataset(testClearDataset)
 	dataset.clear()
 
 

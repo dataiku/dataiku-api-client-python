@@ -3,13 +3,13 @@ from nose.tools import ok_
 from nose.tools import eq_
 
 host="http://localhost:8082"
-apiKey="aa"
-testProjectKey="IO_HARMO"
+apiKey="ZZYqWxPnc2nWMJMUXwykn6wzA7jokbp5"
+testProjectKey="MYSQL"
 
 
 def list_projects_test():
 	client = DSSClient(host, apiKey)
-	projects = client.list_projects()
+	projects = client.list_project_keys()
 	ok_(len(projects) > 0)
 	
 def project_metadata_test():
@@ -28,19 +28,19 @@ def project_permissions_test():
 	
 def project_create_delete_test():
 	client = DSSClient(host, apiKey)
-	count = len(client.list_projects())
+	count = len(client.list_project_keys())
 
 	p = client.create_project("toto","name of toto", "me")
-	eq_(count + 1, len(client.list_projects()))
+	eq_(count + 1, len(client.list_project_keys()))
 	
 	p.delete()
-	eq_(count, len(client.list_projects()))
+	eq_(count, len(client.list_project_keys()))
 
 
 """
 def sql_test():
 	client = DSSClient(host, apiKey)
-	projects = client.list_projects()
+	projects = client.list_project_keys()
 	projectKey = projects[0]['projectKey']
 	p = client.get_project(projectKey)
 	q = p.sql_query('select * from train_set_pg limit 5', 'local_postgress')

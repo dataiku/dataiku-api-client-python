@@ -3,7 +3,7 @@ from nose.tools import ok_
 from nose.tools import eq_
 
 host="http://localhost:8082"
-apiKey="aa"
+apiKey="ZZYqWxPnc2nWMJMUXwykn6wzA7jokbp5"
 
 def list_groups_test():
 	client = DSSClient(host, apiKey)

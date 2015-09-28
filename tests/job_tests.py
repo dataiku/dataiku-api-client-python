@@ -3,9 +3,9 @@ from nose.tools import ok_
 from nose.tools import eq_
 
 host="http://localhost:8082"
-apiKey="aa"
-testProjectKey="IO_HARMO"
-testDataset="train_set_pg"
+apiKey="ZZYqWxPnc2nWMJMUXwykn6wzA7jokbp5"
+testProjectKey="IMPALA"
+testDataset="cat_train_hdfs"
 
 def list_jobs_test():
 	client = DSSClient(host, apiKey)
@@ -42,9 +42,9 @@ def job_start_abort_test():
 		"type" : "NON_RECURSIVE_FORCED_BUILD",
 		"outputs" : [{
 						"type" : "DATASET",
-						"targetDatasetProjectKey" : testProjectKey,
-						"targetDataset" : testDataset,
-						"targetPartition" : "NP"
+						"projectKey" : testProjectKey,
+						"id" : testDataset,
+						"partition" : "NP"
 					}]
 	})
 	job.abort()
