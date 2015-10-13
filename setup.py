@@ -8,7 +8,7 @@ setup(
         name='dataiku-api-client',
         version=VERSION,
         license="MIT License",
-        packages=["dataikuapi"],
+        packages=["dataikuapi", "dataikuapi.dss"],
         description="Python API client for Dataiku APIs",
         author="Dataiku",
         author_email="support@dataiku.com",
