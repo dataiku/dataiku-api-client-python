@@ -15,6 +15,11 @@ class APINodeAdminClient(DSSBaseClient):
     # Services generations
     ########################################################
 
+    def create_service(self, service_id):
+        self.client._perform_empty("POST", "services/", body = {
+            "serviceId" : service_id
+        })
+
     def service(self, service_id):
         """
         Gets a handle to interact with a service

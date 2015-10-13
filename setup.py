@@ -8,7 +8,7 @@ setup(
         name='dataiku-api-client',
         version=VERSION,
         license="Apache Software License",
-        packages=["dataikuapi", "dataikuapi.dss"],
+        packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin"],
         description="Python API client for Dataiku APIs",
         author="Dataiku",
         author_email="support@dataiku.com",
