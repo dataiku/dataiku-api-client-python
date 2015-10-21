@@ -39,7 +39,7 @@ class DataikuStreamedHttpUTF8CSVReader(object):
     def __init__(self, schema, csv_stream):
         self.schema = schema
         self.csv_stream = csv_stream
-    
+
     def iter_rows(self):
         def decode(x):
             return unicode(x, "utf8")
@@ -49,13 +49,21 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                 return None
             else:
                 return date_iso_parser.parse(s)
+
+        def str_to_bool(s):
+            if s is None:
+                return False
+            return s.lower() == "true"
+
         CASTERS = {
+            "tinyint" : int,
+            "smallint" : int,
             "int": int,
             "bigint": int,
             "float": float,
             "double": float,
             "date": parse_iso_date,
-            "boolean": bool,
+            "boolean": str_to_bool,
         }
         schema = self.schema
         casters = [
@@ -68,5 +76,3 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                          doublequote=True):
                 yield [none_if_throws(caster)(val)
                        for (caster, val) in izip_longest(casters, uncasted_tuple)]
-    
-    

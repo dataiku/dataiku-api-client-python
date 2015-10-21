@@ -25,3 +25,6 @@ class APINodeAdminClient(DSSBaseClient):
         Gets a handle to interact with a service
         """
         return APINodeService(self, service_id)
+
+    def get_metrics(self):
+        return self._perform_json("GET", "metrics")
