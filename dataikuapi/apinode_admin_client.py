@@ -16,7 +16,7 @@ class APINodeAdminClient(DSSBaseClient):
     ########################################################
 
     def create_service(self, service_id):
-        self.client._perform_empty("POST", "services/", body = {
+        self._perform_empty("POST", "services/", body = {
             "serviceId" : service_id
         })
 

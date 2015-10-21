@@ -19,3 +19,10 @@ class APINodeService(object):
     def preload_generation(self, generation):
         self.client._perform_empty("POST",
             "services/%s/generations/%s/preload" % (self.service_id, generation))
+
+    def generation_import_from_archive(self, file_path):
+        self.client._perform_empty("POST",
+            "services/%s/generations/actions/importFromArchive" % (self.service_id),
+            params ={
+                "filePath" : file_path
+        })
