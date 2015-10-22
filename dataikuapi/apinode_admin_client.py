@@ -1,4 +1,5 @@
 from apinode_admin.service import APINodeService
+from apinode_admin.auth import APINodeAuth
 from .utils import DataikuException
 from .base_client import DSSBaseClient
 
@@ -20,11 +21,18 @@ class APINodeAdminClient(DSSBaseClient):
             "serviceId" : service_id
         })
 
+    def list_services(self):
+        return self._perform_json("GET", "services")
+
     def service(self, service_id):
         """
         Gets a handle to interact with a service
         """
         return APINodeService(self, service_id)
+
+    def auth(self):
+        """Returns a handle to interact with authentication"""
+        return APINodeAuth(self)
 
     def get_metrics(self):
         return self._perform_json("GET", "metrics")
