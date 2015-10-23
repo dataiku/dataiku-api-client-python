@@ -18,7 +18,7 @@ class APINodeService(object):
 
     def list_generations(self):
         return self.client._perform_json("GET",
-            "services/%s/generations" % self.service_id)
+            "services/%s/generations" % self.service_id)["generations"]
 
     def import_generation_from_archive(self, file_path):
         self.client._perform_empty("POST",
