@@ -1,5 +1,6 @@
 from dataset import DSSDataset
 from job import DSSJob
+from apiservice import DSSAPIService
 
 
 class DSSProject(object):
@@ -189,3 +190,31 @@ class DSSProject(object):
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
+
+
+    ########################################################
+    # API Bundles
+    ########################################################
+
+    def list_api_services(self):
+        """
+        List the API services in this project
+        
+        Returns:
+            the list of API services, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/apiservices/" % self.project_key)
+
+    def get_api_service(self, service_id):
+        """
+        Get a handle to interact with a specific API service
+       
+        Args:
+            service_id: the ID of the desired API service
+        
+        Returns:
+            A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        """
+        return DSSAPIService(self.client, self.project_key, service_id)
+
