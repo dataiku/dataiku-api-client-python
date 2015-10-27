@@ -30,6 +30,8 @@ class DSSProject(object):
     def get_export_stream(self):
         """
         Return a stream of the exported project
+
+        Warning: this stream will monopolize the DSSClient until closed
         """
         return self.client._perform_raw(
             "GET", "/projects/%s/export" % self.project_key).raw
