@@ -341,7 +341,10 @@ class DSSClient(object):
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
-            ex = http_res.json()
+            try:
+                ex = http_res.json()
+            except ValueError:
+                ex = {"message": http_res.text}
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
     def _perform_empty(self, method, path, params=None, body=None):
