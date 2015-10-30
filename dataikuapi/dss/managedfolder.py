@@ -76,6 +76,13 @@ class DSSManagedFolder(object):
         return self.client._perform_raw(
                 "GET", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
 
+    def delete_file(self, path):
+        """
+        Delete a file from the managed folder
+        """
+        return self.client._perform_empty(
+                "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
+
     def put_file(self, name, f):
         """
         Upload the file to the managed folder

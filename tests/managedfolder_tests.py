@@ -9,7 +9,7 @@ import sys, traceback
 from contextlib import closing
 
 host="http://localhost:8082"
-apiKey="ZZYqWxPnc2nWMJMUXwykn6wzA7jokbp5"
+apiKey="5YZ4lHpXexhlNk29FqRi8AcO2EVGddtA"
 testProjectKey="BOX"
 
 def list_managedfolders_test():
@@ -63,6 +63,33 @@ def updload_download_test():
             f.write(s.raw.read())
     
     eq_(True, filecmp.cmp(stuff, stuff2))
+
+    managedfolder.delete()   
+     
+def updload_replace_delete_test():
+    temp_folder = tempfile.mkdtemp()
+    stuff = osp.join(temp_folder, "test.txt")
+    stuffb = osp.join(temp_folder, "testb.txt")
+    with open(stuff, "w") as f:
+        f.write('some contents\n on several\nlines')
+    
+    client = DSSClient(host, apiKey)
+    project = client.get_project(testProjectKey)
+    managedfolder = project.create_managed_folder("titi")
+
+    count = len(managedfolder.list_contents()['items'])
+    with open(stuff, "r") as f:
+        managedfolder.put_file('stuff', f)
+    eq_(count + 1, len(managedfolder.list_contents()['items']))
+        
+    with open(stuffb, "w") as f:
+        with closing(managedfolder.get_file('stuff')) as s:
+            f.write(s.raw.read())
+    
+    eq_(True, filecmp.cmp(stuff, stuffb))
+
+    managedfolder.delete_file('stuff')
+    eq_(count, len(managedfolder.list_contents()['items']))
 
     managedfolder.delete()    
            
