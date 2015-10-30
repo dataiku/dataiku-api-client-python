@@ -10,8 +10,13 @@ class APINodeClient(DSSBaseClient):
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
 
-    def predict_record(self, endpoint_id, features):
-        return self._perform_json("POST",
-            "%s/predict" % endpoint_id, body = {
-                "features" :features
-            })
+    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None):
+        obj =  {
+            "features" :features
+        }
+        if forced_generation is not None:
+            obj["dispatch"] = {"forcedGeneration" : forced_generation }
+        elif dispatch_key is not None:
+            obj["dispatch"] = {"dispatchKey" : dispatch_key }
+
+        return self._perform_json("POST", "%s/predict" % endpoint_id, body = obj)

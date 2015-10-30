@@ -51,7 +51,7 @@ class APINodeService(object):
             "services/%s/actions/setMapping" % self.service_id, body = mapping)
 
     def switch_to_newest(self):
-        self.client._perform_empty("POST",
+        return self.client._perform_json("POST",
             "services/%s/actions/switchToNewest" % self.service_id)
 
     def switch_to_single_generation(self, generation):
