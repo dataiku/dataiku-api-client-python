@@ -10,9 +10,10 @@ class APINodeClient(DSSBaseClient):
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
 
-    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None):
+    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None):
         obj =  {
-            "features" :features
+            "features" :features,
+            "context" : context
         }
         if forced_generation is not None:
             obj["dispatch"] = {"forcedGeneration" : forced_generation }
@@ -20,3 +21,19 @@ class APINodeClient(DSSBaseClient):
             obj["dispatch"] = {"dispatchKey" : dispatch_key }
 
         return self._perform_json("POST", "%s/predict" % endpoint_id, body = obj)
+
+    def predict_records(self, endpoint_id, records, forced_generation=None, dispatch_key=None):
+        for record in records:
+            if not "features" in record:
+                raise ValueError("Each record must contain a 'features' dict")
+
+        obj = {
+            "items" : records
+        }
+
+        if forced_generation is not None:
+            obj["dispatch"] = {"forcedGeneration" : forced_generation }
+        elif dispatch_key is not None:
+            obj["dispatch"] = {"dispatchKey" : dispatch_key }
+
+        return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
