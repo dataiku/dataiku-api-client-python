@@ -1,4 +1,5 @@
 from dataset import DSSDataset
+from managedfolder import DSSManagedFolder
 from job import DSSJob
 from apiservice import DSSAPIService
 
@@ -152,6 +153,52 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
+
+
+    ########################################################
+    # Managed folders
+    ########################################################
+
+    def list_managed_folders(self):
+        """
+        List the managed folders in this project
+        
+        Returns:
+            the list of the managed folders, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/managedfolders/" % self.project_key)
+
+    def get_managed_folder(self, odb_id):
+        """
+        Get a handle to interact with a specific managed folder
+       
+        Args:
+            odb_id: the identifier of the desired managed folder
+        
+        Returns:
+            A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
+        """
+        return DSSManagedFolder(self.client, self.project_key, odb_id)
+
+    def create_managed_folder(self, name):
+        """
+        Create a new managed folder in the project, and return a handle to interact with it
+        
+        Args:
+            name: the name of the managed folder
+        
+        Returns:
+            A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
+        """
+        obj = {
+            "name" : name,
+            "projectKey" : self.project_key
+        }
+        res = self.client._perform_json("POST", "/projects/%s/managedfolders/" % self.project_key,
+                       body = obj)
+        odb_id = res['id']
+        return DSSManagedFolder(self.client, self.project_key, odb_id)
 
 
     ########################################################

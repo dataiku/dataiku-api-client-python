@@ -359,3 +359,17 @@ class DSSClient(object):
     def _perform_raw(self, method, path, params=None, body=None):
         return self._perform_http(method, path, params, body, True)
 
+    def _perform_json_upload(self, method, path, name, f):
+        auth = HTTPBasicAuth(self.api_key, "")
+
+        try:
+            http_res = self._session.request(
+                    method, "%s/dip/publicapi%s" % (self.host, path),
+                    auth=auth,
+                    files = {'file': (name, f, {'Expires': '0'})} )
+            http_res.raise_for_status()
+            return http_res
+        except exceptions.HTTPError:
+            ex = http_res.json()
+            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+
