@@ -13,7 +13,6 @@ from dss.sqlquery import DSSSQLQuery
 from .utils import DataikuException
 
 class DSSBaseClient(object):
-
     def __init__(self, base_uri, api_key):
         self.api_key = api_key
         self.base_uri = base_uri
