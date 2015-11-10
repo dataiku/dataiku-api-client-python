@@ -29,9 +29,10 @@ class APINodeClient(DSSBaseClient):
         :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
         """
         obj =  {
-            "features" :features,
-            "context" : context
+            "features" :features
         }
+        if context is not None:
+            obj["context"] = context
         if forced_generation is not None:
             obj["dispatch"] = {"forcedGeneration" : forced_generation }
         elif dispatch_key is not None:
