@@ -1,6 +1,7 @@
 from dataset import DSSDataset
 from managedfolder import DSSManagedFolder
 from job import DSSJob
+from scenario import DSSScenario
 from apiservice import DSSAPIService
 
 
@@ -264,4 +265,31 @@ class DSSProject(object):
             A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
         return DSSAPIService(self.client, self.project_key, service_id)
+
+
+    ########################################################
+    # Scenarios
+    ########################################################
+
+    def list_scenarios(self):
+        """
+        List the scenarios in this project
+        
+        Returns:
+            the list of scenarios, each one as a JSON object.
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/scenarios/" % self.project_key)
+
+    def get_scenario(self, scenario_id):
+        """
+        Get a handle to interact with a specific scenario
+       
+        Args:
+            scenario_id: the ID of the desired scenario
+        
+        Returns:
+            A :class:`dataikuapi.dss.dataset.DSSScenario` scenario handle
+        """
+        return DSSScenario(self.client, self.project_key, scenario_id)
 
