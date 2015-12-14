@@ -1,3 +1,4 @@
+from os import path as osp
 
 class APINodeService(object):
     """
@@ -23,9 +24,7 @@ class APINodeService(object):
     def import_generation_from_archive(self, file_path):
         self.client._perform_empty("POST",
             "services/%s/generations/actions/importFromArchive" % (self.service_id),
-            params ={
-                "filePath" : file_path
-        })
+            params = { "filePath" : osp.abspath(file_path) })
 
     def preload_generation(self, generation):
         self.client._perform_empty("POST",
