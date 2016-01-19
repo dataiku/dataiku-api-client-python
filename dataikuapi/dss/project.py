@@ -230,7 +230,9 @@ class DSSProject(object):
         
         Args:
             definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
-            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build
+            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build.
+            Optionally, a refreshHiveMetastore field can specify whether to re-synchronize the Hive metastore for recomputed
+            HDFS datasets.
         
         Returns:
             A :class:`dataikuapi.dss.job.DSSJob` job handle
