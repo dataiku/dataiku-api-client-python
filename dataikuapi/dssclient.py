@@ -7,6 +7,7 @@ from requests.auth import HTTPBasicAuth
 from dss.project import DSSProject
 from dss.user import DSSUser
 from dss.group import DSSGroup
+from dss.meaning import DSSMeaning
 from dss.connection import DSSConnection
 from dss.sqlquery import DSSSQLQuery
 
@@ -33,7 +34,7 @@ class DSSClient(object):
 
     def list_project_keys(self):
         """
-        Lists the project keys (=project identifiers).
+        List the project keys (=project identifiers).
 
         Returns:
             list of identifiers (=strings)
@@ -54,7 +55,7 @@ class DSSClient(object):
 
     def create_project(self, project_key, name, owner, description=None, settings=None):
         """
-        Creates a project, and return a project handle to interact with it.
+        Create a project, and return a project handle to interact with it.
 
         Note: this call requires an API key with admin rights
 
@@ -133,7 +134,7 @@ class DSSClient(object):
 
     def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[]):
         """
-        Creates a user, and return a handle to interact with it
+        Create a user, and return a handle to interact with it
         
         Note: this call requires an API key with admin rights
 
@@ -187,7 +188,7 @@ class DSSClient(object):
 
     def create_group(self, name, description=None, source_type='LOCAL'):
         """
-        Creates a group, and return a handle to interact with it
+        Create a group, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
 
@@ -237,7 +238,7 @@ class DSSClient(object):
 
     def create_connection(self, name, type=None, params=None, usable_by='ALL', allowed_groups=None):
         """
-        Creates a connection, and return a handle to interact with it
+        Create a connection, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
 
@@ -262,6 +263,74 @@ class DSSClient(object):
                    "allowedGroups" : allowed_groups
                })
         return DSSConnection(self, name)
+
+    ########################################################
+    # Meanings
+    ########################################################
+
+    def list_meanings(self):
+        """
+        List all user-defined meanings on the DSS instance
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            A list of users, as an array of JSON objects
+        """
+        return self._perform_json(
+            "GET", "/meanings/")
+
+    def get_meaning(self, id):
+        """
+        Get a handle to interact with a specific user-defined meaning
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            id: the ID of the desired meaning
+
+        Returns:
+            A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
+        """
+        return DSSMeaning(self, id)
+
+    def create_meaning(self, id, label, type, description=None,
+                        values=None, mappings=None, pattern=None,
+                        normalizationMode=None, detectable=False):
+        """
+        Create a meaning, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            id: the ID of the new meaning
+            type: the type of the new meaning. Admissible values are 'DECLARATIVE', 'VALUES_LIST', 'VALUES_MAPPING' and 'PATTERN'
+            description (optional): the description of the new meaning
+            values (optional): when type is 'VALUES_LIST', the list of values
+            mappings (optional): when type is 'VALUES_MAPPING', the mapping, as a list of objects with this
+                structure: {'from': 'value_1', 'to': 'value_a'}
+            pattern (optional): when type is 'PATTERN', the pattern
+            normalizationMode (optional): when type is 'VALUES_LIST', 'VALUES_MAPPING' or 'PATTERN', the normalization
+                mode to use for value matching. One of 'EXACT', 'LOWERCASE', or 'NORMALIZED' (not available
+                for 'PATTERN' type). Defaults to 'EXACT'.
+            detectable (optional): whether DSS should consider assigning the meaning to columns set to 'Auto-detect'. Defaults to False.
+
+        Returns:
+            A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
+        """
+        resp = self._perform_text(
+               "POST", "/meanings/", body={
+                    "id" : id,
+                    "label": label,
+                    "type": type,
+                    "description": description,
+                    "values": values,
+                    "mappings": mappings,
+                    "pattern": pattern,
+                    "normalizationMode": normalizationMode,
+                    "detectable": detectable
+               })
+        return DSSMeaning(self, id)
 
     ########################################################
     # Logs
