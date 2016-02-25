@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+import json
 
 
 class DSSManagedFolder(object):
@@ -94,5 +95,48 @@ class DSSManagedFolder(object):
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/managedfolders/%s/contents/" % (self.project_key, self.odb_id),
                 name, f)
+
+    ########################################################
+    # Managed folder actions
+    ########################################################
+    
+    def compute_metrics(self, metrics=None):
+        """
+        Compute metrics on this managed folder. If the metrics are not specified, the metrics
+        setup on the managed folder are used.
+        """
+        if metrics is None:
+	        self.client._perform_empty(
+	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id))
+        else:
+	        self.client._perform_json(
+	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id),
+	                params=metrics)
+	                
+    ########################################################
+    # Metrics
+    ########################################################
+
+    def get_last_metrics(self):
+        """
+        Get the last values of the metrics on this dataset
+        
+        Returns:
+            a list of metric objects and their value
+        """
+        return self.client._perform_json(
+                "GET", "/projects/%s/metrics/managedfolder/%s/last" % (self.project_key, self.odb_id))
+
+
+    def get_metric_history(self, metric):
+        """
+        Get the history of the values of the metric on this dataset
+        
+        Returns:
+            an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
+        """
+        return self.client._perform_json(
+                "GET", "/projects/%s/metrics/managedfolder/%s/history" % (self.project_key, self.odb_id),
+                params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
 
 

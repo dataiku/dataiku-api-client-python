@@ -1,7 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-
+import json
 
 class DSSDataset(object):
     """
@@ -158,3 +158,57 @@ class DSSDataset(object):
         self.client._perform_empty(
                 "POST" , "/projects/%s/datasets/%s/actions/synchronizeHiveMetastore" %(self.project_key, self.dataset_name))
         
+    def compute_metrics(self, partition='', metrics=None):
+        """
+        Compute metrics on a partition of this dataset. If the metrics are not specified, the metrics
+        setup on the dataset are used.
+        """
+        if metrics is None:
+	        self.client._perform_empty(
+	                "POST" , "/projects/%s/datasets/%s/actions/computeMetrics" %(self.project_key, self.dataset_name, partition))
+        else:
+	        self.client._perform_json(
+	                "POST" , "/projects/%s/datasets/%s/actions/computeMetrics" %(self.project_key, self.dataset_name, partition),
+	                params=metrics)
+	                
+    def run_checks(self, partition='', checks=None):
+        """
+        Run checks on a partition of this dataset. If the checks are not specified, the checks
+        setup on the dataset are used.
+        """
+        if checks is None:
+	        self.client._perform_empty(
+	                "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition))
+        else:
+	        self.client._perform_json(
+	                "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition),
+	                params=checks)
+
+    ########################################################
+    # Metrics
+    ########################################################
+
+    def get_last_metrics(self, partition=''):
+        """
+        Get the last values of the metrics on this dataset
+        
+        Returns:
+            a list of metric objects and their value
+        """
+        return self.client._perform_json(
+                "GET", "/projects/%s/metrics/dataset/%s/%s/last" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition))
+
+
+    def get_metric_history(self, metric, partition=''):
+        """
+        Get the history of the values of the metric on this dataset
+        
+        Returns:
+            an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
+        """
+        return self.client._perform_json(
+                "GET", "/projects/%s/metrics/dataset/%s/%s/history" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
+                params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
+
+	  
+	               
