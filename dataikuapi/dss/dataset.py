@@ -163,26 +163,28 @@ class DSSDataset(object):
         Compute metrics on a partition of this dataset. If the metrics are not specified, the metrics
         setup on the dataset are used.
         """
+        url = "/projects/%s/datasets/%s/actions/computeMetrics" % (self.project_key, self.dataset_name)
         if metrics is None:
-	        self.client._perform_empty(
-	                "POST" , "/projects/%s/datasets/%s/actions/computeMetrics" %(self.project_key, self.dataset_name, partition))
+            return self.client._perform_empty(
+                    "POST" , url,
+                    params={'partition':partition})
         else:
-	        self.client._perform_json(
-	                "POST" , "/projects/%s/datasets/%s/actions/computeMetrics" %(self.project_key, self.dataset_name, partition),
-	                params=metrics)
-	                
+            return self.client._perform_json(
+                    "POST" , url,
+                    params={'partition':partition}, body=metrics)
+                    
     def run_checks(self, partition='', checks=None):
         """
         Run checks on a partition of this dataset. If the checks are not specified, the checks
         setup on the dataset are used.
         """
         if checks is None:
-	        self.client._perform_empty(
-	                "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition))
+            return self.client._perform_empty(
+                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition))
         else:
-	        self.client._perform_json(
-	                "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition),
-	                params=checks)
+            return self.client._perform_json(
+                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition),
+                    params=checks)
 
     ########################################################
     # Metrics
@@ -210,5 +212,5 @@ class DSSDataset(object):
                 "GET", "/projects/%s/metrics/dataset/%s/%s/history" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
 
-	  
-	               
+      
+                   
