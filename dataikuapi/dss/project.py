@@ -2,7 +2,7 @@ from dataset import DSSDataset
 from managedfolder import DSSManagedFolder
 from job import DSSJob
 from apiservice import DSSAPIService
-
+import sys
 
 class DSSProject(object):
     """
@@ -11,11 +11,11 @@ class DSSProject(object):
     def __init__(self, client, project_key):
        self.client = client
        self.project_key = project_key
-       
+
     ########################################################
     # Project deletion
     ########################################################
-    
+
     def delete(self):
         """
         Delete the project
@@ -241,14 +241,19 @@ class DSSProject(object):
         return DSSJob(self.client, self.project_key, job_def['id'])
 
 
+
     ########################################################
-    # API Bundles
+    # Variables
+    ########################################################
+
+    ########################################################
+    # API Services
     ########################################################
 
     def list_api_services(self):
         """
         List the API services in this project
-        
+
         Returns:
             the list of API services, each one as a JSON object
         """
@@ -258,12 +263,66 @@ class DSSProject(object):
     def get_api_service(self, service_id):
         """
         Get a handle to interact with a specific API service
-       
+
         Args:
             service_id: the ID of the desired API service
-        
+
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
         return DSSAPIService(self.client, self.project_key, service_id)
 
+
+    ########################################################
+    # Bundles / Export (Design node)
+    ########################################################
+
+    def list_exported_bundles(self):
+        return self.client._perform_json("GET",
+                "/projects/%s/bundles/exported" % self.project_key)
+
+    def export_bundle(self, bundle_id):
+        return self.client._perform_json("PUT",
+                "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
+
+    def get_exported_bundle_archive_stream(self, bundle_id):
+        """
+        Download a bundle archive that can be deployed in a DSS automation Node, as a binary stream.
+        Warning: this stream will monopolize the DSSClient until closed.
+        """
+        return self.client._perform_raw("GET",
+                "/projects/%s/bundles/exported/%s/archive" % (self.project_key, bundle_id))
+
+    def download_exported_bundle_archive_to_file(self, bundle_id, path):
+        """
+        Download a bundle archive that can be deployed in a DSS automation Node into the given output file.
+        @param path if "-", will write to /dev/stdout
+        """
+        if path == "-":
+            path= "/dev/stdout"
+        stream = self.get_exported_bundle_archive_stream(bundle_id)
+
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        stream.close()
+
+
+    ########################################################
+    # Bundles / Import (Automation node)
+    ########################################################
+
+    def list_imported_bundles(self):
+        return self.client._perform_json("GET",
+                "/projects/%s/bundles/imported" % self.project_key)
+
+    def import_bundle_from_archive(self, archive_path):
+        return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
+                 params = { "archivePath" : osp.abspath(archive_path) })
+
+    def activate_bundle(self, bundle_id):
+         return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id))

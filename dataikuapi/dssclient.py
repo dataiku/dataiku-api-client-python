@@ -10,7 +10,7 @@ from dss.group import DSSGroup
 from dss.meaning import DSSMeaning
 from dss.connection import DSSConnection
 from dss.sqlquery import DSSSQLQuery
-
+import os.path as osp
 from .utils import DataikuException
 
 class DSSClient(object):
@@ -40,6 +40,15 @@ class DSSClient(object):
             list of identifiers (=strings)
         """
         return [x["projectKey"] for x in self._perform_json("GET", "/projects/")]
+
+    def list_projects(self):
+        """
+        List the projects
+
+        Returns:
+            list of objects. Each object contains at least a 'projectKey' field
+        """
+        return self._perform_json("GET", "/projects/")
 
     def get_project(self, project_key):
         """
@@ -392,11 +401,26 @@ class DSSClient(object):
         return self._perform_empty(
             "PUT", "/admin/variables/", body=variables)
 
+
+    ########################################################
+    # Bundles / Import (Automation node)
+    ########################################################
+
+    def create_project_from_bundle_local_archive(self, archive_path):
+        return self._perform_json("POST",
+                "/projectsFromBundle/fromArchive",
+                 params = { "archivePath" : osp.abspath(archive_path) })
+
+    def create_project_from_bundle_archive(self, fp):
+        files = {'file': fp }
+        return self._perform_json("POST",
+                "/projectsFromBundle/", files=files)
+
     ########################################################
     # Internal Request handling
     ########################################################
 
-    def _perform_http(self, method, path, params=None, body=None, stream=False):
+    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None):
         if body:
             body = json.dumps(body)
 
@@ -406,6 +430,7 @@ class DSSClient(object):
             http_res = self._session.request(
                     method, "%s/dip/publicapi%s" % (self.host, path),
                     params=params, data=body,
+                    files = files,
                     auth=auth, stream = stream)
             http_res.raise_for_status()
             return http_res
@@ -416,17 +441,17 @@ class DSSClient(object):
                 ex = {"message": http_res.text}
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
-    def _perform_empty(self, method, path, params=None, body=None):
-        self._perform_http(method, path, params, body, False)
+    def _perform_empty(self, method, path, params=None, body=None, files = None):
+        self._perform_http(method, path, params=params, body=body, files=files, stream=False)
 
-    def _perform_text(self, method, path, params=None, body=None):
-        return self._perform_http(method, path, params, body, False).text
+    def _perform_text(self, method, path, params=None, body=None,files=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=False).text
 
-    def _perform_json(self, method, path, params=None, body=None):
-        return self._perform_http(method, path, params, body, False).json()
+    def _perform_json(self, method, path, params=None, body=None,files=None):
+        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False).json()
 
-    def _perform_raw(self, method, path, params=None, body=None):
-        return self._perform_http(method, path, params, body, True)
+    def _perform_raw(self, method, path, params=None, body=None,files=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=False)
 
     def _perform_json_upload(self, method, path, name, f):
         auth = HTTPBasicAuth(self.api_key, "")
