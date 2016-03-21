@@ -247,6 +247,31 @@ class DSSProject(object):
     # Variables
     ########################################################
 
+    def get_variables(self):
+        """
+        Gets the variables of this project.
+
+        Returns:
+            a dictionary containing two dictionaries : "standard" and "local".
+            "standard" are regular variables, exported with bundles.
+            "local" variables are not part of the bundles for this project
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/variables/" % self.project_key)
+
+    def set_variables(self, obj):
+        """
+        Sets the variables of this project.
+        @param obj: must be a modified version of the object returned by get_variables
+        """
+        if not "standard" in obj:
+            raise ValueError("Missing 'standard' key in argument")
+        if not "local" in obj:
+            raise ValueError("Missing 'local' key in argument")
+
+        self.client._perform_empty(
+            "PUT", "/projects/%s/variables/" % self.project_key, body=obj)
+
     ########################################################
     # API Services
     ########################################################
