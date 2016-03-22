@@ -416,6 +416,21 @@ class DSSClient(object):
         return self._perform_json("POST",
                 "/projectsFromBundle/", files=files)
 
+
+    def prepare_project_import(self, f):
+        """
+        Prepares import of a project archive
+
+        @param: fp: the input stream, as a file-like object
+
+        Returns a handle for the prepared import
+        """
+        val = self._perform_json_upload(
+                "POST", "/projects/import/upload",
+                "tmp-import.zip", f)
+        print val
+        return TemporaryImportHandle(self, val.json()["id"])
+
     ########################################################
     # Internal Request handling
     ########################################################
@@ -467,3 +482,15 @@ class DSSClient(object):
             ex = http_res.json()
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
+
+class TemporaryImportHandle(object):
+    def __init__(self, client, import_id):
+        self.client = client
+        self.import_id = import_id
+
+    def execute(self, settings = {}):
+        """
+        Executes the import with provided settings
+        """
+        return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
+            body = settings)

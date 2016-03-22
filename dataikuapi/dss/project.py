@@ -42,7 +42,6 @@ class DSSProject(object):
     def export_to_file(self, path):
         """
         Export the project to a file
-        
         Args:
             path: the path of the file in which the exported project should be saved
         """
