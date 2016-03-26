@@ -15,10 +15,12 @@ class DSSScenario(object):
         return self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/abort" % (self.project_key, self.id))
 
-    def run(self):
+    def run(self, params={}):
         """
-        Requests a run of the scenario, which will start after a few seconds
+        Requests a run of the scenario, which will start after a few seconds.
+
+        :params: params: additional parameters that will be passed to the scenario through trigger params
         """
         return self.client._perform_json(
-            "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id))
+            "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
 
