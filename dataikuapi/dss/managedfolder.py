@@ -2,7 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
-
+from .metrics import ComputedMetrics
 
 class DSSManagedFolder(object):
     """
@@ -92,6 +92,7 @@ class DSSManagedFolder(object):
             f: the file contents, as a stream
             name: the name of the file
         """
+
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/managedfolders/%s/contents/" % (self.project_key, self.odb_id),
                 name, f)
@@ -99,12 +100,25 @@ class DSSManagedFolder(object):
     ########################################################
     # Managed folder actions
     ########################################################
-    
-    def compute_metrics(self, metrics=None):
+
+    def compute_metrics(self, metric_ids=None, probes=None):
         """
         Compute metrics on this managed folder. If the metrics are not specified, the metrics
         setup on the managed folder are used.
         """
+        url = "/projects/%s/managedfolders/%s/actions" % (self.project_key, self.odb_id)
+        if metric_ids is not None:
+            return self.client._perform_json(
+                    "POST" , "%s/computeMetricsFromIds" % url,
+                     body={"metricIds" : metric_ids})
+        elif probes is not None:
+            return self.client._perform_json(
+                    "POST" , "%s/computeMetrics" % url,
+                     body=probes)
+        else:
+            return self.client._perform_empty(
+                    "POST" , "%s/computeMetrics" % url)
+
         if metrics is None:
 	        self.client._perform_empty(
 	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id))
@@ -117,15 +131,15 @@ class DSSManagedFolder(object):
     # Metrics
     ########################################################
 
-    def get_last_metrics(self):
+    def get_last_metric_values(self):
         """
-        Get the last values of the metrics on this dataset
+        Get the last values of the metrics on this managed folder
         
         Returns:
             a list of metric objects and their value
         """
-        return self.client._perform_json(
-                "GET", "/projects/%s/metrics/managedfolder/%s/last" % (self.project_key, self.odb_id))
+        return ComputedMetrics(self.client._perform_json(
+                "GET", "/projects/%s/managedfolders/%s/metrics/last" % (self.project_key, self.odb_id)))
 
 
     def get_metric_history(self, metric):
