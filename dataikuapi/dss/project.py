@@ -375,6 +375,25 @@ class DSSProject(object):
             scenario_id: the ID of the desired scenario
 
         Returns:
-            A :class:`dataikuapi.dss.dataset.DSSScenario` scenario handle
+            A :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
+        
+    def create_scenario(self, scenario_name, type, definition={}):
+        """
+        Create a new scenario in the project, and return a handle to interact with it
+        
+        Args:
+            scenario_name: the name for the new scenario
+            type: the type of the scenario ('step_based' or 'custom_python')
+            definition: the definition of the scenario, as a JSON object
+        
+        Returns:
+            A :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
+        """
+        definition['type'] = type
+        definition['name'] = scenario_name
+        scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
+                       body = definition)['id']
+        return DSSScenario(self.client, self.project_key, scenario_id)
+        
