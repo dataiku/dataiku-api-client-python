@@ -204,7 +204,7 @@ class DSSDataset(object):
             a list of metric objects and their value
         """
         return ComputedMetrics(self.client._perform_json(
-                "GET", "/projects/%s/metrics/dataset/%s/%s/last" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition)))
+                "GET", "/projects/%s/datasets/%s/metrics/last/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition)))
 
 
     def get_metric_history(self, metric, partition=''):
@@ -215,5 +215,5 @@ class DSSDataset(object):
             an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
         """
         return self.client._perform_json(
-                "GET", "/projects/%s/metrics/dataset/%s/%s/history" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
+                "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
