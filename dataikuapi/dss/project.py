@@ -30,16 +30,16 @@ class DSSProject(object):
     # Project export
     ########################################################
     
-    def get_export_stream(self):
+    def get_export_stream(self, options = {}):
         """
         Return a stream of the exported project
 
         Warning: this stream will monopolize the DSSClient until closed
         """
         return self.client._perform_raw(
-            "GET", "/projects/%s/export" % self.project_key).raw
+            "POST", "/projects/%s/export" % self.project_key, body=options).raw
 
-    def export_to_file(self, path):
+    def export_to_file(self, path, options={}):
         """
         Export the project to a file
         Args:
@@ -47,11 +47,11 @@ class DSSProject(object):
         """
         with open(path, 'w') as f:
             export_stream = self.client._perform_raw(
-                "GET", "/projects/%s/export" % self.project_key)
-            for chunk in export_stream.iter_content(chunk_size=10000):
+                "POST", "/projects/%s/export" % self.project_key, body=options)
+            for chunk in export_stream.iter_content(chunk_size=32768):
                 if chunk:
                     f.write(chunk)
-                    f.flush()
+            f.flush()
 
     ########################################################
     # Project infos
