@@ -1,3 +1,5 @@
+from triggerfire import DSSTriggerFire
+from scenariorun import DSSScenarioRun
 
 class DSSScenario(object):
     """
@@ -14,16 +16,33 @@ class DSSScenario(object):
         """
         return self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/abort" % (self.project_key, self.id))
-
+            
     def run(self, params={}):
         """
         Requests a run of the scenario, which will start after a few seconds.
 
         :params: params: additional parameters that will be passed to the scenario through trigger params
         """
-        return self.client._perform_json(
+        trigger_fire = self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
-
+        return DSSTriggerFire(self, trigger_fire)
+        
+    def get_last_runs(self, limit=10):
+        """
+        Get the list of the last runs of the scenario
+        """
+        runs = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/get-last-runs" % (self.project_key, self.id), params={
+                'limit' : limit
+            })
+        return [DSSScenarioRun(self.client, run) for run in runs]
+    
+    def get_run(self, run_id):
+        """
+        Get a handle to a run of the scenario
+        """
+        return DSSScenarioRun(self.client, {'scenario' : {'projectKey':self.project_key, 'id':self.id}, 'runId' : run_id})
+    
     def get_definition(self, with_status=True):
         """
         Returns the definition of the scenario

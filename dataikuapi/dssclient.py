@@ -466,7 +466,7 @@ class DSSClient(object):
         return self._perform_http(method, path,  params=params, body=body, files=files, stream=False).json()
 
     def _perform_raw(self, method, path, params=None, body=None,files=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=False)
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=True)
 
     def _perform_json_upload(self, method, path, name, f):
         auth = HTTPBasicAuth(self.api_key, "")
