@@ -1,6 +1,3 @@
-from triggerfire import DSSTriggerFire
-from scenariorun import DSSScenarioRun
-
 class DSSScenario(object):
     """
     A scenario on the DSS instance
@@ -87,4 +84,49 @@ class DSSScenario(object):
         """
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
+
+
+class DSSScenarioRun(object):
+    """
+    A run of a scenario
+    """
+    
+    def __init__(self, client, run):
+        self.client = client
+        self.run = run
+
+    def get_details(self):
+        """
+        Get the full details of the scenario run, including its step runs
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/%s/" % (self.run['scenario']['projectKey'], self.run['scenario']['id'], self.run['runId']))
+
+
+class DSSTriggerFire(object):
+    """
+    The activation of a trigger on the DSS instance
+    """
+
+    def __init__(self, scenario, trigger_fire):
+        self.client = scenario.client
+        self.project_key = scenario.project_key
+        self.scenario_id = scenario.id
+        self.trigger_id = trigger_fire['trigger']['id']
+        self.run_id = trigger_fire['runId']
+        self.trigger_fire = trigger_fire
+
+    def get_scenario_run(self):
+        """
+        Get the run of the scenario that this trigger activation launched
+        """
+        run = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/get-run-for-trigger" % (self.project_key, self.scenario_id), params= {
+               'triggerId' : self.trigger_id,
+               'triggerRunId' : self.run_id
+            })
+        if 'scenarioRun' not in run:
+            return None
+        else:
+            return DSSScenarioRun(self.client, run['scenarioRun'])
 
