@@ -1,5 +1,6 @@
 from dataset import DSSDataset
 from managedfolder import DSSManagedFolder
+from savedmodel import DSSSavedModel
 from job import DSSJob
 from scenario import DSSScenario
 from apiservice import DSSAPIService
@@ -154,6 +155,32 @@ class DSSProject(object):
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
+
+    ########################################################
+    # Saved models
+    ########################################################
+
+    def list_saved_models(self):
+        """
+        List the saved models in this project
+        
+        Returns:
+            the list of the saved models, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/" % self.project_key)
+
+    def get_saved_model(self, sm_id):
+        """
+        Get a handle to interact with a specific saved model
+       
+        Args:
+            sm_id: the identifier of the desired saved model
+        
+        Returns:
+            A :class:`dataikuapi.dss.savedmodel.DSSSavedModel` saved model handle
+        """
+        return DSSSavedModel(self.client, self.project_key, sm_id)
 
     ########################################################
     # Managed folders

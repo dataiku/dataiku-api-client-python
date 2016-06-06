@@ -150,7 +150,22 @@ class DSSManagedFolder(object):
             an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
         """
         return self.client._perform_json(
-                "GET", "/projects/%s/metrics/managedfolder/%s/history" % (self.project_key, self.odb_id),
+                "GET", "/projects/%s/managedfolders/%s/metrics/history" % (self.project_key, self.odb_id),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
+
+
+                
+    ########################################################
+    # Usages
+    ########################################################
+
+    def get_usages(self):
+        """
+        Get the recipes referencing this folder
+
+        Returns:
+            a list of usages
+        """
+        return self.client._perform_json("GET", "/projects/%s/managedfolders/%s/usages" % (self.project_key, self.odb_id))
 
 
