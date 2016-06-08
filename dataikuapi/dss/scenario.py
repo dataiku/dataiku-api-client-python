@@ -27,15 +27,29 @@ class DSSScenario(object):
             "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
         return DSSTriggerFire(self, trigger_fire)
         
-    def get_last_runs(self, limit=10):
+    def get_last_runs(self, limit=10, only_finished_runs=False):
         """
         Get the list of the last runs of the scenario
         """
         runs = self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/get-last-runs" % (self.project_key, self.id), params={
-                'limit' : limit
+                'limit' : limit,
+                'onlyFinishedRuns' : only_finished_runs
             })
         return [DSSScenarioRun(self.client, run) for run in runs]
+    
+    def get_current_run(self):
+        """
+        Get the current run of the scenario, or None if it is not running at the moment
+        """
+        last_run = self.get_last_runs(1)
+        if len(last_run) == 0:
+            return None
+        last_run = last_run[0]
+        if 'result' in last_run.run:
+            return None # has a result means it's done
+        else:
+            return last_run
     
     def get_run(self, run_id):
         """
@@ -88,3 +102,16 @@ class DSSScenario(object):
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
 
+    def get_average_duration(self, limit=3):
+        """
+        Get the average duration (in fractional seconds) of the last runs of this
+        scenario that finished, where finished means it ended with SUCCESS or WARNING.
+        If there are not enough runs to perform the average, returns None
+        
+        Args:
+            limit: number of last runs to average on
+        """
+        last_runs = self.get_last_runs(limit=limit, only_finished_runs=True)
+        if len(last_runs) < limit:
+            return None
+        return sum([run.get_duration() for run in last_runs]) / len(last_runs)
