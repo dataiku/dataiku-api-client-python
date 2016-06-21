@@ -1,4 +1,5 @@
 from dataset import DSSDataset
+from recipe import DSSRecipe
 from managedfolder import DSSManagedFolder
 from savedmodel import DSSSavedModel
 from job import DSSJob
@@ -423,4 +424,31 @@ class DSSProject(object):
         scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
                        body = definition)['id']
         return DSSScenario(self.client, self.project_key, scenario_id)
+        
+    ########################################################
+    # Recipes
+    ########################################################
+
+    def list_recipes(self):
+        """
+        List the recipes in this project
+        
+        Returns:
+            the list of the recipes, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/recipes/" % self.project_key)
+
+    def get_recipe(self, recipe_name):
+        """
+        Get a handle to interact with a specific recipe
+       
+        Args:
+            recipe_name: the name of the desired recipe
+        
+        Returns:
+            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        """
+        return DSSRecipe(self.client, self.project_key, recipe_name)
+
         
