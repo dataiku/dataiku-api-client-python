@@ -1,14 +1,11 @@
-
 import json
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from dss.project import DSSProject
-from dss.user import DSSUser
-from dss.group import DSSGroup
+from dss.admin import DSSUser, DSSGroup, DSSConnection
 from dss.meaning import DSSMeaning
-from dss.connection import DSSConnection
 from dss.sqlquery import DSSSQLQuery
 import os.path as osp
 from .utils import DataikuException
@@ -18,11 +15,11 @@ class DSSClient(object):
 
     def __init__(self, host, api_key):
         """
-        Instantiate a new DSS API client on the given host with the given API key. 
-        
-        API keys can be managed
-        in DSS on the project page or in the global settings. The API key will define which operations are
-        allowed for the client.
+        Instantiate a new DSS API client on the given host with the given API key.
+
+        API keys can be managed in DSS on the project page or in the global settings.
+
+        The API key will define which operations are allowed for the client.
         """
         self.api_key = api_key
         self.host = host
@@ -122,9 +119,8 @@ class DSSClient(object):
         List all users setup on the DSS instance
 
         Note: this call requires an API key with admin rights
-        
-        Returns:
-            A list of users, as an array of JSON object
+
+        :return: A list of users, as an array of dicts.
         """
         return self._perform_json(
             "GET", "/admin/users/")
@@ -132,30 +128,27 @@ class DSSClient(object):
     def get_user(self, login):
         """
         Get a handle to interact with a specific user
-        
-        Args:
-            login: the login of the desired user
-        
-        Returns:
-            A :class:`dataikuapi.dss.user.DSSUser` user handle
+
+        :param str login: the login of the desired user
+
+        :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
         """
         return DSSUser(self, login)
 
-    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[]):
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[], profile='DATA_SCIENTIST'):
         """
         Create a user, and return a handle to interact with it
-        
+
         Note: this call requires an API key with admin rights
 
-        Args:
-            login: the login of the new user
-            password: the password of the new user
-            display_name: the displayed name for the new user
-            source_type: the type of new user. Admissible values are 'LOCAL', 'LDAP', 'SAAS'
-            groups: the names of the groups the new user belongs to
+        :param str login: the login of the new user
+        :param str password: the password of the new user
+        :param str display_name: the displayed name for the new user
+        :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
+        :param list groups: the names of the groups the new user belongs to
+        :param str profile: The profile for the new user, can be one of READER, DATA_ANALYST or DATA_SCIENTIST
 
-        Returns:
-            A :class:`dataikuapi.dss.user.DSSUser` user handle
+        :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
         """
         resp = self._perform_text(
                "POST", "/admin/users/", body={
@@ -163,7 +156,8 @@ class DSSClient(object):
                    "password" : password,
                    "displayName" : display_name,
                    "sourceType" : source_type,
-                   "groups" : groups
+                   "groups" : groups,
+                   "userProfile" : userProfile
                })
         return DSSUser(self, login)
 
@@ -191,7 +185,7 @@ class DSSClient(object):
             name: the name of the desired group
         
         Returns:
-            A :class:`dataikuapi.dss.group.DSSGroup` group  handle
+            A :class:`dataikuapi.dss.admin.DSSGroup` group  handle
         """
         return DSSGroup(self, name)
 
@@ -207,7 +201,7 @@ class DSSClient(object):
             source_type: the type of the new group. Admissible values are 'LOCAL', 'LDAP', 'SAAS'
             
         Returns:
-            A :class:`dataikuapi.dss.group.DSSGroup` group handle
+            A :class:`dataikuapi.dss.admin.DSSGroup` group handle
         """
         resp = self._perform_text(
                "POST", "/admin/groups/", body={
@@ -241,7 +235,7 @@ class DSSClient(object):
             name: the name of the desired connection
         
         Returns:
-            A :class:`dataikuapi.dss.connection.DSSConnection` connection  handle
+            A :class:`dataikuapi.dss.admin.DSSConnection` connection  handle
         """
         return DSSConnection(self, name)
 
@@ -259,9 +253,9 @@ class DSSClient(object):
                        or 'ALLOWED' (=access restricted to users of a list of groups)
             allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
                             of names of the groups whose users are allowed to use the new connection
-            
+
         Returns:
-            A :class:`dataikuapi.dss.connection.DSSConnection` connection handle
+            A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
@@ -284,7 +278,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
 
         Returns:
-            A list of users, as an array of JSON objects
+            A list of meanings, as an array of JSON objects
         """
         return self._perform_json(
             "GET", "/meanings/")
@@ -428,7 +422,6 @@ class DSSClient(object):
         val = self._perform_json_upload(
                 "POST", "/projects/import/upload",
                 "tmp-import.zip", f)
-        print val
         return TemporaryImportHandle(self, val.json()["id"])
 
     ########################################################
@@ -490,7 +483,11 @@ class TemporaryImportHandle(object):
 
     def execute(self, settings = {}):
         """
-        Executes the import with provided settings
+        Executes the import with provided settings.
+        @warning: You must check the 'success' flag
         """
+        # Empty JSON dicts can't be parsed properly
+        if settings == {}:
+            settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)

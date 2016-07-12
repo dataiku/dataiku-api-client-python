@@ -1,15 +1,7 @@
-
 import json
-from requests import Session
+from requests import Session, exceptions
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
-
-from dss.project import DSSProject
-from dss.user import DSSUser
-from dss.group import DSSGroup
-from dss.connection import DSSConnection
-from dss.sqlquery import DSSSQLQuery
-
 from .utils import DataikuException
 
 class DSSBaseClient(object):

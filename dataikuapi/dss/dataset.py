@@ -217,8 +217,7 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
-                
-                
+
     ########################################################
     # Usages
     ########################################################
@@ -231,6 +230,3 @@ class DSSDataset(object):
             a list of usages
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/usages" % (self.project_key, self.dataset_name))
-
-
-             
