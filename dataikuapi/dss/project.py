@@ -1,4 +1,5 @@
 from dataset import DSSDataset
+from recipe import DSSRecipe
 from managedfolder import DSSManagedFolder
 from savedmodel import DSSSavedModel
 from job import DSSJob
@@ -423,4 +424,54 @@ class DSSProject(object):
         scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
                        body = definition)['id']
         return DSSScenario(self.client, self.project_key, scenario_id)
+        
+    ########################################################
+    # Recipes
+    ########################################################
+
+    def list_recipes(self):
+        """
+        List the recipes in this project
+        
+        Returns:
+            the list of the recipes, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/recipes/" % self.project_key)
+
+    def get_recipe(self, recipe_name):
+        """
+        Get a handle to interact with a specific recipe
+       
+        Args:
+            recipe_name: the name of the desired recipe
+        
+        Returns:
+            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        """
+        return DSSRecipe(self.client, self.project_key, recipe_name)
+
+    def create_recipe(self, recipe_name, type, recipe_inputs=[], recipe_outputs=[], recipe_params={}):
+        """
+        Create a new recipe in the project, and return a handle to interact with it. Some recipe
+        types take additional parameters in recipe_params:
+        
+        * 'grouping' : a 'groupKey' column name
+        * 'python', 'sql_query', 'hive', 'impala' : the code of the recipe as a 'payload' string
+        
+        Args:
+            recipe_name: the name for the new recipe
+            type: the type of the scenario ('sync', 'grouping', 'join', 'vstack', 'python', 'sql_query', 'hive', 'impala')
+            recipe_inputs: an array of recipes inputs, as objects {'ref':'...', 'deps':[...]}
+            recipe_outputs: an array of recipes outputs, as objects {'ref':'...', 'appendMode':True/False}
+            recipe_params: additional parameters for the recipe creation
+        
+        Returns:
+            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        """
+        definition = {'type' : type, 'name' : recipe_name, 'inputs' : {'items':recipe_inputs}, 'outputs' : {'items':recipe_outputs}}
+        definition['params'] = recipe_params
+        recipe_name = self.client._perform_json("POST", "/projects/%s/recipes/" % self.project_key,
+                       body = definition)['name']
+        return DSSRecipe(self.client, self.project_key, recipe_name)
         
