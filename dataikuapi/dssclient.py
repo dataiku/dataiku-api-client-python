@@ -429,7 +429,7 @@ class DSSClient(object):
     ########################################################
 
     def _perform_http(self, method, path, params=None, body=None, stream=False, files=None):
-        if body:
+        if body is not None:
             body = json.dumps(body)
 
         auth = HTTPBasicAuth(self.api_key, "")
