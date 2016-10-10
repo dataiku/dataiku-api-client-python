@@ -47,7 +47,7 @@ class DSSProject(object):
         Args:
             path: the path of the file in which the exported project should be saved
         """
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             export_stream = self.client._perform_raw(
                 "POST", "/projects/%s/export" % self.project_key, body=options)
             for chunk in export_stream.iter_content(chunk_size=32768):
