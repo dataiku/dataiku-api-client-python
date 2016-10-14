@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-VERSION = "2.2.0"
+VERSION = "3.1.2"
 
 setup(
         name='dataiku-api-client',
@@ -13,5 +13,13 @@ setup(
         author="Dataiku",
         author_email="support@dataiku.com",
         url="https://www.dataiku.com",
-        download_url = "https://github.com/dataiku/dataiku-api-client-python/tarball/2.2.0"
+        download_url = "https://github.com/dataiku/dataiku-api-client-python/tarball/" + VERSION,
+        classifiers = [
+            'Development Status :: 5 - Production/Stable',
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: Apache Software License',
+            'Topic :: Software Development :: Libraries',
+            'Programming Language :: Python',
+            'Operating System :: OS Independent'
+        ]
      )
