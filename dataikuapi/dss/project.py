@@ -461,7 +461,7 @@ class DSSProject(object):
         
         Args:
             recipe_name: the name for the new recipe
-            type: the type of the scenario ('sync', 'grouping', 'join', 'vstack', 'python', 'sql_query', 'hive', 'impala')
+            type: the type of the recipe ('sync', 'grouping', 'join', 'vstack', 'python', 'sql_query', 'hive', 'impala')
             recipe_inputs: an array of recipes inputs, as objects {'ref':'...', 'deps':[...]}
             recipe_outputs: an array of recipes outputs, as objects {'ref':'...', 'appendMode':True/False}
             recipe_params: additional parameters for the recipe creation
