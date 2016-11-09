@@ -237,9 +237,8 @@ class SamplingRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sampling', name, project)
  
-# shaker needs the unsafe code permission which is not on api keys       
+# shaker needs the unsafe code permission which is not on api keys
 #class ShakerRecipeCreator(SingleOutputRecipeCreator):
 #    def __init__(self, name, project):
 #        SingleOutputRecipeCreator.__init__(self, 'shaker', name, project)
-        
-        
+
