@@ -242,3 +242,8 @@ class SamplingRecipeCreator(SingleOutputRecipeCreator):
 #    def __init__(self, name, project):
 #        SingleOutputRecipeCreator.__init__(self, 'shaker', name, project)
 
+
+class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'sql_query', name, project)
+        
