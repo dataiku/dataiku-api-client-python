@@ -13,7 +13,7 @@ from .utils import DataikuException
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key):
+    def __init__(self, host, api_key=None, internal_ticket = None):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -22,8 +22,16 @@ class DSSClient(object):
         The API key will define which operations are allowed for the client.
         """
         self.api_key = api_key
+        self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
+
+        if self.api_key is not None:
+            self._session.auth = HTTPBasicAuth(self.api_key, "")
+        elif self.internal_ticket is not None:
+            self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
+        else:
+            raise ValueError("API Key is required")
 
     ########################################################
     # Projects
@@ -432,14 +440,12 @@ class DSSClient(object):
         if body is not None:
             body = json.dumps(body)
 
-        auth = HTTPBasicAuth(self.api_key, "")
-
         try:
             http_res = self._session.request(
                     method, "%s/dip/publicapi%s" % (self.host, path),
                     params=params, data=body,
                     files = files,
-                    auth=auth, stream = stream)
+                    stream = stream)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -462,12 +468,9 @@ class DSSClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True)
 
     def _perform_json_upload(self, method, path, name, f):
-        auth = HTTPBasicAuth(self.api_key, "")
-
         try:
             http_res = self._session.request(
                     method, "%s/dip/publicapi%s" % (self.host, path),
-                    auth=auth,
                     files = {'file': (name, f, {'Expires': '0'})} )
             http_res.raise_for_status()
             return http_res
