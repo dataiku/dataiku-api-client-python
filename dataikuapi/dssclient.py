@@ -157,7 +157,7 @@ class DSSClient(object):
                    "displayName" : display_name,
                    "sourceType" : source_type,
                    "groups" : groups,
-                   "userProfile" : userProfile
+                   "userProfile" : profile
                })
         return DSSUser(self, login)
 
