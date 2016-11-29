@@ -38,7 +38,7 @@ class DSSDataset(object):
             the definition, as a JSON object
         """
         return self.client._perform_json(
-                "GET", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name))
+                "GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
     def set_definition(self, definition):
         """
@@ -49,7 +49,7 @@ class DSSDataset(object):
             that has been retrieved using the get_definition call.
         """
         return self.client._perform_json(
-                "PUT", "/projects/%s/datasets/%s/" % (self.project_key, self.dataset_name),
+                "PUT", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name),
                 body=definition)
 
     ########################################################
