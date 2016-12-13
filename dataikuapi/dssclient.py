@@ -3,6 +3,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from dss.future import DSSFuture
 from dss.project import DSSProject
 from dss.admin import DSSUser, DSSGroup, DSSConnection
 from dss.meaning import DSSMeaning
@@ -32,6 +33,47 @@ class DSSClient(object):
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
         else:
             raise ValueError("API Key is required")
+            
+            
+    ########################################################
+    # Futures
+    ########################################################
+            
+    def list_futures(self, as_objects=False, all_users=False):
+        """
+        List the futures
+
+        Returns:
+            list of futures. Each object contains at least a 'jobId' field
+        """
+        list = self._perform_json("GET", "/futures/", params={"withScenarios":False, "withNotScenarios":True, 'allUsers' : all_users})
+        if as_objects:
+            return [DSSFuture(self, state['jobId'], state) for state in list]
+        else:
+            return list
+
+    def list_running_scenarios(self, all_users=False):
+        """
+        List the running scenarios
+
+        Returns:
+            the list of scenarios, each one as a JSON object containing a jobId field for the 
+            future hosting the scenario run, and a payload field with scenario identifiers
+        """
+        return self._perform_json("GET", "/futures/", params={"withScenarios":True, "withNotScenarios":False, 'allUsers' : all_users})
+            
+    def get_future(self, job_id):
+        """
+        Get a handle to interact with a specific future.
+
+        Args:
+            job_id: the job_id key of the desired future
+            
+        Returns:
+            A :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        return DSSFuture(self, job_id)
+
 
     ########################################################
     # Projects
