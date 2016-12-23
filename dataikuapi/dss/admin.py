@@ -1,3 +1,4 @@
+from .future import DSSFuture
 
 class DSSConnection(object):
     """
@@ -49,6 +50,38 @@ class DSSConnection(object):
         return self.client._perform_json(
             "PUT", "/admin/connections/%s" % self.name,
             body = description)
+    
+    ########################################################
+    # Security
+    ########################################################
+    
+    def sync_root_acls(self):
+        """
+        Resync root permissions on this connection path
+        
+        Returns:
+            a DSSFuture handle to the task of resynchronizing the permissions
+        
+        Note: this call requires an API key with admin rights
+        """
+        future_response = self.client._perform_json(
+            "POST", "/admin/connections/%s/sync" % self.name,
+            body = {'root':True})
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+    
+    def sync_datasets_acls(self):
+        """
+        Resync permissions on datasets in this connection path
+        
+        Returns:
+            a DSSFuture handle to the task of resynchronizing the permissions
+        
+        Note: this call requires an API key with admin rights
+        """
+        future_response = self.client._perform_json(
+            "POST", "/admin/connections/%s/sync" % self.name,
+            body = {'root':True})
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
     
         
 class DSSUser(object):
@@ -105,6 +138,7 @@ class DSSUser(object):
         return self.client._perform_json(
             "PUT", "/admin/users/%s" % self.login,
             body = definition)
+            
 class DSSGroup(object):
     """
     A group on the DSS instance

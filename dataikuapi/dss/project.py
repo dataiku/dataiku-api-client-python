@@ -6,6 +6,7 @@ from job import DSSJob
 from scenario import DSSScenario
 from apiservice import DSSAPIService
 import sys
+from .future import DSSFuture
 
 class DSSProject(object):
     """
@@ -474,4 +475,22 @@ class DSSProject(object):
         recipe_name = self.client._perform_json("POST", "/projects/%s/recipes/" % self.project_key,
                        body = definition)['name']
         return DSSRecipe(self.client, self.project_key, recipe_name)
+        
+    ########################################################
+    # Security
+    ########################################################
+    
+    def sync_datasets_acls(self):
+        """
+        Resync permissions on HDFS datasets in this project
+        
+        Returns:
+            a DSSFuture handle to the task of resynchronizing the permissions
+        
+        Note: this call requires an API key with admin rights
+        """
+        future_response = self.client._perform_json(
+            "POST", "/projects/%s/actions/sync" % (self.project_key))
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
         
