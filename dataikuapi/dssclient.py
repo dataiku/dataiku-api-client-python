@@ -5,6 +5,7 @@ from requests.auth import HTTPBasicAuth
 
 from dss.future import DSSFuture
 from dss.project import DSSProject
+from dss.plugin import DSSPlugin
 from dss.admin import DSSUser, DSSGroup, DSSConnection
 from dss.meaning import DSSMeaning
 from dss.sqlquery import DSSSQLQuery
@@ -134,6 +135,30 @@ class DSSClient(object):
                })
         return DSSProject(self, project_key)
 
+    ########################################################
+    # Plugins
+    ########################################################
+
+    def list_plugins(self):
+        """
+        List the installed plugins
+
+        Returns:
+            list of objects. Each object contains at least a 'projectKey' field
+        """
+        return self._perform_json("GET", "/plugins/")
+
+    def get_plugin(self, plugin_id):
+        """
+        Get a handle to interact with a specific dev plugin.
+
+        Args:
+            plugin_id: the identifier of the desired plugin
+            
+        Returns:
+            A :class:`dataikuapi.dss.project.DSSPlugin`
+        """
+        return DSSPlugin(self, plugin_id)
 
     ########################################################
     # SQL queries
@@ -478,9 +503,11 @@ class DSSClient(object):
     # Internal Request handling
     ########################################################
 
-    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None):
+    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None):
         if body is not None:
             body = json.dumps(body)
+        if raw_body is not None:
+            body = raw_body
 
         try:
             http_res = self._session.request(
@@ -497,17 +524,17 @@ class DSSClient(object):
                 ex = {"message": http_res.text}
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
-    def _perform_empty(self, method, path, params=None, body=None, files = None):
-        self._perform_http(method, path, params=params, body=body, files=files, stream=False)
+    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
+        self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
 
-    def _perform_text(self, method, path, params=None, body=None,files=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=False).text
+    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body).text
 
-    def _perform_json(self, method, path, params=None, body=None,files=None):
-        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False).json()
+    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
 
-    def _perform_raw(self, method, path, params=None, body=None,files=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=True)
+    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
 
     def _perform_json_upload(self, method, path, name, f):
         try:
