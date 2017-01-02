@@ -42,7 +42,7 @@ class DSSClient(object):
             
     def list_futures(self, as_objects=False, all_users=False):
         """
-        List the futures
+        List the currently-running long tasks (a.k.a futures)
 
         Returns:
             list of futures. Each object contains at least a 'jobId' field
@@ -58,18 +58,18 @@ class DSSClient(object):
         List the running scenarios
 
         Returns:
-            the list of scenarios, each one as a JSON object containing a jobId field for the 
+            the list of scenarios, each one as a JSON object containing a jobId field for the
             future hosting the scenario run, and a payload field with scenario identifiers
         """
         return self._perform_json("GET", "/futures/", params={"withScenarios":True, "withNotScenarios":False, 'allUsers' : all_users})
-            
+
     def get_future(self, job_id):
         """
-        Get a handle to interact with a specific future.
+        Get a handle to interact with a specific long task (a.k.a future).
 
         Args:
             job_id: the job_id key of the desired future
-            
+
         Returns:
             A :class:`dataikuapi.dss.future.DSSFuture`
         """
@@ -104,7 +104,7 @@ class DSSClient(object):
 
         Args:
             project_key: the project key of the desired project
-            
+
         Returns:
             A :class:`dataikuapi.dss.project.DSSProject`
         """
@@ -417,9 +417,9 @@ class DSSClient(object):
     def list_logs(self):
         """
         List all logs on the DSS instance
- 
+
         Note: this call requires an API key with admin rights
-        
+
         Returns:
             A list of log names
         """
