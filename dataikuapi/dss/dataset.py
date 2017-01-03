@@ -16,24 +16,27 @@ class DSSDataset(object):
     ########################################################
     # Dataset deletion
     ########################################################
-    
-    def delete(self):
+
+    def delete(self, drop_data=False):
         """
         Delete the dataset
+
+        :param drop_data: Should the data of the dataset be dropped
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
-
+            "DELETE", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name), params = {
+                "dropData" : drop_data
+            })
 
 
     ########################################################
     # Dataset definition
     ########################################################
-    
+
     def get_definition(self):
         """
         Get the definition of the dataset
-        
+
         Returns:
             the definition, as a JSON object
         """
