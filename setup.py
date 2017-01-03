@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-VERSION = "3.1.2"
+VERSION = "3.1.3"
 
 setup(
         name='dataiku-api-client',
