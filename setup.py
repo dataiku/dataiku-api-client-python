@@ -2,7 +2,10 @@
 
 from distutils.core import setup
 
-VERSION = "3.1.3"
+VERSION = "3.1.4"
+
+long_description = (open('README').read() +
+    '\n\n' + open('HISTORY.txt').read())
 
 setup(
         name='dataiku-api-client',
@@ -10,6 +13,7 @@ setup(
         license="Apache Software License",
         packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin"],
         description="Python API client for Dataiku APIs",
+        long_description=long_description,
         author="Dataiku",
         author_email="support@dataiku.com",
         url="https://www.dataiku.com",
@@ -21,5 +25,9 @@ setup(
             'Topic :: Software Development :: Libraries',
             'Programming Language :: Python',
             'Operating System :: OS Independent'
+        ],
+        install_requires = [
+            "requests>=2",
+            "python-dateutil"
         ]
      )
