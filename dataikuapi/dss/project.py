@@ -6,6 +6,7 @@ from job import DSSJob
 from scenario import DSSScenario
 from apiservice import DSSAPIService
 import sys
+import os.path as osp
 
 class DSSProject(object):
     """
@@ -372,7 +373,7 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported" % self.project_key)
 
     def import_bundle_from_archive(self, archive_path):
-        return self.client._perform_json("POST",
+        return self.client._perform_empty("POST",
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
                  params = { "archivePath" : osp.abspath(archive_path) })
 
