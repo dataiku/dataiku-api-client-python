@@ -320,17 +320,16 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            name: the name of the new connection
-            type: the type of the new connection
-            params: the parameters of the new connection, as a JSON object
-            usable_by: the type of access control for the connection. Either 'ALL' (=no access control) 
-                       or 'ALLOWED' (=access restricted to users of a list of groups)
-            allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
-                            of names of the groups whose users are allowed to use the new connection
-
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
+        :param name: the name of the new connection
+        :param type: the type of the new connection
+        :param params: the parameters of the new connection, as a JSON object
+        :param usable_by: the type of access control for the connection. Either 'ALL' (=no access control)
+            or 'ALLOWED' (=access restricted to users of a list of groups)
+        :param allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list 
+            of names of the groups whose users are allowed to use the new connection
+        
+        :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
+        
         """
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
@@ -380,21 +379,19 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            id: the ID of the new meaning
-            type: the type of the new meaning. Admissible values are 'DECLARATIVE', 'VALUES_LIST', 'VALUES_MAPPING' and 'PATTERN'
-            description (optional): the description of the new meaning
-            values (optional): when type is 'VALUES_LIST', the list of values
-            mappings (optional): when type is 'VALUES_MAPPING', the mapping, as a list of objects with this
-                structure: {'from': 'value_1', 'to': 'value_a'}
-            pattern (optional): when type is 'PATTERN', the pattern
-            normalizationMode (optional): when type is 'VALUES_LIST', 'VALUES_MAPPING' or 'PATTERN', the normalization
-                mode to use for value matching. One of 'EXACT', 'LOWERCASE', or 'NORMALIZED' (not available
-                for 'PATTERN' type). Defaults to 'EXACT'.
-            detectable (optional): whether DSS should consider assigning the meaning to columns set to 'Auto-detect'. Defaults to False.
+        :param id: the ID of the new meaning
+        :param type: the type of the new meaning. Admissible values are 'DECLARATIVE', 'VALUES_LIST', 'VALUES_MAPPING' and 'PATTERN'
+        :param description (optional): the description of the new meaning
+        :param values (optional): when type is 'VALUES_LIST', the list of values
+        :param mappings (optional): when type is 'VALUES_MAPPING', the mapping, as a list of objects with this
+            structure: {'from': 'value_1', 'to': 'value_a'}
+        :param pattern (optional): when type is 'PATTERN', the pattern
+        :param normalizationMode (optional): when type is 'VALUES_LIST', 'VALUES_MAPPING' or 'PATTERN', the normalization
+            mode to use for value matching. One of 'EXACT', 'LOWERCASE', or 'NORMALIZED' (not available
+            for 'PATTERN' type). Defaults to 'EXACT'.
+        :param detectable (optional): whether DSS should consider assigning the meaning to columns set to 'Auto-detect'. Defaults to False.
 
-        Returns:
-            A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
+        :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
         """
         resp = self._perform_text(
                "POST", "/meanings/", body={

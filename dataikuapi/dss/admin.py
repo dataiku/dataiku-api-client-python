@@ -129,11 +129,17 @@ class DSSUser(object):
         :param dict definition: the definition for the user, as a dict. You should
             obtain the definition using get_definition, not create one.
             The fields that can be changed are:
+                
                 * email
+                
                 * displayName
+                
                 * groups
+                
                 * userProfile
+                
                 * password
+
         """
         return self.client._perform_json(
             "PUT", "/admin/users/%s" % self.login,
@@ -226,10 +232,9 @@ class DSSGeneralSettings(object):
         """
         Add a rule to the impersonation settings
 
-        Args:
-            rule : an impersonation rule, either a :class:`dataikuapi.dss.admin.DSSUserImpersonationRule`
-                   or a :class:`dataikuapi.dss.admin.DSSGroupImpersonationRule`, or a plain dict
-            is_user_rule : when the rule parameter is a dict, whether the rule is for users or groups
+        :param rule: an impersonation rule, either a :class:`dataikuapi.dss.admin.DSSUserImpersonationRule`
+            or a :class:`dataikuapi.dss.admin.DSSGroupImpersonationRule`, or a plain dict
+        :param is_user_rule: when the rule parameter is a dict, whether the rule is for users or groups
         """
         rule_raw = rule
         if isinstance(rule, DSSUserImpersonationRule):
@@ -248,15 +253,14 @@ class DSSGeneralSettings(object):
         """
         Retrieve the user or group impersonation rules that matches the parameters
 
-        Args:
-            dss_user : a DSS user or regular expression to match DSS user names
-            dss_group : a DSS group or regular expression to match DSS groups
-            unix_user : a name to match the target UNIX user
-            hadoop_user : a name to match the target Hadoop user
-            project_key : a project_key
-            scope : project-scoped ('PROJECT') or global ('GLOBAL')
-            type : the rule user or group matching method ('IDENTITY', 'SINGLE_MAPPING', 'REGEXP_RULE')
-            is_user : True if only user-level rules should be considered, False for only group-level rules, None to consider both
+        :param dss_user: a DSS user or regular expression to match DSS user names
+        :param dss_group: a DSS group or regular expression to match DSS groups
+        :param unix_user: a name to match the target UNIX user
+        :param hadoop_user: a name to match the target Hadoop user
+        :param project_key: a project_key
+        :param scope: project-scoped ('PROJECT') or global ('GLOBAL')
+        :param type: the rule user or group matching method ('IDENTITY', 'SINGLE_MAPPING', 'REGEXP_RULE')
+        :param is_user: True if only user-level rules should be considered, False for only group-level rules, None to consider both
         """
         user_matches = self.settings['impersonation']['userRules'] if is_user == None or is_user == True else []
         if dss_user is not None:
@@ -292,15 +296,14 @@ class DSSGeneralSettings(object):
         """
         Remove the user or group impersonation rules that matches the parameters from the settings
 
-        Args:
-            dss_user : a DSS user or regular expression to match DSS user names
-            dss_group : a DSS group or regular expression to match DSS groups
-            unix_user : a name to match the target UNIX user
-            hadoop_user : a name to match the target Hadoop user
-            project_key : a project_key
-            scope : project-scoped ('PROJECT') or global ('GLOBAL')
-            type : the rule user or group matching method ('IDENTITY', 'SINGLE_MAPPING', 'REGEXP_RULE')
-            is_user : True if only user-level rules should be considered, False for only group-level rules, None to consider both
+        :param dss_user: a DSS user or regular expression to match DSS user names
+        :param dss_group: a DSS group or regular expression to match DSS groups
+        :param unix_user: a name to match the target UNIX user
+        :param hadoop_user: a name to match the target Hadoop user
+        :param project_key: a project_key
+        :param scope: project-scoped ('PROJECT') or global ('GLOBAL')
+        :param type: the rule user or group matching method ('IDENTITY', 'SINGLE_MAPPING', 'REGEXP_RULE')
+        :param is_user: True if only user-level rules should be considered, False for only group-level rules, None to consider both
         """
         for m in self.get_impersonation_rules(dss_user, dss_group, unix_user, hadoop_user, project_key, scope, rule_type, is_user):
             if isinstance(m, DSSUserImpersonationRule):

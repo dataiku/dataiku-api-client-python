@@ -46,8 +46,8 @@ class DSSProject(object):
     def export_to_file(self, path, options={}):
         """
         Export the project to a file
-        Args:
-            path: the path of the file in which the exported project should be saved
+        
+        :param path: the path of the file in which the exported project should be saved
         """
         with open(path, 'wb') as f:
             export_stream = self.client._perform_raw(
