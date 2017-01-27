@@ -6,7 +6,7 @@ from requests.auth import HTTPBasicAuth
 from dss.future import DSSFuture
 from dss.project import DSSProject
 from dss.plugin import DSSPlugin
-from dss.admin import DSSUser, DSSGroup, DSSConnection
+from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings
 from dss.meaning import DSSMeaning
 from dss.sqlquery import DSSSQLQuery
 import os.path as osp
@@ -469,6 +469,22 @@ class DSSClient(object):
         """
         return self._perform_empty(
             "PUT", "/admin/variables/", body=variables)
+
+
+    ########################################################
+    # General settings
+    ########################################################
+
+    def get_general_settings(self):
+        """
+        Get a handle to interact with the general settings.
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSGeneralSettings`
+        """
+        return DSSGeneralSettings(self)
 
 
     ########################################################
