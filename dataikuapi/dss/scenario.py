@@ -69,7 +69,7 @@ class DSSScenario(object):
                               actions' definition. If False, the definition doesn't contain the run status
                               but has the scenario's actions definition
         """
-        suffix = '/no-params' if with_status else ''
+        suffix = '/light' if with_status else ''
         return self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix))
 
@@ -81,7 +81,7 @@ class DSSScenario(object):
             with_status: should be the same as the value passed to get_definition(). If True, the params, 
                          triggers and reporters fields of the scenario are ignored,
         """
-        suffix = '/no-params' if with_status else ''
+        suffix = '/light' if with_status else ''
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix), body = definition)
 
