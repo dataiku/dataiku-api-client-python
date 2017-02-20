@@ -253,3 +253,11 @@ class CodeRecipeCreator(DSSRecipeCreator):
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sql_query', name, project)
+
+class SplitRecipeCreator(DSSRecipeCreator):
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, "split", name, project)
+
+    def _finish_creation_settings(self):
+        pass
+
