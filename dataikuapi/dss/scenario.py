@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class DSSScenario(object):
     """
     A handle to interact with a scenario on the DSS instance
