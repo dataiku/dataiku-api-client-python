@@ -178,7 +178,7 @@ class DSSDataset(object):
                     "POST" , "%s/computeMetrics" % url,
                     params={'partition':partition}, body=probes)
         else:
-            return self.client._perform_empty(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetrics" % url,
                     params={'partition':partition})
 
@@ -188,12 +188,13 @@ class DSSDataset(object):
         setup on the dataset are used.
         """
         if checks is None:
-            return self.client._perform_empty(
-                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition))
+            return self.client._perform_json(
+                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name),
+                    params={'partition':partition})
         else:
             return self.client._perform_json(
-                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name, partition),
-                    params=checks)
+                    "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name),
+                    params={'partition':partition}, body=checks)
 
     ########################################################
     # Metrics

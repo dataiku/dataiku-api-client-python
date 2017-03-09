@@ -116,16 +116,9 @@ class DSSManagedFolder(object):
                     "POST" , "%s/computeMetrics" % url,
                      body=probes)
         else:
-            return self.client._perform_empty(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetrics" % url)
 
-        if metrics is None:
-	        self.client._perform_empty(
-	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id))
-        else:
-	        self.client._perform_json(
-	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id),
-	                params=metrics)
 	                
     ########################################################
     # Metrics
