@@ -8,6 +8,7 @@ from apiservice import DSSAPIService
 import sys
 import os.path as osp
 from .future import DSSFuture
+from .notebook import DSSNotebook
 
 class DSSProject(object):
     """
@@ -493,4 +494,20 @@ class DSSProject(object):
             "POST", "/projects/%s/actions/sync" % (self.project_key))
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
-        
+    ########################################################
+    # Notebooks
+    ########################################################
+            
+    def list_running_notebooks(self, as_objects=False):
+        """
+        List the currently-running notebooks
+
+        Returns:
+            list of notebooks. Each object contains at least a 'name' field
+        """
+        list = self.client._perform_json("GET", "/projects/%s/notebooks/active" % self.project_key)
+        if as_objects:
+            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+        else:
+            return list
+
