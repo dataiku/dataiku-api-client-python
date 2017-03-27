@@ -81,7 +81,7 @@ class DSSClient(object):
     # Notebooks
     ########################################################
             
-    def list_running_notebooks(self, as_objects=False):
+    def list_running_notebooks(self, as_objects=True):
         """
         List the currently-running notebooks
 
