@@ -223,7 +223,12 @@ class DSSProject(object):
         """
         obj = {
             "name" : name,
-            "projectKey" : self.project_key
+            "projectKey" : self.project_key,
+            "type" : "Filesystem",
+            "params" : {
+                "connection" : "filesystem_folders",
+                "path" : "/${projectKey}/${odbId}"
+            }
         }
         res = self.client._perform_json("POST", "/projects/%s/managedfolders/" % self.project_key,
                        body = obj)
