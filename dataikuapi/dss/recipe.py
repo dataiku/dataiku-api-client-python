@@ -231,6 +231,10 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
         super(GroupingRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['groupKey'] = self.group_key
 
+class TopNRecipeCreator(DSSRecipeCreator):
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'topn', name, project)
+
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'join', name, project)
