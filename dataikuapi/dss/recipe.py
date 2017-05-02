@@ -218,6 +218,10 @@ class SyncRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sync', name, project)
 
+class SortRecipeCreator(SingleOutputRecipeCreator):
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'sort', name, project)
+
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'grouping', name, project)
