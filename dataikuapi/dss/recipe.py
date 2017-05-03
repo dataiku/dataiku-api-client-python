@@ -222,6 +222,14 @@ class SortRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sort', name, project)
 
+class TopNRecipeCreator(DSSRecipeCreator):
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'topn', name, project)
+
+class DistinctRecipeCreator(SingleOutputRecipeCreator):
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'distinct', name, project)
+
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'grouping', name, project)
