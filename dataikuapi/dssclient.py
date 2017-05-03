@@ -9,6 +9,7 @@ from dss.plugin import DSSPlugin
 from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings
 from dss.meaning import DSSMeaning
 from dss.sqlquery import DSSSQLQuery
+from dss.notebook import DSSNotebook
 import os.path as osp
 from .utils import DataikuException
 
@@ -74,6 +75,24 @@ class DSSClient(object):
             A :class:`dataikuapi.dss.future.DSSFuture`
         """
         return DSSFuture(self, job_id)
+
+
+    ########################################################
+    # Notebooks
+    ########################################################
+            
+    def list_running_notebooks(self, as_objects=True):
+        """
+        List the currently-running notebooks
+
+        Returns:
+            list of notebooks. Each object contains at least a 'name' field
+        """
+        list = self._perform_json("GET", "/admin/notebooks/")
+        if as_objects:
+            return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+        else:
+            return list
 
 
     ########################################################

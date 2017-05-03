@@ -38,7 +38,7 @@ class DSSManagedFolder(object):
             the definition, as a JSON object
         """
         return self.client._perform_json(
-                "GET", "/projects/%s/managedfolders/%s/" % (self.project_key, self.odb_id))
+                "GET", "/projects/%s/managedfolders/%s" % (self.project_key, self.odb_id))
 
     def set_definition(self, definition):
         """
@@ -49,7 +49,7 @@ class DSSManagedFolder(object):
             that has been retrieved using the get_definition call.
         """
         return self.client._perform_json(
-                "PUT", "/projects/%s/managedfolders/%s/" % (self.project_key, self.odb_id),
+                "PUT", "/projects/%s/managedfolders/%s" % (self.project_key, self.odb_id),
                 body=definition)
 
 
@@ -116,16 +116,9 @@ class DSSManagedFolder(object):
                     "POST" , "%s/computeMetrics" % url,
                      body=probes)
         else:
-            return self.client._perform_empty(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetrics" % url)
 
-        if metrics is None:
-	        self.client._perform_empty(
-	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id))
-        else:
-	        self.client._perform_json(
-	                "POST" , "/projects/%s/managedfolders/%s/actions/computeMetrics" %(self.project_key, self.odb_id),
-	                params=metrics)
 	                
     ########################################################
     # Metrics

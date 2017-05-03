@@ -33,7 +33,7 @@ class DSSRecipe(object):
             the definition, as a DSSRecipeDefinitionAndPayload object, containing the recipe definition itself and its payload
         """
         data = self.client._perform_json(
-                "GET", "/projects/%s/recipes/%s/" % (self.project_key, self.recipe_name))
+                "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
         return DSSRecipeDefinitionAndPayload(data)
 
     def set_definition_and_payload(self, definition):
@@ -45,7 +45,7 @@ class DSSRecipe(object):
             that has been retrieved using the get_definition call.
         """
         return self.client._perform_json(
-                "PUT", "/projects/%s/recipes/%s/" % (self.project_key, self.recipe_name),
+                "PUT", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name),
                 body=definition.data)
 
     ########################################################
