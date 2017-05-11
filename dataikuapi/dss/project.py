@@ -22,14 +22,18 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self):
+    def delete(self, drop_data=False):
         """
         Delete the project
 
         Note: this call requires an API key with admin rights
+
+        :param bool drop_data: Should the data of managed datasets be dropped
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s" % self.project_key)
+            "DELETE", "/projects/%s" % self.project_key, params = {
+                "dropData": drop_data
+            })
 
     ########################################################
     # Project export
