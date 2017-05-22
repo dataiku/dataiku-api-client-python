@@ -1,4 +1,5 @@
 from .future import DSSFuture
+import json
 
 class DSSConnection(object):
     """
@@ -417,3 +418,85 @@ class DSSGroupImpersonationRule(object):
         self.raw['targetUnix'] = unix_user
         self.raw['targetHadoop'] = hadoop_user
         return self
+
+class DSSCodeEnv(object):
+    """
+    A code env on the DSS instance
+    """
+    def __init__(self, client, env_lang, env_name):
+        self.client = client
+        self.env_lang = env_lang
+        self.env_name = env_name
+    
+    ########################################################
+    # Env deletion
+    ########################################################
+    
+    def delete(self):
+        """
+        Delete the connection
+
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "DELETE", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+        if resp is None:
+            raise Exception('Env deletion returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env deletion failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+    
+        
+    ########################################################
+    # Code env description
+    ########################################################
+    
+    def get_definition(self):
+        """
+        Get the code env's definition
+
+        Note: this call requires an API key with admin rights
+        
+        Returns:
+            the code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+    
+    ########################################################
+    # Code env modification
+    ########################################################
+    def update(self, external_conda_name=None, conda_spec=None, spec=None):
+        """
+        Update the code env definition and apply the changes
+        
+        Note: this call requires an API key with admin rights
+        
+        :param external_conda_name: name of an external conda env
+        :param conda_spec: spec of the conda env
+        :param spec: list of pip or R packages
+        """
+        modifications = {'externalCondaEnvName':external_conda_name,'condaSpec':conda_spec,'spec':spec}
+        resp = self.client._perform_json(
+            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name),
+            body = modifications)
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+
+    def set_jupyter_support(self, active):
+        """
+        Update the code env jupyter support
+        
+        Note: this call requires an API key with admin rights
+        
+        :param active: True to activate jupyter support, False to deactivate
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/jupyter" % (self.env_lang, self.env_name),
+            params = {'active':active})
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+
