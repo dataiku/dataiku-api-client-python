@@ -516,3 +516,22 @@ class DSSProject(object):
         else:
             return list
 
+    ########################################################
+    # Tags
+    ########################################################
+
+    def get_tags(self):
+        """
+        List the tags of this project.
+
+        Returns:
+            a dictionary containing the tags with a color
+        """
+        return self.client._perform_json("GET", "/projects/%s/tags" % self.project_key)
+
+    def set_tags(self, tags={}):
+        """
+        Set the tags of this project.
+        @param obj: must be a modified version of the object returned by list_tags
+        """
+        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
