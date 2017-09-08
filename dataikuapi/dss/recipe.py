@@ -258,9 +258,17 @@ class SamplingRecipeCreator(SingleOutputRecipeCreator):
 class CodeRecipeCreator(DSSRecipeCreator):
     def __init__(self, name, type, project):
         DSSRecipeCreator.__init__(self, type, name, project)
+        self.script = None
+
+    def with_script(self, script):
+        self.script = script
+        return self
 
     def _finish_creation_settings(self):
-        pass
+        super(CodeRecipeCreator, self)._finish_creation_settings()
+        # DSSRecipeCreator._finish_creation_settings(self)
+        self.creation_settings['script'] = self.script
+
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
