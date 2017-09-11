@@ -397,7 +397,7 @@ class DSSClient(object):
         :param env_lang: the language (Python, R) of the new code env
         :param env_name: the name of the new code env
         :param deployment_mode: the type of the new code env
-        :param params: the parameters of the new connection, as a JSON object
+        :param params: the parameters of the new code env, as a JSON object
         
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
         

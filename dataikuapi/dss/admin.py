@@ -444,7 +444,8 @@ class DSSCodeEnv(object):
             raise Exception('Env deletion returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env deletion failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-    
+        return resp
+
         
     ########################################################
     # Code env description
@@ -461,28 +462,40 @@ class DSSCodeEnv(object):
         """
         return self.client._perform_json(
             "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
-    
-    ########################################################
-    # Code env modification
-    ########################################################
-    def update(self, external_conda_name=None, conda_spec=None, spec=None):
+
+    def set_definition(self, env):
         """
-        Update the code env definition and apply the changes
-        
+        Set the code env's definition. The definition should come from a call to the get_definition()
+        method. 
+
+        Fields that can be updated in design node:
+
+        * env.permissions, env.usableByAll, env.desc.owner
+        * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
+          env.desc.installJupyterSupport, env.desc.yarnPythonBin
+
+        Fields that can be updated in automation node (where {version} is the updated version):
+
+        * env.permissions, env.usableByAll, env.owner
+        * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
+          env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
+
+
+
         Note: this call requires an API key with admin rights
         
-        :param external_conda_name: name of an external conda env
-        :param conda_spec: spec of the conda env
-        :param spec: list of pip or R packages
+        :param data: a code env definition
+
+        Returns:
+            the updated code env definition, as a JSON object
         """
-        modifications = {'externalCondaEnvName':external_conda_name,'condaSpec':conda_spec,'spec':spec}
-        resp = self.client._perform_json(
-            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name),
-            body = modifications)
-        if resp is None:
-            raise Exception('Env update returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return self.client._perform_json(
+            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=env)
+
+    
+    ########################################################
+    # Code env actions
+    ########################################################
 
     def set_jupyter_support(self, active):
         """
@@ -499,4 +512,19 @@ class DSSCodeEnv(object):
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+    def update_packages(self):
+        """
+        Update the code env packages so that it matches its spec
+        
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name))
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
 
