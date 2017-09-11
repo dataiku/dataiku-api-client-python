@@ -1,4 +1,5 @@
 from .future import DSSFuture
+import json
 
 class DSSConnection(object):
     """
@@ -417,3 +418,113 @@ class DSSGroupImpersonationRule(object):
         self.raw['targetUnix'] = unix_user
         self.raw['targetHadoop'] = hadoop_user
         return self
+
+class DSSCodeEnv(object):
+    """
+    A code env on the DSS instance
+    """
+    def __init__(self, client, env_lang, env_name):
+        self.client = client
+        self.env_lang = env_lang
+        self.env_name = env_name
+    
+    ########################################################
+    # Env deletion
+    ########################################################
+    
+    def delete(self):
+        """
+        Delete the connection
+
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "DELETE", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+        if resp is None:
+            raise Exception('Env deletion returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env deletion failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+        
+    ########################################################
+    # Code env description
+    ########################################################
+    
+    def get_definition(self):
+        """
+        Get the code env's definition
+
+        Note: this call requires an API key with admin rights
+        
+        Returns:
+            the code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+
+    def set_definition(self, env):
+        """
+        Set the code env's definition. The definition should come from a call to the get_definition()
+        method. 
+
+        Fields that can be updated in design node:
+
+        * env.permissions, env.usableByAll, env.desc.owner
+        * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
+          env.desc.installJupyterSupport, env.desc.yarnPythonBin
+
+        Fields that can be updated in automation node (where {version} is the updated version):
+
+        * env.permissions, env.usableByAll, env.owner
+        * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
+          env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
+
+
+
+        Note: this call requires an API key with admin rights
+        
+        :param data: a code env definition
+
+        Returns:
+            the updated code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=env)
+
+    
+    ########################################################
+    # Code env actions
+    ########################################################
+
+    def set_jupyter_support(self, active):
+        """
+        Update the code env jupyter support
+        
+        Note: this call requires an API key with admin rights
+        
+        :param active: True to activate jupyter support, False to deactivate
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/jupyter" % (self.env_lang, self.env_name),
+            params = {'active':active})
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+    def update_packages(self):
+        """
+        Update the code env packages so that it matches its spec
+        
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name))
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+

@@ -6,7 +6,7 @@ from requests.auth import HTTPBasicAuth
 from dss.future import DSSFuture
 from dss.project import DSSProject
 from dss.plugin import DSSPlugin
-from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings
+from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv
 from dss.meaning import DSSMeaning
 from dss.sqlquery import DSSSQLQuery
 from dss.notebook import DSSNotebook
@@ -316,7 +316,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
         
         Returns:
-			All connections, as a map of connection name to connection definition
+            All connections, as a map of connection name to connection definition
         """
         return self._perform_json(
             "GET", "/admin/connections/")
@@ -359,6 +359,58 @@ class DSSClient(object):
                    "allowedGroups" : allowed_groups
                })
         return DSSConnection(self, name)
+
+    ########################################################
+    # Code envs
+    ########################################################
+
+    def list_code_envs(self):
+        """
+        List all code envs setup on the DSS instance
+
+        Note: this call requires an API key with admin rights
+        
+        Returns:
+            List code envs (name, type, language)
+        """
+        return self._perform_json(
+            "GET", "/admin/code-envs/")
+
+    def get_code_env(self, env_lang, env_name):
+        """
+        Get a handle to interact with a specific code env
+        
+        Args:
+            name: the name of the desired code env
+        
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
+        """
+        return DSSCodeEnv(self, env_lang, env_name)
+
+    def create_code_env(self, env_lang, env_name, deployment_mode, params=None):
+        """
+        Create a code env, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        :param env_lang: the language (Python, R) of the new code env
+        :param env_name: the name of the new code env
+        :param deployment_mode: the type of the new code env
+        :param params: the parameters of the new code env, as a JSON object
+        
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
+        
+        """
+        params = params if params is not None else {}
+        params['deploymentMode'] = deployment_mode
+        resp = self._perform_json(
+               "POST", "/admin/code-envs/%s/%s" % (env_lang, env_name), body=params)
+        if resp is None:
+            raise Exception('Env creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return DSSCodeEnv(self, env_lang, env_name)
 
     ########################################################
     # Meanings
