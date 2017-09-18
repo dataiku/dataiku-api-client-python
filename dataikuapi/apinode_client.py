@@ -66,3 +66,15 @@ class APINodeClient(DSSBaseClient):
             obj["dispatch"] = {"dispatchKey" : dispatch_key }
 
         return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
+
+    def apply_on_record(self, endpoint_id, features):
+        """
+        Applies a function on a single record on a DSS API node endpoint (Python or R function)
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param features: Python dictionary of features of the record
+
+        :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
+        """
+        return self._perform_json("POST", "%s/run" % endpoint_id, body = features)
+
