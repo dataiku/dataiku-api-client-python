@@ -74,7 +74,44 @@ class APINodeClient(DSSBaseClient):
         :param str endpoint_id: Identifier of the endpoint to query
         :param features: Python dictionary of features of the record
 
-        :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
+        :return: a Python dict of the API answer. The answer is the result
         """
         return self._perform_json("POST", "%s/run" % endpoint_id, body = features)
+
+    def lookup_record(self, endpoint_id, record, context=None):
+        """
+        Lookup a single record on a DSS API node endpoint
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param record: Python dictionary of features of the record
+        :param context: Optional, Python dictionary of additional context information. The context information is logged, but not directly used.
+
+        :return: a Python dict of the API answer. The answer contains a "data" key (itself a dict)
+        """
+        obj =  {
+            "data" :record
+        }
+        if context is not None:
+            obj["context"] = context
+
+        return self._perform_json("POST", "%s/lookup" % endpoint_id, body = obj).get("results", [])[0]
+
+    def lookup_records(self, endpoint_id, records, context=None):
+        """
+        Lookup a single record on a DSS API node endpoint
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param records: Python list of records. Each record must be a Python dict. Each record must contain a "data" dict (see predict_record) and optionally a "context" dict.
+
+        :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
+        """
+        for record in records:
+            if not "data" in record:
+                raise ValueError("Each record must contain a 'data' dict")
+
+        obj = {
+            "items" : records
+        }
+
+        return self._perform_json("POST", "%s/lookup-multi" % endpoint_id, body = obj)
 
