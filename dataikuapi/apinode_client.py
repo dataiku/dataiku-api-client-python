@@ -78,6 +78,17 @@ class APINodeClient(DSSBaseClient):
         """
         return self._perform_json("POST", "%s/run" % endpoint_id, body = features)
 
+    def query_on_record(self, endpoint_id, features):
+        """
+        Run a record on a DSS API node SQL endpoint 
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param features: Python dictionary of features of the record
+
+        :return: a Python dict of the API answer. The answer is the a dict with a columns field and a rows field (list of rows as list of strings)
+        """
+        return self._perform_json("POST", "%s/query" % endpoint_id, body = features)
+
     def lookup_record(self, endpoint_id, record, context=None):
         """
         Lookup a single record on a DSS API node endpoint
