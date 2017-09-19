@@ -528,3 +528,53 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
+
+class DSSGlobalApiKey(object):
+    """
+    A global API key on the DSS instance
+    """
+    def __init__(self, client, key):
+        self.client = client
+        self.key = key
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the api key
+
+        Note: this call requires an API key with admin rights
+        """
+        return self.client._perform_empty(
+            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            the code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+
+    def set_definition(self, definition):
+        """
+        Set the API key's definition.
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            definition: the definition for the API key, as a JSON object.                        
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/globalAPIKeys/%s" % self.key,
+            body = definition)
