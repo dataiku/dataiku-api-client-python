@@ -394,6 +394,10 @@ class DSSProject(object):
          return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id))
 
+    def preload_bundle(self, bundle_id):
+         return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
+
 
     ########################################################
     # Scenarios
