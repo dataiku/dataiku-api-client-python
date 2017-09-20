@@ -3,13 +3,13 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
-from dss.future import DSSFuture
-from dss.project import DSSProject
-from dss.plugin import DSSPlugin
-from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey
-from dss.meaning import DSSMeaning
-from dss.sqlquery import DSSSQLQuery
-from dss.notebook import DSSNotebook
+from .dss.future import DSSFuture
+from .dss.project import DSSProject
+from .dss.plugin import DSSPlugin
+from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey
+from .dss.meaning import DSSMeaning
+from .dss.sqlquery import DSSSQLQuery
+from .dss.notebook import DSSNotebook
 import os.path as osp
 from .utils import DataikuException
 

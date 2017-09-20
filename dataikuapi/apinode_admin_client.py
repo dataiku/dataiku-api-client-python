@@ -1,5 +1,5 @@
-from apinode_admin.service import APINodeService
-from apinode_admin.auth import APINodeAuth
+from .apinode_admin.service import APINodeService
+from .apinode_admin.auth import APINodeAuth
 from .utils import DataikuException
 from .base_client import DSSBaseClient
 

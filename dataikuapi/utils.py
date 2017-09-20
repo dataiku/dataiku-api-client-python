@@ -1,7 +1,16 @@
-import csv
+import csv, sys
 from dateutil import parser as date_iso_parser
-from itertools import izip_longest
 from contextlib import closing
+
+import itertools
+
+if sys.version_info > (3,0):
+    dku_basestring_type = str
+    dku_zip_longest = itertools.zip_longest
+else:
+    dku_basestring_type = basestring
+    dku_zip_longest = itertools.izip_longest
+
 
 
 class DataikuException(Exception):
@@ -75,4 +84,4 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                          quotechar='"',
                                          doublequote=True):
                 yield [none_if_throws(caster)(val)
-                       for (caster, val) in izip_longest(casters, uncasted_tuple)]
+                       for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]

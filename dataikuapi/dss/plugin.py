@@ -1,10 +1,10 @@
-from dataset import DSSDataset
-from recipe import DSSRecipe
-from managedfolder import DSSManagedFolder
-from savedmodel import DSSSavedModel
-from job import DSSJob
-from scenario import DSSScenario
-from apiservice import DSSAPIService
+from .dataset import DSSDataset
+from .recipe import DSSRecipe
+from .managedfolder import DSSManagedFolder
+from .savedmodel import DSSSavedModel
+from .job import DSSJob
+from .scenario import DSSScenario
+from .apiservice import DSSAPIService
 import sys
 
 class DSSPlugin(object):

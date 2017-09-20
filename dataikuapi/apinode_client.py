@@ -67,53 +67,21 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
 
-    def evaluate_function(self, endpoint_id, **kwargs):
+    def sql_query(self, endpoint_id, parameters):
         """
-        Applies a DSS API node function endpoint (Python or R) to the given parameters
+        Queries a "SQL query" endpoint on a DSS API node
 
         :param str endpoint_id: Identifier of the endpoint to query
-        :param **kwargs: parameters to the functon
-
-        :return: a Python dict of the API answer. The answer is the result
-        """
-        return self.apply_on_record(endpoint_id, kwargs)
-
-    def apply_on_record(self, endpoint_id, features):
-        """
-        Applies a function on a single record on a DSS API node endpoint (Python or R function)
-
-        :param str endpoint_id: Identifier of the endpoint to query
-        :param features: Python dictionary of features of the record
-
-        :return: a Python dict of the API answer. The answer is the result
-        """
-        return self._perform_json("POST", "%s/run" % endpoint_id, body = features)
-
-    def run_query(self, endpoint_id, **kwargs):
-        """
-        Run a DSS API node SQL endpoint with the given parameters
-
-        :param str endpoint_id: Identifier of the endpoint to query
-        :param **kwargs: parameters to the functon
+        :param parameters: Python dictionary of the named parameters for the SQL query endpoint
 
         :return: a Python dict of the API answer. The answer is the a dict with a columns field and a rows field (list of rows as list of strings)
         """
-        return self.query_on_record(endpoint_id, kwargs)
+        return self._perform_json("POST", "%s/query" % endpoint_id, body = parameters)
 
-    def query_on_record(self, endpoint_id, features):
-        """
-        Run a record on a DSS API node SQL endpoint 
-
-        :param str endpoint_id: Identifier of the endpoint to query
-        :param features: Python dictionary of features of the record
-
-        :return: a Python dict of the API answer. The answer is the a dict with a columns field and a rows field (list of rows as list of strings)
-        """
-        return self._perform_json("POST", "%s/query" % endpoint_id, body = features)
 
     def lookup_record(self, endpoint_id, record, context=None):
         """
-        Lookup a single record on a DSS API node endpoint
+        Lookup a single record on a DSS API node endpoint of "dataset lookup" type
 
         :param str endpoint_id: Identifier of the endpoint to query
         :param record: Python dictionary of features of the record
@@ -129,15 +97,16 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/lookup" % endpoint_id, body = obj).get("results", [])[0]
 
-    def lookup_records(self, endpoint_id, records, context=None):
+    def lookup_records(self, endpoint_id, records):
         """
-        Lookup a single record on a DSS API node endpoint
+        Lookups a batch of records on a DSS API node endpoint of "dataset lookup" type
 
         :param str endpoint_id: Identifier of the endpoint to query
-        :param records: Python list of records. Each record must be a Python dict. Each record must contain a "data" dict (see predict_record) and optionally a "context" dict.
+        :param records: Python list of records. Each record must be a Python dict, containing at least one entry called "data": a dict containing the input columns
 
-        :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
+        :return: a Python dict of the API answer. The answer contains a "results" key, which is an array of result objects. Each result contains a "data" dict which is the output
         """
+
         for record in records:
             if not "data" in record:
                 raise ValueError("Each record must contain a 'data' dict")
@@ -148,3 +117,16 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/lookup-multi" % endpoint_id, body = obj)
 
+    def run_function(self, endpoint_id, **kwargs):
+        """
+        Calls a "Run function" endpoint on a DSS API node
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param kwargs: Arguments of the function
+
+        :return: The function result
+        """
+        obj = {}
+        for (k,v) in kwargs.items():
+            obj[k] = v
+        return self._perform_json("POST", "%s/run" % endpoint_id, body = obj)
