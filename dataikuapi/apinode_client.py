@@ -67,6 +67,17 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
 
+    def evaluate_function(self, endpoint_id, **kwargs):
+        """
+        Applies a DSS API node function endpoint (Python or R) to the given parameters
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param **kwargs: parameters to the functon
+
+        :return: a Python dict of the API answer. The answer is the result
+        """
+        return self.apply_on_record(endpoint_id, kwargs)
+
     def apply_on_record(self, endpoint_id, features):
         """
         Applies a function on a single record on a DSS API node endpoint (Python or R function)
@@ -77,6 +88,17 @@ class APINodeClient(DSSBaseClient):
         :return: a Python dict of the API answer. The answer is the result
         """
         return self._perform_json("POST", "%s/run" % endpoint_id, body = features)
+
+    def run_query(self, endpoint_id, **kwargs):
+        """
+        Run a DSS API node SQL endpoint with the given parameters
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param **kwargs: parameters to the functon
+
+        :return: a Python dict of the API answer. The answer is the a dict with a columns field and a rows field (list of rows as list of strings)
+        """
+        return self.query_on_record(endpoint_id, kwargs)
 
     def query_on_record(self, endpoint_id, features):
         """
