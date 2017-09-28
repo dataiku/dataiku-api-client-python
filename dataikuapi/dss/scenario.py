@@ -46,7 +46,7 @@ class DSSScenario(object):
             })
         return DSSTriggerFire(self, trigger_fire)
 
-    def run_and_wait(self, params={}):
+    def run_and_wait(self, params={}, no_fail=False):
         """
         Requests a run of the scenario, which will start after a few seconds. Wait the end of the run to complete.
 
@@ -64,7 +64,10 @@ class DSSScenario(object):
             if refresh_trigger_counter == 10:
                 refresh_trigger_counter = 0
             if trigger_fire.is_cancelled(refresh=refresh_trigger_counter == 0):
-                raise DataikuException("Scenario run has been cancelled")
+                if no_fail:
+                    return None
+                else:
+                    raise DataikuException("Scenario run has been cancelled")
             scenario_run = trigger_fire.get_scenario_run()
             time.sleep(5)
         while not scenario_run.run.get('result', False):

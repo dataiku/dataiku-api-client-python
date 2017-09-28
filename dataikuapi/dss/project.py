@@ -279,7 +279,7 @@ class DSSProject(object):
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
 
-    def start_job_and_wait(self, definition):
+    def start_job_and_wait(self, definition, no_fail=False):
         """
         Create a new job. Wait the end of the job to complete.
         
@@ -298,8 +298,11 @@ class DSSProject(object):
             time.sleep(sleep_time)
             job_state = job.get_status().get("baseStatus", {}).get("state", "")
             if job_state in ["ABORTED", "FAILED"]:
-                raise DataikuException("Job run did not finish. Status: %s" % (job_state))
-
+                if no_fail:
+                    break
+                else:
+                    raise DataikuException("Job run did not finish. Status: %s" % (job_state))
+        return job_state
 
     ########################################################
     # Variables
