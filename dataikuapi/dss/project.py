@@ -384,9 +384,19 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
                  params = { "archivePath" : osp.abspath(archive_path) })
 
+    def import_bundle_from_stream(self, fp):
+        files = {'file': fp }
+        return self.client._perform_empty("POST",
+                "/projects/%s/bundles/imported/actions/importFromStream" % (self.project_key),
+                files=files)
+
     def activate_bundle(self, bundle_id):
          return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id))
+
+    def preload_bundle(self, bundle_id):
+         return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
 
     ########################################################
