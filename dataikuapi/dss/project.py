@@ -304,6 +304,9 @@ class DSSProject(object):
                     raise DataikuException("Job run did not finish. Status: %s" % (job_state))
         return job_state
 
+    def new_job_definition_builder(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
+        return JobDefinitionBuilder(self.project_key, job_type)
+
     ########################################################
     # Variables
     ########################################################
@@ -571,3 +574,45 @@ class DSSProject(object):
         @param obj: must be a modified version of the object returned by list_tags
         """
         return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
+
+
+class JobDefinitionBuilder(object):
+    def __init__(self, project_key, job_type="NON_RECURSIVE_FORCED_BUILD"):
+        """
+        Create a helper to build a job definition
+
+        :param project_key: the project in which the job is launched
+        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
+                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
+
+        """
+        self.project_key = project_key
+        self.definition = {'type':job_type, 'refreshHiveMetastore':False, 'outputs':[]}
+
+    def with_type(self, job_type):
+        """
+        Sets the build type
+
+        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
+                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
+        """
+        self.definition['type'] = job_type
+        return self
+
+    def with_refresh_metastore(self, refresh_metastore):
+        """
+        Sets whether the hive tables built by the job should have their definitions
+        refreshed after the corresponding dataset is built
+        """
+        self.definition['refreshHiveMetastore'] = refresh_metastore
+        return self
+
+    def with_output(self, name, object_type=None, object_project_key=None, partition=None):
+        """
+        Adds an item to build in the definition
+        """
+        self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
+        return self
+
+    def get_definition(self):
+        return self.definition
