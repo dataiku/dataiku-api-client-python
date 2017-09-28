@@ -1,3 +1,4 @@
+import time
 from dataset import DSSDataset
 from recipe import DSSRecipe
 from managedfolder import DSSManagedFolder
@@ -9,6 +10,8 @@ import sys
 import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
+from dataikuapi.utils import DataikuException
+
 
 class DSSProject(object):
     """
@@ -276,6 +279,26 @@ class DSSProject(object):
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
 
+    def start_job_and_wait(self, definition):
+        """
+        Create a new job. Wait the end of the job to complete.
+        
+        Args:
+            definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
+            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build.
+            Optionally, a refreshHiveMetastore field can specify whether to re-synchronize the Hive metastore for recomputed
+            HDFS datasets.
+        """
+        job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
+        job = DSSJob(self.client, self.project_key, job_def['id'])
+        job_state = job.get_status().get("baseStatus", {}).get("state", "")
+        sleep_time = 2
+        while job_state not in ["DONE", "ABORTED", "FAILED"]:
+            sleep_time = 300 if sleep_time >= 300 else sleep_time * 2
+            time.sleep(sleep_time)
+            job_state = job.get_status().get("baseStatus", {}).get("state", "")
+            if job_state in ["ABORTED", "FAILED"]:
+                raise DataikuException("Job run did not finish. Status: %s" % (job_state))
 
 
     ########################################################
