@@ -249,7 +249,7 @@ class DSSTriggerFire(object):
         """
         if refresh == True:
             self.trigger_fire = self.client._perform_json(
-            "GET", "/projects/%s/scenarios/%s/get-trigger/%s" % (self.project_key, self.scenario_id, self.trigger_id), params={
-                'runId' : self.run_id
+            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.scenario_id, self.trigger_id), params={
+                'triggerRunId' : self.run_id
             })
         return self.trigger_fire["cancelled"]
