@@ -409,7 +409,7 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported" % self.project_key)
 
     def import_bundle_from_archive(self, archive_path):
-        return self.client._perform_empty("POST",
+        return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
                  params = { "archivePath" : osp.abspath(archive_path) })
 
