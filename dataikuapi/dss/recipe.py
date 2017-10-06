@@ -171,6 +171,8 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         DSSRecipeCreator.__init__(self, type, name, project)
         self.create_output_dataset = None
         self.output_dataset_settings = None
+        self.create_output_folder = None
+        self.output_folder_settings = None
 
     def with_existing_output(self, dataset_name, append=False):
         assert self.create_output_dataset is None
@@ -178,11 +180,17 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self._with_output(dataset_name, append)
         return self
 
-    def with_new_output(self, dataset_name, connection_id, format_option_id=None, partitioning_option_id=None, append=False):
-        assert self.create_output_dataset is None
-        self.create_output_dataset = True
-        self.output_dataset_settings = {'connectionId':connection_id,'formatOptionId':format_option_id,'partitioningOptionId':partitioning_option_id}
-        self._with_output(dataset_name, append)
+    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+        if object_type == 'DATASET':
+            assert self.create_output_dataset is None
+            self.create_output_dataset = True
+            self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'formatOptionId':format_option_id,'partitioningOptionId':partitioning_option_id}
+            self._with_output(name, append)
+        elif object_type == 'MANAGED_FOLDER':
+            assert self.create_output_folder is None
+            self.create_output_folder = True
+            self.output_folder_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'partitioningOptionId':partitioning_option_id}
+            self._with_output(name, append)
         return self
 
     def with_output(self, dataset_name, append=False):
@@ -191,6 +199,8 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
     def _finish_creation_settings(self):
         self.creation_settings['createOutputDataset'] = self.create_output_dataset
         self.creation_settings['outputDatasetSettings'] = self.output_dataset_settings
+        self.creation_settings['createOutputFolder'] = self.create_output_folder
+        self.creation_settings['outputFolderSettings'] = self.output_folder_settings
 
 class VirtualInputsSingleOutputRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, type, name, project):
@@ -281,3 +291,6 @@ class SplitRecipeCreator(DSSRecipeCreator):
     def _finish_creation_settings(self):
         pass
 
+class DownloadRecipeCreator(SingleOutputRecipeCreator):
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'download', name, project)
