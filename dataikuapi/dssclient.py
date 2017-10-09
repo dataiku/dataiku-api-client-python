@@ -6,7 +6,7 @@ from requests.auth import HTTPBasicAuth
 from dss.future import DSSFuture
 from dss.project import DSSProject
 from dss.plugin import DSSPlugin
-from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv
+from dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey
 from dss.meaning import DSSMeaning
 from dss.sqlquery import DSSSQLQuery
 from dss.notebook import DSSNotebook
@@ -411,6 +411,65 @@ class DSSClient(object):
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return DSSCodeEnv(self, env_lang, env_name)
+
+    ########################################################
+    # Global API Keys
+    ########################################################
+
+    def list_global_api_keys(self):
+        """
+        List all global API keys set up on the DSS instance
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            All global API keys, as a list
+        """
+        return self._perform_json(
+            "GET", "/admin/globalAPIKeys/")
+
+    def get_global_api_key(self, key):
+        """
+        Get a handle to interact with a specific Global API key
+
+        Args:
+            key: the secret key of the desired API key
+
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        return DSSGlobalApiKey(self, key)
+
+    def create_global_api_key(self, label=None, description=None, admin=False):
+        """
+        Create a Global API key, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            label: the label of the new API key
+            description: the description of the new API key
+            admin: has the new API key admin rights (True or False)
+
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        resp = self._perform_json(
+            "POST", "/admin/globalAPIKeys/", body={
+                "label" : label,
+                "description" : description,
+                "globalPermissions": {
+                    "admin": admin
+                }
+            })
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+        key = resp.get('key', '')
+        return DSSGlobalApiKey(self, key)
 
     ########################################################
     # Meanings
