@@ -1,3 +1,4 @@
+import time
 from dataset import DSSDataset
 from recipe import DSSRecipe
 from managedfolder import DSSManagedFolder
@@ -9,6 +10,8 @@ import sys
 import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
+from dataikuapi.utils import DataikuException
+
 
 class DSSProject(object):
     """
@@ -276,7 +279,33 @@ class DSSProject(object):
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
 
+    def start_job_and_wait(self, definition, no_fail=False):
+        """
+        Create a new job. Wait the end of the job to complete.
+        
+        Args:
+            definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
+            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build.
+            Optionally, a refreshHiveMetastore field can specify whether to re-synchronize the Hive metastore for recomputed
+            HDFS datasets.
+        """
+        job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
+        job = DSSJob(self.client, self.project_key, job_def['id'])
+        job_state = job.get_status().get("baseStatus", {}).get("state", "")
+        sleep_time = 2
+        while job_state not in ["DONE", "ABORTED", "FAILED"]:
+            sleep_time = 300 if sleep_time >= 300 else sleep_time * 2
+            time.sleep(sleep_time)
+            job_state = job.get_status().get("baseStatus", {}).get("state", "")
+            if job_state in ["ABORTED", "FAILED"]:
+                if no_fail:
+                    break
+                else:
+                    raise DataikuException("Job run did not finish. Status: %s" % (job_state))
+        return job_state
 
+    def new_job_definition_builder(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
+        return JobDefinitionBuilder(self.project_key, job_type)
 
     ########################################################
     # Variables
@@ -380,7 +409,7 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported" % self.project_key)
 
     def import_bundle_from_archive(self, archive_path):
-        return self.client._perform_empty("POST",
+        return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
                  params = { "archivePath" : osp.abspath(archive_path) })
 
@@ -545,3 +574,45 @@ class DSSProject(object):
         @param obj: must be a modified version of the object returned by list_tags
         """
         return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
+
+
+class JobDefinitionBuilder(object):
+    def __init__(self, project_key, job_type="NON_RECURSIVE_FORCED_BUILD"):
+        """
+        Create a helper to build a job definition
+
+        :param project_key: the project in which the job is launched
+        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
+                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
+
+        """
+        self.project_key = project_key
+        self.definition = {'type':job_type, 'refreshHiveMetastore':False, 'outputs':[]}
+
+    def with_type(self, job_type):
+        """
+        Sets the build type
+
+        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
+                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
+        """
+        self.definition['type'] = job_type
+        return self
+
+    def with_refresh_metastore(self, refresh_metastore):
+        """
+        Sets whether the hive tables built by the job should have their definitions
+        refreshed after the corresponding dataset is built
+        """
+        self.definition['refreshHiveMetastore'] = refresh_metastore
+        return self
+
+    def with_output(self, name, object_type=None, object_project_key=None, partition=None):
+        """
+        Adds an item to build in the definition
+        """
+        self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
+        return self
+
+    def get_definition(self):
+        return self.definition

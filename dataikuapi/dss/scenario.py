@@ -1,4 +1,7 @@
 from datetime import datetime
+import time
+from dataikuapi.utils import DataikuException
+
 
 class DSSScenario(object):
     """
@@ -25,6 +28,52 @@ class DSSScenario(object):
         trigger_fire = self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
         return DSSTriggerFire(self, trigger_fire)
+
+    def get_trigger_fire(self, trigger_id, trigger_run_id):
+        """
+        Requests a trigger of the run of a scenario
+
+        Args:
+            trigger_id:  Id of trigger
+            trigger_run_id: Id of the run of the trigger
+
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSTriggerFire` trigger handle
+        """
+        trigger_fire = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.id, trigger_id), params={
+                'triggerRunId' : trigger_run_id
+            })
+        return DSSTriggerFire(self, trigger_fire)
+
+    def run_and_wait(self, params={}, no_fail=False):
+        """
+        Requests a run of the scenario, which will start after a few seconds. Wait the end of the run to complete.
+
+        Args:
+            params: additional parameters that will be passed to the scenario through trigger params
+
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
+        """
+        trigger_fire = self.run(params)
+        scenario_run = None
+        refresh_trigger_counter = 0
+        while scenario_run is None:
+            refresh_trigger_counter += 1
+            if refresh_trigger_counter == 10:
+                refresh_trigger_counter = 0
+            if trigger_fire.is_cancelled(refresh=refresh_trigger_counter == 0):
+                if no_fail:
+                    return None
+                else:
+                    raise DataikuException("Scenario run has been cancelled")
+            scenario_run = trigger_fire.get_scenario_run()
+            time.sleep(5)
+        while not scenario_run.run.get('result', False):
+            scenario_run = trigger_fire.get_scenario_run()
+            time.sleep(5)
+        return scenario_run
 
     def get_last_runs(self, limit=10, only_finished_runs=False):
         """
@@ -191,3 +240,16 @@ class DSSTriggerFire(object):
             return None
         else:
             return DSSScenarioRun(self.client, run['scenarioRun'])
+
+    def is_cancelled(self, refresh=False):
+        """
+        Whether the trigger has been cancelled
+
+        :param refresh: get the state of the trigger from the backend
+        """
+        if refresh == True:
+            self.trigger_fire = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.scenario_id, self.trigger_id), params={
+                'triggerRunId' : self.run_id
+            })
+        return self.trigger_fire["cancelled"]
