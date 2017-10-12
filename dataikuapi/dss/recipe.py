@@ -180,11 +180,11 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self._with_output(dataset_name, append)
         return self
 
-    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET'):
         if object_type == 'DATASET':
             assert self.create_output_dataset is None
             self.create_output_dataset = True
-            self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'formatOptionId':format_option_id,'partitioningOptionId':partitioning_option_id}
+            self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'specificSettings':{'formatOptionId':format_option_id, 'overrideSQLSchema':override_sql_schema},'partitioningOptionId':partitioning_option_id}
             self._with_output(name, append)
         elif object_type == 'MANAGED_FOLDER':
             assert self.create_output_folder is None
