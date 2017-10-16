@@ -70,6 +70,7 @@ class DSSScenario(object):
                     raise DataikuException("Scenario run has been cancelled")
             scenario_run = trigger_fire.get_scenario_run()
             time.sleep(5)
+        print("Scenario (ID: '%s') run started " % scenario_run.run.get('runId', 'not found'))
         while not scenario_run.run.get('result', False):
             scenario_run = trigger_fire.get_scenario_run()
             time.sleep(5)
