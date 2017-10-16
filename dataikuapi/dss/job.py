@@ -1,3 +1,6 @@
+import time
+import sys
+from dataikuapi.utils import DataikuException
 
 class DSSJob(object):
     """
@@ -40,3 +43,24 @@ class DSSJob(object):
             params={
                 "activity" : activity
             })
+
+class DSSJobWaiter(object):
+    """
+    Helper to wait for a job's completion
+    """    
+    def __init__(self, job):
+        self.job = job
+
+    def wait(self, no_fail=False):
+        job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
+        sleep_time = 2
+        while job_state not in ["DONE", "ABORTED", "FAILED"]:
+            sleep_time = 300 if sleep_time >= 300 else sleep_time * 2
+            time.sleep(sleep_time)
+            job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
+            if job_state in ["ABORTED", "FAILED"]:
+                if no_fail:
+                    break
+                else:
+                    raise DataikuException("Job run did not finish. Status: %s" % (job_state))
+        return job_state

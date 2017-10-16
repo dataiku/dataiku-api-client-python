@@ -57,24 +57,9 @@ class DSSScenario(object):
             A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
         """
         trigger_fire = self.run(params)
-        scenario_run = None
-        refresh_trigger_counter = 0
-        while scenario_run is None:
-            refresh_trigger_counter += 1
-            if refresh_trigger_counter == 10:
-                refresh_trigger_counter = 0
-            if trigger_fire.is_cancelled(refresh=refresh_trigger_counter == 0):
-                if no_fail:
-                    return None
-                else:
-                    raise DataikuException("Scenario run has been cancelled")
-            scenario_run = trigger_fire.get_scenario_run()
-            time.sleep(5)
-        print("Scenario (ID: '%s') run started " % scenario_run.run.get('runId', 'not found'))
-        while not scenario_run.run.get('result', False):
-            scenario_run = trigger_fire.get_scenario_run()
-            time.sleep(5)
-        return scenario_run
+        scenario_run = trigger_fire.wait_for_scenario_run(no_fail)
+        waiter = DSSScenarioRunWaiter(scenario_run, trigger_fire)
+        return waiter.wait(no_fail)
 
     def get_last_runs(self, limit=10, only_finished_runs=False):
         """
@@ -215,6 +200,24 @@ class DSSScenarioRun(object):
         duration = (end_time - self.get_start_time()).total_seconds()
         return duration
 
+class DSSScenarioRunWaiter(object):
+    """
+    Helper to wait for a job's completion
+    """    
+    def __init__(self, scenario_run, trigger_fire):
+        self.trigger_fire = trigger_fire
+        self.scenario_run = scenario_run
+
+    def wait(self, no_fail=False):
+        while not self.scenario_run.run.get('result', False):
+            self.scenario_run = self.trigger_fire.get_scenario_run()
+            time.sleep(5)
+        outcome = self.scenario_run.run.get('result', None).get('outcome', 'UNKNOWN')
+        if outcome == 'SUCCESS' or no_fail:
+            return self.scenario_run
+        else:
+            raise DataikuException("Scenario run returned status %s" % outcome)
+
 class DSSTriggerFire(object):
     """
     The activation of a trigger on the DSS instance
@@ -254,3 +257,19 @@ class DSSTriggerFire(object):
                 'triggerRunId' : self.run_id
             })
         return self.trigger_fire["cancelled"]
+
+    def wait_for_scenario_run(self, no_fail=False):
+        scenario_run = None
+        refresh_trigger_counter = 0
+        while scenario_run is None:
+            refresh_trigger_counter += 1
+            if refresh_trigger_counter == 10:
+                refresh_trigger_counter = 0
+            if self.is_cancelled(refresh=refresh_trigger_counter == 0):
+                if no_fail:
+                    return None
+                else:
+                    raise DataikuException("Scenario run has been cancelled")
+            scenario_run = self.get_scenario_run()
+            time.sleep(5)
+        return scenario_run

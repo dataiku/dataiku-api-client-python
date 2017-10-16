@@ -3,7 +3,7 @@ from .dataset import DSSDataset
 from .recipe import DSSRecipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
-from .job import DSSJob
+from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
 from .apiservice import DSSAPIService
 import sys
@@ -291,18 +291,8 @@ class DSSProject(object):
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         job = DSSJob(self.client, self.project_key, job_def['id'])
-        job_state = job.get_status().get("baseStatus", {}).get("state", "")
-        sleep_time = 2
-        while job_state not in ["DONE", "ABORTED", "FAILED"]:
-            sleep_time = 300 if sleep_time >= 300 else sleep_time * 2
-            time.sleep(sleep_time)
-            job_state = job.get_status().get("baseStatus", {}).get("state", "")
-            if job_state in ["ABORTED", "FAILED"]:
-                if no_fail:
-                    break
-                else:
-                    raise DataikuException("Job run did not finish. Status: %s" % (job_state))
-        return job_state
+        waiter = DSSJobWaiter(job)
+        return waiter.wait(no_fail)
 
     def new_job_definition_builder(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
         return JobDefinitionBuilder(self.project_key, job_type)
