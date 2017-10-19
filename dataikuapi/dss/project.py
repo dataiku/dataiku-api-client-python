@@ -10,6 +10,7 @@ import sys
 import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
+from .macro import DSSMacro
 from dataikuapi.utils import DataikuException
 
 
@@ -565,6 +566,36 @@ class DSSProject(object):
         @param obj: must be a modified version of the object returned by list_tags
         """
         return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
+
+
+    ########################################################
+    # Macros
+    ########################################################
+
+    def list_macros(self, as_objects=False):
+        """
+        List the macros accessible in this project
+        
+        :param as_objects: if True, return the macros as :class:`dataikuapi.dss.macro.DSSMacro` 
+                        macro handles instead of raw JSON
+        :returns: the list of the macros
+        """
+        macros = self.client._perform_json(
+            "GET", "/projects/%s/runnables/" % self.project_key)
+        if as_objects:
+            return [DSSMacro(self.client, self.project_key, m["runnableType"], m) for m in macros]
+        else:
+            return macros
+
+    def get_macro(self, runnable_type):
+        """
+        Get a handle to interact with a specific macro
+       
+        :param runnable_type: the identifier of a macro        
+        :returns: A :class:`dataikuapi.dss.macro.DSSMacro` macro handle
+        """
+        return DSSMacro(self.client, self.project_key, runnable_type)
+
 
 
 class JobDefinitionBuilder(object):
