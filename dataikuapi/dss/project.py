@@ -15,7 +15,8 @@ from dataikuapi.utils import DataikuException
 
 class DSSProject(object):
     """
-    A project on the DSS instance
+    A handle to interact with a project on the DSS instance. Do not create this class directly,
+    instead use ``client.api_client`` where ``client`` is a DSSClient
     """
     def __init__(self, client, project_key):
        self.client = client
@@ -29,7 +30,7 @@ class DSSProject(object):
         """
         Delete the project
 
-        Note: this call requires an API key with admin rights
+        This call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/projects/%s" % self.project_key)
@@ -41,8 +42,7 @@ class DSSProject(object):
     def get_export_stream(self, options = {}):
         """
         Return a stream of the exported project
-
-        Warning: this stream will monopolize the DSSClient until closed
+        You need to close the stream after download. Failure to do so will reuse in the DSSClient becoming unusable.
         """
         return self.client._perform_raw(
             "POST", "/projects/%s/export" % self.project_key, body=options).raw
@@ -424,10 +424,13 @@ class DSSProject(object):
 
     def list_scenarios(self):
         """
-        List the scenarios in this project
+        List the scenarios in this project.
 
-        Returns:
-            the list of scenarios, each one as a JSON object.
+        This method returns a list of Python dictionaries. Each dictionary represents
+        a scenario. Each dictionary contains at least a "id" field, that you can then pass
+        to the :meth:`get_scenario`
+
+        :returns: the list of scenarios, each one as a Python dictionary
         """
         return self.client._perform_json(
             "GET", "/projects/%s/scenarios/" % self.project_key)
@@ -436,25 +439,23 @@ class DSSProject(object):
         """
         Get a handle to interact with a specific scenario
 
-        Args:
-            scenario_id: the ID of the desired scenario
+        :param str: scenario_id: the ID of the desired scenario
 
-        Returns:
-            A :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
+        :returns: a :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
         
     def create_scenario(self, scenario_name, type, definition={}):
         """
         Create a new scenario in the project, and return a handle to interact with it
-        
-        Args:
-            scenario_name: the name for the new scenario
-            type: the type of the scenario ('step_based' or 'custom_python')
-            definition: the definition of the scenario, as a JSON object
-        
-        Returns:
-            A :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
+
+        :param str scenario_name: The name for the new scenario. This does not need to be unique
+                                (although this is strongly recommended)
+        :param str type: The type of the scenario. MUst be one of 'step_based' or 'custom_python'
+        :param object definition: the JSON definition of the scenario. Use ``get_definition`` on an 
+                existing ``DSSScenario`` object in order to get a sample definition object
+
+        :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
         """
         definition['type'] = type
         definition['name'] = scenario_name

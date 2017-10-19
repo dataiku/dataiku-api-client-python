@@ -543,27 +543,21 @@ class DSSClient(object):
 
     def list_logs(self):
         """
-        List all logs on the DSS instance
+        List all available log files on the DSS instance
+        This call requires an API key with admin rights
 
-        Note: this call requires an API key with admin rights
-
-        Returns:
-            A list of log names
+        :returns: A list of log names
         """
         return self._perform_json(
             "GET", "/admin/logs/")
 
     def get_log(self, name):
         """
-        Get a specific log
-
-        Note: this call requires an API key with admin rights
+        Get the contents of a specific log file
+        This call requires an API key with admin rights
         
-        Args:
-            name: the name of the desired log
-        
-        Returns:
-            The full log, as a string
+        :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
+        :returns: The full content of the log file, as a string
         """
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
@@ -574,24 +568,25 @@ class DSSClient(object):
 
     def get_variables(self):
         """
-        Get the DSS instance's variables
+        Get the DSS instance's variables, as a Python dictionary
 
-        Note: this call requires an API key with admin rights
+        This call requires an API key with admin rights
         
-        Returns:
-            A JSON object
+        :returns: a Python dictionary of the instance-level variables
         """
         return self._perform_json(
             "GET", "/admin/variables/")
 
     def set_variables(self, variables):
         """
-        Set the DSS instance's variables
+        Updates the DSS instance's variables
 
-        Note: this call requires an API key with admin rights
-        
-        Args:
-            variables: the new state of all variables of the instance, as a JSON object
+        This call requires an API key with admin rights
+
+        It is not possible to update a single variable, you must set all of them at once. Thus, you 
+        should only use a ``variables`` parameter that has been obtained using :meth:`get_variables`.
+
+        :param dict variables: the new dictionary of all variables of the instance
 
         """
         return self._perform_empty(
@@ -604,12 +599,11 @@ class DSSClient(object):
 
     def get_general_settings(self):
         """
-        Get a handle to interact with the general settings.
+        Gets a handle to interact with the general settings.
 
-        Note: this call requires an API key with admin rights
+        This call requires an API key with admin rights
 
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSGeneralSettings`
+        :returns: a :class:`dataikuapi.dss.admin.DSSGeneralSettings` handle
         """
         return DSSGeneralSettings(self)
 
@@ -633,9 +627,8 @@ class DSSClient(object):
         """
         Prepares import of a project archive
 
-        @param: fp: the input stream, as a file-like object
-
-        Returns a handle for the prepared import
+        :param file-like fp: the input stream, as a file-like object
+        :returns: a :class:`TemporaryImportHandle` to interact with the prepared import
         """
         val = self._perform_json_upload(
                 "POST", "/projects/import/upload",
