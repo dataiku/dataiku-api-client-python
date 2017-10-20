@@ -333,7 +333,7 @@ class DSSClient(object):
         """
         return DSSConnection(self, name)
 
-    def create_connection(self, name, type=None, params=None, usable_by='ALL', allowed_groups=None):
+    def create_connection(self, name, type, params={}, usable_by='ALL', allowed_groups=[]):
         """
         Create a connection, and return a handle to interact with it
 
