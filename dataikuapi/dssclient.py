@@ -635,6 +635,18 @@ class DSSClient(object):
                 "tmp-import.zip", f)
         return TemporaryImportHandle(self, val.json()["id"])
 
+
+    ########################################################
+    # Data Catalog
+    ########################################################
+
+    def catalog_index_connections(self, connection_names=[], all_connections=False, indexing_mode="FULL"):
+        return self._perform_json("POST", "/catalog/index", body={
+            "connectionNames": connection_names,
+            "indexAllConnections": all_connections,
+            "indexingMode": indexing_mode
+        })
+
     ########################################################
     # Internal Request handling
     ########################################################
