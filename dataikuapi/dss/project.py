@@ -216,7 +216,7 @@ class DSSProject(object):
         """
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
-    def create_managed_folder(self, name):
+    def create_managed_folder(self, name, folder_type=None, connection_name="filesystem_folders"):
         """
         Create a new managed folder in the project, and return a handle to interact with it
         
@@ -229,9 +229,9 @@ class DSSProject(object):
         obj = {
             "name" : name,
             "projectKey" : self.project_key,
-            "type" : "Filesystem",
+            "type" : folder_type,
             "params" : {
-                "connection" : "filesystem_folders",
+                "connection" : connection_name,
                 "path" : "/${projectKey}/${odbId}"
             }
         }
