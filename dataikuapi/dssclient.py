@@ -512,7 +512,7 @@ class DSSClient(object):
         :param id: the ID of the new meaning
         :param type: the type of the new meaning. Admissible values are 'DECLARATIVE', 'VALUES_LIST', 'VALUES_MAPPING' and 'PATTERN'
         :param description (optional): the description of the new meaning
-        :param values (optional): when type is 'VALUES_LIST', the list of values
+        :param values (optional): when type is 'VALUES_LIST', the list of values, or a list of {'value':'the value', 'color':'an optional color'}
         :param mappings (optional): when type is 'VALUES_MAPPING', the mapping, as a list of objects with this
             structure: {'from': 'value_1', 'to': 'value_a'}
         :param pattern (optional): when type is 'PATTERN', the pattern
@@ -523,13 +523,25 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
         """
+        def make_entry(v):
+            if isinstance(v, str) or isinstance(v, unicode):
+                return {'value':v}
+            else:
+                return v
+        def make_mapping(v):
+            return {'from':v.get('from', None), 'to':make_entry(v.get('to', None))}
+        entries = None
+        if values is not None:
+            entries = [make_entry(v) for v in values]
+        if mappings is not None:
+            mappings = [make_mapping(v) for v in mappings]
         resp = self._perform_text(
                "POST", "/meanings/", body={
                     "id" : id,
                     "label": label,
                     "type": type,
                     "description": description,
-                    "values": values,
+                    "entries": entries,
                     "mappings": mappings,
                     "pattern": pattern,
                     "normalizationMode": normalizationMode,
