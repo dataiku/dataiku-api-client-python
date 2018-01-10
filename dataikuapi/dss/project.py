@@ -11,6 +11,7 @@ import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
+from .ml import DSSMLTask
 from dataikuapi.utils import DataikuException
 
 
@@ -166,6 +167,40 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
+
+    ########################################################
+    # ML
+    ########################################################
+
+    def create_prediction_lab_task(self, input_dataset, target_variable,
+                                   ml_backend_type = "PY_MEMORY",
+                                   guess_policy = "DEFAULT"):
+
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+
+        The returned ML task will be in 'guessing' state, i.e. analyzing
+        the input dataset to determine feature handling and algorithms.
+
+        You should wait for the guessing to be completed by calling
+        ``wait_guess_complete`` on the returned object before doing anything
+        else (in particular calling ``train`` or ``get_settings``)
+        """
+
+        obj = {
+            "inputDataset" : input_dataset,
+            "taskType" : "PREDICTION",
+            "targetVariable" : target_variable,
+            "backendType": ml_backend_type,
+            "guessPolicy":  guess_policy
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
+        return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+
 
 
     ########################################################
