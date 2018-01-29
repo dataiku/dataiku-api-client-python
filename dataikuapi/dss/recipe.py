@@ -291,6 +291,70 @@ class SplitRecipeCreator(DSSRecipeCreator):
     def _finish_creation_settings(self):
         pass
 
+class PredictionScoringRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Builder for the creation of a new "Prediction scoring" recipe, from an
+    input dataset, with an input saved model identifier
+
+    .. code-block:: python
+
+        # Create a new prediction scoring recipe outputing to a new dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = PredictionScoringRecipeCreator("my_scoring_recipe", project)
+        builder.with_input_model("saved_model_id")
+        builder.with_input("dataset_to_score")
+        builder.with_new_output("my_output_dataset", "myconnection")
+
+        # Or for a filesystem output connection
+        # builder.with_new_output("my_output_dataset, "filesystem_managed", format_option_id="CSV_EXCEL_GZIP")
+
+        new_recipe = builder.build()
+
+        def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'prediction_scoring', name, project)
+
+    def with_input_model(self, model_id):
+        """Sets the input model"""
+        return self._with_input(model_id, self.project.project_key, "model")
+
+
+class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Builder for the creation of a new "Clustering scoring" recipe, from an
+    input dataset, with an input saved model identifier
+
+    .. code-block:: python
+
+        # Create a new prediction scoring recipe outputing to a new dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = ClusteringScoringRecipeCreator("my_scoring_recipe", project)
+        builder.with_input_model("saved_model_id")
+        builder.with_input("dataset_to_score")
+        builder.with_new_output("my_output_dataset", "myconnection")
+
+        # Or for a filesystem output connection
+        # builder.with_new_output("my_output_dataset, "filesystem_managed", format_option_id="CSV_EXCEL_GZIP")
+
+        new_recipe = builder.build()
+
+        def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'clustering_scoring', name, project)
+
+    def with_input_model(self, model_id):
+        """Sets the input model"""
+        return self._with_input(model_id, self.project.project_key, "model")
+
+
 class DownloadRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'download', name, project)

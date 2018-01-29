@@ -172,7 +172,7 @@ class DSSProject(object):
     # ML
     ########################################################
 
-    def create_prediction_lab_task(self, input_dataset, target_variable,
+    def create_prediction_ml_task(self, input_dataset, target_variable,
                                    ml_backend_type = "PY_MEMORY",
                                    guess_policy = "DEFAULT"):
 
@@ -200,7 +200,35 @@ class DSSProject(object):
         ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
         return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
 
+    def create_clustering_ml_task(self, input_dataset,
+                                   ml_backend_type = "PY_MEMORY",
+                                   guess_policy = "KMEANS"):
 
+
+        """Creates a new clustering task in a new visual analysis lab
+        for a dataset.
+
+
+        The returned ML task will be in 'guessing' state, i.e. analyzing
+        the input dataset to determine feature handling and algorithms.
+
+        You should wait for the guessing to be completed by calling
+        ``wait_guess_complete`` on the returned object before doing anything
+        else (in particular calling ``train`` or ``get_settings``)
+        """
+
+        obj = {
+            "inputDataset" : input_dataset,
+            "taskType" : "CLUSTERING",
+            "backendType": ml_backend_type,
+            "guessPolicy":  guess_policy
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
+        return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+    def get_ml_task(self, analysis_id, mltask_id):
+        return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
 
     ########################################################
@@ -379,6 +407,18 @@ class DSSProject(object):
         """
         return self.client._perform_json(
             "GET", "/projects/%s/apiservices/" % self.project_key)
+
+    def create_api_service(self, service_id):
+        """
+        Create a new API service, and returns a handle to interact with it
+
+        :param str service_id: the ID of the API service to create
+        :returns: A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        """
+        self.client._perform_empty(
+            "POST", "/projects/%s/apiservices/%s" % (self.project_key, service_id))
+        return DSSAPIService(self.client, self.project_key, service_id)
+
 
     def get_api_service(self, service_id):
         """

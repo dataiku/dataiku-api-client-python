@@ -1,3 +1,26 @@
+import json
+
+class DSSAPIServiceSettings(object):
+    def __init__(self, client, project_key, service_id, settings):
+        self.client = client
+        self.project_key = project_key
+        self.service_id = service_id
+        self.settings = settings
+
+    def add_prediction_endpoint(self, endpoint_id, saved_model_id):
+        self.settings["endpoints"].append({
+            "id" : endpoint_id,
+            "type" : "STD_PREDICTION",
+            "modelRef": saved_model_id
+        })
+
+    def save(self):
+        """Saves back these settings to the API Service"""
+        print("SAVING: %s" % json.dumps(self.settings, indent=2))
+        self.client._perform_empty(
+                "PUT", "/projects/%s/apiservices/%s/settings" % (self.project_key, self.service_id),
+                body = self.settings)
+
 
 class DSSAPIService(object):
     """
@@ -7,6 +30,13 @@ class DSSAPIService(object):
         self.client = client
         self.project_key = project_key
         self.service_id = service_id
+
+    def get_settings(self):
+        """Gets the settings of this API Service"""
+        settings = self.client._perform_json(
+            "GET", "/projects/%s/apiservices/%s/settings" % (self.project_key, self.service_id))
+
+        return DSSAPIServiceSettings(self.client, self.project_key, self.service_id, settings)
 
     def list_packages(self):
         """
