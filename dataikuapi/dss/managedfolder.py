@@ -3,6 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
+from .discussion import DSSObjectDiscussions
 
 class DSSManagedFolder(object):
     """
@@ -161,4 +162,14 @@ class DSSManagedFolder(object):
         """
         return self.client._perform_json("GET", "/projects/%s/managedfolders/%s/usages" % (self.project_key, self.odb_id))
 
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the managed folder
 
+        Returns:
+            the DSSObjectDiscussions of this managed folder
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "MANAGED_FOLDER", self.odb_id)

@@ -3,6 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
+from .discussion import DSSObjectDiscussions
 
 class DSSSavedModel(object):
     """
@@ -60,3 +61,14 @@ class DSSSavedModel(object):
         return self.client._perform_json("GET", "/projects/%s/savedmodels/%s/usages" % (self.project_key, self.sm_id))
 
 
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the saved model
+
+        Returns:
+            the DSSObjectDiscussions of this saved model
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "SAVED_MODEL", self.sm_id)

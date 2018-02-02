@@ -11,6 +11,8 @@ import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
+from .wiki import DSSWiki
+from .discussion import DSSObjectDiscussions
 from dataikuapi.utils import DataikuException
 
 
@@ -596,6 +598,29 @@ class DSSProject(object):
         """
         return DSSMacro(self.client, self.project_key, runnable_type)
 
+    ########################################################
+    # Wiki
+    ########################################################
+    def get_wiki(self):
+        """
+        Get the wiki
+
+        Returns:
+            the wiki associated to the project
+        """
+        return DSSWiki(self.client, self.project_key)
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the project
+
+        Returns:
+            the DSSObjectDiscussions of this project
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
 
 
 class JobDefinitionBuilder(object):

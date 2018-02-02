@@ -10,6 +10,7 @@ from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSS
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
+from .dss.discussion import DSSObjectDiscussions
 import os.path as osp
 from .utils import DataikuException
 
@@ -707,6 +708,22 @@ class DSSClient(object):
             ex = http_res.json()
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self, project_key, object_type, object_id):
+        """
+        Get a handle to manage discussions on any object
+
+        Args:
+            the object project key
+            the object type
+            the object id
+
+        Returns:
+            the DSSObjectDiscussions of this object
+        """
+        return DSSObjectDiscussions(self, project_key, object_type, object_id)
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):

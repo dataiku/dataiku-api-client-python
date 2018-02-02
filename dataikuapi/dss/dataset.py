@@ -3,6 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
+from .discussion import DSSObjectDiscussions
 
 class DSSDataset(object):
     """
@@ -234,3 +235,15 @@ class DSSDataset(object):
             a list of usages
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/usages" % (self.project_key, self.dataset_name))
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the dataset
+
+        Returns:
+            the DSSObjectDiscussions of this dataset
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)
