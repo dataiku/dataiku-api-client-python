@@ -221,6 +221,12 @@ class DSSTrainedPredictionModelDetails(object):
         """
         return self.details
 
+    def get_raw_snippet(self):
+        """
+        Gets the raw dictionary of trained model snippet
+        """
+        return self.summary
+
     def get_train_info(self):
         """
         Returns various information about the train process (size of the train set, quick description, timing information)
@@ -399,6 +405,7 @@ class DSSTrainedClusteringModelDetails(object):
         return self.details["actualParams"]
 
 class DSSMLTask(object):
+    """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
         self.client = client
         self.project_key = project_key
@@ -476,7 +483,7 @@ class DSSMLTask(object):
 
     def get_trained_model_summary(self, id):
         """
-        Gets a summary of a trained model
+        Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:get_trained_model_details
 
         :rtype: dict
         """

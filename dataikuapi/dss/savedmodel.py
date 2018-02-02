@@ -2,17 +2,20 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
 from .metrics import ComputedMetrics
 
 class DSSSavedModel(object):
     """
-    A saved model on the DSS instance
+    A handle to interact with a saved model on the DSS instance.
+
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_saved_model`
     """
     def __init__(self, client, project_key, sm_id):
         self.client = client
         self.project_key = project_key
         self.sm_id = sm_id
-        
+
         
     ########################################################
     # Versions
@@ -22,12 +25,48 @@ class DSSSavedModel(object):
         """
         Get the versions of this saved model
         
-        Returns:
-            an list of the versions
+        :return: a list of the versions, as a dict of object. Each object contains at least a "id" parameter, which can be passed to :meth:`get_metric_values`, :meth:`get_version_details` and :meth:`set_active_version`
+        :rtype: list
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions" % (self.project_key, self.sm_id))
 
+    def get_active_version(self):
+        """
+        Gets the active version of this saved model
+        
+        :return: a dict representing the active version or None if no version is active. The dict contains at least a "id" parameter, which can be passed to :meth:`get_metric_values`, :meth:`get_version_details` and :meth:`set_active_version`
+        :rtype: dict
+        """
+        filtered = [x for x in self.list_versions() if x["active"]]
+        if len(filtered) == 0:
+            return None
+        else:
+            return filtered[0]
+
+    def get_version_details(self, version_id):
+        """
+        Gets details for a version of a saved model
+        
+        :param str version_id: Identifier of the version, as returned by :meth:`list_versions`
+
+        :return: A :class:`DSSTrainedPredictionModelDetails` representing the details of this trained model id
+        :rtype: :class:`DSSTrainedPredictionModelDetails`
+        """
+        details = self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s/versions/%s/details" % (self.project_key, self.sm_id, version_id))
+        snippet = self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s/versions/%s/snippet" % (self.project_key, self.sm_id, version_id))
+
+        if "facts" in details:
+            return DSSTrainedClusteringModelDetails(details, snippet)
+        else:
+            return DSSTrainedPredictionModelDetails(details, snippet)
+
+    def set_active_version(self, version_id):
+        """Sets a particular version of the saved model as the active one"""
+        self.client._perform_empty(
+            "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
 
     ########################################################
     # Metrics
@@ -42,8 +81,6 @@ class DSSSavedModel(object):
         """
         return ComputedMetrics(self.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/metrics/%s" % (self.project_key, self.sm_id, version_id)))
-
-
 
                 
     ########################################################
