@@ -204,28 +204,22 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
             "DBSCAN" : "db_scan_clustering",
         }
 
-class DSSTrainedPredictionModelDetails(object):
-    """
-    Object to read details of a trained prediction model
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
-    """
 
-    def __init__(self, details, summary):
+class DSSTrainedModelDetails(object):
+    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
         self.details = details
         self.summary = summary
+        self.saved_model = saved_model
+        self.saved_model_version = saved_model_version
+        self.mltask = mltask
+        self.mltask_model_id = mltask_model_id
 
     def get_raw(self):
         """
         Gets the raw dictionary of trained model details
         """
         return self.details
-
-    def get_raw_snippet(self):
-        """
-        Gets the raw dictionary of trained model snippet
-        """
-        return self.summary
 
     def get_train_info(self):
         """
@@ -234,6 +228,44 @@ class DSSTrainedPredictionModelDetails(object):
         :rtype: dict
         """
         return self.details["trainInfo"]
+
+    def get_user_meta(self):
+        """
+        Gets the user-accessible metadata (name, description, cluster labels, classification threshold)
+        Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling
+        :meth:`save_user_meta`
+
+        """
+        return self.details["userMeta"]
+
+    def save_user_meta(self):
+        um = self.details["userMeta"]
+
+        if self.mltask is not None:
+            self.mltask.client._perform_empty(
+                "PUT", "/projects/%s/models/lab/%s/%s/models/%s/user-meta" % (self.mltask.project_key,
+                    self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id), body = um)
+        else:
+            self.saved_model.client._perform_empty(
+                "PUT", "/projects/%s/savedmodels/%s/versions/%s/user-meta" % (self.saved_model.project_key,
+                    self.saved_model.sm_id, self.saved_model_version), body = um)
+
+class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
+    """
+    Object to read details of a trained prediction model
+
+    Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
+    """
+
+    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        DSSTrainedModelDetails.__init__(self, details, summary, saved_model, saved_model_version, mltask, mltask_model_id)
+
+    def get_raw_snippet(self):
+        """
+        Gets the raw dictionary of trained model snippet
+        """
+        return self.summary
+
 
     def get_roc_curve_data(self):
         roc = self.details.get("perf", {}).get("rocVizData",{})
@@ -303,6 +335,7 @@ class DSSTrainedPredictionModelDetails(object):
         """
         return self.details["actualParams"]
 
+
 class DSSClustersFacts(object):
     def __init__(self, clusters_facts):
         self.clusters_facts = clusters_facts
@@ -331,16 +364,17 @@ class DSSClustersFacts(object):
         """
         return [x for x in self.get_facts_for_cluster(cluster_index) if x["feature_label"] == feature_name]
 
-class DSSTrainedClusteringModelDetails(object):
+
+class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained clustering model
 
     Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
     """
 
-    def __init__(self, details, summary):
-        self.details = details
-        self.summary = summary
+    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        DSSTrainedModelDetails.__init__(self, details, summary, saved_model, saved_model_version, mltask, mltask_model_id)
+
 
     def get_raw(self):
         """
@@ -511,9 +545,9 @@ class DSSMLTask(object):
 
 
         if "facts" in ret:
-            return DSSTrainedClusteringModelDetails(ret, summary)
+            return DSSTrainedClusteringModelDetails(ret, summary, mltask=self, mltask_model_id=id)
         else:
-            return DSSTrainedPredictionModelDetails(ret, summary)
+            return DSSTrainedPredictionModelDetails(ret, summary, mltask=self, mltask_model_id=id)
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """

@@ -59,9 +59,9 @@ class DSSSavedModel(object):
             "GET", "/projects/%s/savedmodels/%s/versions/%s/snippet" % (self.project_key, self.sm_id, version_id))
 
         if "facts" in details:
-            return DSSTrainedClusteringModelDetails(details, snippet)
+            return DSSTrainedClusteringModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
         else:
-            return DSSTrainedPredictionModelDetails(details, snippet)
+            return DSSTrainedPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
 
     def set_active_version(self, version_id):
         """Sets a particular version of the saved model as the active one"""
