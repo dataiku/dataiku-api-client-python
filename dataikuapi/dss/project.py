@@ -17,8 +17,9 @@ from dataikuapi.utils import DataikuException
 
 class DSSProject(object):
     """
-    A handle to interact with a project on the DSS instance. Do not create this class directly,
-    instead use ``client.api_client`` where ``client`` is a DSSClient
+    A handle to interact with a project on the DSS instance.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project``
     """
     def __init__(self, client, project_key):
        self.client = client
@@ -48,7 +49,10 @@ class DSSProject(object):
     def get_export_stream(self, options = {}):
         """
         Return a stream of the exported project
-        You need to close the stream after download. Failure to do so will reuse in the DSSClient becoming unusable.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: a file-like obbject that is a stream of the export archive
+        :rtype: file-like
         """
         return self.client._perform_raw(
             "POST", "/projects/%s/export" % self.project_key, body=options).raw
@@ -57,7 +61,7 @@ class DSSProject(object):
         """
         Export the project to a file
         
-        :param path: the path of the file in which the exported project should be saved
+        :param str path: the path of the file in which the exported project should be saved
         """
         with open(path, 'wb') as f:
             export_stream = self.client._perform_raw(
@@ -74,22 +78,20 @@ class DSSProject(object):
     def get_metadata(self):
         """
         Get the metadata attached to this project. The metadata contains label, description
-        checklists, tags and custom metadata of the project
+        checklists, tags and custom metadata of the project.
+
+        For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest
         
-        Returns:
-            a dict object. For more information on available metadata, please see
-            https://doc.dataiku.com/dss/api/latest
+        :returns: a dict object containing the project metadata.
+        :rtype: dict
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/metadata" % self.project_key)
+        return self.client._perform_json("GET", "/projects/%s/metadata" % self.project_key)
 
     def set_metadata(self, metadata):
         """
         Set the metadata on this project.
         
-        Args:
-            metadata: the new state of the metadata for the project. You should only set a metadata object 
-            that has been retrieved using the get_metadata call.
+        :param metadata dict: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_empty(
             "PUT", "/projects/%s/metadata" % self.project_key, body = metadata)
@@ -98,19 +100,16 @@ class DSSProject(object):
        """
        Get the permissions attached to this project
 
-        Returns:
-            a JSON object, containing the owner and the permissions, as a list of pairs of group name
-            and permission type
+        :returns: A dict containing the owner and the permissions, as a list of pairs of group name and permission type
        """
        return self.client._perform_json(
           "GET", "/projects/%s/permissions" % self.project_key)
 
     def set_permissions(self, permissions):
         """
-        Set the permissions on this project
+        Sets the permissions on this project
         
-        Args:
-            permissions: a JSON object of the same structure as the one returned by get_permissions call
+        :param permissions dict: a permissions object with the same structure as the one returned by :meth:`get_permissions` call
         """
         return self.client._perform_empty(
             "PUT", "/projects/%s/permissions" % self.project_key, body = permissions)
@@ -123,8 +122,8 @@ class DSSProject(object):
         """
         List the datasets in this project
         
-        Returns:
-            the list of the datasets, each one as a JSON object
+        :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
+        :rtype: list of dicts
         """
         return self.client._perform_json(
             "GET", "/projects/%s/datasets/" % self.project_key)
@@ -187,6 +186,9 @@ class DSSProject(object):
         You should wait for the guessing to be completed by calling
         ``wait_guess_complete`` on the returned object before doing anything
         else (in particular calling ``train`` or ``get_settings``)
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
         """
 
         obj = {
@@ -215,6 +217,9 @@ class DSSProject(object):
         You should wait for the guessing to be completed by calling
         ``wait_guess_complete`` on the returned object before doing anything
         else (in particular calling ``train`` or ``get_settings``)
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
         """
 
         obj = {

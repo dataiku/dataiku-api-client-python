@@ -207,9 +207,9 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
 
 
 class DSSTrainedModelDetails(object):
-    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+    def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
         self.details = details
-        self.summary = summary
+        self.snippet = snippet
         self.saved_model = saved_model
         self.saved_model_version = saved_model_version
         self.mltask = mltask
@@ -220,6 +220,13 @@ class DSSTrainedModelDetails(object):
         Gets the raw dictionary of trained model details
         """
         return self.details
+
+    def get_raw_snippet(self):
+        """
+        Gets the raw dictionary of trained model snippet. 
+        The snippet is a lighter version than the details.
+        """
+        return self.snippet
 
     def get_train_info(self):
         """
@@ -257,15 +264,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
     """
 
-    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, summary, saved_model, saved_model_version, mltask, mltask_model_id)
-
-    def get_raw_snippet(self):
-        """
-        Gets the raw dictionary of trained model snippet
-        """
-        return self.summary
-
+    def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
     def get_roc_curve_data(self):
         roc = self.details.get("perf", {}).get("rocVizData",{})
@@ -299,11 +299,11 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :rtype: dict
         """
         import copy
-        clean_summary = copy.deepcopy(self.summary)
+        clean_snippet = copy.deepcopy(self.snippet)
         for x in ["gridsearchData", "trainDate", "topImportance", "backendType", "userMeta", "sessionDate", "trainInfo", "fullModelId", "gridLength", "algorithm", "sessionId"]:
-            if x in clean_summary:
-                del clean_summary[x]
-        return clean_summary
+            if x in clean_snippet:
+                del clean_snippet[x]
+        return clean_snippet
 
 
     def get_preprocessing_settings(self):
@@ -372,8 +372,8 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
     """
 
-    def __init__(self, details, summary, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, summary, saved_model, saved_model_version, mltask, mltask_model_id)
+    def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
 
     def get_raw(self):
@@ -405,11 +405,11 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
         :rtype: dict
         """
         import copy
-        clean_summary = copy.deepcopy(self.summary)
+        clean_snippet = copy.deepcopy(self.snippet)
         for x in ["fullModelId", "algorithm", "trainInfo", "userMeta", "backendType", "sessionId", "sessionDate", "facts"]:
-            if x in clean_summary:
-                del clean_summary[x]
-        return clean_summary
+            if x in clean_snippet:
+                del clean_snippet[x]
+        return clean_snippet
 
     def get_preprocessing_settings(self):
         """
@@ -506,7 +506,7 @@ class DSSMLTask(object):
         """
         Gets the list of trained model identifiers for this ML task.
 
-        These identifiers can be used for ``get_trained_model_summary`` and ``deploy_to_flow``
+        These identifiers can be used for ``get_trained_model_snippet`` and ``deploy_to_flow``
 
         :return: A list of model identifiers
         :rtype: list of strings
@@ -515,7 +515,7 @@ class DSSMLTask(object):
         return [x["id"] for x in status["fullModelIds"]]
 
 
-    def get_trained_model_summary(self, id):
+    def get_trained_model_snippet(self, id):
         """
         Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:get_trained_model_details
 
@@ -525,9 +525,8 @@ class DSSMLTask(object):
             "modelsIds" : [id]
         }
         ret = self.client._perform_json(
-            "POST", "/projects/%s/models/lab/%s/%s/models-summaries" % (self.project_key, self.analysis_id, self.mltask_id),
+            "POST", "/projects/%s/models/lab/%s/%s/models-snippets" % (self.project_key, self.analysis_id, self.mltask_id),
             body = obj)
-        #print ("summaries: %s" % json.dumps(ret, indent=2))
         return ret[id]
 
     def get_trained_model_details(self, id):
@@ -541,13 +540,13 @@ class DSSMLTask(object):
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
-        summary = self.get_trained_model_summary(id)
+        snippet = self.get_trained_model_snippet(id)
 
 
         if "facts" in ret:
-            return DSSTrainedClusteringModelDetails(ret, summary, mltask=self, mltask_model_id=id)
+            return DSSTrainedClusteringModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
         else:
-            return DSSTrainedPredictionModelDetails(ret, summary, mltask=self, mltask_model_id=id)
+            return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
