@@ -12,6 +12,7 @@ from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
 from .ml import DSSMLTask
+from .analysis import DSSAnalysis
 from dataikuapi.utils import DataikuException
 
 
@@ -232,9 +233,62 @@ class DSSProject(object):
         ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
         return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
 
+    def list_ml_tasks(self):
+        """
+        List the ML tasks in this project
+        
+        Returns:
+            the list of the ML tasks summaries, each one as a JSON object
+        """
+        return self.client._perform_json("GET", "/projects/%s/models/lab/" % self.project_key)
+
     def get_ml_task(self, analysis_id, mltask_id):
+        """
+        Get a handle to interact with a specific ML task
+       
+        Args:
+            analysis_id: the identifier of the visual analysis containing the desired ML task
+            mltask_id: the identifier of the desired ML task 
+        
+        Returns:
+            A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle
+        """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
+
+    def create_analysis(self, input_dataset):
+        """
+        Creates a new visual analysis lab for a dataset.
+
+        """
+
+        obj = {
+            "inputDataset" : input_dataset
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/lab/" % self.project_key, body=obj)
+        return DSSAnalysis(self.client, self.project_key, ref["analysisId"])
+
+    def list_analyses(self):
+        """
+        List the visual analyses in this project
+        
+        Returns:
+            the list of the visual analyses summaries, each one as a JSON object
+        """
+        return self.client._perform_json("GET", "/projects/%s/lab/" % self.project_key)
+
+    def get_analysis(self, analysis_id):
+        """
+        Get a handle to interact with a specific visual analysis
+       
+        Args:
+            analysis_id: the identifier of the desired visual analysis
+        
+        Returns:
+            A :class:`dataikuapi.dss.analysis.DSSAnalysis` visual analysis handle
+        """
+        return DSSAnalysis(self.client, self.project_key, analysis_id)
 
     ########################################################
     # Saved models
