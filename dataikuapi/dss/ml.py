@@ -510,7 +510,8 @@ class DSSMLTask(object):
                 break
             time.sleep(2)
 
-    def get_trained_models_ids(self):
+
+    def get_trained_models_ids(self, session_id=None, algorithm=None):
         """
         Gets the list of trained model identifiers for this ML task.
 
@@ -519,23 +520,43 @@ class DSSMLTask(object):
         :return: A list of model identifiers
         :rtype: list of strings
         """
-        status = self.get_status()
-        return [x["id"] for x in status["fullModelIds"]]
+        full_model_ids = self.get_status()["fullModelIds"]
+        if session_id is not None:
+            full_model_ids = [fmi for fmi in full_model_ids if fmi.get('fullModelId', {}).get('sessionId', '') == session_id]
+        model_ids = [x["id"] for x in full_model_ids]
+        if algorithm is not None:
+            # algorithm is in the snippets
+            model_ids = [fmi for fmi, s in self.get_trained_model_snippet(ids=model_ids).iteritems() if s.get("algorithm", "") == algorithm]
+        return model_ids
 
 
-    def get_trained_model_snippet(self, id):
+    def get_trained_model_snippet(self, id=None, ids=None):
         """
         Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:get_trained_model_details
 
+        :param str id: a model id
+        :param list ids: a list of model ids
+
         :rtype: dict
         """
-        obj = {
-            "modelsIds" : [id]
-        }
+        if id is not None:
+            obj = {
+                "modelsIds" : [id]
+            }
+        elif ids is not None:
+            obj = {
+                "modelsIds" : ids
+            }
+        else:
+            obj = {}
+
         ret = self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/models-snippets" % (self.project_key, self.analysis_id, self.mltask_id),
             body = obj)
-        return ret[id]
+        if id is not None:
+            return ret[id]
+        else:
+            return ret
 
     def get_trained_model_details(self, id):
         """
