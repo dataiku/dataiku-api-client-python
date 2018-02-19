@@ -483,14 +483,22 @@ class DSSMLTask(object):
         else:
             return DSSClusteringMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
 
-    def start_train(self):
+    def start_train(self, session_name=None, session_description=None):
         """
         Starts asynchronously a new train session for this ML Task.
 
+        :param str session_name: name for the session
+        :param str session_description: description for the session
+
         This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
         """
-        self.client._perform_empty(
-                "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id))
+        session_info = {
+                            "sessionName" : session_name,
+                            "sessionDescription" : session_description
+                        }
+
+        return self.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
     def wait_train_complete(self):
         """
