@@ -570,3 +570,25 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/deployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
 
+
+    def redeploy_to_flow(self, model_id, recipe_name=None, saved_model_id=None, activate=True):
+        """
+        Redeploys a trained model from this ML Task to a saved model + train recipe in the Flow. Either 
+        recipe_name of saved_model_id need to be specified
+
+        :param str model_id: Model identifier, as returned by :meth:`get_trained_models_ids`
+        :param str recipe_name: Name of the training recipe to update
+        :param str saved_model_id: Name of the saved model to update
+        :param bool activate: Should the deployed model version become the active version 
+        :return: A dict containing: "impactsDownstream" - whether the active version changed and downstream recipes are impacted 
+        :rtype: dict
+        """
+        obj = {
+            "recipeName" : recipe_name,
+            "savedModelId" : saved_model_id,
+            "activate" : activate
+        }
+        return self.client._perform_json(
+            "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
+            body = obj)
+
