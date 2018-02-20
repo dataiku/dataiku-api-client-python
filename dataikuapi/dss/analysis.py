@@ -32,7 +32,7 @@ class DSSAnalysisDefinition():
     """
 
     def __init__(self, analysis, acp):
-    	self.analysis = analysis
+        self.analysis = analysis
         self.acp = acp
 
     def get_raw(self):
@@ -47,7 +47,7 @@ class DSSAnalysisDefinition():
         """
         acp = self.get_raw()
         if not 'script' in acp:
-        	acp['script'] = {'steps':[]}
+            acp['script'] = {'steps':[]}
         return acp['script']
 
     def get_raw_script_steps(self):
@@ -56,7 +56,7 @@ class DSSAnalysisDefinition():
         """
         script = self.get_raw_script()
         if not 'steps' in script:
-        	script['steps'] = []
+            script['steps'] = []
         return script['steps']
 
     def get_raw_script_sampling(self):
@@ -65,26 +65,26 @@ class DSSAnalysisDefinition():
         """
         script = self.get_raw_script()
         if not 'explorationSampling' in script:
-        	script['explorationSampling'] = {}
+            script['explorationSampling'] = {}
         return script['explorationSampling']
 
     def save(self):
-    	"""
-    	Shortcut to :meth:`DSSAnalysis.set_definition()`
-    	"""
-    	self.analysis.set_definition(self)
+        """
+        Shortcut to :meth:`DSSAnalysis.set_definition()`
+        """
+        self.analysis.set_definition(self)
 
     def add_step(self, step):
-    	"""
-    	Add a step to the script
+        """
+        Add a step to the script
 
         :param object selection: A :class:`DSSAnalysisStepBuilder` to build the settings of the step.
-    	"""
+        """
         steps = self.get_raw_script_steps()
         if isinstance(step, DSSAnalysisStepBuilder):
-        	steps.append(step.build())
+            steps.append(step.build())
         else:
-        	steps.append(step)
+            steps.append(step)
 
     def set_script_sampling_selection(self, selection):    
         """
@@ -142,9 +142,9 @@ class DSSAnalysis(object):
             You should only set a definition object that has been retrieved using the get_definition call.
         """
         if isinstance(definition, DSSAnalysisDefinition):
-        	acp = definition.get_raw()
+            acp = definition.get_raw()
         else:
-        	acp = definition
+            acp = definition
         return self.client._perform_json("PUT", "/projects/%s/lab/%s/" % (self.project_key, self.analysis_id), body=acp)
 
 
@@ -236,7 +236,7 @@ class DSSAnalysis(object):
 # some basic steps
 class DSSFormulaStepBuilder(DSSAnalysisStepBuilder):
     def __init__(self, step_name=None):
-    	super(DSSFormulaStepBuilder, self).__init__(step_type='CreateColumnWithGREL', step_name=step_name)
+        super(DSSFormulaStepBuilder, self).__init__(step_type='CreateColumnWithGREL', step_name=step_name)
 
     def with_output_column(self, column_name):
         """Sets the step's output column's name"""
@@ -255,8 +255,8 @@ class DSSFormulaStepBuilder(DSSAnalysisStepBuilder):
 
 class AppliesToStepBuilder(DSSAnalysisStepBuilder):
     def __init__(self, step_type=None, step_name=None):
-    	super(AppliesToStepBuilder, self).__init__(step_type=step_type, step_name=step_name)
-    	self.step["params"]["appliesTo"] = 'SINGLE_COLUMN'
+        super(AppliesToStepBuilder, self).__init__(step_type=step_type, step_name=step_name)
+        self.step["params"]["appliesTo"] = 'SINGLE_COLUMN'
 
     def with_column_selection_mode(self, column_selection_mode):
         """Sets the step's column selection mode (SINGLE_COLUMN, COLUMNS, PATTERN, ALL)"""
@@ -291,13 +291,13 @@ class AppliesToStepBuilder(DSSAnalysisStepBuilder):
 
 class FilterAndFlagStepBuilder(AppliesToStepBuilder):
     def __init__(self, step_type=None, step_name=None):
-    	super(FilterAndFlagStepBuilder, self).__init__(step_type=step_type, step_name=step_name)
-    	self.step["params"]["booleanMode"] = 'AND'
-    	self.step["params"]["action"] = 'REMOVE_ROW'
+        super(FilterAndFlagStepBuilder, self).__init__(step_type=step_type, step_name=step_name)
+        self.step["params"]["booleanMode"] = 'AND'
+        self.step["params"]["action"] = 'REMOVE_ROW'
 
     def with_action(self, action):
         """Sets the step's action on match (KEEP_ROW, REMOVE_ROW, CLEAR_CELL, DONTCLEAR_CELL, FLAG)"""
-        self.step["params"]["action"] = column_selection_mode
+        self.step["params"]["action"] = action
         return self
 
     def with_boolean_mode(self, boolean_mode):
@@ -312,7 +312,7 @@ class FilterAndFlagStepBuilder(AppliesToStepBuilder):
 
 class FilterOnValueStepBuilder(FilterAndFlagStepBuilder):
     def __init__(self, step_name=None):
-    	super(FilterOnValueStepBuilder, self).__init__(step_type='FlagOnValue', step_name=step_name)
+        super(FilterOnValueStepBuilder, self).__init__(step_type='FlagOnValue', step_name=step_name)
 
     def with_values(self, *values):
         """Sets the step's flagged values"""
@@ -331,7 +331,7 @@ class FilterOnValueStepBuilder(FilterAndFlagStepBuilder):
 
 class FilterOnBadTypeStepBuilder(FilterAndFlagStepBuilder):
     def __init__(self, step_name=None):
-    	super(FilterOnBadTypeStepBuilder, self).__init__(step_type='FilterOnBadType', step_name=step_name)
+        super(FilterOnBadTypeStepBuilder, self).__init__(step_type='FilterOnBadType', step_name=step_name)
 
     def with_meaning(self, meaning):
         """Sets the step's meaning to check"""
@@ -340,7 +340,7 @@ class FilterOnBadTypeStepBuilder(FilterAndFlagStepBuilder):
 
 class RemoveRowsStepBuilder(AppliesToStepBuilder):
     def __init__(self, step_name=None):
-    	super(RemoveRowsStepBuilder, self).__init__(step_type='RemoveRowsOnEmpty', step_name=step_name)
+        super(RemoveRowsStepBuilder, self).__init__(step_type='RemoveRowsOnEmpty', step_name=step_name)
 
     def with_meaning(self, keep):
         """Sets the step's behavior when an empty value is found : True=keep, False=drop (default)"""
