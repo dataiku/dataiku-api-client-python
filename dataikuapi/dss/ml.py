@@ -508,7 +508,7 @@ class DSSMLTask(object):
             obj = {}
 
         ret = self.client._perform_json(
-            "POST", "/projects/%s/models/lab/%s/%s/models-snippets" % (self.project_key, self.analysis_id, self.mltask_id),
+            "GET", "/projects/%s/models/lab/%s/%s/models-snippets" % (self.project_key, self.analysis_id, self.mltask_id),
             body = obj)
         if id is not None:
             return ret[id]
