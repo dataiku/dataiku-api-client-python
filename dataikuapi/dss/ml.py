@@ -30,9 +30,70 @@ class PredictionSplitParamsHandler(object):
                 sp["ssdSelection"] = selection
 
         sp["ssdTrainingRatio"] = train_ratio
+        sp["kfold"] = False
 
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
+
+    def set_split_kfold(self, n_folds = 5, selection = None, dataset_name=None):
+        """
+        Sets the train/test split to k-fold splitting of an extract of a single dataset
+
+        :param int n_folds: number of folds. Must be greater than 0
+        :param object selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
+        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the ML Task will be used.
+        """
+        sp = self.mltask_settings["splitParams"]
+        sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
+        if selection is not None:
+            if isinstance(selection, DSSDatasetSelectionBuilder):
+                sp["ssdSelection"] = selection.build()
+            else:
+                sp["ssdSelection"] = selection
+
+        sp["kfold"] = True
+        sp["nFolds"] = n_folds
+
+        if dataset_name is not None:
+            sp["ssdDatasetSmartName"] = dataset_name
+
+    def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None):
+        """
+        Sets the train/test split to explicit extract of one or two dataset
+
+        :param object train_selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the train dataset. May be None (won't be changed)
+        :param object test_selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the test dataset. May be None (won't be changed)
+        :param str dataset_name: Name of dataset to use for the extracts. If None, the main dataset used to create the ML Task will be used.
+        :param str test_dataset_name: Name of a second dataset to use for the test data extract. If None, both extracts are done from dataset_name
+        """
+        sp = self.mltask_settings["splitParams"]
+        if dataset_name is None:
+            raise Exception("For explicit splitting a dataset_name is mandatory")
+        if test_dataset_name is None or test_dataset_name == dataset_name:
+            sp["ttPolicy"] = "EXPLICIT_FILTERING_SINGLE_DATASET"
+            train_split ={}
+            test_split = {}
+            sp['efsdDatasetSmartName'] = dataset_name
+            sp['efsdTrain'] = train_split
+            sp['efsdTest'] = test_split
+        else:            
+            sp["ttPolicy"] = "EXPLICIT_FILTERING_TWO_DATASETS"
+            train_split ={'datasetSmartName' : dataset_name}
+            test_split = {'datasetSmartName' : test_dataset_name}
+            sp['eftdTrain'] = train_split
+            sp['eftdTest'] = test_split
+
+        if train_selection is not None:
+            if isinstance(train_selection, DSSDatasetSelectionBuilder):
+                train_split["selection"] = train_selection.build()
+            else:
+                train_split["selection"] = train_selection
+        if test_selection is not None:
+            if isinstance(test_selection, DSSDatasetSelectionBuilder):
+                test_split["selection"] = test_selection.build()
+            else:
+                test_split["selection"] = test_selection
+
 
 class DSSMLTaskSettings(object):
     """
