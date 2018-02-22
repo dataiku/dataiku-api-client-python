@@ -518,6 +518,26 @@ class DSSMLTask(object):
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
+    def start_ensembling(self, model_ids=[], method=None):
+        """
+        Creates asynchronously a new ensemble models of a set of models.
+
+        :param list model_ids: A list of model identifiers
+        :param str method: the ensembling method (AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL)
+
+        This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
+
+        :return: the model identifier of the ensemble
+        :rtype: string
+        """
+        ensembling_request = {
+                            "method" : method,
+                            "modelsIds" : model_ids
+                        }
+
+        return self.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/ensemble" % (self.project_key, self.analysis_id, self.mltask_id), body=ensembling_request)['id']
+
     def wait_train_complete(self):
         """
         Waits for train to be complete.
