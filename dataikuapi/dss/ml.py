@@ -214,6 +214,22 @@ class DSSMLTaskSettings(object):
         """
         self.get_algorithm_settings(algorithm_name)["enabled"] = enabled
 
+    def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
+        """
+        Set a metric on a prediction ML task
+
+        :param str metric: metric to use. Leave empty for custom_metric
+        :param str custom_metric: code of the custom metric
+        :param bool custom_metric_greater_is_better: whether the custom metric is a score or a loss
+        :param bool custom_metric_use_probas: whether to use the classes' probas or the predicted value (for classification)
+        """
+        if custom_metric is None and metric is None:
+            raise ValueError("Either metric or custom_metric must be defined")
+        self.mltask_settings["modeling"]["metrics"]["evaluationMetric"] = metric if custom_metric is None else 'CUSTOM'
+        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricCode"] = custom_metric
+        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
+        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
+
     def save(self):
         """Saves back these settings to the ML Task"""
 
