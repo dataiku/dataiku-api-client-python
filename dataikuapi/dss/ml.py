@@ -4,7 +4,7 @@ from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 import time
 from .metrics import ComputedMetrics
-from .utils import DSSDatasetSelectionBuilder
+from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
@@ -57,7 +57,7 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
-    def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None):
+    def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
         Sets the train/test split to explicit extract of one or two dataset
 
@@ -65,6 +65,8 @@ class PredictionSplitParamsHandler(object):
         :param object test_selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the test dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to use for the extracts. If None, the main dataset used to create the ML Task will be used.
         :param str test_dataset_name: Name of a second dataset to use for the test data extract. If None, both extracts are done from dataset_name
+        :param object train_filter: A :class:`DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
+        :param object test_filter: A :class:`DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
         sp = self.mltask_settings["splitParams"]
         if dataset_name is None:
@@ -93,6 +95,17 @@ class PredictionSplitParamsHandler(object):
                 test_split["selection"] = test_selection.build()
             else:
                 test_split["selection"] = test_selection
+
+        if train_filter is not None:
+            if isinstance(train_filter, DSSFilterBuilder):
+                train_split["filter"] = train_filter.build()
+            else:
+                train_split["filter"] = train_filter
+        if test_filter is not None:
+            if isinstance(test_filter, DSSFilterBuilder):
+                test_split["filter"] = test_filter.build()
+            else:
+                test_split["filter"] = test_filter
 
 
 class DSSMLTaskSettings(object):

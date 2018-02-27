@@ -42,3 +42,25 @@ class DSSDatasetSelectionBuilder(object):
         return self
 
 
+class DSSFilterBuilder(object):
+    """
+    Builder for a "filter". In DSS, a filter is used to define a subset of rows for processing.
+    """
+    def __init__(self):
+        self.filter = {"enabled":False, "distinct":False, "expression":None, "uiData":{"mode":"CUSTOM"}}
+
+    def build(self):
+        """Returns the built filter dict"""
+        return self.filter
+
+    def with_distinct(self):
+        """Sets the filter to deduplicate"""
+        self.filter["distinct"] = True
+        return self
+
+    def with_formula(self, expression):
+        """Sets the filter to deduplicate"""
+        self.filter["enabled"] = True
+        self.filter["expression"] = expression
+        self.filter["uiData"]["mode"] = "CUSTOM"
+        return self
