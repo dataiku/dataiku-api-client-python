@@ -33,6 +33,24 @@ class DSSWiki(object):
         """
         return self.client._perform_json("PUT", "/projects/%s/wiki/" % (self.project_key), body=wiki)
 
+    def create_article(self, article_id, parent_id):
+        """
+        Create a wiki article
+
+        Args:
+            the article ID
+            the parent article ID or None if no parent (at wiki root scope)
+
+        Returns:
+            the newly created article definition with payload (article content)
+        """
+        body = {
+            "projectKey": self.project_key,
+            "id": article_id,
+            "parent": parent_id
+        }
+        return self.client._perform_json("POST", "/projects/%s/wiki/" % (self.project_key), body=body)
+
     def get_article(self, article_id):
         """
         Get a wiki article
