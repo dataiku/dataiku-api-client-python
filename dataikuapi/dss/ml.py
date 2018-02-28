@@ -159,11 +159,10 @@ class DSSMLTaskSettings(object):
         import copy
         new_per_feature = {}
         for (k, v) in self.mltask_settings["preprocessing"]["per_feature"].items():
-            if v["role"] == "TARGET":
-                continue
-            if only_of_type is not None and v["type"] != only_of_type:
-                continue
-            new_per_feature[k] = fn(k, copy.deepcopy(v))
+            if v["role"] == "TARGET" or (only_of_type is not None and v["type"] != only_of_type):
+                new_per_feature[k] = v
+            else:
+                new_per_feature[k] = fn(k, copy.deepcopy(v))
         self.mltask_settings["preprocessing"]["per_feature"] = new_per_feature
 
     def reject_feature(self, feature_name):
