@@ -96,6 +96,12 @@ class DSSWikiArticle(object):
         """
         return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, self.article_id), body=article_with_payload)
 
+    def delete(self):
+        """
+        Delete the article
+        """
+        return self.client._perform_json("DELETE", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
+
     ########################################################
     # Discussions
     ########################################################
