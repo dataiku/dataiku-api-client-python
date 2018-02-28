@@ -100,7 +100,7 @@ class DSSWikiArticle(object):
         """
         Delete the article
         """
-        return self.client._perform_json("DELETE", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
+        self.client._perform_empty("DELETE", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
 
     ########################################################
     # Discussions
