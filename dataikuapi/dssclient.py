@@ -23,6 +23,11 @@ class DSSClient(object):
         API keys can be managed in DSS on the project page or in the global settings.
 
         The API key will define which operations are allowed for the client.
+
+        :param str host: Base URI of the DSS Design/Automation node server (http://host:port/ or https://host:port/)
+        :param str api_key: Optional, API key for the service. Only required if the service has authentication
+        :param str tls_verify: Optional, can be False to disable CA checks, True to force enable, or be a file name containing the CA certs to be trusted
+        :param str tls_client_cert: Optional, set a TLS/SSL client certificate. Use a string tuple (cert,key) or a string for a combined certificate
         """
         self.api_key = api_key
         self.internal_ticket = internal_ticket

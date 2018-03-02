@@ -13,8 +13,10 @@ class APINodeClient(DSSBaseClient):
         :param str uri: Base URI of the DSS API node server (http://host:port/ or https://host:port/)
         :param str service_id: Identifier of the service to query
         :param str api_key: Optional, API key for the service. Only required if the service has authentication
+        :param str tls_verify: Optional, can be False to disable CA checks, True to force enable, or be a file name containing the CA certs to be trusted
+        :param str tls_client_cert: Optional, set a TLS/SSL client certificate. Use a string tuple (cert,key) or a string for a combined certificate
         """
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key, **kwargs)
 
     def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None, **kwargs):
         """

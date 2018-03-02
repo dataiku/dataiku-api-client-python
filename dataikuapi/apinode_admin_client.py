@@ -9,6 +9,11 @@ class APINodeAdminClient(DSSBaseClient):
     def __init__(self, uri, api_key, **kwargs):
         """
         Instantiate a new DSS API client on the given base uri with the given API key.
+
+        :param str uri: Base URI of the DSS API node server (http://host:port/ or https://host:port/)
+        :param str api_key: Optional, API key for the service. Only required if the service has authentication
+        :param str tls_verify: Optional, can be False to disable CA checks, True to force enable, or be a file name containing the CA certs to be trusted
+        :param str tls_client_cert: Optional, set a TLS/SSL client certificate. Use a string tuple (cert,key) or a string for a combined certificate
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "admin/api"), api_key, **kwargs)
 
