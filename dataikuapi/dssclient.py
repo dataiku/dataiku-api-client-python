@@ -16,7 +16,7 @@ from .utils import DataikuException
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket = None):
+    def __init__(self, host, api_key=None, internal_ticket=None, tls_verify=None, tls_client_cert=None):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -28,6 +28,10 @@ class DSSClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
+        if tls_verify is not None:
+            self._session.verify = tls_verify
+        if tls_client_cert is not None:
+            self._session.cert = tls_client_cert
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")

@@ -5,10 +5,14 @@ from requests.auth import HTTPBasicAuth
 from .utils import DataikuException
 
 class DSSBaseClient(object):
-    def __init__(self, base_uri, api_key=None, internal_ticket=None):
+    def __init__(self, base_uri, api_key=None, internal_ticket=None, tls_verify=None, tls_client_cert=None):
         self.api_key = api_key
         self.base_uri = base_uri
         self._session = Session()
+        if tls_verify is not None:
+            self._session.verify = tls_verify
+        if tls_client_cert is not None:
+            self._session.cert = tls_client_cert
 
     ########################################################
     # Internal Request handling

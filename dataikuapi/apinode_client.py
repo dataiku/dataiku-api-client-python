@@ -6,7 +6,7 @@ class APINodeClient(DSSBaseClient):
     This is an API client for the user-facing API of DSS API Node server (user facing API)
     """
 
-    def __init__(self, uri, service_id, api_key=None):
+    def __init__(self, uri, service_id, api_key=None, **kwargs):
         """
         Instantiate a new DSS API client on the given base URI with the given API key.
 
@@ -16,7 +16,7 @@ class APINodeClient(DSSBaseClient):
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
 
-    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None):
+    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None, **kwargs):
         """
         Predicts a single record on a DSS API node endpoint (standard or custom prediction)
 
