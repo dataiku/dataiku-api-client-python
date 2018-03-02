@@ -325,6 +325,116 @@ class DSSTrainedModelDetails(object):
                 "PUT", "/projects/%s/savedmodels/%s/versions/%s/user-meta" % (self.saved_model.project_key,
                     self.saved_model.sm_id, self.saved_model_version), body = um)
 
+class DSSTreeNode(object):
+    def __init__(self, tree, i):
+        self.tree = tree
+        self.i = i
+
+    def get_left_child(self):
+        """Gets a :class:`dataikuapi.dss.ml.DSSTreeNode` representing the left side of the tree node (or None)"""
+        left = self.tree.tree['leftChild'][self.i]
+        if left < 0:
+            return None
+        else:
+            return DSSTreeNode(self.tree, left)
+
+    def get_right_child(self):
+        """Gets a :class:`dataikuapi.dss.ml.DSSTreeNode` representing the right side of the tree node (or None)"""
+        left = self.tree.tree['rightChild'][self.i]
+        if left < 0:
+            return None
+        else:
+            return DSSTreeNode(self.tree, left)
+
+    def get_split_info(self):
+        """Gets the information on the split, as a dict"""
+        info = {}
+        features = self.tree.tree.get("feature", None)
+        probas = self.tree.tree.get("probas", None)
+        leftCategories = self.tree.tree.get("leftCategories", None)
+        impurities = self.tree.tree.get("impurity", None)
+        predicts = self.tree.tree.get("predict", None)
+        thresholds = self.tree.tree.get("threshold", None)
+        nSamples = self.tree.tree.get("nSamples", None)
+        info['feature'] = self.tree.feature_names[features[self.i]] if features is not None else None
+        info['probas'] = probas[self.i] if probas is not None else None
+        info['leftCategories'] = leftCategories[self.i] if leftCategories is not None else None
+        info['impurity'] = impurities[self.i] if impurities is not None else None
+        info['predict'] = predicts[self.i] if predicts is not None else None
+        info['nSamples'] = nSamples[self.i] if nSamples is not None else None
+        info['threshold'] = thresholds[self.i] if thresholds is not None else None
+        return info
+ 
+class DSSTree(object):
+    def __init__(self, tree, feature_names):
+        self.tree = tree
+        self.feature_names = feature_names
+
+    def get_raw(self):
+        """Gets the raw tree data structure"""
+        return self.tree
+
+    def get_root(self):
+        """Gets a :class:`dataikuapi.dss.ml.DSSTreeNode` representing the root of the tree"""
+        return DSSTreeNode(self, 0)
+
+class DSSTreeSet(object):
+    def __init__(self, trees):
+        self.trees = trees
+
+    def get_raw(self):
+        """Gets the raw trees data structure"""
+        return self.trees
+
+    def get_feature_names(self):
+        """Gets the list of feature names (after dummification) """
+        return self.trees["featureNames"]
+
+    def get_trees(self):
+        """Gets the list of trees as :class:`dataikuapi.dss.ml.DSSTree` """
+        return [DSSTree(t, self.trees["featureNames"]) for t in self.trees["trees"]]
+
+class DSSCoefficientPaths(object):
+    def __init__(self, paths):
+        self.paths = paths
+
+    def get_raw(self):
+        """Gets the raw paths data structure"""
+        return self.paths
+
+    def get_feature_names(self):
+        """Get the feature names (after dummification)"""
+        return self.paths['features']
+
+    def get_coefficient_path(self, feature, class_index=0):
+        """Get the path of the feature"""
+        i = self.paths['features'].index(feature)
+        if i >= 0 and i < len(self.paths['path'][0][class_index]):
+            n = len(self.paths['path'])
+            return [self.paths['path'][j][class_index][i] for j in range(0, n)]
+        else:
+            return None
+
+class DSSScatterPlots(object):
+    def __init__(self, scatters):
+        self.scatters = scatters
+
+    def get_raw(self):
+        """Gets the raw scatters data structure"""
+        return self.scatters
+
+    def get_feature_names(self):
+        """Get the feature names (after dummification)"""
+        feature_names = []
+        for k in self.scatters['features']:
+            feature_names.append(k)
+        return feature_names
+
+    def get_scatter_plot(self, feature_x, feature_y):
+        """Get the scatter plot between feature_x and feature_y"""
+        ret = {'cluster':self.scatters['cluster'], 'x':self.scatters['features'].get(feature_x, None), 'y':self.scatters['features'].get(feature_x, None)}
+        return ret
+
 class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained prediction model
@@ -402,6 +512,32 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :rtype: dict
         """
         return self.details["actualParams"]
+
+    def get_trees(self):
+        """
+        Gets the trees in the model (for tree-based models) 
+
+        :return: a DSSTreeSet object to interact with the trees
+        :rtype: :class:`dataikuapi.dss.ml.DSSTreeSet`
+        """
+        data = self.mltask.client._perform_json(
+            "GET", "/projects/%s/models/lab/%s/%s/models/%s/trees" % (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        if data is None:
+            raise ValueError("This model has no tree data")
+        return DSSTreeSet(data)
+
+    def get_coefficient_paths(self):
+        """
+        Gets the coefficient paths for Lasso models
+
+        :return: a DSSCoefficientPaths object to interact with the coefficient paths
+        :rtype: :class:`dataikuapi.dss.ml.DSSCoefficientPaths`
+        """
+        data = self.mltask.client._perform_json(
+            "GET", "/projects/%s/models/lab/%s/%s/models/%s/coef-paths" % (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        if data is None:
+            raise ValueError("This model has no coefficient paths")
+        return DSSCoefficientPaths(data)
 
 
 class DSSClustersFacts(object):
@@ -505,6 +641,18 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
         :rtype: dict
         """
         return self.details["actualParams"]
+
+    def get_scatter_plots(self):
+        """
+        Gets the cluster scatter plot data 
+
+        :return: a DSSScatterPlots object to interact with the scatter plots
+        :rtype: :class:`dataikuapi.dss.ml.DSSScatterPlots`
+        """
+        scatters = self.mltask.client._perform_json(
+            "GET", "/projects/%s/models/lab/%s/%s/models/%s/scatter-plots" % (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        return DSSScatterPlots(scatters)
+
 
 class DSSMLTask(object):
     """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
@@ -652,8 +800,8 @@ class DSSMLTask(object):
         
         :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
 
-        :return: A :class:`DSSTrainedPredictionModelDetails` representing the details of this trained model id
-        :rtype: :class:`DSSTrainedPredictionModelDetails`
+        :return: A :class:`DSSTrainedModelDetails` representing the details of this trained model id
+        :rtype: :class:`DSSTrainedModelDetails`
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
