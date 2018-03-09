@@ -30,11 +30,13 @@ class DSSConnection(object):
     def get_definition(self):
         """
         Get the connection's definition (type, name, params, usage restrictions)
-
         Note: this call requires an API key with admin rights
         
-        Returns:
-            the connection definition, as a JSON object
+        :returns: The connection definition, as a dict.
+
+        The exact structure of the returned dict is not documented and depends on the connection
+        type. Create connections using the DSS UI and call :meth:`get_definition` to see the 
+        fields that are in it.
         """
         return self.client._perform_json(
             "GET", "/admin/connections/%s" % self.name)
@@ -42,11 +44,12 @@ class DSSConnection(object):
     def set_definition(self, description):
         """
         Set the connection's definition.
-        
         Note: this call requires an API key with admin rights
         
-        Args:
-            definition: the definition for the connection, as a JSON object.            
+        You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+        not create a new dict.
+
+        :param dict the definition for the connection, as a dict.
         """
         return self.client._perform_json(
             "PUT", "/admin/connections/%s" % self.name,
@@ -58,12 +61,11 @@ class DSSConnection(object):
     
     def sync_root_acls(self):
         """
-        Resync root permissions on this connection path
-        
-        Returns:
-            a DSSFuture handle to the task of resynchronizing the permissions
-        
+        Resync root permissions on this connection path. This is only useful for HDFS connections
+        when DSS is in multi-user-security mode.
         Note: this call requires an API key with admin rights
+        
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
@@ -72,12 +74,11 @@ class DSSConnection(object):
     
     def sync_datasets_acls(self):
         """
-        Resync permissions on datasets in this connection path
-        
-        Returns:
-            a DSSFuture handle to the task of resynchronizing the permissions
-        
+        Resync permissions on datasets in this connection path. This is only useful for HDFS connections
+        when DSS is in multi-user-security mode.
         Note: this call requires an API key with admin rights
+        
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
@@ -87,7 +88,8 @@ class DSSConnection(object):
         
 class DSSUser(object):
     """
-    A handle for a user on the DSS instance
+    A handle for a user on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_user`
     """
     def __init__(self, client, login):
         self.client = client
@@ -100,7 +102,6 @@ class DSSUser(object):
     def delete(self):
         """
         Deletes the user
-
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
@@ -113,7 +114,6 @@ class DSSUser(object):
     def get_definition(self):
         """
         Get the user's definition (login, type, display name, permissions, ...)
-
         Note: this call requires an API key with admin rights
 
         :return: the user's definition, as a dict
@@ -124,23 +124,20 @@ class DSSUser(object):
     def set_definition(self, definition):
         """
         Set the user's definition.
-
         Note: this call requires an API key with admin rights
 
-        :param dict definition: the definition for the user, as a dict. You should
-            obtain the definition using get_definition, not create one.
-            The fields that can be changed are:
-                
-                * email
-                
-                * displayName
-                
-                * groups
-                
-                * userProfile
-                
-                * password
+        You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+        not create a new dict.
 
+        The fields that may be changed in a user definition are:
+
+                * email
+                * displayName
+                * groups
+                * userProfile
+                * password 
+
+        :param dict definition: the definition for the user, as a dict
         """
         return self.client._perform_json(
             "PUT", "/admin/users/%s" % self.login,
@@ -148,7 +145,8 @@ class DSSUser(object):
             
 class DSSGroup(object):
     """
-    A group on the DSS instance
+    A group on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_group`
     """
     def __init__(self, client, name):
         self.client = client
@@ -160,8 +158,7 @@ class DSSGroup(object):
     
     def delete(self):
         """
-        Delete the group
-
+        Deletes the group
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
@@ -175,11 +172,9 @@ class DSSGroup(object):
     def get_definition(self):
         """
         Get the group's definition (name, description, admin abilities, type, ldap name mapping)
-
         Note: this call requires an API key with admin rights
         
-        Returns:
-            the group definition, as a JSON object
+        :return: the group's definition, as a dict
         """
         return self.client._perform_json(
             "GET", "/admin/groups/%s" % self.name)
@@ -187,20 +182,22 @@ class DSSGroup(object):
     def set_definition(self, definition):
         """
         Set the group's definition.
-        
         Note: this call requires an API key with admin rights
-        
+
+        You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+        not create a new dict.
+
         Args:
-            definition: the definition for the group, as a JSON object.                        
+            definition: the definition for the group, as a dict
         """
         return self.client._perform_json(
             "PUT", "/admin/groups/%s" % self.name,
             body = definition)
-    
-        
+
 class DSSGeneralSettings(object):
     """
-    The general settings of the DSS instance
+    The general settings of the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`
     """
     def __init__(self, client):
         self.client = client
@@ -213,7 +210,6 @@ class DSSGeneralSettings(object):
     def save(self):
         """
         Save the changes that were made to the settings on the DSS instance
-
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty("PUT", "/admin/general-settings", body = self.settings)
@@ -421,7 +417,8 @@ class DSSGroupImpersonationRule(object):
 
 class DSSCodeEnv(object):
     """
-    A code env on the DSS instance
+    A code env on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_code_env`
     """
     def __init__(self, client, env_lang, env_name):
         self.client = client
@@ -434,8 +431,7 @@ class DSSCodeEnv(object):
     
     def delete(self):
         """
-        Delete the connection
-
+        Delete the code env
         Note: this call requires an API key with admin rights
         """
         resp = self.client._perform_json(
@@ -457,16 +453,14 @@ class DSSCodeEnv(object):
 
         Note: this call requires an API key with admin rights
         
-        Returns:
-            the code env definition, as a JSON object
+        :returns: the code env definition, as a dict
         """
         return self.client._perform_json(
             "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
 
     def set_definition(self, env):
         """
-        Set the code env's definition. The definition should come from a call to the get_definition()
-        method. 
+        Set the code env's definition. The definition should come from a call to :meth:`get_definition`
 
         Fields that can be updated in design node:
 
@@ -480,18 +474,13 @@ class DSSCodeEnv(object):
         * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
           env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
 
-
-
         Note: this call requires an API key with admin rights
         
-        :param data: a code env definition
-
-        Returns:
-            the updated code env definition, as a JSON object
+        :param dict data: a code env definition
+        :return: the updated code env definition, as a dict
         """
         return self.client._perform_json(
             "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=env)
-
     
     ########################################################
     # Code env actions
