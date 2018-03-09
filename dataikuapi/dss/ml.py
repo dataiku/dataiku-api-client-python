@@ -664,7 +664,8 @@ class DSSMLTask(object):
 
     def wait_guess_complete(self):
         """
-        Waits for guess to be complete. This should be called immediately after the creation of a new ML Task,
+        Waits for guess to be complete. This should be called immediately after the creation of a new ML Task
+        (if the ML Task was created with wait_guess_complete=False),
         before calling ``get_settings`` or ``train``
         """
         while True:
@@ -699,22 +700,49 @@ class DSSMLTask(object):
         else:
             return DSSClusteringMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
 
-    def start_train(self, session_name=None, session_description=None):
+    def train(self, session_name=None, session_description=None):
         """
-        Starts asynchronously a new train session for this ML Task.
-
+        Trains models for this ML Task
+        
         :param str session_name: name for the session
         :param str session_description: description for the session
 
-        This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
-        """
-        session_info = {
-                            "sessionName" : session_name,
-                            "sessionDescription" : session_description
-                        }
+        This method waits for train to complete. If you want to train asynchronously, use :meth:`start_train` and :meth:`wait_train_complete`
 
-        return self.client._perform_json(
-                "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
+        This method returns the list of trained model identifiers. It returns models that have been trained  for this train
+        session, not all trained models for this ML task. To get all identifiers for all models trained across all training sessions,
+        use :meth:`get_trained_models_ids`
+
+        These identifiers can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`
+
+        :return: A list of model identifiers
+        :rtype: list of strings
+        """
+        train_ret = self.start_train(session_name, session_description)
+        self.wait_train_complete()
+        return self.get_trained_models_ids(session_id = train_ret["sessionId"])
+
+    def ensemble(self, model_ids=[], method=None):
+        """
+        Create an ensemble model of a set of models
+        
+        :param list model_ids: A list of model identifiers
+        :param str method: the ensembling method. One of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
+
+        This method waits for the ensemble train to complete. If you want to train asynchronously, use :meth:`start_ensembling` and :meth:`wait_train_complete`
+
+        This method returns the identifier of the trained ensemble.
+        To get all identifiers for all models trained across all training sessions,
+        use :meth:`get_trained_models_ids`
+
+        This identifier can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`
+
+        :return: A model identifier
+        :rtype: string
+        """
+        train_ret = self.start_ensembling(model_ids, method)
+        self.wait_train_complete()
+        return train_ret
 
     def start_ensembling(self, model_ids=[], method=None):
         """
@@ -735,6 +763,24 @@ class DSSMLTask(object):
 
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/ensemble" % (self.project_key, self.analysis_id, self.mltask_id), body=ensembling_request)['id']
+
+
+    def start_train(self, session_name=None, session_description=None):
+        """
+        Starts asynchronously a new train session for this ML Task.
+
+        :param str session_name: name for the session
+        :param str session_description: description for the session
+
+        This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
+        """
+        session_info = {
+                            "sessionName" : session_name,
+                            "sessionDescription" : session_description
+                        }
+
+        return self.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
     def wait_train_complete(self):
         """

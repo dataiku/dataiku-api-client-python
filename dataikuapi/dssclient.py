@@ -596,19 +596,31 @@ class DSSClient(object):
     ########################################################
 
     def create_project_from_bundle_local_archive(self, archive_path):
+        """
+        Create a project from a bundle archive.
+        Warning: this method can only be used on an automation node.
+
+        :param string archive_path: Path on the local machine where the archive is
+        """
         return self._perform_json("POST",
                 "/projectsFromBundle/fromArchive",
                  params = { "archivePath" : osp.abspath(archive_path) })
 
     def create_project_from_bundle_archive(self, fp):
+        """
+        Create a project from a bundle archive (as a file object)
+        Warning: this method can only be used on an automation node.
+
+        :param string fp: A file-like object pointing to a bundle archive zip
+        """
         files = {'file': fp }
         return self._perform_json("POST",
                 "/projectsFromBundle/", files=files)
 
-
     def prepare_project_import(self, f):
         """
-        Prepares import of a project archive
+        Prepares import of a project archive.
+        Warning: this method can only be used on a design node.
 
         :param file-like fp: the input stream, as a file-like object
         :returns: a :class:`TemporaryImportHandle` to interact with the prepared import
@@ -624,6 +636,9 @@ class DSSClient(object):
     ########################################################
 
     def catalog_index_connections(self, connection_names=[], all_connections=False, indexing_mode="FULL"):
+        """
+        Triggers an indexing of multiple connections in the data catalog
+        """
         return self._perform_json("POST", "/catalog/index", body={
             "connectionNames": connection_names,
             "indexAllConnections": all_connections,

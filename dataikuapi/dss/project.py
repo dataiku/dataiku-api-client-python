@@ -133,25 +133,30 @@ class DSSProject(object):
         """
         Get a handle to interact with a specific dataset
        
-        Args:
-            dataset_name: the name of the desired dataset
+        :param string dataset_name: the name of the desired dataset
         
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_dataset(self, dataset_name, type,
                 params={}, formatType=None, formatParams={}):
         """
-        Create a new dataset in the project, and return a handle to interact with it
+        Create a new dataset in the project, and return a handle to interact with it.
+
+        The precise structure of ``params`` and ``formatParams`` depends on the specific dataset 
+        type and dataset format type. To know which fields exist for a given dataset type and format type,
+        create a dataset from the UI, and use :meth:`get_dataset` to retrieve the configuration
+        of the dataset and inspect it. Then reproduce a similar structure in the :meth:`create_dataset` call.
+
+        Not all settings of a dataset can be set at creation time (for example partitioning). After creation,
+        you'll have the ability to modify the dataset
         
-        Args:
-            dataset_name: the name for the new dataset
-            type: the type of the dataset
-            params: the parameters for the type, as a JSON object
-            formatType: an optional format to create the dataset with
-            formatParams: the parameters to the format, as a JSON object
+        :param string dataset_name: the name for the new dataset
+        :param string type: the type of the dataset
+        :param dict params: the parameters for the type, as a JSON object
+        :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
+        :param string formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets)
         
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
@@ -173,25 +178,20 @@ class DSSProject(object):
     ########################################################
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
-                                   ml_backend_type = "PY_MEMORY",
-                                   guess_policy = "DEFAULT"):
-
+                                  ml_backend_type = "PY_MEMORY",
+                                  guess_policy = "DEFAULT",
+                                  wait_guess_complete=True):
 
         """Creates a new prediction task in a new visual analysis lab
         for a dataset.
 
-
-        The returned ML task will be in 'guessing' state, i.e. analyzing
-        the input dataset to determine feature handling and algorithms.
-
-        You should wait for the guessing to be completed by calling
-        ``wait_guess_complete`` on the returned object before doing anything
-        else (in particular calling ``train`` or ``get_settings``)
-
         :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
         :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
         """
-
         obj = {
             "inputDataset" : input_dataset,
             "taskType" : "PREDICTION",
@@ -201,7 +201,10 @@ class DSSProject(object):
         }
 
         ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
-        return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
 
     def create_clustering_ml_task(self, input_dataset,
                                    ml_backend_type = "PY_MEMORY",
