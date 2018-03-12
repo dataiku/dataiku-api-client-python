@@ -270,7 +270,7 @@ class DSSProject(object):
         }
 
         ref = self.client._perform_json("POST", "/projects/%s/lab/" % self.project_key, body=obj)
-        return DSSAnalysis(self.client, self.project_key, ref["analysisId"])
+        return DSSAnalysis(self.client, self.project_key, ref["id"])
 
     def list_analyses(self):
         """
