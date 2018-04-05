@@ -662,6 +662,14 @@ class DSSMLTask(object):
         self.analysis_id = analysis_id
         self.mltask_id = mltask_id
 
+    def delete(self):
+        """
+        Delete the present ML task
+        """
+        return self.client._perform_json(
+                "DELETE", "/projects/%s/models/lab/%s/%s/" % (self.project_key, self.analysis_id, self.mltask_id))
+                
+
     def wait_guess_complete(self):
         """
         Waits for guess to be complete. This should be called immediately after the creation of a new ML Task
