@@ -34,6 +34,26 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
+    def create_deployment(self, deployment_id, service_id, infra_id, version):
+        """
+        Creates a deployment and returns the handle to interact with it. The returned deployment
+        is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.update`
+
+        :param str deployment_id: Identifier of the deployment to create
+        :param str service_id: Identifier of the API Service to target
+        :param str infra_id: Identifier of the deployment infrastructure to use
+        :param str version_id: Identifier of the API Service version to deploy
+        :rtype: :class:`DSSAPIDeployerDeployment`
+        """
+        settings = {
+            "deploymentId" : deployment_id,
+            "publishedServiceId" : service_id,
+            "infraId" : infra_id,
+            "version" : version
+        }
+        self.client._perform_json("POST", "/api-deployer/deployments", body=settings)
+        return self.get_deployment(deployment_id)
+
     def list_infras(self, as_objects = True):
         """
         Lists deployment infrastructures on the API Deployer
@@ -205,7 +225,7 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSAPIDeployerDeploymentSettings(self.client, self.deployment_id, settings)
 
-    def update(self):
+    def start_update(self):
         """
         Updates this deployment to try to match the actual state to the current settings
 
