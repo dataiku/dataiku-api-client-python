@@ -18,7 +18,7 @@ class APINodeClient(DSSBaseClient):
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key, **kwargs)
 
-    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None, **kwargs):
+    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None):
         """
         Predicts a single record on a DSS API node endpoint (standard or custom prediction)
 
