@@ -10,6 +10,7 @@ from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSS
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
+from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
 from .utils import DataikuException
 
@@ -630,6 +631,16 @@ class DSSClient(object):
                 "tmp-import.zip", f)
         return TemporaryImportHandle(self, val.json()["id"])
 
+    ########################################################
+    # API Deployer
+    ########################################################
+
+    def get_apideployer(self):
+        """Gets a handle to work with the API Deployer
+
+        :rtype: :class:`~dataikuapi.dss.apideployer.DSSAPIDeployer`
+        """
+        return DSSAPIDeployer(self)
 
     ########################################################
     # Data Catalog

@@ -472,10 +472,11 @@ class DSSProject(object):
 
     def create_api_service(self, service_id):
         """
-        Create a new API service, and returns a handle to interact with it
+        Create a new API service, and returns a handle to interact with it. The newly-created
+        service does not have any endpoint.
 
         :param str service_id: the ID of the API service to create
-        :returns: A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        :returns: A :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
         self.client._perform_empty(
             "POST", "/projects/%s/apiservices/%s" % (self.project_key, service_id))
@@ -484,16 +485,13 @@ class DSSProject(object):
 
     def get_api_service(self, service_id):
         """
-        Get a handle to interact with a specific API service
+        Get a handle to interact with a specific API Service from the API Designer
 
-        Args:
-            service_id: the ID of the desired API service
-
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        :param str service_id: The identifier of the API Designer API Service to retrieve
+        :returns: A handle to interact with this API Service
+        :rtype: :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
         return DSSAPIService(self.client, self.project_key, service_id)
-
 
     ########################################################
     # Bundles / Export (Design node)
