@@ -77,7 +77,7 @@ class DSSAPIDeployer(object):
         :param str infra_id: Identifier of the infra to get
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
-        return DSSAPIDeployerDeployment(self.client, infra_id)
+        return DSSAPIDeployerInfra(self.client, infra_id)
 
     def list_services(self, as_objects = True):
         """
@@ -148,15 +148,6 @@ class DSSAPIDeployerInfra(object):
 
         return DSSAPIDeployerInfraSettings(self.client, self.infra_id, settings)
 
-    def delete(self):
-        """
-        Deletes this infra
-
-        You may only delete a deployment if it is disabled and has been updated after disabling it.
-        """
-        return self.client._perform_empty(
-            "DELETE", "/api-deployer/infras/%s" % (self.infra_id))
-
 class DSSAPIDeployerInfraSettings(object):
     """The settings of an API Deployer Infra. 
 
@@ -194,7 +185,7 @@ class DSSAPIDeployerInfraSettings(object):
     def save(self):
         """Saves back these settings to the infra"""
         self.client._perform_empty(
-                "PUT", "/api-deployer/infra/%s/settings" % (self.infra_id),
+                "PUT", "/api-deployer/infras/%s/settings" % (self.infra_id),
                 body = self.settings)
 
 
