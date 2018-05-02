@@ -671,16 +671,3 @@ class DSSCluster(object):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-
-    def run_action(self, action_id):
-        """
-        Run an action on the cluster
-        """
-        resp = self.client._perform_json(
-            "POST", "/admin/clusters/%s/run-action/%s" % (self.cluster_id, action_id))
-        if resp is None:
-            raise Exception('Env update returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-        return resp
-
