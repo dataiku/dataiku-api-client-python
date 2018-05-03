@@ -249,7 +249,7 @@ class DSSAPIDeployerDeployment(object):
         You may only delete a deployment if it is disabled and has been updated after disabling it.
         """
         return self.client._perform_empty(
-            "DELETE", "/api-deployer/deployments/%s/actions/update" % (self.deployment_id))
+            "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
 
 
 class DSSAPIDeployerDeploymentSettings(object):
