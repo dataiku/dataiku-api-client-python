@@ -567,3 +567,96 @@ class DSSGlobalApiKey(object):
         return self.client._perform_empty(
             "PUT", "/admin/globalAPIKeys/%s" % self.key,
             body = definition)
+
+class DSSCluster(object):
+    """
+    A cluster on the DSS instance
+    """
+    def __init__(self, client, cluster_id):
+        self.client = client
+        self.cluster_id = cluster_id
+    
+    ########################################################
+    # Cluster deletion
+    ########################################################
+    
+    def delete(self):
+        """
+        Delete the cluster (not stopping it)
+        """
+        self.client._perform_empty(
+            "DELETE", "/admin/clusters/%s" % (self.cluster_id))
+
+        
+    ########################################################
+    # Cluster description
+    ########################################################
+    
+    def get_definition(self):
+        """
+        Get the cluster's definition
+        
+        Returns:
+            the cluster definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/clusters/%s" % (self.cluster_id))
+
+    def set_definition(self, cluster):
+        """
+        Set the cluster's definition. The definition should come from a call to the get_definition()
+        method. 
+
+        Fields that can be updated :
+
+        * cluster.permissions, cluster.usableByAll, cluster.owner
+        * cluster.params
+        
+        :param cluster: a cluster definition
+
+        Returns:
+            the updated cluster definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "PUT", "/admin/clusters/%s" % (self.cluster_id), body=cluster)
+
+    def get_status(self):
+        """
+        Get the cluster's status and usages
+        
+        Returns:
+            the cluster status, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/clusters/%s/status" % (self.cluster_id))
+
+   
+    ########################################################
+    # Cluster actions
+    ########################################################
+
+    def start(self):
+        """
+        Starts the cluster
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/clusters/%s/start" % (self.cluster_id))
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+
+    def stop(self):
+        """
+        Stops the cluster
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/clusters/%s/stop" % (self.cluster_id))
+        if resp is None:
+            raise Exception('Env update returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
