@@ -37,7 +37,7 @@ class DSSAPIDeployer(object):
     def create_deployment(self, deployment_id, service_id, infra_id, version):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
-        is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.update`
+        is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
 
         :param str deployment_id: Identifier of the deployment to create
         :param str service_id: Identifier of the API Service to target
@@ -231,7 +231,7 @@ class DSSAPIDeployerDeployment(object):
 
     def start_update(self):
         """
-        Updates this deployment to try to match the actual state to the current settings
+        Starts an asynchronous update of this deployment to try to match the actual state to the current settings
 
         :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call 
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
