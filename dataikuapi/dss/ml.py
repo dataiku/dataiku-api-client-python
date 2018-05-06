@@ -18,8 +18,8 @@ class PredictionSplitParamsHandler(object):
         Sets the train/test split to random splitting of an extract of a single dataset
 
         :param float train_ratio: Ratio of rows to use for train set. Must be between 0 and 1
-        :param object selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
-        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the ML Task will be used.
+        :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
+        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
         sp = self.mltask_settings["splitParams"]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
@@ -40,8 +40,8 @@ class PredictionSplitParamsHandler(object):
         Sets the train/test split to k-fold splitting of an extract of a single dataset
 
         :param int n_folds: number of folds. Must be greater than 0
-        :param object selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
-        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the ML Task will be used.
+        :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
+        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
         sp = self.mltask_settings["splitParams"]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
@@ -59,14 +59,14 @@ class PredictionSplitParamsHandler(object):
 
     def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
-        Sets the train/test split to explicit extract of one or two dataset
+        Sets the train/test split to explicit extract of one or two dataset(s)
 
-        :param object train_selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the train dataset. May be None (won't be changed)
-        :param object test_selection: A :class:`DSSDatasetSelectionBuilder` to build the settings of the extract of the test dataset. May be None (won't be changed)
+        :param object train_selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the train dataset. May be None (won't be changed)
+        :param object test_selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the test dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to use for the extracts. If None, the main dataset used to create the ML Task will be used.
         :param str test_dataset_name: Name of a second dataset to use for the test data extract. If None, both extracts are done from dataset_name
-        :param object train_filter: A :class:`DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
-        :param object test_filter: A :class:`DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
+        :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
+        :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
         sp = self.mltask_settings["splitParams"]
         if dataset_name is None:
@@ -206,8 +206,15 @@ class DSSMLTaskSettings(object):
         Gets the training settings for a particular algorithm. This returns a reference to the
         algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
 
-        All algorithms have at least an "enabled" setting. Other settings are algorithm-dependent. You can print
-        the returned object to learn more about the settings of each particular algorithm
+        This method returns a dictionary of the settings for this algorithm.
+        All algorithm dicts have at least an "enabled" key in the dictionary.
+        The 'enabled' key indicates whether this algorithm will be trained
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the 
+        algorithm. The precise keys for each algorithm are not all documented. You can print
+        the returned dictionary to learn more about the settings of each particular algorithm
+
+        Please refer to the documentation for details on available algorithms.
 
         :param str algorithm_name: Name (in capitals) of the algorithm.
         :return: A dict of the settings for an algorithm
@@ -220,7 +227,9 @@ class DSSMLTaskSettings(object):
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
-        Enables or disables an algorithm.
+        Enables or disables an algorithm based on its name.
+
+        Please refer to the documentation for details on available algorithms.
 
         :param str algorithm_name: Name (in capitals) of the algorithm.
         """
@@ -228,9 +237,9 @@ class DSSMLTaskSettings(object):
 
     def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
         """
-        Set a metric on a prediction ML task
+        Sets the score metric to optimize for a prediction ML Task
 
-        :param str metric: metric to use. Leave empty for custom_metric
+        :param str metric: metric to use. Leave empty to use a custom metric. You need to set the ``custom_metric`` value in that case
         :param str custom_metric: code of the custom metric
         :param bool custom_metric_greater_is_better: whether the custom metric is a score or a loss
         :param bool custom_metric_use_probas: whether to use the classes' probas or the predicted value (for classification)
@@ -778,7 +787,7 @@ class DSSMLTask(object):
         :param list model_ids: A list of model identifiers
         :param str method: the ensembling method (AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL)
 
-        This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
+        This returns immediately, before train is complete. To wait for train to complete, use :meth:`wait_train_complete`
 
         :return: the model identifier of the ensemble
         :rtype: string
@@ -794,7 +803,7 @@ class DSSMLTask(object):
 
     def wait_train_complete(self):
         """
-        Waits for train to be complete.
+        Waits for train to be complete (if started with :meth:`start_train`)
         """
         while True:
             status = self.get_status()
@@ -807,7 +816,7 @@ class DSSMLTask(object):
         """
         Gets the list of trained model identifiers for this ML task.
 
-        These identifiers can be used for ``get_trained_model_snippet`` and ``deploy_to_flow``
+        These identifiers can be used for :meth:`get_trained_model_snippet` and :meth:`deploy_to_flow`
 
         :return: A list of model identifiers
         :rtype: list of strings
@@ -824,7 +833,7 @@ class DSSMLTask(object):
 
     def get_trained_model_snippet(self, id=None, ids=None):
         """
-        Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:get_trained_model_details
+        Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:`get_trained_model_detail`
 
         :param str id: a model id
         :param list ids: a list of model ids
@@ -856,13 +865,12 @@ class DSSMLTask(object):
         
         :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
 
-        :return: A :class:`DSSTrainedModelDetails` representing the details of this trained model id
-        :rtype: :class:`DSSTrainedModelDetails`
+        :return: A :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails` representing the details of this trained model id
+        :rtype: :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails`
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
         snippet = self.get_trained_model_snippet(id)
-
 
         if "facts" in ret:
             return DSSTrainedClusteringModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
