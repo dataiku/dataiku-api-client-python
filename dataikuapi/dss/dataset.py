@@ -88,7 +88,7 @@ class DSSDataset(object):
         
         Returns:
             a dict object. For more information on available metadata, please see
-            https://doc.dataiku.com/dss/api/latest
+            https://doc.dataiku.com/dss/api/4.3/rest/
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name))

@@ -81,7 +81,7 @@ class DSSProject(object):
         Get the metadata attached to this project. The metadata contains label, description
         checklists, tags and custom metadata of the project.
 
-        For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest
+        For more information on available metadata, please see https://doc.dataiku.com/dss/api/4.3/rest/
         
         :returns: a dict object containing the project metadata.
         :rtype: dict

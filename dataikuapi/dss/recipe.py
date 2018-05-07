@@ -59,7 +59,7 @@ class DSSRecipe(object):
 
         Returns:
             a dict object. For more information on available metadata, please see
-            https://doc.dataiku.com/dss/api/latest
+            https://doc.dataiku.com/dss/api/4.3/rest/
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s/metadata" % (self.project_key, self.recipe_name))
