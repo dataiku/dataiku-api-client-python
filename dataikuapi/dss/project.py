@@ -97,6 +97,16 @@ class DSSProject(object):
         return self.client._perform_empty(
             "PUT", "/projects/%s/metadata" % self.project_key, body = metadata)
 
+    def get_settings(self):
+        """
+        Gets the settings of this project. This does not contain permissions. See :meth:`get_permissions`
+
+        :returns a handle to read, modify and save the settings
+        :rtype: :class:`DSSProjectSettings`
+        """
+        ret = self.client._perform_json("GET", "/projects/%s/settings" % self.project_key)
+        return DSSProjectSettings(self.client, self.project_key, ret)
+
     def get_permissions(self):
        """
        Get the permissions attached to this project
@@ -736,6 +746,42 @@ class DSSProject(object):
         return DSSMacro(self.client, self.project_key, runnable_type)
 
 
+class DSSProjectSettings(object):
+    """Settings of a DSS project"""
+
+    def __init__(self, client, project_key, settings):
+        """Do not call directly, use :meth:`DSSProject.get_settings`"""
+        self.client = client
+        self.project_key = project_key
+        self.settings = settings
+
+    def get_raw(self):
+        """Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        :rtype: dict
+        """
+        return self.settings
+
+    def set_cluster(self, cluster, fallback_cluster=None):
+        """Sets the Hadoop/Spark cluster used by this project
+
+        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project 
+                            to use the globally-defined cluster
+        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
+        """
+        if cluster is None:
+            self.settings["settings"]["cluster"]["clusterMode"] = "INHERIT"
+        else:
+            self.settings["settings"]["cluster"]["clusterMode"] = "EXPLICIT_CLUSTER"
+            self.settings["settings"]["cluster"]["clusterId"] = cluster
+            self.settings["settings"]["cluster"]["defaultClusterId"] = fallback_cluster
+
+    def save(self):
+        """Saves back the settings to the project"""
+
+        self.client._perform_empty("PUT", "/projects/%s/settings" % (self.project_key),
+                body = self.settings)
 
 class JobDefinitionBuilder(object):
     def __init__(self, project_key, job_type="NON_RECURSIVE_FORCED_BUILD"):
