@@ -570,9 +570,10 @@ class DSSGlobalApiKey(object):
 
 class DSSCluster(object):
     """
-    A cluster on the DSS instance
+    A handle to interact with a cluster on the DSS instance
     """
     def __init__(self, client, cluster_id):
+        """Do not call that directly, use :meth:`dataikuapi.dss.DSSClient.get_cluster`"""
         self.client = client
         self.cluster_id = cluster_id
     
@@ -582,7 +583,7 @@ class DSSCluster(object):
     
     def delete(self):
         """
-        Delete the cluster (not stopping it)
+        Deletes the cluster. This does not previously stop it.
         """
         self.client._perform_empty(
             "DELETE", "/admin/clusters/%s" % (self.cluster_id))
@@ -592,26 +593,26 @@ class DSSCluster(object):
     # Cluster description
     ########################################################
     
-    def get_definition(self):
+    def get_settings(self):
         """
-        Get the cluster's definition
-        
-        Returns:
-            the cluster definition, as a JSON object
+        Get the cluster's settings. This includes opaque data for the cluster if this is 
+        a started managed cluster.
+
+        The returned object can be used to save settings.
+
+        :returns: a :class:`DSSClusterSettings` object to interact with cluster settings
+        :rtype: :class:`DSSClusterSettings`
         """
-        return self.client._perform_json(
+        settings = self.client._perform_json(
             "GET", "/admin/clusters/%s" % (self.cluster_id))
+        return DSSClusterSettings(self.client, self.cluster_id, settings)
 
     def set_definition(self, cluster):
         """
         Set the cluster's definition. The definition should come from a call to the get_definition()
         method. 
 
-        Fields that can be updated :
-
-        * cluster.permissions, cluster.usableByAll, cluster.owner
-        * cluster.params
-        
+      
         :param cluster: a cluster definition
 
         Returns:
@@ -622,14 +623,13 @@ class DSSCluster(object):
 
     def get_status(self):
         """
-        Get the cluster's status and usages
-        
-        Returns:
-            the cluster status, as a JSON object
-        """
-        return self.client._perform_json(
-            "GET", "/admin/clusters/%s/status" % (self.cluster_id))
+        Get the cluster's status and usage
 
+        :returns: The cluster status, as a :class:`DSSClusterStatus` object
+        :rtype: :class:`DSSClusterStatus`
+        """
+        status = self.client._perform_json("GET", "/admin/clusters/%s/status" % (self.cluster_id))
+        return DSSClusterStatus(self.client, self.cluster_id, status)
    
     ########################################################
     # Cluster actions
@@ -637,26 +637,73 @@ class DSSCluster(object):
 
     def start(self):
         """
-        Starts the cluster
+        Starts or attaches the cluster.
+
+        This operation is only valid for a managed cluster.
         """
         resp = self.client._perform_json(
-            "POST", "/admin/clusters/%s/start" % (self.cluster_id))
+            "POST", "/admin/clusters/%s/actions/start" % (self.cluster_id))
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
-
 
     def stop(self):
         """
-        Stops the cluster
+        Stops or detaches the cluster
+
+        This operation is only valid for a managed cluster.
         """
         resp = self.client._perform_json(
-            "POST", "/admin/clusters/%s/stop" % (self.cluster_id))
+            "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id))
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
+class DSSClusterSettings(object):
+    def __init__(self, client, cluster_id, settings):
+        """Do not call directly, use :meth:`DSSCluster.get_settings`"""
+        self.client = client
+        self.cluster_id = cluster_id
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        Fields that can be updated:
+         - permissions, usableByAll, owner
+         - params
+        """
+        return self.settings
+
+    def get_plugin_data(self):
+        """
+        If this is a managed attached cluster, returns the opaque data returned by the cluster's start
+        operation. Else, returns None.
+
+        You should generally not modify this
+        """
+        return self.settings.get("data", None)
+
+    def save(self):
+        """Saves back the settings to the cluster"""
+        return self.client._perform_json(
+            "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
+
+class DSSClusterStatus(object):
+    def __init__(self, client, cluster_id, settings):
+        """Do not call directly, use :meth:`DSSCluster.get_Status`"""
+        self.client = client
+        self.cluster_id = cluster_id
+        self.status = status
+
+    def get_raw(self):
+        """
+        Gets the whole status as a raw dictionary.
+        """
+        return self.status
