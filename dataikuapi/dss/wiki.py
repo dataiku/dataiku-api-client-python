@@ -1,5 +1,6 @@
 from .discussion import DSSObjectDiscussions
 import json
+import urllib
 
 class DSSWiki(object):
     """
@@ -82,7 +83,7 @@ class DSSWikiArticle(object):
         Returns:
             the article definition with payload (article content)
         """
-        return self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
+        return self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)))
 
     def set(self, article_with_payload):
         """
@@ -94,13 +95,13 @@ class DSSWikiArticle(object):
         Returns:
             the updated article
         """
-        return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, self.article_id), body=article_with_payload)
+        return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)), body=article_with_payload)
 
     def delete(self):
         """
         Delete the article
         """
-        self.client._perform_empty("DELETE", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
+        self.client._perform_empty("DELETE", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)))
 
     ########################################################
     # Discussions
