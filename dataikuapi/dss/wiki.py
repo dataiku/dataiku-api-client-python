@@ -72,6 +72,8 @@ class DSSWikiArticle(object):
         self.client = client
         self.project_key = project_key
         self.article_id = article_id
+        if isinstance(self.article_id, unicode):
+            self.article_id = self.article_id.encode('utf-8')
 
     ##########################
     # Article definition
@@ -83,7 +85,8 @@ class DSSWikiArticle(object):
         Returns:
             the article definition with payload (article content)
         """
-        return self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote_plus(self.article_id.encode('utf-8'))))
+        print("/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)))
+        return self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)))
 
     def set(self, article_with_payload):
         """
@@ -95,13 +98,13 @@ class DSSWikiArticle(object):
         Returns:
             the updated article
         """
-        return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote_plus(self.article_id.encode('utf-8'))), body=article_with_payload)
+        return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)), body=article_with_payload)
 
     def delete(self):
         """
         Delete the article
         """
-        self.client._perform_empty("DELETE", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote_plus(self.article_id.encode('utf-8'))))
+        self.client._perform_empty("DELETE", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)))
 
     ########################################################
     # Discussions
