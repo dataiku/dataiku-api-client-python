@@ -59,7 +59,7 @@ class DSSFilterBuilder(object):
         return self
 
     def with_formula(self, expression):
-        """Sets the filter to deduplicate"""
+        """Sets the formula (DSS formula) used to filter rows"""
         self.filter["enabled"] = True
         self.filter["expression"] = expression
         self.filter["uiData"]["mode"] = "CUSTOM"
