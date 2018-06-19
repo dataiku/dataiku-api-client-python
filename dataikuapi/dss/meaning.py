@@ -17,8 +17,7 @@ class DSSMeaning(object):
 
         Note: this call requires an API key with admin rights
 
-        Returns:
-            the meaning definition, as a JSON object
+        :returns: the meaning definition, as a dict. The precise structure of the dict depends on the meaning type and is not documented.
         """
         return self.client._perform_json(
             "GET", "/meanings/%s" % self.id)
@@ -29,8 +28,7 @@ class DSSMeaning(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            definition: the definition for the meaning, as a JSON object
+        :param dict definition: the definition for the meaning, as a dict. You should only ``set_definition`` on a modified version of a dict you retrieved via :py:meth:`get_definition`
         """
         return self.client._perform_json(
             "PUT", "/meanings/%s" % self.id,

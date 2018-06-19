@@ -22,7 +22,7 @@ class DSSDataset(object):
         """
         Delete the dataset
 
-        :param drop_data: Should the data of the dataset be dropped
+        :param bool drop_data: Should the data of the dataset be dropped
         """
         return self.client._perform_empty(
             "DELETE", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name), params = {

@@ -11,6 +11,7 @@ from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
+from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
 from .utils import DataikuException
 
@@ -46,8 +47,11 @@ class DSSClient(object):
         """
         List the currently-running long tasks (a.k.a futures)
 
-        Returns:
-            list of futures. Each object contains at least a 'jobId' field
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSFuture`
+        :param boolean all_users: if True, returns futures for all users (requires admin privileges). Else, only returns futures for the user associated with the current authentication context (if any)
+
+        :return: list of futures. if as_objects is True, each future in the list is a :class:`dataikuapi.dss.future.DSSFuture`. Else, each future in the list is a dict. Each dict contains at least a 'jobId' field
+        :rtype: list of :class:`dataikuapi.dss.future.DSSFuture` or list of dict
         """
         list = self._perform_json("GET", "/futures/", params={"withScenarios":False, "withNotScenarios":True, 'allUsers' : all_users})
         if as_objects:
@@ -59,21 +63,21 @@ class DSSClient(object):
         """
         List the running scenarios
 
-        Returns:
-            the list of scenarios, each one as a JSON object containing a jobId field for the
-            future hosting the scenario run, and a payload field with scenario identifiers
+        :param boolean all_users: if True, returns scenarios for all users (requires admin privileges). Else, only returns scenarios for the user associated with the current authentication context (if any)
+
+        :return: list of running scenarios, each one as a dict containing at least a "jobId" field for the
+            future hosting the scenario run, and a "payload" field with scenario identifiers
+        :rtype: list of dicts
         """
         return self._perform_json("GET", "/futures/", params={"withScenarios":True, "withNotScenarios":False, 'allUsers' : all_users})
 
     def get_future(self, job_id):
         """
-        Get a handle to interact with a specific long task (a.k.a future).
+        Get a handle to interact with a specific long task (a.k.a future). This notably allows aborting this future.
 
-        Args:
-            job_id: the job_id key of the desired future
-
-        Returns:
-            A :class:`dataikuapi.dss.future.DSSFuture`
+        :param str job_id: the identifier of the desired future (which can be returned by :py:meth:`list_futures` or :py:meth:`list_running_scenarios`)
+        :returns: A handle to interact the future
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         return DSSFuture(self, job_id)
 
@@ -84,10 +88,12 @@ class DSSClient(object):
             
     def list_running_notebooks(self, as_objects=True):
         """
-        List the currently-running notebooks
+        List the currently-running Jupyter notebooks
 
-        Returns:
-            list of notebooks. Each object contains at least a 'name' field
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSNotebook`
+
+        :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
+        :rtype: list of :class:`dataikuapi.dss.notebook.DSSNotebook` or list of dict
         """
         list = self._perform_json("GET", "/admin/notebooks/")
         if as_objects:
@@ -104,8 +110,8 @@ class DSSClient(object):
         """
         List the project keys (=project identifiers).
 
-        Returns:
-            list of identifiers (=strings)
+        :returns: list of project keys identifiers, as strings
+        :rtype: list of strings
         """
         return [x["projectKey"] for x in self._perform_json("GET", "/projects/")]
 
@@ -113,8 +119,8 @@ class DSSClient(object):
         """
         List the projects
 
-        Returns:
-            list of objects. Each object contains at least a 'projectKey' field
+        :returns: a list of projects, each as a dict. Each dictcontains at least a 'projectKey' field
+        :rtype: list of dicts
         """
         return self._perform_json("GET", "/projects/")
 
@@ -122,28 +128,24 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific project.
 
-        Args:
-            project_key: the project key of the desired project
-
-        Returns:
-            A :class:`dataikuapi.dss.project.DSSProject`
+        :param str project_key: the project key of the desired project
+        :returns: A :class:`dataikuapi.dss.project.DSSProject` to interact with this project
         """
         return DSSProject(self, project_key)
 
     def create_project(self, project_key, name, owner, description=None, settings=None):
         """
-        Create a project, and return a project handle to interact with it.
+        Creates a new project, and return a project handle to interact with it.
 
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with admin rights or the rights to create a project
 
-        Args:
-            project_key: the identifier to use for the project.
-            name: the name for the project.
-            owner: the owner of the project.
-            description: a short description for the project.
+        :param str project_key: the identifier to use for the project. Must be globally unique
+        :param str name: the display name for the project.
+        :param str owner: the login of the owner of the project.
+        :param str description: a description for the project.
+        :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         
-        Returns:
-            A :class:`dataikuapi.dss.project.DSSProject` project handle
+        :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
         resp = self._perform_text(
                "POST", "/projects/", body={
@@ -163,20 +165,16 @@ class DSSClient(object):
         """
         List the installed plugins
 
-        Returns:
-            list of objects. Each object contains at least a 'projectKey' field
+        :returns: list of dict. Each dict contains at least a 'id' field
         """
         return self._perform_json("GET", "/plugins/")
 
     def get_plugin(self, plugin_id):
         """
-        Get a handle to interact with a specific dev plugin.
+        Get a handle to interact with a specific plugin (plugin in "development" mode only).
 
-        Args:
-            plugin_id: the identifier of the desired plugin
-            
-        Returns:
-            A :class:`dataikuapi.dss.project.DSSPlugin`
+        :param str plugin_id: the identifier of the desired plugin
+        :returns: A :class:`dataikuapi.dss.project.DSSPlugin`
         """
         return DSSPlugin(self, plugin_id)
 
@@ -191,17 +189,15 @@ class DSSClient(object):
         passing a connection name, or by passing a database name, or by passing a dataset full name
         (whose connection is then used to retrieve the database)
         
-        Args:
-            query: the query to run
-            connection: the connection on which the query should be run (exclusive of database and dataset_full_name)
-            database: the database on which the query should be run (exclusive of connection and dataset_full_name)
-            dataset_full_name: the dataset on the connection of which the query should be run (exclusive of connection and database)
-            pre_queries: (optional) array of queries to run before the query
-            post_queries: (optional) array of queries to run after the query
-            type: the type of query : either 'sql', 'hive' or 'impala'
+        :param str query: the query to run
+        :param str connection: the connection on which the query should be run (exclusive of database and dataset_full_name)
+        :param str database: the database on which the query should be run (exclusive of connection and dataset_full_name)
+        :param str dataset_full_name: the dataset on the connection of which the query should be run (exclusive of connection and database)
+        :param list pre_queries: (optional) array of queries to run before the query
+        :param list post_queries: (optional) array of queries to run after the query
+        :param str type: the type of query : either 'sql', 'hive' or 'impala'
         
-        Returns:
-            A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
+        :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
         return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf)
 
@@ -215,7 +211,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of users, as an array of dicts.
+        :return: A list of users, as a list of dicts
+        :rtype: list of dicts
         """
         return self._perform_json(
             "GET", "/admin/users/")
@@ -266,8 +263,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
         
-        Returns:
-            A list of groups, as an array of JSON objects
+        :returns: A list of groups, as an list of dicts
+        :rtype: list of dicts
         """
         return self._perform_json(
             "GET", "/admin/groups/")
@@ -276,11 +273,8 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific group
         
-        Args:
-            name: the name of the desired group
-        
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSGroup` group  handle
+        :param str name: the name of the desired group
+        :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
         """
         return DSSGroup(self, name)
 
@@ -290,13 +284,11 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            name: the name of the new group
-            description: a description of the new group
-            source_type: the type of the new group. Admissible values are 'LOCAL', 'LDAP', 'SAAS'
+        :param str name: the name of the new group
+        :param str description: (optional) a description of the new group
+        :param source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
             
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSGroup` group handle
+        :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
         """
         resp = self._perform_text(
                "POST", "/admin/groups/", body={
@@ -316,8 +308,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
         
-        Returns:
-            All connections, as a map of connection name to connection definition
+        :returns: All connections, as a dict of connection name to connection definition
+        :rtype: :dict
         """
         return self._perform_json(
             "GET", "/admin/connections/")
@@ -326,11 +318,8 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific connection
         
-        Args:
-            name: the name of the desired connection
-        
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSConnection` connection  handle
+        :param str name: the name of the desired connection
+        :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
         return DSSConnection(self, name)
 
@@ -349,7 +338,6 @@ class DSSClient(object):
             of names of the groups whose users are allowed to use the new connection
         
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
-        
         """
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
@@ -371,8 +359,7 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
         
-        Returns:
-            List code envs (name, type, language)
+        :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
         return self._perform_json(
             "GET", "/admin/code-envs/")
@@ -381,11 +368,8 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific code env
         
-        Args:
-            name: the name of the desired code env
-        
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
+        :param str name: the name of the desired code env
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
         """
         return DSSCodeEnv(self, env_lang, env_name)
 
@@ -395,13 +379,11 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :param env_lang: the language (Python, R) of the new code env
+        :param env_lang: the language (PYTHON or R) of the new code env
         :param env_name: the name of the new code env
         :param deployment_mode: the type of the new code env
         :param params: the parameters of the new code env, as a JSON object
-        
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
-        
         """
         params = params if params is not None else {}
         params['deploymentMode'] = deployment_mode
@@ -423,8 +405,7 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Returns:
-            All global API keys, as a list
+        :returns: All global API keys, as a list of dicts
         """
         return self._perform_json(
             "GET", "/admin/globalAPIKeys/")
@@ -433,11 +414,8 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific Global API key
 
-        Args:
-            key: the secret key of the desired API key
-
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        :param str key: the secret key of the desired API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         return DSSGlobalApiKey(self, key)
 
@@ -447,13 +425,10 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            label: the label of the new API key
-            description: the description of the new API key
-            admin: has the new API key admin rights (True or False)
-
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str admin: has the new API key admin rights (True or False)
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         resp = self._perform_json(
             "POST", "/admin/globalAPIKeys/", body={
@@ -482,8 +457,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Returns:
-            A list of meanings, as an array of JSON objects
+        :returns: A list of meanings. Each meaning is a dict
+        :rtype: list of dicts
         """
         return self._perform_json(
             "GET", "/meanings/")
@@ -494,11 +469,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            id: the ID of the desired meaning
-
-        Returns:
-            A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
+        :param str id: the ID of the desired meaning
+        :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
         """
         return DSSMeaning(self, id)
 
@@ -559,7 +531,7 @@ class DSSClient(object):
         List all available log files on the DSS instance
         This call requires an API key with admin rights
 
-        :returns: A list of log names
+        :returns: A list of log file names
         """
         return self._perform_json(
             "GET", "/admin/logs/")
@@ -626,19 +598,31 @@ class DSSClient(object):
     ########################################################
 
     def create_project_from_bundle_local_archive(self, archive_path):
+        """
+        Create a project from a bundle archive.
+        Warning: this method can only be used on an automation node.
+
+        :param string archive_path: Path on the local machine where the archive is
+        """
         return self._perform_json("POST",
                 "/projectsFromBundle/fromArchive",
                  params = { "archivePath" : osp.abspath(archive_path) })
 
     def create_project_from_bundle_archive(self, fp):
+        """
+        Create a project from a bundle archive (as a file object)
+        Warning: this method can only be used on an automation node.
+
+        :param string fp: A file-like object pointing to a bundle archive zip
+        """
         files = {'file': fp }
         return self._perform_json("POST",
                 "/projectsFromBundle/", files=files)
 
-
     def prepare_project_import(self, f):
         """
-        Prepares import of a project archive
+        Prepares import of a project archive.
+        Warning: this method can only be used on a design node.
 
         :param file-like fp: the input stream, as a file-like object
         :returns: a :class:`TemporaryImportHandle` to interact with the prepared import
@@ -648,12 +632,25 @@ class DSSClient(object):
                 "tmp-import.zip", f)
         return TemporaryImportHandle(self, val.json()["id"])
 
+    ########################################################
+    # API Deployer
+    ########################################################
+
+    def get_apideployer(self):
+        """Gets a handle to work with the API Deployer
+
+        :rtype: :class:`~dataikuapi.dss.apideployer.DSSAPIDeployer`
+        """
+        return DSSAPIDeployer(self)
 
     ########################################################
     # Data Catalog
     ########################################################
 
     def catalog_index_connections(self, connection_names=[], all_connections=False, indexing_mode="FULL"):
+        """
+        Triggers an indexing of multiple connections in the data catalog
+        """
         return self._perform_json("POST", "/catalog/index", body={
             "connectionNames": connection_names,
             "indexAllConnections": all_connections,

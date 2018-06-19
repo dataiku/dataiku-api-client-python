@@ -13,13 +13,16 @@ from .notebook import DSSNotebook
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
+from .ml import DSSMLTask
+from .analysis import DSSAnalysis
 from dataikuapi.utils import DataikuException
 
 
 class DSSProject(object):
     """
-    A handle to interact with a project on the DSS instance. Do not create this class directly,
-    instead use ``client.api_client`` where ``client`` is a DSSClient
+    A handle to interact with a project on the DSS instance.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project``
     """
     def __init__(self, client, project_key):
        self.client = client
@@ -29,14 +32,18 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self):
+    def delete(self, drop_data=False):
         """
         Delete the project
 
         This call requires an API key with admin rights
+
+        :param bool drop_data: Should the data of managed datasets be dropped
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s" % self.project_key)
+            "DELETE", "/projects/%s" % self.project_key, params = {
+                "dropData": drop_data
+            })
 
     ########################################################
     # Project export
@@ -45,7 +52,10 @@ class DSSProject(object):
     def get_export_stream(self, options = {}):
         """
         Return a stream of the exported project
-        You need to close the stream after download. Failure to do so will reuse in the DSSClient becoming unusable.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: a file-like obbject that is a stream of the export archive
+        :rtype: file-like
         """
         return self.client._perform_raw(
             "POST", "/projects/%s/export" % self.project_key, body=options).raw
@@ -54,7 +64,7 @@ class DSSProject(object):
         """
         Export the project to a file
         
-        :param path: the path of the file in which the exported project should be saved
+        :param str path: the path of the file in which the exported project should be saved
         """
         with open(path, 'wb') as f:
             export_stream = self.client._perform_raw(
@@ -71,22 +81,20 @@ class DSSProject(object):
     def get_metadata(self):
         """
         Get the metadata attached to this project. The metadata contains label, description
-        checklists, tags and custom metadata of the project
+        checklists, tags and custom metadata of the project.
+
+        For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest
         
-        Returns:
-            a dict object. For more information on available metadata, please see
-            https://doc.dataiku.com/dss/api/latest
+        :returns: a dict object containing the project metadata.
+        :rtype: dict
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/metadata" % self.project_key)
+        return self.client._perform_json("GET", "/projects/%s/metadata" % self.project_key)
 
     def set_metadata(self, metadata):
         """
         Set the metadata on this project.
         
-        Args:
-            metadata: the new state of the metadata for the project. You should only set a metadata object 
-            that has been retrieved using the get_metadata call.
+        :param metadata dict: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_empty(
             "PUT", "/projects/%s/metadata" % self.project_key, body = metadata)
@@ -95,19 +103,16 @@ class DSSProject(object):
        """
        Get the permissions attached to this project
 
-        Returns:
-            a JSON object, containing the owner and the permissions, as a list of pairs of group name
-            and permission type
+        :returns: A dict containing the owner and the permissions, as a list of pairs of group name and permission type
        """
        return self.client._perform_json(
           "GET", "/projects/%s/permissions" % self.project_key)
 
     def set_permissions(self, permissions):
         """
-        Set the permissions on this project
+        Sets the permissions on this project
         
-        Args:
-            permissions: a JSON object of the same structure as the one returned by get_permissions call
+        :param permissions dict: a permissions object with the same structure as the one returned by :meth:`get_permissions` call
         """
         return self.client._perform_empty(
             "PUT", "/projects/%s/permissions" % self.project_key, body = permissions)
@@ -120,8 +125,8 @@ class DSSProject(object):
         """
         List the datasets in this project
         
-        Returns:
-            the list of the datasets, each one as a JSON object
+        :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
+        :rtype: list of dicts
         """
         return self.client._perform_json(
             "GET", "/projects/%s/datasets/" % self.project_key)
@@ -130,25 +135,30 @@ class DSSProject(object):
         """
         Get a handle to interact with a specific dataset
        
-        Args:
-            dataset_name: the name of the desired dataset
+        :param string dataset_name: the name of the desired dataset
         
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_dataset(self, dataset_name, type,
                 params={}, formatType=None, formatParams={}):
         """
-        Create a new dataset in the project, and return a handle to interact with it
+        Create a new dataset in the project, and return a handle to interact with it.
+
+        The precise structure of ``params`` and ``formatParams`` depends on the specific dataset 
+        type and dataset format type. To know which fields exist for a given dataset type and format type,
+        create a dataset from the UI, and use :meth:`get_dataset` to retrieve the configuration
+        of the dataset and inspect it. Then reproduce a similar structure in the :meth:`create_dataset` call.
+
+        Not all settings of a dataset can be set at creation time (for example partitioning). After creation,
+        you'll have the ability to modify the dataset
         
-        Args:
-            dataset_name: the name for the new dataset
-            type: the type of the dataset
-            params: the parameters for the type, as a JSON object
-            formatType: an optional format to create the dataset with
-            formatParams: the parameters to the format, as a JSON object
+        :param string dataset_name: the name for the new dataset
+        :param string type: the type of the dataset
+        :param dict params: the parameters for the type, as a JSON object
+        :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
+        :param string formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets)
         
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
@@ -165,6 +175,125 @@ class DSSProject(object):
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
+    ########################################################
+    # ML
+    ########################################################
+
+    def create_prediction_ml_task(self, input_dataset, target_variable,
+                                  ml_backend_type = "PY_MEMORY",
+                                  guess_policy = "DEFAULT",
+                                  wait_guess_complete=True):
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        """
+        obj = {
+            "inputDataset" : input_dataset,
+            "taskType" : "PREDICTION",
+            "targetVariable" : target_variable,
+            "backendType": ml_backend_type,
+            "guessPolicy":  guess_policy
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
+
+    def create_clustering_ml_task(self, input_dataset,
+                                   ml_backend_type = "PY_MEMORY",
+                                   guess_policy = "KMEANS"):
+
+
+        """Creates a new clustering task in a new visual analysis lab
+        for a dataset.
+
+
+        The returned ML task will be in 'guessing' state, i.e. analyzing
+        the input dataset to determine feature handling and algorithms.
+
+        You should wait for the guessing to be completed by calling
+        ``wait_guess_complete`` on the returned object before doing anything
+        else (in particular calling ``train`` or ``get_settings``)
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
+        """
+
+        obj = {
+            "inputDataset" : input_dataset,
+            "taskType" : "CLUSTERING",
+            "backendType": ml_backend_type,
+            "guessPolicy":  guess_policy
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
+        return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+    def list_ml_tasks(self):
+        """
+        List the ML tasks in this project
+        
+        Returns:
+            the list of the ML tasks summaries, each one as a JSON object
+        """
+        return self.client._perform_json("GET", "/projects/%s/models/lab/" % self.project_key)
+
+    def get_ml_task(self, analysis_id, mltask_id):
+        """
+        Get a handle to interact with a specific ML task
+       
+        Args:
+            analysis_id: the identifier of the visual analysis containing the desired ML task
+            mltask_id: the identifier of the desired ML task 
+        
+        Returns:
+            A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle
+        """
+        return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
+
+
+    def create_analysis(self, input_dataset):
+        """
+        Creates a new visual analysis lab for a dataset.
+
+        """
+
+        obj = {
+            "inputDataset" : input_dataset
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/lab/" % self.project_key, body=obj)
+        return DSSAnalysis(self.client, self.project_key, ref["id"])
+
+    def list_analyses(self):
+        """
+        List the visual analyses in this project
+        
+        Returns:
+            the list of the visual analyses summaries, each one as a JSON object
+        """
+        return self.client._perform_json("GET", "/projects/%s/lab/" % self.project_key)
+
+    def get_analysis(self, analysis_id):
+        """
+        Get a handle to interact with a specific visual analysis
+       
+        Args:
+            analysis_id: the identifier of the desired visual analysis
+        
+        Returns:
+            A :class:`dataikuapi.dss.analysis.DSSAnalysis` visual analysis handle
+        """
+        return DSSAnalysis(self.client, self.project_key, analysis_id)
 
     ########################################################
     # Saved models
@@ -343,18 +472,28 @@ class DSSProject(object):
         return self.client._perform_json(
             "GET", "/projects/%s/apiservices/" % self.project_key)
 
-    def get_api_service(self, service_id):
+    def create_api_service(self, service_id):
         """
-        Get a handle to interact with a specific API service
+        Create a new API service, and returns a handle to interact with it. The newly-created
+        service does not have any endpoint.
 
-        Args:
-            service_id: the ID of the desired API service
-
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        :param str service_id: the ID of the API service to create
+        :returns: A :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
+        self.client._perform_empty(
+            "POST", "/projects/%s/apiservices/%s" % (self.project_key, service_id))
         return DSSAPIService(self.client, self.project_key, service_id)
 
+
+    def get_api_service(self, service_id):
+        """
+        Get a handle to interact with a specific API Service from the API Designer
+
+        :param str service_id: The identifier of the API Designer API Service to retrieve
+        :returns: A handle to interact with this API Service
+        :rtype: :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        """
+        return DSSAPIService(self.client, self.project_key, service_id)
 
     ########################################################
     # Bundles / Export (Design node)
