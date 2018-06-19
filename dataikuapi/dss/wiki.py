@@ -99,6 +99,18 @@ class DSSWikiArticle(object):
         """
         return self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, urllib.quote(self.article_id)), body=article_with_payload)
 
+    def upload(self, fp):
+        """
+        Upload an attachment file and attaches it to the article
+
+        Args:
+            A file-like object that represents the upload file
+
+        Returns:
+            the updated article
+        """
+        return self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, urllib.quote(self.article_id)), files={"file":fp})
+
     def delete(self):
         """
         Delete the article
