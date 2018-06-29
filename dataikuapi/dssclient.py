@@ -6,7 +6,7 @@ from requests.auth import HTTPBasicAuth
 from .dss.future import DSSFuture
 from .dss.project import DSSProject
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey
+from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
@@ -393,6 +393,55 @@ class DSSClient(object):
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return DSSCodeEnv(self, env_lang, env_name)
+
+    ########################################################
+    # Clusters
+    ########################################################
+
+    def list_clusters(self):
+        """
+        List all clusters setup on the DSS instance
+
+        Returns:
+            List clusters (name, type, state)
+        """
+        return self._perform_json(
+            "GET", "/admin/clusters/")
+
+    def get_cluster(self, cluster_id):
+        """
+        Get a handle to interact with a specific cluster
+        
+        Args:
+            name: the name of the desired cluster
+        
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
+        """
+        return DSSCluster(self, cluster_id)
+
+    def create_cluster(self, cluster_name, cluster_type='manual', params=None):
+        """
+        Create a cluster, and return a handle to interact with it
+
+        :param cluster_name: the name of the new cluster
+        :param cluster_type: the type of the new cluster
+        :param params: the parameters of the new cluster, as a JSON object
+        
+        :returns: A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
+        
+        """
+        definition = {}
+        definition['name'] = cluster_name
+        definition['type'] = cluster_type
+        definition['params'] = params if params is not None else {}
+        resp = self._perform_json(
+               "POST", "/admin/clusters/", body=definition)
+        if resp is None:
+            raise Exception('Cluster creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Cluster creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return DSSCluster(self, resp['id'])
 
     ########################################################
     # Global API Keys
