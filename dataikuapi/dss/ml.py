@@ -877,6 +877,15 @@ class DSSMLTask(object):
         else:
             return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
 
+    def delete_model(self, model_id):
+        """
+        Deletes a trained model
+
+        :param str model_id: Model identifier, as returend by :meth:`get_trained_models_ids`
+        """
+        self.client._perform_empty(
+            "DELETE", "/projects/%s/models/lab/%s/%s/models/%s" % (self.project_key, self.analysis_id, self.mltask_id, model_id))
+
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
         Deploys a trained model from this ML Task to a saved model + train recipe in the Flow.
@@ -920,4 +929,31 @@ class DSSMLTask(object):
         return self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
+
+
+    def remove_all_splits(self):
+        """
+        Deletes all stored splits data that are not anymore in use for this ML Task.
+
+        It is generally not needed to call this method
+        """
+        self.client._perform_empty(
+            "POST", "/projects/%s/models/lab/%s/%s/actions/removeUnusedSplits" % (self.project_key, self.analysis_id, self.mltask_id))
+
+
+
+    def remove_all_splits(self):
+        """
+        Deletes all stored splits data for this ML Task. This operation saves disk space.
+
+        After performing this operation, it will not be possible anymore to:
+        * Ensemble already trained models
+        * View the "predicted data" or "charts" for already trained models
+        * Resume training of models for which optimization had been previously interrupted
+        
+        Training new models remains possible
+
+        """
+        self.client._perform_empty(
+            "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
