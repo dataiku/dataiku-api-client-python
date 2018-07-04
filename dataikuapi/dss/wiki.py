@@ -1,5 +1,6 @@
 from .discussion import DSSObjectDiscussions
 import json
+import sys
 
 if sys.version_info >= (3,0):
   import urllib.parse
@@ -153,7 +154,7 @@ class DSSWikiArticle(object):
         self.project_key = project_key
         self.article_id = article_id
         # encode in UTF-8 if its python2 and unicode
-        if sys.version_info < (3,0) and isinstance(uni, unicode):
+        if sys.version_info < (3,0) and isinstance(self.article_id, unicode):
             self.article_id = self.article_id.encode('utf-8')
 
     def get_data(self):
@@ -234,9 +235,9 @@ class DSSWikiArticleData(object):
         """
         Set the article metadata
 
-        :param dict article: the article metadata
+        :param dict metadata: the article metadata
         """
-        self.article_data["article"] = article
+        self.article_data["article"] = metadata
 
     def save(self):
         """
