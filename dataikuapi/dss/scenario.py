@@ -163,8 +163,8 @@ class DSSScenario(object):
         """
         Get a handle to manage discussions on the scenario
 
-        Returns:
-            the DSSObjectDiscussions of this scenario
+        :returns: the handle to manage discussions
+        :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self.client, self.project_key, "SCENARIO", self.id)
 

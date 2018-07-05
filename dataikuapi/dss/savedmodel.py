@@ -105,7 +105,7 @@ class DSSSavedModel(object):
         """
         Get a handle to manage discussions on the saved model
 
-        Returns:
-            the DSSObjectDiscussions of this saved model
+        :returns: the handle to manage discussions
+        :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self.client, self.project_key, "SAVED_MODEL", self.sm_id)

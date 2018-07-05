@@ -756,8 +756,8 @@ class DSSProject(object):
         """
         Get a handle to manage discussions on the project
 
-        Returns:
-            the DSSObjectDiscussions of this project
+        :returns: the handle to manage discussions
+        :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
 

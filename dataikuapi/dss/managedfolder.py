@@ -169,7 +169,7 @@ class DSSManagedFolder(object):
         """
         Get a handle to manage discussions on the managed folder
 
-        Returns:
-            the DSSObjectDiscussions of this managed folder
+        :returns: the handle to manage discussions
+        :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self.client, self.project_key, "MANAGED_FOLDER", self.odb_id)

@@ -712,13 +712,11 @@ class DSSClient(object):
         """
         Get a handle to manage discussions on any object
 
-        Args:
-            the object project key
-            the object type
-            the object id
-
-        Returns:
-            the DSSObjectDiscussions of this object
+        :param str project_key: identifier of the project to access
+        :param str object_type: DSS object type
+        :param str object_id: DSS object ID
+        :returns: the handle to manage discussions
+        :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
 

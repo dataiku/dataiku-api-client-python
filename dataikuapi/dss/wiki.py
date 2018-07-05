@@ -188,7 +188,7 @@ class DSSWikiArticle(object):
         """
         Get a handle to manage discussions on the article
 
-        :returns: the discussion handle for this article
+        :returns: the handle to manage discussions
         :rtype: DSSObjectDiscussions
         """
         return DSSObjectDiscussions(self.client, self.project_key, "ARTICLE", self.article_id)
