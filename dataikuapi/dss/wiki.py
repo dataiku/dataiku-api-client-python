@@ -12,11 +12,12 @@ else:
 class DSSWiki(object):
     """
     A handle to manage the wiki of a project
-
-    :param client: an api client to connect to the DSS backend
-    :param project_key: identifier of the project to access
     """
     def __init__(self, client, project_key):
+        """
+        :param DSSClient client: an api client to connect to the DSS backend
+        :param str project_key: identifier of the project to access
+        """
         self.client = client
         self.project_key = project_key
 
@@ -91,12 +92,13 @@ class DSSWiki(object):
 class DSSWikiSettings(object):
     """
     Global settings for the wiki, including taxonomy. Call save() to save
-
-    :param client: an api client to connect to the DSS backend
-    :param project_key: identifier of the project to access
-    :param dict settings: current wiki settings (containing taxonomy and home article)
     """
     def __init__(self, client, project_key, settings):
+        """
+        :param DSSClient client: an api client to connect to the DSS backend
+        :param str project_key: identifier of the project to access
+        :param dict settings: current wiki settings (containing taxonomy and home article)
+        """
         self.client = client
         self.project_key = project_key
         self.settings = settings
@@ -144,12 +146,13 @@ class DSSWikiSettings(object):
 class DSSWikiArticle(object):
     """
     A handle to manage an article
-
-    :param DSSClient client: an api client to connect to the DSS backend
-    :param str project_key: identifier of the project to access
-    :param str article_id: the article ID
     """
     def __init__(self, client, project_key, article_id):
+        """
+        :param DSSClient client: an api client to connect to the DSS backend
+        :param str project_key: identifier of the project to access
+        :param str article_id: the article ID
+        """
         self.client = client
         self.project_key = project_key
         self.article_id = article_id
@@ -171,7 +174,7 @@ class DSSWikiArticle(object):
         """
         Upload an attachment file and attaches it to the article
 
-        :param filetype fp: A file-like object that represents the upload file
+        :param file fp: A file-like object that represents the upload file
         """
         self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":fp})
 
@@ -193,13 +196,14 @@ class DSSWikiArticle(object):
 class DSSWikiArticleData(object):
     """
     A handle to manage an article
-
-    :param DSSClient client: an api client to connect to the DSS backend
-    :param str project_key: identifier of the project to access
-    :param str article_id: the article ID
-    :param dict article_data: the article data got from the backend
     """
     def __init__(self, client, project_key, article_id, article_data):
+        """
+        :param DSSClient client: an api client to connect to the DSS backend
+        :param str project_key: identifier of the project to access
+        :param str article_id: the article ID
+        :param dict article_data: the article data got from the backend
+        """
         self.client = client
         self.project_key = project_key
         self.article_id = article_id # don't need to check unicode here (already done in DSSWikiArticle)
