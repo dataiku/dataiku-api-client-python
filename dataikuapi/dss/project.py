@@ -744,8 +744,8 @@ class DSSProject(object):
         """
         Get the wiki
 
-        Returns:
-            the wiki associated to the project
+        :returns: the wiki associated to the project
+        :rtype: DSSWiki
         """
         return DSSWiki(self.client, self.project_key)
 

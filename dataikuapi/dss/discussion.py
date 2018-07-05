@@ -16,7 +16,7 @@ class DSSObjectDiscussions(object):
         """
         :param DSSClient client: an api client to connect to the DSS backend
         :param str project_key: identifier of the project to access
-        ;param str object_type: DSS object type
+        :param str object_type: DSS object type
         :param str object_id: DSS object ID
         """
         self.client = client
@@ -76,7 +76,7 @@ class DSSDiscussion(object):
         """
         :param DSSClient client: an api client to connect to the DSS backend
         :param str project_key: identifier of the project to access
-        ;param str object_type: DSS object type
+        :param str object_type: DSS object type
         :param str object_id: DSS object ID
         :param str discussion_id: identified of the discussion
         :param dict discussion_data: the discussion data
