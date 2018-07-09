@@ -765,7 +765,7 @@ class DSSClient(object):
         :param str object_type: DSS object type
         :param str object_id: DSS object ID
         :returns: the handle to manage discussions
-        :rtype: DSSObjectDiscussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
 

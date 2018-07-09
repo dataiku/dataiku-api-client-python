@@ -244,6 +244,6 @@ class DSSDataset(object):
         Get a handle to manage discussions on the dataset
 
         :returns: the handle to manage discussions
-        :rtype: DSSObjectDiscussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)

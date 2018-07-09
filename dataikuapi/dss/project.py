@@ -755,7 +755,7 @@ class DSSProject(object):
         Get the wiki
 
         :returns: the wiki associated to the project
-        :rtype: DSSWiki
+        :rtype: :class:`dataikuapi.dss.wiki.DSSWiki`
         """
         return DSSWiki(self.client, self.project_key)
 
@@ -767,7 +767,7 @@ class DSSProject(object):
         Get a handle to manage discussions on the project
 
         :returns: the handle to manage discussions
-        :rtype: DSSObjectDiscussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
 

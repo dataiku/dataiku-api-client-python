@@ -13,12 +13,7 @@ class DSSObjectDiscussions(object):
     A handle to manage discussions on a DSS object
     """
     def __init__(self, client, project_key, object_type, object_id):
-        """
-        :param DSSClient client: an api client to connect to the DSS backend
-        :param str project_key: identifier of the project to access
-        :param str object_type: DSS object type
-        :param str object_id: DSS object ID
-        """
+        """Do not call directly, use :meth:`dataikuapi.dssclient.DSSClient.get_object_discussions` or on any commentable DSS object"""
         self.client = client
         self.project_key = project_key
         self.object_type = object_type
@@ -32,14 +27,10 @@ class DSSObjectDiscussions(object):
         Get the list of discussions on the object
 
         :returns: list of discussions on the object
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.discussion.DSSDiscussion`
         """
         data = self.client._perform_json("GET", "/projects/%s/discussions/%s/%s/" % (self.project_key, self.object_type, self.object_id))
-
-        discu_list = []
-        for discu_data in data:
-            discu_list.append(DSSDiscussion(self.client, self.project_key, self.object_type, self.object_id, discu_data['id'], discu_data, False))
-        return discu_list
+        return [DSSDiscussion(self.client, self.project_key, self.object_type, self.object_id, discu_data['id'], discu_data, False) for discu_data in data]
 
     def create_discussion(self, topic, message):
         """
@@ -48,7 +39,7 @@ class DSSObjectDiscussions(object):
         :param str topic: the discussion topic
         :param str message: the markdown formatted first message
         :returns: the newly created discussion
-        :rtype: DSSDiscussion
+        :rtype: :class:`dataikuapi.dss.discussion.DSSDiscussion`
         """
         creation_data = {
             "topic" : topic,
@@ -63,15 +54,13 @@ class DSSObjectDiscussions(object):
 
         :param str discussion_id: the discussion ID
         :returns: the discussion
-        :rtype: DSSDiscussion
+        :rtype: :class:`dataikuapi.dss.discussion.DSSDiscussion`
         """
         discu_data = self.client._perform_json("GET", "/projects/%s/discussions/%s/%s/%s" % (self.project_key, self.object_type, self.object_id, discussion_id))
         return DSSDiscussion(self.client, self.project_key, self.object_type, self.object_id, discussion_id, discu_data, True)
 
 class DSSDiscussion(object):
-    """
-    A handle to manage a discussion on a DSS object
-    """
+    """Do not call directly, use :meth:`dataikuapi.dss.discussion.DSSObjectDiscussions.get_discussion`"""
     def __init__(self, client, project_key, object_type, object_id, discussion_id, discussion_data, discussion_data_has_replies):
         """
         :param DSSClient client: an api client to connect to the DSS backend
@@ -129,15 +118,12 @@ class DSSDiscussion(object):
         Get the list of replies in this discussion
 
         :returns: a list of replies
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.discussion.DSSDiscussionReply`
         """
         if not self.discussion_data_has_replies:
             self._get_with_replies()
 
-        reply_list = []
-        for reply_data in self.discussion_data["replies"]:
-            reply_list.append(DSSDiscussionReply(reply_data))
-        return reply_list
+        return [DSSDiscussionReply(reply_data) for reply_data in self.discussion_data["replies"]]
 
     def add_reply(self, text):
         """
@@ -156,14 +142,12 @@ class DSSDiscussionReply(object):
     A read-only handle to access a discussion reply
     """
     def __init__(self, reply_data):
-        """
-        :param dict reply_data: the reply data from the discussion
-        """
+        """Do not call directly, use :meth:`dataikuapi.dss.discussion.DSSDiscussion.get_replies`"""
         self.reply_data = reply_data
 
-    def get_reply_data(self):
+    def get_raw_data(self):
         """
-        Get the reply data
+        Get the reply raw data
 
         :returns: the reply data
         :rtype: dict

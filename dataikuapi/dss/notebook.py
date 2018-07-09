@@ -56,6 +56,6 @@ class DSSNotebook(object):
         Get a handle to manage discussions on the notebook
 
         :returns: the handle to manage discussions
-        :rtype: DSSObjectDiscussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "JUPYTER_NOTEBOOK", self.notebook_name)
