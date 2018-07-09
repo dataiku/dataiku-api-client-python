@@ -2,6 +2,7 @@ from .discussion import DSSObjectDiscussions
 from dataikuapi.utils import DataikuException
 import json
 import sys
+import copy
 
 if sys.version_info >= (3,0):
   import urllib.parse
@@ -132,6 +133,8 @@ class DSSWikiSettings(object):
         :param list taxonomy: the current level of taxonomy
         :param str article_id: the article to retrieve
         :param bool remove: either remove the sub tree structure or not
+        :returns: the sub tree structure at a specific article level
+        :rtype: dict
         """
         idx = 0
         for tax_article in taxonomy:
@@ -151,7 +154,7 @@ class DSSWikiSettings(object):
         :param str article_id: the main article ID
         :param str parent_article_id: the new parent article ID or None for root level
         """
-        old_taxonomy = list(self.settings["taxonomy"])
+        old_taxonomy = copy.deepcopy(self.settings["taxonomy"])
 
         tax_article = self.__retrieve_article_in_taxonomy__(self.settings["taxonomy"], article_id, True)
         if tax_article is None:
@@ -161,8 +164,8 @@ class DSSWikiSettings(object):
             self.settings["taxonomy"].append(tax_article)
         else:
             tax_parent_article = self.__retrieve_article_in_taxonomy__(self.settings["taxonomy"], parent_article_id, False)
-            if tax_article is None:
-                self.settings["taonomy"] = old_taxonomy
+            if tax_parent_article is None:
+                self.settings["taxonomy"] = old_taxonomy
                 raise DataikuException("Parent article not found (or is one of the article descendants): %s" % (parent_article_id))
             tax_parent_article["children"].append(tax_article)
 
