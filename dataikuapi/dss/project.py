@@ -11,6 +11,8 @@ import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
+from .wiki import DSSWiki
+from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
 from dataikuapi.utils import DataikuException
@@ -745,6 +747,29 @@ class DSSProject(object):
         """
         return DSSMacro(self.client, self.project_key, runnable_type)
 
+    ########################################################
+    # Wiki
+    ########################################################
+    def get_wiki(self):
+        """
+        Get the wiki
+
+        :returns: the wiki associated to the project
+        :rtype: :class:`dataikuapi.dss.wiki.DSSWiki`
+        """
+        return DSSWiki(self.client, self.project_key)
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the project
+
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
 
 class DSSProjectSettings(object):
     """Settings of a DSS project"""

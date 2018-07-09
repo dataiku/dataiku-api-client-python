@@ -1,4 +1,5 @@
 from ..utils import DataikuException
+from .discussion import DSSObjectDiscussions
 import json
 
 class DSSRecipe(object):
@@ -75,6 +76,18 @@ class DSSRecipe(object):
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s/metadata" % (self.project_key, self.recipe_name),
                 body=metadata)
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the recipe
+
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "RECIPE", self.recipe_name)
 
 
 class DSSRecipeDefinitionAndPayload(object):

@@ -1,6 +1,7 @@
 from datetime import datetime
 import time
 from dataikuapi.utils import DataikuException
+from .discussion import DSSObjectDiscussions
 
 
 class DSSScenario(object):
@@ -154,6 +155,18 @@ class DSSScenario(object):
         if len(last_runs) < limit:
             return None
         return sum([run.get_duration() for run in last_runs]) / len(last_runs)
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the scenario
+
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "SCENARIO", self.id)
 
 
 class DSSScenarioRun(object):
