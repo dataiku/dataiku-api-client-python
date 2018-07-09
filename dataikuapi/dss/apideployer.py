@@ -37,7 +37,7 @@ class DSSAPIDeployer(object):
     def create_deployment(self, deployment_id, service_id, infra_id, version):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
-        is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.update`
+        is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
 
         :param str deployment_id: Identifier of the deployment to create
         :param str service_id: Identifier of the API Service to target
@@ -77,7 +77,7 @@ class DSSAPIDeployer(object):
         :param str infra_id: Identifier of the infra to get
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
-        return DSSAPIDeployerDeployment(self.client, infra_id)
+        return DSSAPIDeployerInfra(self.client, infra_id)
 
     def list_services(self, as_objects = True):
         """
@@ -148,15 +148,6 @@ class DSSAPIDeployerInfra(object):
 
         return DSSAPIDeployerInfraSettings(self.client, self.infra_id, settings)
 
-    def delete(self):
-        """
-        Deletes this infra
-
-        You may only delete a deployment if it is disabled and has been updated after disabling it.
-        """
-        return self.client._perform_empty(
-            "DELETE", "/api-deployer/infras/%s" % (self.infra_id))
-
 class DSSAPIDeployerInfraSettings(object):
     """The settings of an API Deployer Infra. 
 
@@ -194,7 +185,7 @@ class DSSAPIDeployerInfraSettings(object):
     def save(self):
         """Saves back these settings to the infra"""
         self.client._perform_empty(
-                "PUT", "/api-deployer/infra/%s/settings" % (self.infra_id),
+                "PUT", "/api-deployer/infras/%s/settings" % (self.infra_id),
                 body = self.settings)
 
 
@@ -240,7 +231,7 @@ class DSSAPIDeployerDeployment(object):
 
     def start_update(self):
         """
-        Updates this deployment to try to match the actual state to the current settings
+        Starts an asynchronous update of this deployment to try to match the actual state to the current settings
 
         :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call 
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
@@ -258,7 +249,7 @@ class DSSAPIDeployerDeployment(object):
         You may only delete a deployment if it is disabled and has been updated after disabling it.
         """
         return self.client._perform_empty(
-            "DELETE", "/api-deployer/deployments/%s/actions/update" % (self.deployment_id))
+            "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
 
 
 class DSSAPIDeployerDeploymentSettings(object):
