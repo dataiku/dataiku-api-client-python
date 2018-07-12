@@ -308,6 +308,20 @@ class DSSGeneralSettings(object):
             elif isinstance(m, DSSGroupImpersonationRule):
                 self.settings['impersonation']['groupRules'].remove(m.raw)
 
+    ########################################################
+    # Admin actions
+    ########################################################
+
+    def push_container_exec_base_images(self):
+        """
+        Push the container exec base images to their repository
+        """
+        resp = self.client._perform_json("POST", "/admin/container-exec/actions/push-base-images")
+        if resp is None:
+            raise Exception('Container exec base image push returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Container exec base image push failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
 
 class DSSUserImpersonationRule(object):
     """
