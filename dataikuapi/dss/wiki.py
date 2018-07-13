@@ -3,6 +3,7 @@ from dataikuapi.utils import DataikuException
 import json
 import sys
 import copy
+import re
 
 if sys.version_info >= (3,0):
   import urllib.parse
@@ -232,7 +233,9 @@ class DSSWikiArticle(object):
         :param file fp: A file-like object that represents the upload file
         :param str filename: The attachement filename
         """
-        self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(filename, fp)})
+        clean_filename = re.sub('[^A-Za-z0-9\._-]+', '', filename)
+
+        self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(clean_filename, fp)})
 
     def delete(self):
         """
