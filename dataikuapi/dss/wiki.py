@@ -233,7 +233,7 @@ class DSSWikiArticle(object):
         :param file fp: A file-like object that represents the upload file
         :param str filename: The attachement filename
         """
-        clean_filename = re.sub('[^A-Za-z0-9\._-]+', '', filename)
+        clean_filename = re.sub('[^A-Za-z0-9 \._-]+', '', filename)
 
         self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(clean_filename, fp)})
 
