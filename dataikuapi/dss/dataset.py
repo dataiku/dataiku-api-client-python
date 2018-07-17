@@ -163,6 +163,13 @@ class DSSDataset(object):
         self.client._perform_empty(
                 "POST" , "/projects/%s/datasets/%s/actions/synchronizeHiveMetastore" %(self.project_key, self.dataset_name))
 
+    def update_from_hive(self):
+        """
+        Resynchronize this dataset from its Hive definition
+        """
+        self.client._perform_empty(
+                "POST", "/projects/%s/datasets/%s/actions/updateFromHive" %(self.project_key, self.dataset_name))
+
     def compute_metrics(self, partition='', metric_ids=None, probes=None):
         """
         Compute metrics on a partition of this dataset.
