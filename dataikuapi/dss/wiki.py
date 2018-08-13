@@ -125,7 +125,7 @@ class DSSWikiSettings(object):
         :returns: The taxonomy
         :rtype: list
         """
-        return self.settings["taxonomy"]
+        return self.settings["taxonomy"] if "taxonomy" in self.settings else None
 
     def __retrieve_article_in_taxonomy__(self, taxonomy, article_id, remove=False):
         """
@@ -186,7 +186,7 @@ class DSSWikiSettings(object):
         :returns: The home article ID
         :rtype: str
         """
-        return self.settings["homeArticleId"]
+        return self.settings["homeArticleId"] if "homeArticleId" in self.settings else None
 
     def set_home_article_id(self, home_article_id):
         """
@@ -270,7 +270,7 @@ class DSSWikiArticleData(object):
         :returns: the article body
         :rtype: str
         """
-        return self.article_data["payload"]
+        return self.article_data["payload"] if "payload" in self.article_data else None
 
     def set_body(self, content):
         """
@@ -288,7 +288,7 @@ class DSSWikiArticleData(object):
         :returns: the article metadata
         :rtype: dict
         """
-        return self.article_data["article"]
+        return self.article_data["article"] if "article" in self.article_data else None
 
     def set_metadata(self, metadata):
         """
