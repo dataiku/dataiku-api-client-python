@@ -125,7 +125,7 @@ class DSSWikiSettings(object):
         :returns: The taxonomy
         :rtype: list
         """
-        return self.settings["taxonomy"] if "taxonomy" in self.settings else None
+        return self.settings["taxonomy"] if "taxonomy" in self.settings else []
 
     def __retrieve_article_in_taxonomy__(self, taxonomy, article_id, remove=False):
         """
