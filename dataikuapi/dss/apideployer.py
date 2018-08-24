@@ -81,8 +81,8 @@ class DSSAPIDeployer(object):
         """
         pass
         settings = {
-            "infraId" : infra_id,
-            "stage:" stage,
+            "infraId": infra_id,
+            "stage": stage,
             "type": type,
         }
         self.client._perform_json("POST", "/api-deployer/infras", body=settings)
