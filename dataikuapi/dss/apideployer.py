@@ -79,9 +79,8 @@ class DSSAPIDeployer(object):
         :param str type: STATIC or KUBERNETES
         :rtype: :class:`DSSAPIDeployerInfra`
         """
-        pass
         settings = {
-            "infraId": infra_id,
+            "id": infra_id,
             "stage": stage,
             "type": type,
         }
