@@ -712,9 +712,40 @@ class DSSClient(object):
     ########################################################
 
     def get_auth_info(self, with_secrets=False):
+        """
+        Returns various information about the user currently authenticated using
+        this instance of the API client.
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is an user)
+        * secrets: list of dicts containing user secrets (if context is an user)
+
+        :param: with_secrets boolean: Return user secrets
+        :returns: a dict
+        :rtype: dict
+        """
         return self._perform_json("GET", "/auth/info", params={"withSecrets": with_secrets})
 
     def get_auth_info_from_browser_headers(self, headers_dict, with_secrets=False):
+        """
+        Returns various information about the DSS user authenticated by the dictionary of
+        HTTP headers provided in headers_dict.
+
+        This is generally only used in webapp backends
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is an user)
+        * secrets: list of dicts containing user secrets (if context is an user)
+
+        :param: headers_dict dict: Dictionary of HTTP headers
+        :param: with_secrets boolean: Return user secrets
+        :returns: a dict
+        :rtype: dict
+        """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
 
