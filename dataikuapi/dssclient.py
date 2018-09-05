@@ -706,6 +706,18 @@ class DSSClient(object):
             "indexingMode": indexing_mode
         })
 
+
+    ########################################################
+    # Auth
+    ########################################################
+
+    def get_auth_info(self, with_secrets=False):
+        return self._perform_json("GET", "/auth/info", params={"withSecrets": with_secrets})
+
+    def get_auth_info_from_browser_headers(self, headers_dict, with_secrets=False):
+        return self._perform_json("POST", "/auth/info-from-browser-headers",
+                params={"withSecrets": with_secrets}, body=headers_dict)
+
     ########################################################
     # Internal Request handling
     ########################################################
@@ -768,6 +780,7 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
+
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
