@@ -8,9 +8,27 @@ class DSSConnection(object):
     def __init__(self, client, name):
         self.client = client
         self.name = name
+
+    ########################################################
+    # Location info
+    ########################################################
+
+    def get_location_info(self):
+        """
+        Gets information about this connection.
+
+        Note: this call requires either an admin API key or
+        a personal API key that corresponds to a user who 
+        belongs to a group who has the rights to read connection
+        details
+
+        :returns: a dict containing connection information
+        """
+        return  self.client._perform_json(
+            "GET", "/connections/%s/info" % self.name)
     
     ########################################################
-    # User deletion
+    # Connection deletion
     ########################################################
     
     def delete(self):
