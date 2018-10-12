@@ -182,7 +182,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf={}, script_steps=None, script_input_schema=None, script_output_schema=None):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf={}, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
@@ -199,7 +199,7 @@ class DSSClient(object):
         
         :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
-        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema)
+        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location)
 
     ########################################################
     # Users
