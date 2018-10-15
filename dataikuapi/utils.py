@@ -5,6 +5,8 @@ from contextlib import closing
 import itertools
 
 if sys.version_info > (3,0):
+    import codecs
+
     dku_basestring_type = str
     dku_zip_longest = itertools.zip_longest
 else:
@@ -31,7 +33,7 @@ class DataikuUTF8CSVReader(object):
 
     def __iter__(self):
         return self
-        
+
 def none_if_throws(f):
     def aux(*args, **kargs):
         try:
@@ -51,7 +53,10 @@ class DataikuStreamedHttpUTF8CSVReader(object):
 
     def iter_rows(self):
         def decode(x):
-            return unicode(x, "utf8")
+            if sys.version_info > (3,0):
+                return x
+            else:
+                return unicode(x, "utf8")
 
         def parse_iso_date(s):
             if s == "":
@@ -79,9 +84,17 @@ class DataikuStreamedHttpUTF8CSVReader(object):
             CASTERS.get(col["type"], decode) for col in schema
         ]
         with closing(self.csv_stream) as r:
-            for uncasted_tuple in csv.reader(r.raw,
-                                         delimiter='\t',
-                                         quotechar='"',
-                                         doublequote=True):
-                yield [none_if_throws(caster)(val)
-                       for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+            if sys.version_info > (3,0):
+                for uncasted_tuple in csv.reader(codecs.iterdecode(r.raw, 'utf-8'),
+                                                 delimiter='\t',
+                                                 quotechar='"',
+                                                 doublequote=True):
+                    yield [none_if_throws(caster)(val)
+                           for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+            else:
+                for uncasted_tuple in csv.reader(r.raw,
+                                                 delimiter='\t',
+                                                 quotechar='"',
+                                                 doublequote=True):
+                    yield [none_if_throws(caster)(val)
+                           for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
