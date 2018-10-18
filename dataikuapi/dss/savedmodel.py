@@ -109,3 +109,14 @@ class DSSSavedModel(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "SAVED_MODEL", self.sm_id)
+
+    ########################################################
+    # Deletion
+    ########################################################
+
+    def delete(self, drop_data=False):
+        """
+        Delete the saved model
+
+        """
+        return self.client._perform_empty("DELETE", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
