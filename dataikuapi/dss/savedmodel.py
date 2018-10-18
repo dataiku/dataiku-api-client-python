@@ -114,7 +114,7 @@ class DSSSavedModel(object):
     # Deletion
     ########################################################
 
-    def delete(self, drop_data=False):
+    def delete(self):
         """
         Delete the saved model
 
