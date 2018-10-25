@@ -79,4 +79,13 @@ class DSSPlugin(object):
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)
 
-        
+    ########################################################
+    # Dev plugin Git integration
+    ########################################################
+
+    def git_pull(self):
+        """
+        Pull the latest version from the current branch of the plugin. Aborts if merge fails.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/git/pull" % (self.plugin_id))
+
