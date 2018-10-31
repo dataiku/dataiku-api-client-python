@@ -923,7 +923,7 @@ class DSSMLTask(object):
 
     def start_guess(self,
                     prediction_type=None,
-                    wait_guess_complete=True):
+                    wait_guess_complete=False):
         """
         Guess the feature handling and the algorithms.
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
