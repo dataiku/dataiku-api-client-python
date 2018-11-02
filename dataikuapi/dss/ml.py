@@ -921,7 +921,7 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
 
-    def start_guess(self,
+    def guess(self,
                     prediction_type=None):
         """
         Guess the feature handling and the algorithms.
