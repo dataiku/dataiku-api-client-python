@@ -922,15 +922,10 @@ class DSSMLTask(object):
             body = obj)
 
     def start_guess(self,
-                    prediction_type=None,
-                    wait_guess_complete=False):
+                    prediction_type=None):
         """
         Guess the feature handling and the algorithms.
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
-        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state.
-                                            You should wait for the guessing to be completed by calling
-                                            ``wait_guess_complete`` on the returned object before doing anything
-                                            else (in particular calling ``train`` or ``get_settings``)
         :return:
         """
         obj = {}
@@ -941,5 +936,3 @@ class DSSMLTask(object):
                                    "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
                                    params=obj)
 
-        if wait_guess_complete:
-            self.wait_guess_complete()
