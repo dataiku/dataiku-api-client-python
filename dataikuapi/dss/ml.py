@@ -921,18 +921,17 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
 
-    def guess(self,
-                    prediction_type=None):
+    def guess(self, prediction_type=None):
         """
         Guess the feature handling and the algorithms.
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
-        :return:
         """
         obj = {}
         if prediction_type is not None:
             obj["predictionType"] = prediction_type
 
-        self.client._perform_empty("PUT",
-                                   "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
-                                   params=obj)
+        self.client._perform_empty(
+            "PUT",
+            "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
+            params = obj)
 
