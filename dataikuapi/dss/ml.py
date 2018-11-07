@@ -78,7 +78,7 @@ class PredictionSplitParamsHandler(object):
             sp['efsdDatasetSmartName'] = dataset_name
             sp['efsdTrain'] = train_split
             sp['efsdTest'] = test_split
-        else:            
+        else:
             sp["ttPolicy"] = "EXPLICIT_FILTERING_TWO_DATASETS"
             train_split ={'datasetSmartName' : dataset_name}
             test_split = {'datasetSmartName' : test_dataset_name}
@@ -373,7 +373,7 @@ class DSSTreeNode(object):
         info['nSamples'] = nSamples[self.i] if nSamples is not None else None
         info['threshold'] = thresholds[self.i] if thresholds is not None else None
         return info
- 
+
 class DSSTree(object):
     def __init__(self, tree, feature_names):
         self.tree = tree
@@ -677,7 +677,7 @@ class DSSMLTask(object):
         """
         return self.client._perform_json(
                 "DELETE", "/projects/%s/models/lab/%s/%s/" % (self.project_key, self.analysis_id, self.mltask_id))
-                
+
 
     def wait_guess_complete(self):
         """
@@ -700,7 +700,7 @@ class DSSMLTask(object):
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/status" % (self.project_key, self.analysis_id, self.mltask_id))
-                
+
 
     def get_settings(self):
         """
@@ -920,4 +920,18 @@ class DSSMLTask(object):
         return self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
+
+    def guess(self, prediction_type=None):
+        """
+        Guess the feature handling and the algorithms.
+        :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
+        """
+        obj = {}
+        if prediction_type is not None:
+            obj["predictionType"] = prediction_type
+
+        self.client._perform_empty(
+            "PUT",
+            "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
+            params = obj)
 

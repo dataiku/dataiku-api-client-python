@@ -190,30 +190,38 @@ class DSSProject(object):
     ########################################################
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
-                                  ml_backend_type = "PY_MEMORY",
-                                  guess_policy = "DEFAULT",
+                                  ml_backend_type="PY_MEMORY",
+                                  guess_policy="DEFAULT",
+                                  prediction_type=None,
                                   wait_guess_complete=True):
 
         """Creates a new prediction task in a new visual analysis lab
         for a dataset.
 
+        :param string input_dataset: the dataset to use for training/testing the model
+        :param string target_variable: the variable to predict
         :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
         :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
+        :param string prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS
         :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
         """
         obj = {
-            "inputDataset" : input_dataset,
-            "taskType" : "PREDICTION",
-            "targetVariable" : target_variable,
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariable": target_variable,
             "backendType": ml_backend_type,
             "guessPolicy":  guess_policy
         }
 
+        if prediction_type is not None:
+            obj["predictionType"] = prediction_type
+
         ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
         ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
         if wait_guess_complete:
             ret.wait_guess_complete()
         return ret
