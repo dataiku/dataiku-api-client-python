@@ -85,16 +85,12 @@ class DataikuStreamedHttpUTF8CSVReader(object):
         ]
         with closing(self.csv_stream) as r:
             if sys.version_info > (3,0):
-                for uncasted_tuple in csv.reader(codecs.iterdecode(r.raw, 'utf-8'),
-                                                 delimiter='\t',
-                                                 quotechar='"',
-                                                 doublequote=True):
-                    yield [none_if_throws(caster)(val)
-                           for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+                raw_generator = codecs.iterdecode(r.raw, 'utf-8')
             else:
-                for uncasted_tuple in csv.reader(r.raw,
-                                                 delimiter='\t',
-                                                 quotechar='"',
-                                                 doublequote=True):
-                    yield [none_if_throws(caster)(val)
-                           for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+                raw_generator = r.raw
+            for uncasted_tuple in csv.reader(raw_generator,
+                                                delimiter='\t',
+                                                quotechar='"',
+                                                doublequote=True):
+                yield [none_if_throws(caster)(val)
+                        for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
