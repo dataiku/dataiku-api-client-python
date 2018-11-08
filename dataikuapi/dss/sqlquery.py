@@ -1,33 +1,30 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+import json
 
 class DSSSQLQuery(object):
     """
     A connection to a database or database-like on which queries can be run through DSS
     """
-    def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf):
+    def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location):
         self.client = client
-        self.query = query
-        self.connection = connection
-        self.database = database
-        self.dataset_full_name = dataset_full_name
-        self.pre_queries = pre_queries
-        self.post_queries = post_queries
-        self.extra_conf = extra_conf
-        self.type = type
 
         self.streaming_session = self.client._perform_json(
                 "POST", "/sql/queries/",
                 body = {
-                    "query" : self.query,
-                    "preQueries" : self.pre_queries,
-                    "postQueries" : self.post_queries,
-                    "connection" : self.connection,
-                    "database" : self.database,
-                    "datasetFullName" : self.dataset_full_name,
-                    "type" : self.type,
-                    "extraConf" : extra_conf
+                    "query" : query,
+                    "preQueries" : pre_queries,
+                    "postQueries" : post_queries,
+                    "connection" : connection,
+                    "database" : database,
+                    "datasetFullName" : dataset_full_name,
+                    "type" : type,
+                    "extraConf" : extra_conf,
+                    "scriptSteps" : script_steps,
+                    "scriptInputSchema" : script_input_schema,
+                    "scriptOutputSchema" : script_output_schema,
+                    "scriptReportLocation" : script_report_location
                 })
         self.queryId = self.streaming_session['queryId']
 
