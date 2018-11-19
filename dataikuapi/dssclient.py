@@ -749,6 +749,19 @@ class DSSClient(object):
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
 
+    def create_personal_api_key(self, label):
+        """
+        Creates a personal API key corresponding to the user doing the request.
+        This can be called if the DSSClient was initialized with an internal
+        ticket or with a personal API key
+
+        :param: label string: Label for the new API key
+        :returns: a dict of the new API key, containing at least "secret", i.e. the actual secret API key
+        :rtype dict
+        """
+        return self._perform_json("POST", "/auth/personal-api-keys",
+                params={"label": label})
+
     ########################################################
     # Internal Request handling
     ########################################################
