@@ -706,6 +706,18 @@ class DSSClient(object):
             "indexingMode": indexing_mode
         })
 
+    ########################################################
+    # Model export
+    ########################################################
+    def get_scoring_libs_stream(self):
+        """
+        Get the scoring libraries jar required for scoring with model jars that don't include libraries.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: a jar file, as a stream
+        :rtype: file-like
+        """
+        return self._perform_raw("GET", "/resources/scoring-lib-jar")
 
     ########################################################
     # Auth
