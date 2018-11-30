@@ -125,16 +125,21 @@ class DSSPlugin(object):
         """
         return self.client._perform_json("GET", "/plugins/%s/actions/resetToRemoteHeadState" % (self.plugin_id))
 
+    def get_remote(self):
+        """
+        Gets the URL of the Git remote origin for your local repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/gitRemote" % (self.plugin_id))
+
     def set_remote(self, repository_URL):
         """
         Sets the URL of the Git remote origin for your local repository.
         """
         return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), body={'repositoryUrl': repository_URL})
 
-    def delete_remote(self, repository_URL):
+    def delete_remote(self):
         """
         Removes the URL of the Git remote origin for your local repository.
         """
         return self.client._perform_json("DELETE", "/plugins/%s/gitRemote" % (self.plugin_id))
 
-        
