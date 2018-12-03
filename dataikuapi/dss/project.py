@@ -78,23 +78,25 @@ class DSSProject(object):
     # Project duplicate
     ########################################################
 
-    def duplicate(self, target_project_key, target_project_name
-                  , duplicationMode = "MINIMAL"
-                  , exportAnalysisModels = True
-                  , exportSavedModels = True, exportGitRepository = True
-                  , exportInsightsData = True
-                  , remapping = {}):
+    def duplicate(self, target_project_key,
+                  target_project_name,
+                  duplication_mode="MINIMAL",
+                  export_analysis_models=True,
+                  export_saved_models=True,
+                  export_git_repository=True,
+                  export_insights_data=True,
+                  remapping={}):
         """
         Duplicate the project
 
         :param string target_project_key: The key of the new project
         :param string target_project_name: The name of the new project
-        :param string duplicationMode: can be one of the following values: MINIMAL, SHARING, FULL, NONE
-        :param boolean duplicateAllAnalysisModelsData
-        :param boolean duplicateAllSavedModelsData
-        :param boolean exportGitRepository
-        :param boolean exportInsightsData
-        :param struct remapping: list of connections to be remapped for the new project
+        :param string duplication_mode: can be one of the following values: MINIMAL, SHARING, FULL, NONE
+        :param bool export_analysis_models:
+        :param bool export_saved_models:
+        :param bool export_git_repository:
+        :param bool export_insights_data:
+        :param dict remapping: dict of connections to be remapped for the new project
         :returns: A dict containing the original and duplicated project's keys
         :rtype: :class:`ProjectDuplicateResult`
         """
@@ -102,11 +104,11 @@ class DSSProject(object):
         obj = {
             "targetProjectName": target_project_name,
             "targetProjectKey": target_project_key,
-            "duplicationMode": duplicationMode,
-            "exportAnalysisModels":exportAnalysisModels,
-            "exportSavedModels":exportSavedModels,
-            "exportGitRepository":exportGitRepository,
-            "exportInsightsData":exportInsightsData,
+            "duplicationMode": duplication_mode,
+            "exportAnalysisModels": export_analysis_models,
+            "exportSavedModels": export_saved_models,
+            "exportGitRepository": export_git_repository,
+            "exportInsightsData": export_insights_data,
             "remapping": remapping
         }
 
