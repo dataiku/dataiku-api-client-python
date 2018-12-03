@@ -95,7 +95,8 @@ class DSSProject(object):
         :param boolean exportGitRepository
         :param boolean exportInsightsData
         :param struct remapping: list of connections to be remapped for the new project
-        :return:
+        :returns: A dict containing the original and duplicated project's keys
+        :rtype: :class:`ProjectDuplicateResult`
         """
 
         obj = {
