@@ -134,6 +134,8 @@ class DSSPlugin(object):
     def set_remote(self, repository_URL):
         """
         Sets the URL of the Git remote origin for your local repository.
+
+        :param str repository_URL: the repository URL
         """
         return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), body={'repositoryUrl': repository_URL})
 
@@ -152,6 +154,9 @@ class DSSPlugin(object):
     def set_active_branch(self, branch, creation=False):
         """
         Sets the active branch on your local repository.
+
+        :param str branch: the branch name
+        :param bool creation: should it be created before checkout
         """
         return self.client._perform_json("POST", "/plugins/%s/activeGitBranch" % (self.plugin_id), body={'branch': branch, 'creation': creation})
 

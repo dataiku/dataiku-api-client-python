@@ -178,6 +178,31 @@ class DSSClient(object):
         """
         return DSSPlugin(self, plugin_id)
 
+    def create_dev_plugin(self, creation_mode="EMPTY", plugin_id=None, git_repository=None, git_checkout=None, git_subpath=None):
+        """
+        Create a new dev plugin inside DSS, and returns a handle to interact with it.
+
+        :param str creation_mode: the way the plugin will be created;
+            - EMPTY: from scratch
+            - GIT_CLONE: from a full Git repository (history is retrieved)
+            - GIT_EXPORT: from a partial Git repository (no history, no push back)
+        :param str plugin_id: the identifier of the desired plugin (for EMPTY, guessed otherwise)
+        :param str git_repository: the Git repository URL (necessary for GIT_CLONE and GIT_EXPORT)
+        :param str git_checkout: the Git repository branch, tag or hash (necessary for GIT_EXPORT)
+        :param str git_subpath: path to the plugin in the repository (necessary for GIT_EXPORT)
+        :returns: A :class:`dataikuapi.dss.project.DSSPlugin`
+        """
+        create_dev_plugin_body = {
+            'creationMode': creation_mode,
+            'pluginId': plugin_id,
+            'gitRepository': git_repository,
+            'gitCheckout': git_checkout,
+            'gitSubpath': git_subpath,
+        }
+        res = self._perform_json("POST", "/plugins/actions/createDev", body=create_dev_plugin_body)
+        return DSSPlugin(self, res['details'])
+
+
     ########################################################
     # SQL queries
     ########################################################
