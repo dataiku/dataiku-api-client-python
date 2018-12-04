@@ -135,7 +135,7 @@ class DSSPlugin(object):
         """
         Sets the URL of the Git remote origin for your local repository.
         """
-        return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), params={'repositoryUrl': repository_URL})
+        return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), body={'repositoryUrl': repository_URL})
 
     def delete_remote(self):
         """
@@ -153,5 +153,5 @@ class DSSPlugin(object):
         """
         Sets the active branch on your local repository.
         """
-        return self.client._perform_json("POST", "/plugins/%s/activeGitBranch" % (self.plugin_id), params={'branch': branch, 'creation': creation})
+        return self.client._perform_json("POST", "/plugins/%s/activeGitBranch" % (self.plugin_id), body={'branch': branch, 'creation': creation})
 
