@@ -99,31 +99,31 @@ class DSSPlugin(object):
         """
         Pull the latest version from the current branch of the plugin. Aborts if merge fails.
         """
-        return self.client._perform_json("GET", "/plugins/%s/actions/pullRebase" % (self.plugin_id))
+        return self.client._perform_json("POST", "/plugins/%s/actions/pullRebase" % (self.plugin_id))
 
     def push(self):
         """
         Push from the current branch of the plugin.
         """
-        return self.client._perform_json("GET", "/plugins/%s/actions/push" % (self.plugin_id))
+        return self.client._perform_json("POST", "/plugins/%s/actions/push" % (self.plugin_id))
 
     def fetch(self):
         """
         Fetch new content from remote repository.
         """
-        return self.client._perform_json("GET", "/plugins/%s/actions/fetch" % (self.plugin_id))
+        return self.client._perform_json("POST", "/plugins/%s/actions/fetch" % (self.plugin_id))
 
     def reset_to_local_head_state(self):
         """
         Drop uncommitted changes and resets the current branch to local HEAD.
         """
-        return self.client._perform_json("GET", "/plugins/%s/actions/resetToLocalHeadState" % (self.plugin_id))
+        return self.client._perform_json("POST", "/plugins/%s/actions/resetToLocalHeadState" % (self.plugin_id))
 
     def reset_to_remote_head_state(self):
         """
         Delete all of your non-pushed work on the current branch and resets it to the remote state.
         """
-        return self.client._perform_json("GET", "/plugins/%s/actions/resetToRemoteHeadState" % (self.plugin_id))
+        return self.client._perform_json("POST", "/plugins/%s/actions/resetToRemoteHeadState" % (self.plugin_id))
 
     def get_remote(self):
         """
@@ -135,11 +135,23 @@ class DSSPlugin(object):
         """
         Sets the URL of the Git remote origin for your local repository.
         """
-        return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), body={'repositoryUrl': repository_URL})
+        return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), params={'repositoryUrl': repository_URL})
 
     def delete_remote(self):
         """
         Removes the URL of the Git remote origin for your local repository.
         """
         return self.client._perform_json("DELETE", "/plugins/%s/gitRemote" % (self.plugin_id))
+
+    def get_branches(self):
+        """
+        Retrieves the list of available branches on your repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/gitBranches" % (self.plugin_id))
+
+    def set_active_branch(self, branch, creation=False):
+        """
+        Sets the active branch on your local repository.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/activeGitBranch" % (self.plugin_id), params={'branch': branch, 'creation': creation})
 
