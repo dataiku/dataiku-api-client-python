@@ -75,6 +75,47 @@ class DSSProject(object):
             f.flush()
 
     ########################################################
+    # Project duplicate
+    ########################################################
+
+    def duplicate(self, target_project_key,
+                  target_project_name,
+                  duplication_mode="MINIMAL",
+                  export_analysis_models=True,
+                  export_saved_models=True,
+                  export_git_repository=True,
+                  export_insights_data=True,
+                  remapping={}):
+        """
+        Duplicate the project
+
+        :param string target_project_key: The key of the new project
+        :param string target_project_name: The name of the new project
+        :param string duplication_mode: can be one of the following values: MINIMAL, SHARING, FULL, NONE
+        :param bool export_analysis_models:
+        :param bool export_saved_models:
+        :param bool export_git_repository:
+        :param bool export_insights_data:
+        :param dict remapping: dict of connections to be remapped for the new project
+        :returns: A dict containing the original and duplicated project's keys
+        :rtype: :class:`ProjectDuplicateResult`
+        """
+
+        obj = {
+            "targetProjectName": target_project_name,
+            "targetProjectKey": target_project_key,
+            "duplicationMode": duplication_mode,
+            "exportAnalysisModels": export_analysis_models,
+            "exportSavedModels": export_saved_models,
+            "exportGitRepository": export_git_repository,
+            "exportInsightsData": export_insights_data,
+            "remapping": remapping
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/duplicate/" % self.project_key, body = obj)
+        return ref
+
+    ########################################################
     # Project infos
     ########################################################
 
