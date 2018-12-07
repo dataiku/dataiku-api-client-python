@@ -42,6 +42,40 @@ class DSSPlugin(object):
             return self.client._perform_json_upload("POST", "/plugins/%s/update" % (self.plugin_id), 'plugin.zip', f).text
 
     ########################################################
+    # Plugin settings
+    ########################################################
+
+    def get_settings(self):
+        """
+        Get the plugin settings
+        """
+        return self.client._perform_json("GET", "/plugins/%s/settings" % (self.plugin_id))
+
+    def set_settings(self, plugin_settings):
+        """
+        Set the plugin settings
+
+        :param plugin_settings: the new plugin settings
+        """
+        return self.client._perform_json("POST", "/plugins/%s/settings" % (self.plugin_id), body=plugin_settings)
+
+    ########################################################
+    # Plugin code env
+    ########################################################
+
+    def create_code_env(self):
+        """
+        Create a new plugin code-env
+        """
+        return self.client._perform_json("POST", "/plugins/%s/code-env/actions/create" % (self.plugin_id))
+
+    def update_code_env(self):
+        """
+        Update the current plugin code-env
+        """
+        return self.client._perform_json("POST", "/plugins/%s/code-env/actions/update" % (self.plugin_id))
+
+    ########################################################
     # Managing the dev plugin's contents
     ########################################################
 
