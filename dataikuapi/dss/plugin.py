@@ -185,6 +185,12 @@ class DSSPlugin(object):
         """
         return self.client._perform_json("GET", "/plugins/%s/gitBranches" % (self.plugin_id))
 
+    def get_active_branch(self):
+        """
+        Gets the active branch on your local repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/activeGitBranch")
+
     def set_active_branch(self, branch, creation=False):
         """
         Sets the active branch on your local repository.
