@@ -50,6 +50,21 @@ class DSSRecipe(object):
                 body=definition.data)
 
     ########################################################
+    # Recipe status
+    ########################################################
+
+    def get_status(self):
+        """
+        Gets the status of this recipe (status messages, engines status, ...)
+
+        :return: an object to interact 
+        :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeStatus`
+        """
+        data = self.client._perform_json(
+                "GET", "/projects/%s/recipes/%s/status" % (self.project_key, self.recipe_name))
+        return DSSRecipeStatus(self.client, data)
+
+    ########################################################
     # Recipe metadata
     ########################################################
 
@@ -89,6 +104,54 @@ class DSSRecipe(object):
         """
         return DSSObjectDiscussions(self.client, self.project_key, "RECIPE", self.recipe_name)
 
+class DSSRecipeStatus(object):
+    def __init__(self, client, data):
+        """Do not call that directly, use :meth:`dataikuapi.dss.recipe.DSSRecipe.get_status`"""
+        self.client = client
+        self.data = data
+
+    def get_selected_engine_details(self):
+        """
+        Gets the selected engine for this recipe (for recipes that support engines)
+
+        :returns: a dict of the details of the selected recipe. The dict will contain at least fields 'type' indicating
+             which engine it is, "statusWarnLevel" which indicates whether the engine is OK / WARN / ERROR
+        :rtype: dict
+        """
+        if not "selectedEngine" in self.data:
+            raise ValueError("This recipe doesn't have a selected engine")
+        return self.data["selectedEngine"]
+
+    def get_engines_details(self):
+        """
+        Gets details about all possible engines for this recipe (for recipes that support engines)
+
+        :returns: a list of dict of the details of each possible engine. The dict for each engine
+             will contain at least fields 'type' indicating
+             which engine it is, "statusWarnLevel" which indicates whether the engine is OK / WARN / ERROR
+        :rtype: list
+        """
+        if not "engines" in self.data:
+            raise ValueError("This recipe doesn't have engines")
+        return self.data["engines"]
+
+    def get_status_severity(self):
+        """Returns whether the recipe is in SUCCESS, WARNING or ERROR status
+
+        :rtype: string
+        """
+        return self.data["allMessagesForFrontend"]["maxSeverity"]
+
+    def get_status_messages(self):
+        """
+        Returns status messages for this recipe.
+
+        :returns: a list of dict, for each status message. Each dict represents a single message, 
+            and contains at least a "severity" field (SUCCESS, WARNING or ERROR)
+            and a "message" field
+        :rtype: list
+        """
+        return self.data["allMessagesForFrontend"]["messages"]
 
 class DSSRecipeDefinitionAndPayload(object):
     """
