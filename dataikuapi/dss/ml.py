@@ -548,6 +548,50 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             raise ValueError("This model has no coefficient paths")
         return DSSCoefficientPaths(data)
 
+    ## Model export
+
+    def get_scoring_jar_stream(self, model_class="model.Model", include_libs=False):
+        """
+        Get a scoring jar for this trained model,
+        provided that you have the license to do so and that the model is compatible with optimized scoring.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :param str  model_class: fully-qualified class name, e.g. "com.company.project.Model"
+        :param bool include_libs: if True, also packs the required dependencies;
+                if False, runtime will require the scoring libs given by :func:`DSSClient.scoring_libs`
+        :returns: a jar file, as a stream
+        :rtype: file-like
+        """
+        include_libs = "true" if include_libs else "false"
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-jar?fullClassName=%s&includeLibs=%s" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id,
+                model_class, include_libs))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-jar?fullClassName=%s&includeLibs=%s" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version,
+                model_class, include_libs))
+
+    def get_scoring_pmml_stream(self):
+        """
+        Get a scoring PMML for this trained model,
+        provided that you have the license to do so and that the model is compatible with PMML scoring
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: a PMML file, as a stream
+        :rtype: file-like
+        """
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-pmml" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-pmml" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+
 
 class DSSClustersFacts(object):
     def __init__(self, clusters_facts):
