@@ -596,6 +596,17 @@ class DSSClient(object):
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
 
+    def log_custom_audit(self, custom_type="", custom_params={}):
+        """
+        Log a custom entry to the audit trail
+        
+        :param str custom_type value for msgCustomType in audit trail item
+        :param dict custom_params value for msgCustomParams in audit trail item
+        """
+        return self._perform_empty("POST",
+            "/admin/logs/audit/custom?msgCustomType=%s" % custom_type,
+            body = custom_params)
+
     ########################################################
     # Variables
     ########################################################
