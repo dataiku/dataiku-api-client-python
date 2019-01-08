@@ -646,14 +646,14 @@ class DSSProject(object):
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
         
-    def create_scenario(self, scenario_name, type, definition={}):
+    def create_scenario(self, scenario_name, type, definition={'params': {}}):
         """
         Create a new scenario in the project, and return a handle to interact with it
 
         :param str scenario_name: The name for the new scenario. This does not need to be unique
                                 (although this is strongly recommended)
         :param str type: The type of the scenario. MUst be one of 'step_based' or 'custom_python'
-        :param object definition: the JSON definition of the scenario. Use ``get_definition`` on an 
+        :param object definition: the JSON definition of the scenario. Use ``get_definition(with_status=False)`` on an
                 existing ``DSSScenario`` object in order to get a sample definition object
 
         :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
