@@ -820,6 +820,59 @@ class DSSProject(object):
         """
         return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
 
+    ########################################################
+    # Tables import
+    ########################################################
+
+    def init_tables_import(self):
+        return TablesImportBuffer(self.client, self.project_key)
+
+class TablesImportBuffer(object):
+
+    def __init__(self, client, project_key):
+        """Do not call this directly, use :meth:`DSSProject.init_tables_import`"""
+        self.client = client
+        self.project_key = project_key
+        self.keys = []
+
+    def add_hive_table(self, hive_database, hive_table):
+        self.keys.append({
+            "connectionName" : "@virtual(hive-jdbc):" + hive_database,
+            "name" : hive_table
+        })
+
+    def add_sql_table(self, connection, schema, table):
+        self.keys.append({
+            "connectionName" : connection,
+            "schema": schema,
+            "name" : table
+        })
+
+    def prepare(self):
+        ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/prepare-from-keys" % (self.project_key),
+                body = {"keys": self.keys} )
+
+        future = self.client.get_future(ret["jobId"])
+        future.wait_for_result()
+        return TablesPreparedImport(self.client, self.project_key, future.get_result())
+
+class TablesPreparedImport(object):
+    """Do not call this directly, use :meth:`DSSProject.init_tables_import` and then prepare"""
+    def __init__(self, client, project_key, candidates):
+        self.client = client
+        self.project_key = project_key
+        self.candidates = candidates
+
+    def execute(self):
+        """
+        Executes the import in background
+
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (self.project_key),
+                body = self.candidates)
+        return self.client.get_future(ret["jobId"])
+
 class DSSProjectSettings(object):
     """Settings of a DSS project"""
 
