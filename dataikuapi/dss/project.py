@@ -825,9 +825,18 @@ class DSSProject(object):
     ########################################################
 
     def init_tables_import(self):
-        return TablesImportBuffer(self.client, self.project_key)
+        """
+        Start an operation to import Hive or SQL tables as datasets into this project
 
-class TablesImportBuffer(object):
+        :returns: a :class:`TablesImportDefinition` to add tables to import
+        :rtype: :class:`TablesImportDefinition`
+        """
+        return TablesImportDefinition(self.client, self.project_key)
+
+class TablesImportDefinition(object):
+    """
+    Temporary structure holding the list of tables to import
+    """
 
     def __init__(self, client, project_key):
         """Do not call this directly, use :meth:`DSSProject.init_tables_import`"""
@@ -836,12 +845,14 @@ class TablesImportBuffer(object):
         self.keys = []
 
     def add_hive_table(self, hive_database, hive_table):
+        """Add a Hive table to the list of tables to import"""
         self.keys.append({
             "connectionName" : "@virtual(hive-jdbc):" + hive_database,
             "name" : hive_table
         })
 
     def add_sql_table(self, connection, schema, table):
+        """Add a SQL table to the list of table to import"""
         self.keys.append({
             "connectionName" : connection,
             "schema": schema,
@@ -849,6 +860,15 @@ class TablesImportBuffer(object):
         })
 
     def prepare(self):
+        """
+        Run the first step of the import process. In this step, DSS will check
+        the tables whose import you have requested and prepare dataset names and 
+        target connections
+
+        :returns: a :class:`TablesPreparedImport` object that allows you to finalize the import process
+        :rtype: :class:`TablesPreparedImport`
+
+        """
         ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/prepare-from-keys" % (self.project_key),
                 body = {"keys": self.keys} )
 
@@ -857,16 +877,19 @@ class TablesImportBuffer(object):
         return TablesPreparedImport(self.client, self.project_key, future.get_result())
 
 class TablesPreparedImport(object):
-    """Do not call this directly, use :meth:`DSSProject.init_tables_import` and then prepare"""
+    """Result of preparing a tables import. Import can now be finished"""
+    
     def __init__(self, client, project_key, candidates):
+        """Do not call this directly, use :meth:`DSSProject.init_tables_import` and then prepare"""
         self.client = client
         self.project_key = project_key
         self.candidates = candidates
 
     def execute(self):
         """
-        Executes the import in background
+        Starts executing the import in background and returns a :class:`dataikuapi.dss.future.DSSFuture` to wait on the result
 
+        :returns: a future to wait on the result
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (self.project_key),
