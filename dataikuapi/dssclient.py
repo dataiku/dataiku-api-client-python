@@ -786,6 +786,18 @@ class DSSClient(object):
                 params={"label": label})
 
     ########################################################
+    # Licensing
+    ########################################################
+
+    def get_licensing_status(self):
+        """
+        Returns a dictionary with information about licensing status of this DSS instance
+
+        :rtype dict
+        """
+        return self._perform_json("GET", "/admin/licensing/status")
+
+    ########################################################
     # Internal Request handling
     ########################################################
 
