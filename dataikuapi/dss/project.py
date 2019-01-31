@@ -144,6 +144,16 @@ class DSSProject(object):
         """
         Gets the settings of this project. This does not contain permissions. See :meth:`get_permissions`
 
+        Available methods includee:
+        - `get_raw()`
+        - `set_cluster()`
+        - `save()`
+
+        Available attributes include:
+        - `client`
+        - `project_key`
+        - `settings`
+
         :returns a handle to read, modify and save the settings
         :rtype: :class:`DSSProjectSettings`
         """
