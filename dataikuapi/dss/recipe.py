@@ -28,10 +28,10 @@ class DSSRecipe(object):
 
     def get_definition_and_payload(self):
         """
-        Get the definition of the recipe
+        Gets the definition of the recipe
 
-        Returns:
-            the definition, as a DSSRecipeDefinitionAndPayload object, containing the recipe definition itself and its payload
+        :returns: the definition, as a :py:class:`DSSRecipeDefinitionAndPayload` object, containing the recipe definition itself and its payload
+        :rtype: :py:class:`DSSRecipeDefinitionAndPayload`
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
@@ -39,11 +39,10 @@ class DSSRecipe(object):
 
     def set_definition_and_payload(self, definition):
         """
-        Set the definition of the recipe
+        Sets and saves the definition of the recipe
 
-        Args:
-            definition: the definition, as a DSSRecipeDefinitionAndPayload object. You should only set a definition object 
-            that has been retrieved using the get_definition call.
+        :param definition object: the definition, as a :py:class:`DSSRecipeDefinitionAndPayload` object. You should only set a definition object 
+            that has been retrieved using the :py:meth:get_definition_and_payload call.
         """
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name),

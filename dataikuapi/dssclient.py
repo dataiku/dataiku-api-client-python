@@ -596,6 +596,17 @@ class DSSClient(object):
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
 
+    def log_custom_audit(self, custom_type, custom_params={}):
+        """
+        Log a custom entry to the audit trail
+        
+        :param str custom_type value for customMsgType in audit trail item
+        :param dict custom_params value for customMsgParams in audit trail item
+        """
+        return self._perform_empty("POST",
+            "/admin/audit/custom/%s" % custom_type,
+            body = custom_params)
+
     ########################################################
     # Variables
     ########################################################
@@ -773,6 +784,18 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/personal-api-keys",
                 params={"label": label})
+
+    ########################################################
+    # Licensing
+    ########################################################
+
+    def get_licensing_status(self):
+        """
+        Returns a dictionary with information about licensing status of this DSS instance
+
+        :rtype dict
+        """
+        return self._perform_json("GET", "/admin/licensing/status")
 
     ########################################################
     # Internal Request handling

@@ -646,14 +646,14 @@ class DSSProject(object):
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
         
-    def create_scenario(self, scenario_name, type, definition={}):
+    def create_scenario(self, scenario_name, type, definition={'params': {}}):
         """
         Create a new scenario in the project, and return a handle to interact with it
 
         :param str scenario_name: The name for the new scenario. This does not need to be unique
                                 (although this is strongly recommended)
         :param str type: The type of the scenario. MUst be one of 'step_based' or 'custom_python'
-        :param object definition: the JSON definition of the scenario. Use ``get_definition`` on an 
+        :param object definition: the JSON definition of the scenario. Use ``get_definition(with_status=False)`` on an
                 existing ``DSSScenario`` object in order to get a sample definition object
 
         :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
@@ -819,6 +819,82 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "PROJECT", self.project_key)
+
+    ########################################################
+    # Tables import
+    ########################################################
+
+    def init_tables_import(self):
+        """
+        Start an operation to import Hive or SQL tables as datasets into this project
+
+        :returns: a :class:`TablesImportDefinition` to add tables to import
+        :rtype: :class:`TablesImportDefinition`
+        """
+        return TablesImportDefinition(self.client, self.project_key)
+
+class TablesImportDefinition(object):
+    """
+    Temporary structure holding the list of tables to import
+    """
+
+    def __init__(self, client, project_key):
+        """Do not call this directly, use :meth:`DSSProject.init_tables_import`"""
+        self.client = client
+        self.project_key = project_key
+        self.keys = []
+
+    def add_hive_table(self, hive_database, hive_table):
+        """Add a Hive table to the list of tables to import"""
+        self.keys.append({
+            "connectionName" : "@virtual(hive-jdbc):" + hive_database,
+            "name" : hive_table
+        })
+
+    def add_sql_table(self, connection, schema, table):
+        """Add a SQL table to the list of table to import"""
+        self.keys.append({
+            "connectionName" : connection,
+            "schema": schema,
+            "name" : table
+        })
+
+    def prepare(self):
+        """
+        Run the first step of the import process. In this step, DSS will check
+        the tables whose import you have requested and prepare dataset names and 
+        target connections
+
+        :returns: a :class:`TablesPreparedImport` object that allows you to finalize the import process
+        :rtype: :class:`TablesPreparedImport`
+
+        """
+        ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/prepare-from-keys" % (self.project_key),
+                body = {"keys": self.keys} )
+
+        future = self.client.get_future(ret["jobId"])
+        future.wait_for_result()
+        return TablesPreparedImport(self.client, self.project_key, future.get_result())
+
+class TablesPreparedImport(object):
+    """Result of preparing a tables import. Import can now be finished"""
+    
+    def __init__(self, client, project_key, candidates):
+        """Do not call this directly, use :meth:`DSSProject.init_tables_import` and then prepare"""
+        self.client = client
+        self.project_key = project_key
+        self.candidates = candidates
+
+    def execute(self):
+        """
+        Starts executing the import in background and returns a :class:`dataikuapi.dss.future.DSSFuture` to wait on the result
+
+        :returns: a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (self.project_key),
+                body = self.candidates)
+        return self.client.get_future(ret["jobId"])
 
 class DSSProjectSettings(object):
     """Settings of a DSS project"""
