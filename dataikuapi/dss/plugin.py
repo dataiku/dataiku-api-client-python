@@ -7,6 +7,25 @@ from .scenario import DSSScenario
 from .apiservice import DSSAPIService
 import sys
 
+class DSSPluginSettings(object):
+    """
+    The settings of a plugin.
+    """
+
+    def __init__(self, client, plugin_id, settings):
+        """Do not call this directly, use :meth:`DSSPlugin.get_settings`"""
+        self.client = client
+        self.plugin_id = plugin_id
+        self.settings = settings
+
+    def get_raw(self):
+        """Returns the raw settings object"""
+        return self.settings
+
+    def save(self):
+        """Saves the settings to DSS"""
+        self.client._perform_empty("POST", "/plugins/%s/settings" % (self.plugin_id), body=self.settings)
+
 class DSSPlugin(object):
     """
     A plugin on the DSS instance
@@ -16,30 +35,81 @@ class DSSPlugin(object):
        self.plugin_id = plugin_id
 
     ########################################################
-    # plugin upload/update as zip
+    # Settings
     ########################################################
 
-    def upload(self, file_path):
-        """
-        Upload the given file as a plugin
+    def get_settings(self):
+        """Return the plugin-level settings
 
-        Note: this call requires an API key with admin rights
-        
-        :param: file_path : the path to the zip file of the plugin
+        :return: a :class:`DSSPluginSettings`
         """
-        with open(file_path, 'rb') as f:
-            return self.client._perform_json_upload("POST", "/plugins/%s/upload" % (self.plugin_id), 'plugin.zip', f).text
+        settings = self.client._perform_json("GET", "/plugins/%s/settings" % (self.plugin_id))
+        return DSSPluginSettings(self.client, self.plugin_id, settings)
 
-    def update(self, file_path):
-        """
-        Update the plugin with the given file
+    ########################################################
+    # Code env
+    ########################################################
 
-        Note: this call requires an API key with admin rights
-        
-        :param: file_path : the path to the zip file of the plugin
+    def create_code_env(self, python_interpreter=None, conda=False):
         """
-        with open(file_path, 'rb') as f:
-            return self.client._perform_json_upload("POST", "/plugins/%s/update" % (self.plugin_id), 'plugin.zip', f).text
+        Starts the creation of the code env of the plugin
+
+        :return: a :class:`dataikuapi.dssfuture.DSSFuture` 
+        """
+        ret = self.client._perform_json("POST", "/plugins/%s/code-env/actions/create" % (self.plugin_id), body={
+            "conda": conda,
+            "pythonInterpreter": python_interpreter
+        })
+        return self.client.get_future(ret["jobId"])
+
+
+    def update_code_env(self):
+        """
+        Starts an update of the code env of the plugin
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` 
+        """
+        ret = self.client._perform_json("POST", "/plugins/%s/code-env/actions/update" % (self.plugin_id))
+        return self.client.get_future(ret["jobId"])
+
+
+    ########################################################
+    # Plugin update
+    ########################################################
+
+    def update_from_zip(self, fp):
+        """
+        Updates the plugin from a plugin archive (as a file object)
+
+        :param object fp: A file-like object pointing to a plugin archive zip
+        """
+        files = {'file': fp }
+        self.client._perform_json("POST", "/plugins/%s/actions/updateFromZip" % (self.plugin_id), files=files)
+
+    def update_from_store(self):
+        """
+        Updates the plugin from the Dataiku plugin store
+
+        :return: a :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        ret = self.client._perform_json("POST", "/plugins/%s/actions/updateFromStore" % (self.plugin_id))
+        return self.client.get_future(ret["jobId"])
+
+    def update_from_git(self, repository_url, checkout = "master", subpath=None):
+        """
+        Updates the plugin from a Git repository. DSS must be setup to allow access to the repository.
+
+        :param str repository_url: URL of a Git remote
+        :param str checkout: branch/tag/SHA1 to commit. For example "master"
+        :param str subpath: Optional, path within the repository to use as plugin. Should contain a 'plugin.json' file
+        :return: a :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        ret = self.client._perform_json("POST", "/plugins/%s/actions/updateFromGit" % (self.plugin_id), body={
+            "gitRepositoryUrl": repository_url,
+            "gitCheckout" : checkout,
+            "gitSubpath": subpath
+        })
+        return self.client.get_future(ret["jobId"])
 
     ########################################################
     # Managing the dev plugin's contents
@@ -47,34 +117,27 @@ class DSSPlugin(object):
 
     def list_files(self):
         """
-        Get the hierarchy of files in the plugin
-        
-        Returns:
-            the plugins's contents
+        Get the hierarchy of files in the plugin (dev plugins only)
         """
         return self.client._perform_json("GET", "/plugins/%s/contents" % (self.plugin_id))
 
     def get_file(self, path):
         """
-        Get a file from the plugin folder
-        
-        Args:
-            path: the name of the file, from the root of the plugin
+        Get a file from the plugin folder (dev plugins only)
 
-        Returns:
-            the file's content, as a stream
+        :param str path: the path of the file, relative to the root of the plugin
+
+        :return: a file-like object containing the file's content
         """
         return self.client._perform_raw("GET", "/plugins/%s/contents/%s" % (self.plugin_id, path)).raw
 
     def put_file(self, path, f):
         """
-        Update a file in the plugin folder
+        Update a file in the plugin folder (dev plugins only)
         
-        Args:
-            f: the file contents, as a stream
-            path: the name of the file, from the root of the plugin
+        :param file-like f: the file contents, as a file-like object
+        :param str path: the path of the file, relative ot the root of the plugin
         """
-
         file_name = path.split('/')[-1]
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)

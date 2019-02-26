@@ -169,9 +169,47 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/plugins/")
 
+    def install_plugin_from_archive(self, fp):
+        """
+        Install a plugin from a plugin archive (as a file object)
+
+        :param object fp: A file-like object pointing to a plugin archive zip
+        """
+        files = {'file': fp }
+        self._perform_json("POST", "/plugins/actions/installFromZip", files=files)
+
+    def install_plugin_from_store(self, plugin_id):
+        """
+        Install a plugin from the Dataiku plugin store
+
+        :param str plugin_id: identifier of the plugin to install
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
+        """
+        f = self._perform_json("POST", "/plugins/actions/installFromStore", body={
+            "pluginId": plugin_id
+        })
+        print(f)
+        return DSSFuture(self, f["jobId"])
+
+    def install_plugin_from_git(self, repository_url, checkout = "master", subpath=None):
+        """
+        Install a plugin from a Git repository. DSS must be setup to allow access to the repository.
+
+        :param str repository_url: URL of a Git remote
+        :param str checkout: branch/tag/SHA1 to commit. For example "master"
+        :param str subpath: Optional, path within the repository to use as plugin. Should contain a 'plugin.json' file
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
+        """
+        f = self._perform_json("POST", "/plugins/actions/installFromGit", body={
+            "gitRepositoryUrl": repository_url,
+            "gitCheckout" : checkout,
+            "gitSubpath": subpath
+        })
+        return DSSFuture(self, f["jobId"])
+
     def get_plugin(self, plugin_id):
         """
-        Get a handle to interact with a specific plugin (plugin in "development" mode only).
+        Get a handle to interact with a specific plugin
 
         :param str plugin_id: the identifier of the desired plugin
         :returns: A :class:`dataikuapi.dss.project.DSSPlugin`
