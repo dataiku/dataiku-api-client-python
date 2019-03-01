@@ -54,6 +54,19 @@ class DSSProject(object):
         Return a stream of the exported project
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
+        :param dict options: Dictionary of export options. The following options are available:
+
+            * exportUploads (boolean): Exports the data of Uploaded datasets - default False
+            * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
+            * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
+            * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportManagedFolders (boolean): Exports the data of managed folders - default False
+            * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
+            * exportAllDatasets (boolean): Exports the data of all datasets - default False
+            * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
+            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportInsightsData (boolean): Exports the data of static insights - default False
+
         :returns: a file-like obbject that is a stream of the export archive
         :rtype: file-like
         """
