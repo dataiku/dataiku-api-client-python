@@ -22,6 +22,10 @@ class DSSPluginSettings(object):
         """Returns the raw settings object"""
         return self.settings
 
+    def set_code_env(self, code_env_name):
+        """Sets the name of the code env to use for this plugin"""
+        self.settings["codeEnvName"] = code_env_name
+
     def save(self):
         """Saves the settings to DSS"""
         self.client._perform_empty("POST", "/plugins/%s/settings" % (self.plugin_id), body=self.settings)
@@ -57,6 +61,7 @@ class DSSPlugin(object):
         :return: a :class:`dataikuapi.dssfuture.DSSFuture` 
         """
         ret = self.client._perform_json("POST", "/plugins/%s/code-env/actions/create" % (self.plugin_id), body={
+            "deploymentMode" : "PLUGIN_MANAGED",
             "conda": conda,
             "pythonInterpreter": python_interpreter
         })
