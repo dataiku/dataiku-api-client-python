@@ -907,6 +907,27 @@ class TemporaryImportHandle(object):
     def execute(self, settings = {}):
         """
         Executes the import with provided settings.
+
+        :param dict settings: Dict of import settings. The following settings are available:
+
+            * targetProjectKey (string): Key to import under. Defaults to the original project key
+            * remapping (dict): Dictionary of connection and code env remapping settings.
+
+                See example of remapping dict:
+
+                .. code-block:: python
+
+                    "remapping" : {
+                      "connections": [
+                        { "source": "src_conn1", "target": "target_conn1" },
+                        { "source": "src_conn2", "target": "target_conn2" }
+                      ],
+                      "codeEnvs" : [
+                        { "source": "src_codeenv1", "target": "target_codeenv1" },
+                        { "source": "src_codeenv2", "target": "target_codeenv2" }
+                      ]
+                    }
+
         @warning: You must check the 'success' flag
         """
         # Empty JSON dicts can't be parsed properly
