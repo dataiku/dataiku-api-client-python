@@ -1,5 +1,5 @@
 import time
-from .dataset import DSSDataset
+from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
@@ -238,6 +238,15 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def new_managed_dataset_creation_helper(self, dataset_name):
+        """
+        Creates a helper class to create a managed dataset in the project
+
+        :param string dataset_name: Name of the new dataset - must be unique in the project
+        :return: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
+        """
+        return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
     # ML
