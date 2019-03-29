@@ -287,7 +287,7 @@ class DSSManagedDatasetCreationHelper(object):
         :param str dataset_ref: Name of the dataset to copy partitioning from
         :return: self
         """
-        self["partitioningOptionId"] = "copy:%s" % dataset_ref
+        self.creation_settings["partitioningOptionId"] = "copy:%s" % dataset_ref
         return self
 
     def create(self):
