@@ -262,7 +262,7 @@ class DSSManagedDatasetCreationHelper(object):
         self.dataset_name = dataset_name
         self.creation_settings = { "specificSettings" : {} }
 
-    def get_creation_settings():
+    def get_creation_settings(self):
         return self.creation_settings
 
     def with_store_into(self, connection, type_option_id = None, format_option_id = None):
