@@ -85,7 +85,8 @@ class DSSProject(object):
                   export_saved_models=True,
                   export_git_repository=True,
                   export_insights_data=True,
-                  remapping={}):
+                  remapping={},
+                  target_project_folder_id=None):
         """
         Duplicate the project
 
@@ -109,7 +110,8 @@ class DSSProject(object):
             "exportSavedModels": export_saved_models,
             "exportGitRepository": export_git_repository,
             "exportInsightsData": export_insights_data,
-            "remapping": remapping
+            "remapping": remapping,
+            "targetProjectFolderId": target_project_folder_id
         }
 
         ref = self.client._perform_json("POST", "/projects/%s/duplicate/" % self.project_key, body = obj)

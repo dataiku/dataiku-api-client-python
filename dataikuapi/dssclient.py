@@ -4,6 +4,7 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from .dss.future import DSSFuture
+from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
@@ -101,6 +102,26 @@ class DSSClient(object):
         else:
             return list
 
+    ########################################################
+    # Project folders
+    ########################################################
+    def get_root_project_folder(self):
+        """
+        Get a handle to interact with the root project folder.
+
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        """
+        project_folder_id = self.client._perform_json("GET", "/project-folders/")["id"]
+        return DSSProjectFolder(self, project_folder_id)
+
+    def get_project_folder(sefl, project_folder_id):
+        """
+        Get a handle to interact with a project folder.
+
+        :param str project_folder_id: the project folder ID of the desired project folder
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        """
+        return DSSProjectFolder(self, project_folder_id)
 
     ########################################################
     # Projects
