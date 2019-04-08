@@ -11,6 +11,53 @@ class DSSProjectFolder(object):
         self.project_folder_id = project_folder_id
 
     ########################################################
+    # Project folder basics
+    ########################################################
+    def get_name(self):
+        """
+        Get this project folder's name or None if it is the root project folder
+
+        :returns str: the name of this project folders or None for the root project folder
+        """
+        return self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("name", None)
+
+    def get_parent(self):
+        """
+        Get this project folder's parent or None if it is the root project folder
+
+        :returns: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its parent or None for the root project folder
+        """
+        parent = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("parent", None)
+        if parent is None:
+            return None
+        else:
+            return DSSProjectFolderSettings(self.client, parent)
+
+    def get_children(self):
+        """
+        Get this project folder's children
+
+        :returns list: A list of :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its children
+        """
+        children = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("children", [])
+        ret = []
+        for child in children:
+            ret.append(DSSProjectFolder(self.client, child))
+        return ret
+
+    def get_projects(self):
+        """
+        Get this project folder's projects
+
+        :returns list:  A list of :class:`dataikuapi.dss.project.DSSProject` to interact with its projects
+        """
+        project_keys = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("projectKeys", [])
+        ret = []
+        for pkey in project_keys:
+            ret.append(DSSProject(self.client, pkey))
+        return ret
+
+    ########################################################
     # Project folder deletion
     ########################################################
     def delete(self):
