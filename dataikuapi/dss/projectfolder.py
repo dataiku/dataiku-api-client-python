@@ -1,22 +1,4 @@
-import time
-from .dataset import DSSDataset
-from .recipe import DSSRecipe
-from .managedfolder import DSSManagedFolder
-from .savedmodel import DSSSavedModel
-from .job import DSSJob, DSSJobWaiter
-from .scenario import DSSScenario
-from .apiservice import DSSAPIService
-import sys
-import os.path as osp
-from .future import DSSFuture
-from .notebook import DSSNotebook
-from .macro import DSSMacro
-from .wiki import DSSWiki
-from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask
-from .analysis import DSSAnalysis
-from dataikuapi.utils import DataikuException
-
+from .project import DSSProject
 
 class DSSProjectFolder(object):
     """
@@ -32,7 +14,7 @@ class DSSProjectFolder(object):
     # Project folder deletion
     ########################################################
     def delete(self):
-    	"""
+        """
         Delete the project folder
 
         This call requires an API key with admin rights
@@ -44,27 +26,27 @@ class DSSProjectFolder(object):
     # Project folder settings
     ########################################################
     def get_settings(self):
-    	"""
-    	:returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolderSettings` to interact with this project folder settings
-    	"""
-    	settings = self.client._perform_json("GET", "/project-folders/%s/settings" % self.project_folder_id)
-    	return DSSProjectFolderSettings(self.client, self.project_folder_id, settings)
+        """
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolderSettings` to interact with this project folder settings
+        """
+        settings = self.client._perform_json("GET", "/project-folders/%s/settings" % self.project_folder_id)
+        return DSSProjectFolderSettings(self.client, self.project_folder_id, settings)
 
-	########################################################
+    ########################################################
     # Project folder sub-folder creation
     ########################################################
     def create_sub_folder(self, name):
-    	"""
-    	Create a sub-folder into the current project folder
+        """
+        Create a sub-folder into the current project folder
 
-    	:param str name: the name of the project folder to create
-    	:returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with the newly created project folder
-    	"""
-    	body = {
-    		"name": name
-    	}
-    	pf = self.client._perform_json("POST", "/project-folders/%s/children" % self.project_folder_id, body = body)
-    	return DSSProjectFolder(self.client, pf["id"])
+        :param str name: the name of the project folder to create
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with the newly created project folder
+        """
+        body = {
+            "name": name
+        }
+        pf = self.client._perform_json("POST", "/project-folders/%s/children" % self.project_folder_id, body = body)
+        return DSSProjectFolder(self.client, pf["id"])
 
     ########################################################
     # Project creation
@@ -97,45 +79,45 @@ class DSSProjectFolder(object):
     # Project folder move
     ########################################################
     def move(self, destination):
-    	"""
-    	Move this project folder into another project folder (aka. destination)
+        """
+        Move this project folder into another project folder (aka. destination)
 
-    	:param destination: the project folder to put this project folder into
-    	:type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
-    	"""
-    	body = {
-    		"destination": destination.project_folder_id
-    	}
-    	self.client._perform_json("POST", "/project-folders/%s/move" % self.project_folder_id, body = body)
+        :param destination: the project folder to put this project folder into
+        :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
+        """
+        body = {
+            "destination": destination.project_folder_id
+        }
+        self.client._perform_json("POST", "/project-folders/%s/move" % self.project_folder_id, body = body)
 
     ########################################################
     # Project move
     ########################################################
     def project_move(self, project_key, destination):
-    	"""
-    	Move a project within this project folder into another project folder (aka. destination)
+        """
+        Move a project within this project folder into another project folder (aka. destination)
 
-    	:param str project_key: the project key associated with the project to move
-    	:param destination: the project folder to put this project into
-    	:type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
-    	"""
-    	body = {
-    		"destination": destination.project_folder_id
-    	}
-    	self.client._perform_json("POST", "/project-folders/%s/children/%s/move" % (self.project_folder_id, project_key), body = body)
+        :param str project_key: the project key associated with the project to move
+        :param destination: the project folder to put this project into
+        :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
+        """
+        body = {
+            "destination": destination.project_folder_id
+        }
+        self.client._perform_json("POST", "/project-folders/%s/children/%s/move" % (self.project_folder_id, project_key), body = body)
 
 class DSSProjectFolderSettings(object):
-	"""
-	A handle to interact with project folder settings
+    """
+    A handle to interact with project folder settings
 
-	Do not create this class directly, instead use :meth:`dataikuapi.dss.projectfolder.DSSProjectFolder.get_settings`
-	"""
-	def __init__(self, client, project_folder_id, settings):
-		self.client = client
-		self.project_folder_id = project_folder_id
-		self.settings = settings
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.projectfolder.DSSProjectFolder.get_settings`
+    """
+    def __init__(self, client, project_folder_id, settings):
+        self.client = client
+        self.project_folder_id = project_folder_id
+        self.settings = settings
 
-	def get_raw(self):
+    def get_raw(self):
         """Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
         so changes made to the returned object will be reflected when saving.
 
