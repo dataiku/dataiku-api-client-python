@@ -21,6 +21,20 @@ class DSSProjectFolder(object):
         """
         return self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("name", None)
 
+    def get_path(self):
+        """
+        Get this project fodler's path based on the root project folder
+
+        :returns str: the path of this project folder
+        """
+        definition = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id)
+        parent_id = definition.get("parent", None)
+        if parent_id is not None:
+            parent = DSSProjectFolder(self.client, parent_id)
+            return parent.get_path() + definition.get("name", "") + "/"
+        else:
+            return "/"
+
     def get_parent(self):
         """
         Get this project folder's parent or None if it is the root project folder
