@@ -31,7 +31,7 @@ class DSSProjectFolder(object):
         if parent is None:
             return None
         else:
-            return DSSProjectFolderSettings(self.client, parent)
+            return DSSProjectFolder(self.client, parent)
 
     def get_children(self):
         """
@@ -45,9 +45,17 @@ class DSSProjectFolder(object):
             ret.append(DSSProjectFolder(self.client, child))
         return ret
 
-    def get_projects(self):
+    def list_project_keys(self):
         """
-        Get this project folder's projects
+        List the project keys of the projects that are stored in this project folder
+
+        :returns list: A list of project keys
+        """
+        return self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("projectKeys", [])
+
+    def list_projects(self):
+        """
+        List the projects that are stored in this project folder
 
         :returns list:  A list of :class:`dataikuapi.dss.project.DSSProject` to interact with its projects
         """
@@ -148,7 +156,7 @@ class DSSProjectFolder(object):
         :param destination: the project folder to put this project into
         :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
         """
-        body = {
+        body = {
             "destination": destination.project_folder_id
         }
         self.client._perform_json("POST", "/project-folders/%s/children/%s/move" % (self.project_folder_id, project_key), body = body)
@@ -172,6 +180,50 @@ class DSSProjectFolderSettings(object):
         """
         return self.settings
 
+    def get_name(self):
+        """Get the name of the project folder
+
+        :returns str: the current name of the project folder
+        """
+        return self.settings.get("name", None)
+
+    def set_name(self, name):
+        """Set the name of the project folder
+
+        :param str name: the new name of the project folder
+        """
+        self.settings["name"] = name
+
+    def get_owner(self):
+        """Get the login of the owner of the project folder
+
+        :returns str: the current login owner of the project folder
+        """
+        return self.settings.get("owner", None)
+
+    def set_owner(self, owner):
+        """Set the owner of the project folder
+
+        :param str owner: the new owner login of the project folder
+        """
+        self.settings["owner"] = owner
+
+    def get_permissions(self):
+        """Get the permissions of the project folder
+        Warning: the returned list is the direct object of the settings, modifying it will modify the current settings
+
+        :return list: the current permissions of the project folder
+        """
+        return self.settings["permissions"]
+
+    def set_permissions(self, permissions):
+        """Set the permissions of the project folder
+
+        :param list permissions: the new permissions of the project folder
+        """
+        self.settings["permissions"] = permissions
+
     def save(self):
         """Saves back the settings to the project folder"""
         self.client._perform_empty("PUT", "/project-folders/%s/settings" % (self.project_folder_id), body = self.settings)
+
