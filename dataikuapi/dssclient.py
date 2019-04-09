@@ -678,27 +678,37 @@ class DSSClient(object):
     # Bundles / Import (Automation node)
     ########################################################
 
-    def create_project_from_bundle_local_archive(self, archive_path):
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
 
         :param string archive_path: Path on the local machine where the archive is
+        :param project_folder: the project folder in which the project will be created or None for root project folder
+        :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
-        return self._perform_json("POST",
-                "/projectsFromBundle/fromArchive",
-                 params = { "archivePath" : osp.abspath(archive_path) })
+        params = {
+            "archivePath" : osp.abspath(archive_path)
+        }
+        if project_folder is not None:
+            params["projectFolderId"] = project_folder.project_folder_id
+        return self._perform_json("POST", "/projectsFromBundle/fromArchive", params=params)
 
-    def create_project_from_bundle_archive(self, fp):
+    def create_project_from_bundle_archive(self, fp, project_folder=None):
         """
         Create a project from a bundle archive (as a file object)
         Warning: this method can only be used on an automation node.
 
         :param string fp: A file-like object pointing to a bundle archive zip
+        :param project_folder: the project folder in which the project will be created or None for root project folder
+        :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
+        params = {}
+        if project_folder is not None:
+            params['projectFolderId'] = project_folder.project_folder_id
         files = {'file': fp }
         return self._perform_json("POST",
-                "/projectsFromBundle/", files=files)
+                "/projectsFromBundle/", files=files, params=params)
 
     def prepare_project_import(self, f):
         """
