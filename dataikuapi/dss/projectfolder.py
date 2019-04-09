@@ -111,10 +111,10 @@ class DSSProjectFolder(object):
         :param str name: the name of the project folder to create
         :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with the newly created project folder
         """
-        body = {
+        params = {
             "name": name
         }
-        pf = self.client._perform_json("POST", "/project-folders/%s/children" % self.project_folder_id, body = body)
+        pf = self.client._perform_json("POST", "/project-folders/%s/children" % self.project_folder_id, params=params)
         return DSSProjectFolder(self.client, pf["id"])
 
     ########################################################
@@ -147,22 +147,22 @@ class DSSProjectFolder(object):
     ########################################################
     # Project folder move
     ########################################################
-    def move(self, destination):
+    def move_to(self, destination):
         """
         Move this project folder into another project folder (aka. destination)
 
         :param destination: the project folder to put this project folder into
         :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
         """
-        body = {
+        params = {
             "destination": destination.project_folder_id
         }
-        self.client._perform_json("POST", "/project-folders/%s/move" % self.project_folder_id, body = body)
+        self.client._perform_empty("POST", "/project-folders/%s/move" % self.project_folder_id, params=params)
 
     ########################################################
     # Project move
     ########################################################
-    def project_move(self, project_key, destination):
+    def move_project_to(self, project_key, destination):
         """
         Move a project within this project folder into another project folder (aka. destination)
 
@@ -170,10 +170,10 @@ class DSSProjectFolder(object):
         :param destination: the project folder to put this project into
         :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
         """
-        body = {
+        params = {
             "destination": destination.project_folder_id
         }
-        self.client._perform_json("POST", "/project-folders/%s/children/%s/move" % (self.project_folder_id, project_key), body = body)
+        self.client._perform_empty("POST", "/project-folders/%s/projects/%s/move" % (self.project_folder_id, project_key), params=params)
 
 class DSSProjectFolderSettings(object):
     """
