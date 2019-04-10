@@ -134,15 +134,7 @@ class DSSProjectFolder(object):
         
         :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
-        resp = self._perform_text(
-               "POST", "/project-folders/%s/projects" % self.project_folder_id, body={
-                   "projectKey" : project_key,
-                   "name" : name,
-                   "owner" : owner,
-                   "settings" : settings,
-                   "description" : description
-               })
-        return DSSProject(self, project_key)
+        return self.client.create_project(project_key, name, owner, description=description, settings=settings, project_folder_id=self.project_folder_id)
 
     ########################################################
     # Project folder move

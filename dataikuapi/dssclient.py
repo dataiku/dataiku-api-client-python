@@ -154,7 +154,7 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
-    def create_project(self, project_key, name, owner, description=None, settings=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
         """
         Creates a new project, and return a project handle to interact with it.
 
@@ -165,9 +165,13 @@ class DSSClient(object):
         :param str owner: the login of the owner of the project.
         :param str description: a description for the project.
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
+        :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
         
         :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
+        params = {}
+        if project_folder_id is not None:
+            params["projectFolderId"] = project_folder_id
         resp = self._perform_text(
                "POST", "/projects/", body={
                    "projectKey" : project_key,
@@ -175,7 +179,7 @@ class DSSClient(object):
                    "owner" : owner,
                    "settings" : settings,
                    "description" : description
-               })
+               }, params=params)
         return DSSProject(self, project_key)
 
     ########################################################
