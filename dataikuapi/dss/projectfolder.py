@@ -31,7 +31,8 @@ class DSSProjectFolder(object):
         parent_id = definition.get("parent", None)
         if parent_id is not None:
             parent = DSSProjectFolder(self.client, parent_id)
-            return parent.get_path() + definition.get("name", "") + "/"
+            path = parent.get_path()
+            return ("" if path == "/" else path) + "/" + definition.get("name", "")
         else:
             return "/"
 
