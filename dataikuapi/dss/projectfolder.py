@@ -48,17 +48,14 @@ class DSSProjectFolder(object):
         else:
             return DSSProjectFolder(self.client, parent)
 
-    def get_children(self):
+    def list_child_folders(self):
         """
-        Get this project folder's children
+        List the child project folders inside this project folder
 
-        :returns list: A list of :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its children
+        :returns list: A list of :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its sub-folders
         """
         children = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("children", [])
-        ret = []
-        for child in children:
-            ret.append(DSSProjectFolder(self.client, child))
-        return ret
+        return [DSSProjectFolder(self.client, child) for child in children]
 
     def list_project_keys(self):
         """
@@ -75,10 +72,7 @@ class DSSProjectFolder(object):
         :returns list:  A list of :class:`dataikuapi.dss.project.DSSProject` to interact with its projects
         """
         project_keys = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("projectKeys", [])
-        ret = []
-        for pkey in project_keys:
-            ret.append(DSSProject(self.client, pkey))
-        return ret
+        return [DSSProject(self.client, pkey) for pkey in project_keys]
 
     ########################################################
     # Project folder deletion
@@ -86,6 +80,7 @@ class DSSProjectFolder(object):
     def delete(self):
         """
         Delete the project folder
+        Note: it must be empty (cannot contain any sub-project folders nor projects), you must move or remove all its content before deleting it
 
         This call requires an API key with admin rights
         """
@@ -180,7 +175,7 @@ class DSSProjectFolderSettings(object):
         self.settings = settings
 
     def get_raw(self):
-        """Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
+        """Gets all settings as a raw dictionary. This returns a reference to the raw retrieved settings, not a copy,
         so changes made to the returned object will be reflected when saving.
 
         :rtype: dict
@@ -216,19 +211,12 @@ class DSSProjectFolderSettings(object):
         self.settings["owner"] = owner
 
     def get_permissions(self):
-        """Get the permissions of the project folder
-        Warning: the returned list is the direct object of the settings, modifying it will modify the current settings
+        """Get the permissions of the project folder. This returns a reference to the retrieved permissions, not a copy,
+        so changes made to the returned list will be reflected when saving.
 
         :return list: the current permissions of the project folder
         """
         return self.settings["permissions"]
-
-    def set_permissions(self, permissions):
-        """Set the permissions of the project folder
-
-        :param list permissions: the new permissions of the project folder
-        """
-        self.settings["permissions"] = permissions
 
     def save(self):
         """Saves back the settings to the project folder"""
