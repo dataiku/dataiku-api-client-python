@@ -2,7 +2,8 @@ import json
 from .future import DSSFuture
 
 class DSSAPIDeployer(object):
-    """Handle to interact with the API Deployer.
+    """
+    Handle to interact with the API Deployer.
 
     Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_apideployer`
     """
@@ -252,7 +253,7 @@ class DSSAPIDeployerDeployment(object):
 
         :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call 
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
-                to wait for completion (or failure)
+                   to wait for completion (or failure)
         """
         future_response = self.client._perform_json(
             "POST", "/api-deployer/deployments/%s/actions/update" % (self.deployment_id))

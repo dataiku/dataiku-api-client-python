@@ -818,7 +818,7 @@ class DSSClient(object):
 
         :param: label string: Label for the new API key
         :returns: a dict of the new API key, containing at least "secret", i.e. the actual secret API key
-        :rtype dict
+        :rtype: dict
         """
         return self._perform_json("POST", "/auth/personal-api-keys",
                 params={"label": label})
@@ -831,7 +831,7 @@ class DSSClient(object):
         """
         Returns a dictionary with information about licensing status of this DSS instance
 
-        :rtype dict
+        :rtype: dict
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
