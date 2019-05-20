@@ -28,7 +28,7 @@ class DSSProjectFolder(object):
         :returns str: the path of this project folder
         """
         definition = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id)
-        parent_id = definition.get("parent", None)
+        parent_id = definition.get("parentId", None)
         if parent_id is not None:
             parent = DSSProjectFolder(self.client, parent_id)
             path = parent.get_path()
@@ -42,11 +42,11 @@ class DSSProjectFolder(object):
 
         :returns: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its parent or None for the root project folder
         """
-        parent = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("parent", None)
-        if parent is None:
+        parent_id = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("parentId", None)
+        if parent_id is None:
             return None
         else:
-            return DSSProjectFolder(self.client, parent)
+            return DSSProjectFolder(self.client, parent_id)
 
     def list_child_folders(self):
         """
@@ -54,7 +54,7 @@ class DSSProjectFolder(object):
 
         :returns list: A list of :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its sub-folders
         """
-        children = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("children", [])
+        children = self.client._perform_json("GET", "/project-folders/%s" % self.project_folder_id).get("childrenIds", [])
         return [DSSProjectFolder(self.client, child) for child in children]
 
     def list_project_keys(self):
