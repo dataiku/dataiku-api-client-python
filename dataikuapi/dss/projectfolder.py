@@ -80,7 +80,7 @@ class DSSProjectFolder(object):
     def delete(self):
         """
         Delete the project folder
-        Note: it must be empty (cannot contain any sub-project folders nor projects), you must move or remove all its content before deleting it
+        Note: it must be empty (cannot contain any sub-project folders or projects), you must move or remove all its content before deleting it
 
         This call requires an API key with admin rights
         """
