@@ -85,7 +85,8 @@ class DSSProject(object):
                   export_saved_models=True,
                   export_git_repository=True,
                   export_insights_data=True,
-                  remapping={}):
+                  remapping={},
+                  target_project_folder=None):
         """
         Duplicate the project
 
@@ -97,6 +98,8 @@ class DSSProject(object):
         :param bool export_git_repository:
         :param bool export_insights_data:
         :param dict remapping: dict of connections to be remapped for the new project
+        :param target_project_folder: the project folder where to put the duplicated project
+        :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
         :returns: A dict containing the original and duplicated project's keys
         :rtype: :class:`ProjectDuplicateResult`
         """
@@ -111,6 +114,8 @@ class DSSProject(object):
             "exportInsightsData": export_insights_data,
             "remapping": remapping
         }
+        if target_project_folder is not None:
+            obj["targetProjectFolderId"] = target_project_folder.project_folder_id
 
         ref = self.client._perform_json("POST", "/projects/%s/duplicate/" % self.project_key, body = obj)
         return ref

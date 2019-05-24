@@ -4,6 +4,7 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from .dss.future import DSSFuture
+from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
@@ -101,6 +102,26 @@ class DSSClient(object):
         else:
             return list
 
+    ########################################################
+    # Project folders
+    ########################################################
+    def get_root_project_folder(self):
+        """
+        Get a handle to interact with the root project folder.
+
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        """
+        project_folder_id = self._perform_json("GET", "/project-folders/")["id"]
+        return DSSProjectFolder(self, project_folder_id)
+
+    def get_project_folder(sefl, project_folder_id):
+        """
+        Get a handle to interact with a project folder.
+
+        :param str project_folder_id: the project folder ID of the desired project folder
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        """
+        return DSSProjectFolder(self, project_folder_id)
 
     ########################################################
     # Projects
@@ -133,7 +154,7 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
-    def create_project(self, project_key, name, owner, description=None, settings=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
         """
         Creates a new project, and return a project handle to interact with it.
 
@@ -144,9 +165,13 @@ class DSSClient(object):
         :param str owner: the login of the owner of the project.
         :param str description: a description for the project.
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
+        :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
         
         :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
+        params = {}
+        if project_folder_id is not None:
+            params["projectFolderId"] = project_folder_id
         resp = self._perform_text(
                "POST", "/projects/", body={
                    "projectKey" : project_key,
@@ -154,7 +179,7 @@ class DSSClient(object):
                    "owner" : owner,
                    "settings" : settings,
                    "description" : description
-               })
+               }, params=params)
         return DSSProject(self, project_key)
 
     ########################################################
@@ -657,27 +682,37 @@ class DSSClient(object):
     # Bundles / Import (Automation node)
     ########################################################
 
-    def create_project_from_bundle_local_archive(self, archive_path):
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
 
         :param string archive_path: Path on the local machine where the archive is
+        :param project_folder: the project folder in which the project will be created or None for root project folder
+        :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
-        return self._perform_json("POST",
-                "/projectsFromBundle/fromArchive",
-                 params = { "archivePath" : osp.abspath(archive_path) })
+        params = {
+            "archivePath" : osp.abspath(archive_path)
+        }
+        if project_folder is not None:
+            params["projectFolderId"] = project_folder.project_folder_id
+        return self._perform_json("POST", "/projectsFromBundle/fromArchive", params=params)
 
-    def create_project_from_bundle_archive(self, fp):
+    def create_project_from_bundle_archive(self, fp, project_folder=None):
         """
         Create a project from a bundle archive (as a file object)
         Warning: this method can only be used on an automation node.
 
         :param string fp: A file-like object pointing to a bundle archive zip
+        :param project_folder: the project folder in which the project will be created or None for root project folder
+        :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
+        params = {}
+        if project_folder is not None:
+            params['projectFolderId'] = project_folder.project_folder_id
         files = {'file': fp }
         return self._perform_json("POST",
-                "/projectsFromBundle/", files=files)
+                "/projectsFromBundle/", files=files, params=params)
 
     def prepare_project_import(self, f):
         """
