@@ -838,6 +838,63 @@ class DSSProject(object):
         """
         return TablesImportDefinition(self.client, self.project_key)
 
+    def list_sql_schemas(self, connection_name):
+        """
+        Lists schemas from which tables can be imported in a SQL connection
+
+        :returns: an array of schemas names
+        """
+        return self._list_schemas(connection_name)
+
+    def list_hive_databases(self):
+        """
+        Lists Hive databases from which tables can be imported
+
+        :returns: an array of database names
+        """
+        return self._list_schemas("@virtual(hive-jdbc):default")
+
+    def _list_schemas(self, connection_name):
+        return self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-schemas" % (self.project_key),
+                params = {"connectionName": connection_name} )
+
+    def list_sql_tables(self, connection_name, schema_name=None):
+        """
+        Lists tables to import in a SQL connection
+
+        :returns: an array of tables
+        """
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
+                params = {"connectionName": connection_name, "schemaName": schema_name} )
+
+        def to_schema_table_pair(x):
+            return {"schema":x.get("schema", None), "table":x["table"]}
+        if 'jobId' in ret:
+            future = self.client.get_future(ret["jobId"])
+            future.wait_for_result()
+            return [to_schema_table_pair(x) for x in future.get_result()]
+        else:
+            return [to_schema_table_pair(x) for x in ret['result']]
+
+    def list_hive_tables(self, hive_database):
+        """
+        Lists tables to import in a Hive database
+
+        :returns: an array of tables
+        """
+        connection_name = "@virtual(hive-jdbc):" + hive_database
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
+                params = {"connectionName": connection_name} )
+
+        def to_schema_table_pair(x):
+            return {"schema":x.get("databaseName", None), "table":x["table"]}
+        if 'jobId' in ret:
+            future = self.client.get_future(ret["jobId"])
+            future.wait_for_result()
+            return [to_schema_table_pair(x) for x in future.get_result()['tables']]
+        else:
+            return [to_schema_table_pair(x) for x in ret['result']['tables']]
+
 class TablesImportDefinition(object):
     """
     Temporary structure holding the list of tables to import
