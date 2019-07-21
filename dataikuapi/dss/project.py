@@ -850,7 +850,7 @@ class DSSProject(object):
         """
         Lists Hive databases from which tables can be imported
 
-        :returns: an array of database names
+        :returns: an array of databases names
         """
         return self._list_schemas("@virtual(hive-jdbc):default")
 
