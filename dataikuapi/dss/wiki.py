@@ -63,11 +63,11 @@ class DSSWiki(object):
         """
         return self.__flatten_taxonomy__(self.get_settings().get_taxonomy())
 
-    def create_article(self, article_id, parent_id=None, content=None):
+    def create_article(self, article_name, parent_id=None, content=None):
         """
         Create a wiki article
 
-        :param str article_id: the article ID
+        :param str article_name: the article name
         :param str parent_id: the parent article ID (or None if the article has to be at root level)
         :param str content: the article content
         :returns: the created article
@@ -75,11 +75,11 @@ class DSSWiki(object):
         """
         body = {
             "projectKey": self.project_key,
-            "id": article_id,
+            "name": article_name,
             "parent": parent_id
         }
-        self.client._perform_json("POST", "/projects/%s/wiki/" % (self.project_key), body=body)
-        article = DSSWikiArticle(self.client, self.project_key, article_id)
+        result = self.client._perform_json("POST", "/projects/%s/wiki/" % (self.project_key), body=body)
+        article = DSSWikiArticle(self.client, self.project_key, result['article']['id'])
 
         # set article content if given
         if content is not None:
@@ -222,7 +222,7 @@ class DSSWikiArticle(object):
         :returns: the article data handle
         :rtype: :class:`dataikuapi.dss.wiki.DSSWikiArticleData`
         """
-        article_data = self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, dku_quote_fn(self.article_id)))
+        article_data = self.client._perform_json("GET", "/projects/%s/wiki/%s" % (self.project_key, self.article_id))
         return DSSWikiArticleData(self.client, self.project_key, self.article_id, article_data)
 
     def upload_attachement(self, fp, filename):
@@ -297,6 +297,23 @@ class DSSWikiArticleData(object):
         :param dict metadata: the article metadata
         """
         self.article_data["article"] = metadata
+
+    def get_name(self):
+        """
+        Get the article name
+
+        :returns: the article name
+        :rtype: str
+        """
+        return self.article_data["article"]["name"]
+
+    def set_name(self, name):
+        """
+        Set the article name
+
+        :param str name: the article name
+        """
+        self.article_data["article"]["name"] = name
 
     def save(self):
         """
