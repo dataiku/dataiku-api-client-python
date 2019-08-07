@@ -114,7 +114,7 @@ class DSSClient(object):
         project_folder_id = self._perform_json("GET", "/project-folders/")["id"]
         return DSSProjectFolder(self, project_folder_id)
 
-    def get_project_folder(sefl, project_folder_id):
+    def get_project_folder(self, project_folder_id):
         """
         Get a handle to interact with a project folder.
 
