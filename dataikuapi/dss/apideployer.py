@@ -2,7 +2,8 @@ import json
 from .future import DSSFuture
 
 class DSSAPIDeployer(object):
-    """Handle to interact with the API Deployer.
+    """
+    Handle to interact with the API Deployer.
 
     Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_apideployer`
     """
@@ -70,12 +71,29 @@ class DSSAPIDeployer(object):
         else:
             return l
 
+    def create_infra(self, infra_id, stage, type):
+        """
+        Creates a new infrastructure on the API Deployer and returns the handle to interact with it.
+
+        :param str infra_id: Unique Identifier of the infra to create
+        :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
+        :param str type: STATIC or KUBERNETES
+        :rtype: :class:`DSSAPIDeployerInfra`
+        """
+        settings = {
+            "id": infra_id,
+            "stage": stage,
+            "type": type,
+        }
+        self.client._perform_json("POST", "/api-deployer/infras", body=settings)
+        return self.get_infra(infra_id)
+
     def get_infra(self, infra_id):
         """
         Returns a handle to interact with a single deployment infra, as a :class:`DSSAPIDeployerInfra` 
 
         :param str infra_id: Identifier of the infra to get
-        :rtype: :class:`DSSAPIDeployerDeployment`
+        :rtype: :class:`DSSAPIDeployerInfra`
         """
         return DSSAPIDeployerInfra(self.client, infra_id)
 
@@ -235,7 +253,7 @@ class DSSAPIDeployerDeployment(object):
 
         :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call 
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
-                to wait for completion (or failure)
+                   to wait for completion (or failure)
         """
         future_response = self.client._perform_json(
             "POST", "/api-deployer/deployments/%s/actions/update" % (self.deployment_id))

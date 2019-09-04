@@ -1,5 +1,5 @@
 import time
-from .dataset import DSSDataset
+from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
@@ -53,6 +53,19 @@ class DSSProject(object):
         """
         Return a stream of the exported project
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :param dict options: Dictionary of export options. The following options are available:
+
+            * exportUploads (boolean): Exports the data of Uploaded datasets - default False
+            * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
+            * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
+            * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportManagedFolders (boolean): Exports the data of managed folders - default False
+            * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
+            * exportAllDatasets (boolean): Exports the data of all datasets - default False
+            * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
+            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportInsightsData (boolean): Exports the data of static insights - default False
 
         :returns: a file-like obbject that is a stream of the export archive
         :rtype: file-like
@@ -230,6 +243,15 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def new_managed_dataset_creation_helper(self, dataset_name):
+        """
+        Creates a helper class to create a managed dataset in the project
+
+        :param string dataset_name: Name of the new dataset - must be unique in the project
+        :return: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
+        """
+        return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
     # ML

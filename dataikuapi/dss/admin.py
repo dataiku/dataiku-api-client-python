@@ -728,7 +728,7 @@ class DSSClusterSettings(object):
             "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
 
 class DSSClusterStatus(object):
-    def __init__(self, client, cluster_id, settings):
+    def __init__(self, client, cluster_id, status):
         """Do not call directly, use :meth:`DSSCluster.get_Status`"""
         self.client = client
         self.cluster_id = cluster_id
