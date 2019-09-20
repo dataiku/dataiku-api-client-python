@@ -681,14 +681,16 @@ class DSSCluster(object):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def stop(self):
+    def stop(self, terminate=True):
         """
         Stops or detaches the cluster
 
         This operation is only valid for a managed cluster.
+        :param boolean terminate: whether to delete the cluster after stopping it
         """
         resp = self.client._perform_json(
-            "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id))
+            "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id),
+            params = {'terminate':terminate})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
