@@ -254,3 +254,51 @@ class DSSDataset(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)
+
+class DSSManagedDatasetCreationHelper(object):
+
+    def __init__(self, project, dataset_name):
+        self.project = project
+        self.dataset_name = dataset_name
+        self.creation_settings = { "specificSettings" : {} }
+
+    def get_creation_settings(self):
+        return self.creation_settings
+
+    def with_store_into(self, connection, type_option_id = None, format_option_id = None):
+        """
+        Sets the connection into which to store the new managed dataset
+        :param str connection: Name of the connection to store into
+        :param str type_option_id: If the connection accepts several types of datasets, the type
+        :param str format_option_id: Optional identifier of a file format option
+        :return: self
+        """
+        self.creation_settings["connectionId"] = connection
+        if type_option_id is not None:
+            self.creation_settings["typeOptionId"] = type_option_id
+        if format_option_id is not None:
+            self.creation_settings["specificSettings"]["formatOptionId"] = format_option_id 
+        return self
+
+    def with_copy_partitioning_from(self, dataset_ref):
+        """
+        Sets the new managed dataset to use the same partitioning as an existing dataset_name
+
+        :param str dataset_ref: Name of the dataset to copy partitioning from
+        :return: self
+        """
+        self.creation_settings["partitioningOptionId"] = "copy:%s" % dataset_ref
+        return self
+
+    def create(self):
+        """
+        Executes the creation of the managed dataset according to the selected options
+
+        :return: The :class:`DSSDataset` corresponding to the newly created dataset
+        """
+        self.project.client._perform_json("POST", "/projects/%s/datasets/managed" % self.project.project_key,
+            body = {
+                "name": self.dataset_name,
+                "creationSettings":  self.creation_settings
+        })
+        return DSSDataset(self.project.client, self.project.project_key, self.dataset_name)

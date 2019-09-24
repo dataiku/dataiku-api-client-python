@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-VERSION = "5.1.0"
+VERSION = "6.0.0"
 
 long_description = (open('README').read() +
     '\n\n' + open('HISTORY.txt').read())
@@ -27,7 +27,7 @@ setup(
             'Operating System :: OS Independent'
         ],
         install_requires = [
-            "requests>=2",
+            "requests>=2,<2.22",
             "python-dateutil"
         ]
      )
