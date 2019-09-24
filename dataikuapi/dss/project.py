@@ -891,12 +891,7 @@ class DSSProject(object):
 
         def to_schema_table_pair(x):
             return {"schema":x.get("schema", None), "table":x["table"]}
-        if 'jobId' in ret:
-            future = self.client.get_future(ret["jobId"])
-            future.wait_for_result()
-            return [to_schema_table_pair(x) for x in future.get_result()]
-        else:
-            return [to_schema_table_pair(x) for x in ret['result']]
+        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
     def list_hive_tables(self, hive_database):
         """
@@ -910,12 +905,7 @@ class DSSProject(object):
 
         def to_schema_table_pair(x):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
-        if 'jobId' in ret:
-            future = self.client.get_future(ret["jobId"])
-            future.wait_for_result()
-            return [to_schema_table_pair(x) for x in future.get_result()['tables']]
-        else:
-            return [to_schema_table_pair(x) for x in ret['result']['tables']]
+        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
 class TablesImportDefinition(object):
     """

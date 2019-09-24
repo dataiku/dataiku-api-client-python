@@ -10,6 +10,15 @@ class DSSFuture(object):
        self.state = state
        self.state_is_peek = True
 
+    @classmethod
+    def get_result_wait_if_needed(cls, client, ret):
+        if 'jobId' in ret:
+            future = DSSFuture(client, ret["jobId"], ret)
+            future.wait_for_result()
+            return future.get_result()
+        else:
+            return ret['result']
+
     def abort(self):
         """
         Abort the future
