@@ -891,7 +891,7 @@ class DSSProject(object):
 
         def to_schema_table_pair(x):
             return {"schema":x.get("schema", None), "table":x["table"]}
-        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)]
+        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
     def list_hive_tables(self, hive_database):
         """
