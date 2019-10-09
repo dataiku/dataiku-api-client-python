@@ -1,4 +1,5 @@
 import sys
+from .future import DSSFuture
 
 if sys.version_info >= (3,0):
   import urllib.parse
@@ -7,61 +8,83 @@ else:
   import urllib
   dku_quote_fn = urllib.quote
 
+
 class DSSWebApp(object):
     """
     A handle to manage a webapp
     """
-    def __init__(self, client, project_key, webapp_id, definition):
+    def __init__(self, client, project_key, webapp_id, state=None):
         """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_webapps`"""
         self.client = client
         self.project_key = project_key
         self.webapp_id = webapp_id
-        self.definition = definition
+        self.state = state
 
-    """
-    Update an existing webapp
+    def get_state(self):
+        """
+        Return the state of the webapp
 
-    :returns: a webapp state excerpt
-    :rtype: :class:`dataikuapi.dss.webapp.DSSWebAppSaveResponse`
-    """
-    def update(self):
-        response =  self.client._perform_json("PUT", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id), body=self.definition)
-        return DSSWebAppSaveResponse(self.client, self.project_key, self.webapp_id, response)
+        :return: the state of the webapp
+        """
+        return self.state
 
-    """
-    Stop a webapp
-    """
     def stop_backend(self):
+        """
+        Stop a webapp
+        """
         self.client._perform_empty("PUT", "/projects/%s/webapps/%s/stop-backend" % (self.project_key, self.webapp_id))
         return
 
-    """
-    Restart a webapp
-    """
     def restart_backend(self):
-        self.client._perform_empty("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
-        return
+        """
+        Restart a webapp
+        """
+        future = self.client._perform_json("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
+        return DSSFuture(self.client, future["jobId"])
+
+    def get_definition(self):
+        """
+        Get a webapp definition
+        :returns: a handle to manage the webapp definition
+        :rtype: :class:`dataikuapi.dss.webapp.DSSWebAppDefinition`
+        """
+        definition = self.client._perform_json("GET", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id))
+        return DSSWebAppDefinition(self.client, self.project_key, self.webapp_id, definition)
 
 
-class DSSWebAppSaveResponse(object):
+class DSSWebAppDefinition(object):
     """
-    Response for the update method on a WebApp
+    A handle to manage a WebApp definition
     """
     def __init__(self, client, project_key, webapp_id, definition):
-        """Do not call directly, use :meth:`dataikuapi.dss.webapp.DSSWebApp.update`"""
+        """Do not call directly, use :meth:`dataikuapi.dss.webapp.DSSWebApp.get_definition`"""
         self.client = client
         self.project_key = project_key
         self.webapp_id = webapp_id
         self.definition = definition
 
+    def get_definition(self):
+        """
+        Get the definition
 
-class DSSWebAppHead(object):
-    """
-    A handle to manage a WebApp head
-    """
-    def __init__(self, client, project_key, webapp_id, definition):
-        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_webapps`"""
-        self.client = client
-        self.project_key = project_key
-        self.webapp_id = webapp_id
+
+        :returns: the definition of the webapp
+        """
+        return self.definition
+
+    def set_definition(self, definition):
+        """
+        Set the definition
+
+        :param definition : the definition of the webapp
+        """
         self.definition = definition
+
+    def save(self):
+        """
+        Save the current webapp definition and update
+        :returns: a wrapper to a future
+        """
+        future = self.client._perform_json("PUT", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id), body=self.definition)
+        self.definition = self.client._perform_json("GET", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id))
+        return future

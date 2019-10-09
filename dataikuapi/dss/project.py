@@ -15,7 +15,7 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
-from .webapp import DSSWebApp, DSSWebAppHead
+from .webapp import DSSWebApp
 from dataikuapi.utils import DataikuException
 
 
@@ -832,22 +832,19 @@ class DSSProject(object):
         """
         List the webapps heads of this project
 
-        :returns: the list of the webapps as :class:`dataikuapi.dss.webapp.DSSWebAppHead`
+        :returns: the list of the webapps as :class:`dataikuapi.dss.webapp.DSSWebApp`
         """
-        webapps = self.client._perform_json(
-            "GET", "/projects/%s/webapps/" % self.project_key)
-        return [DSSWebAppHead(self.client, self.project_key, w["id"], w) for w in webapps]
+        webapps = self.client._perform_json("GET", "/projects/%s/webapps/" % self.project_key)
+        return [DSSWebApp(self.client, self.project_key, w["id"], w) for w in webapps]
 
     def get_webapp(self, webapp_id):
         """
         Get a handle to interact with a specific webapp
 
         :param webapp_id: the identifier of a webapp
-        :returns: A :class:`dataikuapi.dss.macro.DSSWebApp` webapp handle
+        :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
         """
-        definition = self.client._perform_json(
-            "GET", "/projects/%s/webapps/%s" % (self.project_key, webapp_id))
-        return DSSWebApp(self.client, self.project_key, webapp_id, definition)
+        return DSSWebApp(self.client, self.project_key, webapp_id)
 
     ########################################################
     # Wiki
