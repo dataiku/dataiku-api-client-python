@@ -32,14 +32,14 @@ class DSSWebApp(object):
     Stop a webapp
     """
     def stop_backend(self):
-        self.client._perform_json("PUT", "/projects/%s/webapps/%s/stop-backend" % (self.project_key, self.webapp_id))
+        self.client._perform_empty("PUT", "/projects/%s/webapps/%s/stop-backend" % (self.project_key, self.webapp_id))
         return
 
     """
     Restart a webapp
     """
     def restart_backend(self):
-        self.client._perform_json("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
+        self.client._perform_empty("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
         return
 
 
@@ -57,7 +57,7 @@ class DSSWebAppSaveResponse(object):
 
 class DSSWebAppHead(object):
     """
-    A handle to manage a webapp head
+    A handle to manage a WebApp head
     """
     def __init__(self, client, project_key, webapp_id, definition):
         """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_webapps`"""
