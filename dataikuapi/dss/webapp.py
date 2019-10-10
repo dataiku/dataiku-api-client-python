@@ -92,7 +92,8 @@ class DSSWebAppDefinition(object):
         """
         Save the current webapp definition and update
         :returns: a wrapper to a future
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         future = self.client._perform_json("PUT", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id), body=self.definition)
         self.definition = self.client._perform_json("GET", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id))
-        return future
+        return DSSFuture(self.client, future["backendState"]["jobId"])
