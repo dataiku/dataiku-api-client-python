@@ -835,7 +835,7 @@ class DSSProject(object):
         :returns: the list of the webapps as :class:`dataikuapi.dss.webapp.DSSWebApp`
         """
         webapps = self.client._perform_json("GET", "/projects/%s/webapps/" % self.project_key)
-        return [DSSWebApp(self.client, self.project_key, w["id"], w) for w in webapps]
+        return [DSSWebApp(self.client, self.project_key, w["id"]) for w in webapps]
 
     def get_webapp(self, webapp_id):
         """

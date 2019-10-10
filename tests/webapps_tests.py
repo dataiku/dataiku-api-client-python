@@ -27,66 +27,55 @@ class WebappApi_tests(object):
 		self.client = DSSClient(host, apiKey)
 		self.project = DSSProject(self.client, testProjectKey)
 
-	def list_webapps_test(self):
+	def t01_list_webapps_test(self):
 		webapps = self.project.list_webapps();
 		ok_(len(webapps) > 0)
 
-	def get_python_webapp_test(self):
+	def t02_get_python_webapp_test(self):
 		webapp = self.project.get_webapp(testWebAppPythonId)
 		ok_(webapp is not None)
 
-	def get_definition_test(self):
+	def t03_get_definition_test(self):
 		webapp = self.project.get_webapp(testWebAppPythonId)
 		definition = webapp.get_definition()
 		ok_(definition is not None)
 		eq_(definition.webapp_id, testWebAppPythonId)
 		eq_(definition.get_definition()["id"], testWebAppPythonId)
 
-	def update_python_webapp_test(self):
+	def t04_update_python_webapp_test(self):
 		webapp = self.project.get_webapp(testWebAppPythonId)
 		definition = webapp.get_definition()
 		old_def = dict(definition.get_definition())
-		future = definition.save()
-		ok_(future is not None)
+		definition.save()
 		eq_(remove_key(definition.get_definition(), "versionTag"), remove_key(old_def, "versionTag"))
 		eq_(definition.get_definition()["versionTag"]["versionNumber"], old_def["versionTag"]["versionNumber"] + 1)
 
-	def restart_backend_test(self):
+	def t05_restart_backend_test(self):
 		"""
 		WARNING: you should manually stop the backend before this test
 		"""
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		ok_(not filtered_webapps[0].get_state()["backendRunning"], "The backend should be stopped before the test")
-		future = filtered_webapps[0].restart_backend()
+		webapp = self.project.get_webapp(testWebAppPythonId)
+		ok_(not webapp.get_state().is_running(), "The backend should be stopped before the test")
+		future = webapp.restart_backend()
 		future.wait_for_result()
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		ok_(filtered_webapps[0].get_state()["backendRunning"])
+		ok_(webapp.get_state().is_running())
 
-	def stop_backend_test(self):
+	def t06_stop_backend_test(self):
 		"""
 		WARNING: you should manually start the backend before this test
 		"""
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		ok_(filtered_webapps[0].get_state()["backendRunning"],"The backend should be started before the test")
-		filtered_webapps[0].stop_backend()
-		sleep(2)
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		ok_(not filtered_webapps[0].get_state()["backendRunning"])
-
-	def get_state_test(self):
 		webapp = self.project.get_webapp(testWebAppPythonId)
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		ok_(webapp.state is None)
-		ok_(webapp.get_state() is not None)
-		eq_(webapp.get_state(), filtered_webapps[0].state)
-
-	def zz_state_consistency_test(self):
-		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
-		webapp = filtered_webapps[0]
+		ok_(webapp.get_state().is_running(),"The backend should be started before the test")
 		webapp.stop_backend()
-		eq_(webapp.get_state()["backendRunning"], False)
+		sleep(2)
+		eq_(webapp.get_state().is_running(), False)
+
+	def t07_state_consistency_test(self):
+		webapp = self.project.get_webapp(testWebAppPythonId)
+		webapp.stop_backend()
+		eq_(webapp.get_state().is_running(), False)
 		future = webapp.restart_backend()
 		future.wait_for_result()
-		eq_(webapp.get_state()["backendRunning"], True)
+		eq_(webapp.get_state().is_running(), True)
 		webapp.stop_backend()
-		eq_(webapp.get_state()["backendRunning"], False)
+		eq_(webapp.get_state().is_running(), False)
