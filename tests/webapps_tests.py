@@ -72,3 +72,21 @@ class WebappApi_tests(object):
 		sleep(2)
 		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
 		ok_(not filtered_webapps[0].get_state()["backendRunning"])
+
+	def get_state_test(self):
+		webapp = self.project.get_webapp(testWebAppPythonId)
+		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
+		ok_(webapp.state is None)
+		ok_(webapp.get_state() is not None)
+		eq_(webapp.get_state(), filtered_webapps[0].state)
+
+	def zz_state_consistency_test(self):
+		filtered_webapps = [w for w in self.project.list_webapps() if w.webapp_id == testWebAppPythonId]
+		webapp = filtered_webapps[0]
+		webapp.stop_backend()
+		eq_(webapp.get_state()["backendRunning"], False)
+		future = webapp.restart_backend()
+		future.wait_for_result()
+		eq_(webapp.get_state()["backendRunning"], True)
+		webapp.stop_backend()
+		eq_(webapp.get_state()["backendRunning"], False)

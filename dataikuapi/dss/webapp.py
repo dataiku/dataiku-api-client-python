@@ -26,6 +26,12 @@ class DSSWebApp(object):
 
         :return: the state of the webapp
         """
+        if self.state is None:
+            webapps = self.client._perform_json("GET", "/projects/%s/webapps/" % self.project_key)
+
+            filtered_webapps = [w for w in webapps if w["id"] == self.webapp_id]
+            if len(filtered_webapps) > 0:
+                self.state = filtered_webapps[0]
         return self.state
 
     def stop_backend(self):
@@ -33,6 +39,7 @@ class DSSWebApp(object):
         Stop a webapp
         """
         self.client._perform_empty("PUT", "/projects/%s/webapps/%s/stop-backend" % (self.project_key, self.webapp_id))
+        self.state = None
         return
 
     def restart_backend(self):
@@ -40,6 +47,7 @@ class DSSWebApp(object):
         Restart a webapp
         """
         future = self.client._perform_json("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
+        self.state = None
         return DSSFuture(self.client, future["jobId"])
 
     def get_definition(self):
