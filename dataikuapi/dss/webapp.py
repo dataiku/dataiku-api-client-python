@@ -18,7 +18,6 @@ class DSSWebApp(object):
         self.client = client
         self.project_key = project_key
         self.webapp_id = webapp_id
-        self.state = None
 
     def get_state(self):
         """
@@ -27,24 +26,22 @@ class DSSWebApp(object):
         :return: the state of the webapp
         :rtype: :class:`DSSWebAppBackendState`
         """
-        if self.state is None:
-            state_definition = self.client._perform_json("GET", "/projects/%s/webapps/%s/backend" % (self.project_key, self.webapp_id))
-            self.state = DSSWebAppBackendState(self.client, self.project_key, self.webapp_id, state_definition)
-        return self.state
+        state = self.client._perform_json("GET", "/projects/%s/webapps/%s/backend/state" % (self.project_key, self.webapp_id))
+        return DSSWebAppBackendState(self.client, self.project_key, self.webapp_id, state)
 
     def stop_backend(self):
         """
         Stop a webapp
         """
-        self.client._perform_empty("PUT", "/projects/%s/webapps/%s/stop-backend" % (self.project_key, self.webapp_id))
-        self.state = None
+        self.client._perform_empty("PUT", "/projects/%s/webapps/%s/backend/actions/stop" % (self.project_key, self.webapp_id))
 
     def restart_backend(self):
         """
         Restart a webapp
+        :returns: a handle to a DSS future to track the progress of the restart
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
-        future = self.client._perform_json("PUT", "/projects/%s/webapps/%s/restart-backend" % (self.project_key, self.webapp_id))
-        self.state = None
+        future = self.client._perform_json("PUT", "/projects/%s/webapps/%s/backend/actions/restart" % (self.project_key, self.webapp_id))
         return DSSFuture(self.client, future["jobId"])
 
     def get_definition(self):
@@ -54,29 +51,29 @@ class DSSWebApp(object):
         :returns: a handle to manage the webapp definition
         :rtype: :class:`dataikuapi.dss.webapp.DSSWebAppDefinition`
         """
-        definition = self.client._perform_json("GET", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id))
-        return DSSWebAppDefinition(self, self.client, self.project_key, self.webapp_id, definition)
+        definition = self.client._perform_json("GET", "/projects/%s/webapps/%s/" % (self.project_key, self.webapp_id))
+        return DSSWebAppDefinition(self.client, self.project_key, self.webapp_id, definition)
 
 
 class DSSWebAppBackendState(object):
     """
     A handle to manage WebApp backend state
     """
-    def __init__(self, client, project_key, webapp_id, definition):
+    def __init__(self, client, project_key, webapp_id, state):
         """Do not call directly, use :meth:`dataikuapi.dss.webapp.DSSWebApp.get_state`"""
         self.client = client
         self.project_key = project_key
         self.webapp_id = webapp_id
-        self.definition = definition
+        self.state = state
 
-    def get_definition(self):
+    def get_state(self):
         """
         Returns the dict containing the current state of the webapp backend.
         Warning : this dict is replaced when webapp backend state changes
 
         :returns: a dict
         """
-        return self.definition
+        return self.state
 
     def is_running(self):
         """
@@ -84,18 +81,17 @@ class DSSWebAppBackendState(object):
 
         :returns: a bool
         """
-        return "futureInfo" in self.definition and \
-               "alive" in self.definition["futureInfo"] and \
-               self.definition["futureInfo"]["alive"]
+        return "futureInfo" in self.state and \
+               "alive" in self.state["futureInfo"] and \
+               self.state["futureInfo"]["alive"]
 
 
 class DSSWebAppDefinition(object):
     """
     A handle to manage a WebApp definition
     """
-    def __init__(self, webapp, client, project_key, webapp_id, definition):
+    def __init__(self, client, project_key, webapp_id, definition):
         """Do not call directly, use :meth:`dataikuapi.dss.webapp.DSSWebApp.get_definition`"""
-        self.webapp = webapp
         self.client = client
         self.project_key = project_key
         self.webapp_id = webapp_id
@@ -120,9 +116,6 @@ class DSSWebAppDefinition(object):
     def save(self):
         """
         Save the current webapp definition and update it.
-
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         self.client._perform_json("PUT", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id), body=self.definition)
         self.definition = self.client._perform_json("GET", "/projects/%s/webapps/%s" % (self.project_key, self.webapp_id))
-        self.webapp.state = None

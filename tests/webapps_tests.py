@@ -38,6 +38,7 @@ class WebappApi_tests(object):
 	def t03_get_definition_test(self):
 		webapp = self.project.get_webapp(testWebAppPythonId)
 		definition = webapp.get_definition()
+		print "Definition " + str(definition)
 		ok_(definition is not None)
 		eq_(definition.webapp_id, testWebAppPythonId)
 		eq_(definition.get_definition()["id"], testWebAppPythonId)
