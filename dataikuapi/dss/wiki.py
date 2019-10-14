@@ -241,7 +241,6 @@ class DSSWikiArticle(object):
         """"
         Download the attachement of an article
 
-        :param str filename: The attachement filename
         :param str upload_id: The attachement upload id
         :returns: The requests.Response object
         :rtype: :class:`requests.Response`
