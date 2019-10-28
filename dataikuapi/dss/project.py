@@ -1,5 +1,5 @@
 import time
-from .dataset import DSSDataset
+from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
@@ -54,6 +54,19 @@ class DSSProject(object):
         Return a stream of the exported project
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
+        :param dict options: Dictionary of export options. The following options are available:
+
+            * exportUploads (boolean): Exports the data of Uploaded datasets - default False
+            * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
+            * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
+            * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportManagedFolders (boolean): Exports the data of managed folders - default False
+            * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
+            * exportAllDatasets (boolean): Exports the data of all datasets - default False
+            * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
+            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportInsightsData (boolean): Exports the data of static insights - default False
+
         :returns: a file-like obbject that is a stream of the export archive
         :rtype: file-like
         """
@@ -85,7 +98,8 @@ class DSSProject(object):
                   export_saved_models=True,
                   export_git_repository=True,
                   export_insights_data=True,
-                  remapping={}):
+                  remapping={},
+                  target_project_folder=None):
         """
         Duplicate the project
 
@@ -97,6 +111,8 @@ class DSSProject(object):
         :param bool export_git_repository:
         :param bool export_insights_data:
         :param dict remapping: dict of connections to be remapped for the new project
+        :param target_project_folder: the project folder where to put the duplicated project
+        :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
         :returns: A dict containing the original and duplicated project's keys
         :rtype: :class:`ProjectDuplicateResult`
         """
@@ -111,6 +127,8 @@ class DSSProject(object):
             "exportInsightsData": export_insights_data,
             "remapping": remapping
         }
+        if target_project_folder is not None:
+            obj["targetProjectFolderId"] = target_project_folder.project_folder_id
 
         ref = self.client._perform_json("POST", "/projects/%s/duplicate/" % self.project_key, body = obj)
         return ref
@@ -225,6 +243,15 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def new_managed_dataset_creation_helper(self, dataset_name):
+        """
+        Creates a helper class to create a managed dataset in the project
+
+        :param string dataset_name: Name of the new dataset - must be unique in the project
+        :return: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
+        """
+        return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
     # ML
@@ -832,6 +859,53 @@ class DSSProject(object):
         :rtype: :class:`TablesImportDefinition`
         """
         return TablesImportDefinition(self.client, self.project_key)
+
+    def list_sql_schemas(self, connection_name):
+        """
+        Lists schemas from which tables can be imported in a SQL connection
+
+        :returns: an array of schemas names
+        """
+        return self._list_schemas(connection_name)
+
+    def list_hive_databases(self):
+        """
+        Lists Hive databases from which tables can be imported
+
+        :returns: an array of databases names
+        """
+        return self._list_schemas("@virtual(hive-jdbc):default")
+
+    def _list_schemas(self, connection_name):
+        return self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-schemas" % (self.project_key),
+                params = {"connectionName": connection_name} )
+
+    def list_sql_tables(self, connection_name, schema_name=None):
+        """
+        Lists tables to import in a SQL connection
+
+        :returns: an array of tables
+        """
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
+                params = {"connectionName": connection_name, "schemaName": schema_name} )
+
+        def to_schema_table_pair(x):
+            return {"schema":x.get("schema", None), "table":x["table"]}
+        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
+
+    def list_hive_tables(self, hive_database):
+        """
+        Lists tables to import in a Hive database
+
+        :returns: an array of tables
+        """
+        connection_name = "@virtual(hive-jdbc):" + hive_database
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
+                params = {"connectionName": connection_name} )
+
+        def to_schema_table_pair(x):
+            return {"schema":x.get("databaseName", None), "table":x["table"]}
+        return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
 class TablesImportDefinition(object):
     """
