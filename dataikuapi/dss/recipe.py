@@ -329,7 +329,7 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
                                      AVRO, ORC 
         :param override_sql_schema: schema to force dataset, for SQL dataset. If left empty, will be autodetected
         :param str partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
-                                           value of 'copy:foo'
+                                           value of 'copy:dataset:foo'
         :param append: whether the recipe should append or overwrite the output when running
                        (note: not available for all dataset types)
         :param str object_type: DATASET or MANAGED_FOLDER

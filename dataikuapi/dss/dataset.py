@@ -280,14 +280,15 @@ class DSSManagedDatasetCreationHelper(object):
             self.creation_settings["specificSettings"]["formatOptionId"] = format_option_id 
         return self
 
-    def with_copy_partitioning_from(self, dataset_ref):
+    def with_copy_partitioning_from(self, dataset_ref, object_type='DATASET'):
         """
         Sets the new managed dataset to use the same partitioning as an existing dataset_name
 
         :param str dataset_ref: Name of the dataset to copy partitioning from
         :return: self
         """
-        self.creation_settings["partitioningOptionId"] = "copy:%s" % dataset_ref
+        code = 'dataset' if object_type == 'DATASET' else 'folder'
+        self.creation_settings["partitioningOptionId"] = "copy:%s:%s" % (code, dataset_ref)
         return self
 
     def create(self):
