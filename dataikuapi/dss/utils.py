@@ -1,3 +1,5 @@
+import os, sys, json, logging, traceback
+
 class DSSDatasetSelectionBuilder(object):
     """Builder for a "dataset selection". In DSS, a dataset selection is used to select a part of a dataset for processing.
 
@@ -64,3 +66,83 @@ class DSSFilterBuilder(object):
         self.filter["expression"] = expression
         self.filter["uiData"]["mode"] = "CUSTOM"
         return self
+
+########################################################
+# helper to find proxy user if relevant
+########################################################
+_in_flask = None
+_in_bokeh = None
+_cookie_to_identifier = {}
+
+def _try_get_flask_headers():
+    global _in_flask
+    if _in_flask is None or _in_flask == True:
+        try:
+            from flask import request as flask_request
+            h = dict(flask_request.headers)
+            _in_flask = True
+            logging.info("got headers from flask")
+            return h
+        except:
+            # no flask
+            _in_flask = False # so that you don't try importing all the time
+    return None
+
+def _try_get_bokeh_headers():
+    global _in_bokeh
+    if _in_bokeh is None or _in_bokeh == True:
+        try:
+            from bokeh.io import curdoc as bokeh_curdoc
+            session_id = bokeh_curdoc().session_context.id
+            # nota: this import will fail for a bokeh webapp not run from DSS. But it's fine
+            from dataiku.webapps.run_bokeh import get_session_headers as get_bokeh_session_headers
+            h = get_bokeh_session_headers().get(session_id, {})
+            _in_bokeh = True
+            logging.info("got headers from bokeh")
+            return h
+        except:
+            # no bokeh
+            _in_bokeh = False # so that you don't try importing all the time
+    return None
+
+def _fetch_identifier_from_cookie(client, cookie):
+    logging.info("fetching from cookie")
+    # by the very definition of this call, it cannot be impersonated, so we flag it as such for the backend
+    client._session.headers['X-DKU-NoProxyUser'] = 'true'
+    try:
+        auth_info = client.get_auth_info_from_browser_headers({"Cookie":cookie})
+        return auth_info["authIdentifier"]
+    finally:
+        del client._session.headers['X-DKU-NoProxyUser']
+    return None
+
+def _try_get_identifier_from_cookie(client, call_headers):
+    global _cookie_to_identifier
+    cookie = call_headers.get("Cookie", call_headers.get("cookie", None))
+    if cookie is not None:
+        if cookie not in _cookie_to_identifier:
+            try:
+                _cookie_to_identifier[cookie] = _fetch_identifier_from_cookie(client, cookie)
+            except:
+                logging.warn("Unable to get identifier from cookie")
+        return _cookie_to_identifier.get(cookie, None)
+    return None
+
+def _try_get_proxy_user(client):
+    # prevent infinite recursion
+    if 'X-DKU-NoProxyUser' in client._session.headers:
+        return None
+    if os.environ.get("DKU_IMPERSONATE_CALLS", '') == 'true':
+        # fetch cookies from where you find something
+        call_headers = None
+        if call_headers is None:
+            # try flask 
+            call_headers = _try_get_flask_headers()
+        if call_headers is None:
+            # try bokeh
+            call_headers = _try_get_bokeh_headers()
+            
+        if call_headers is not None:
+            # get DSS identity of caller (cache by cookie)
+            return _try_get_identifier_from_cookie(client, call_headers)
+    return None

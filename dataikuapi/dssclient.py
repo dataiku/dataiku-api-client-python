@@ -15,6 +15,7 @@ from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
 from .utils import DataikuException
+from .dss.utils import _try_get_proxy_user
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -870,6 +871,7 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
+
     ########################################################
     # Internal Request handling
     ########################################################
@@ -879,6 +881,13 @@ class DSSClient(object):
             body = json.dumps(body)
         if raw_body is not None:
             body = raw_body
+
+        proxyuser = _try_get_proxy_user(self)
+        if proxyuser is None:
+            if 'X-DKU-ProxyUser' in self._session.headers:
+                del self._session.headers['X-DKU-ProxyUser']
+        else:
+            self._session.headers['X-DKU-ProxyUser'] = proxyuser
 
         try:
             http_res = self._session.request(
