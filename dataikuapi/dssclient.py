@@ -1,4 +1,4 @@
-import json
+import os, json, logging
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
@@ -15,7 +15,6 @@ from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
 from .utils import DataikuException
-from .dss.utils import _try_get_proxy_user
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -40,7 +39,10 @@ class DSSClient(object):
         else:
             raise ValueError("API Key is required")
             
-            
+        self._in_flask = None
+        self._in_bokeh = None
+        self._cookie_to_identifier = {}
+
     ########################################################
     # Futures
     ########################################################
@@ -871,6 +873,76 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
+    ########################################################
+    # helper to find proxy user if relevant
+    ########################################################
+
+    def _try_get_flask_headers(self):
+        if self._in_flask is None or self._in_flask == True:
+            try:
+                from flask import request as flask_request
+                h = dict(flask_request.headers)
+                self._in_flask = True
+                return h
+            except:
+                # no flask
+                self._in_flask = False # so that you don't try importing all the time
+        return None
+
+    def _try_get_bokeh_headers(self):
+        if self._in_bokeh is None or self._in_bokeh == True:
+            try:
+                from bokeh.io import curdoc as bokeh_curdoc
+                session_id = bokeh_curdoc().session_context.id
+                # nota: this import will fail for a bokeh webapp not run from DSS. But it's fine
+                from dataiku.webapps.run_bokeh import get_session_headers as get_bokeh_session_headers
+                h = get_bokeh_session_headers().get(session_id, {})
+                self._in_bokeh = True
+                return h
+            except:
+                # no bokeh
+                self._in_bokeh = False # so that you don't try importing all the time
+        return None
+
+    def _fetch_identifier_from_cookie(self, cookie):
+        # by the very definition of this call, it cannot be impersonated, so we flag it as such for the backend
+        self._session.headers['X-DKU-NoProxyUser'] = 'true'
+        try:
+            auth_info = self.get_auth_info_from_browser_headers({"Cookie":cookie})
+            return auth_info["authIdentifier"]
+        finally:
+            del self._session.headers['X-DKU-NoProxyUser']
+        return None
+
+    def _try_get_identifier_from_cookie(self, call_headers):
+        cookie = call_headers.get("Cookie", call_headers.get("cookie", None))
+        if cookie is not None:
+            if cookie not in self._cookie_to_identifier:
+                try:
+                    self._cookie_to_identifier[cookie] = self._fetch_identifier_from_cookie(cookie)
+                except:
+                    logging.warn("Unable to get identifier from cookie")
+            return self._cookie_to_identifier.get(cookie, None)
+        return None
+
+    def _try_get_proxy_user(self):
+        # prevent infinite recursion
+        if 'X-DKU-NoProxyUser' in self._session.headers:
+            return None
+        if os.environ.get("DKU_IMPERSONATE_CALLS", '') == 'true':
+            # fetch cookies from where you find something
+            call_headers = None
+            if call_headers is None:
+                # try flask 
+                call_headers = self._try_get_flask_headers()
+            if call_headers is None:
+                # try bokeh
+                call_headers = self._try_get_bokeh_headers()
+                
+            if call_headers is not None:
+                # get DSS identity of caller (cache by cookie)
+                return self._try_get_identifier_from_cookie(call_headers)
+        return None
 
     ########################################################
     # Internal Request handling
@@ -882,7 +954,7 @@ class DSSClient(object):
         if raw_body is not None:
             body = raw_body
 
-        proxyuser = _try_get_proxy_user(self)
+        proxyuser = self._try_get_proxy_user()
         if proxyuser is None:
             if 'X-DKU-ProxyUser' in self._session.headers:
                 del self._session.headers['X-DKU-ProxyUser']

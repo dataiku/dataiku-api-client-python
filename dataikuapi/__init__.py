@@ -6,5 +6,3 @@ from .apinode_admin_client import APINodeAdminClient
 from .dss.recipe import GroupingRecipeCreator, JoinRecipeCreator, StackRecipeCreator, WindowRecipeCreator, SyncRecipeCreator, SamplingRecipeCreator, SQLQueryRecipeCreator, CodeRecipeCreator, SplitRecipeCreator, SortRecipeCreator, TopNRecipeCreator, DistinctRecipeCreator, DownloadRecipeCreator, PredictionScoringRecipeCreator, ClusteringScoringRecipeCreator
 
 from .dss.admin import DSSUserImpersonationRule, DSSGroupImpersonationRule
-
-from .dss.utils import _try_get_proxy_user
