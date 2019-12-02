@@ -245,7 +245,7 @@ class DSSWikiArticle(object):
         :returns: The requests.Response object
         :rtype: :class:`requests.Response`
         """
-        return self.client._perform_raw("GET", "/projects/%s/wiki/%s/upload/%s" % (self.project_key, self.article_id, upload_id))
+        return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
 
     def delete(self):
         """
