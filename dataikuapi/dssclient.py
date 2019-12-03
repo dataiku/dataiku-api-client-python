@@ -14,7 +14,7 @@ from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
-from .utils import DataikuException
+from .utils import DataikuException, _get_current_impersonate_tickets
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -41,7 +41,7 @@ class DSSClient(object):
             
         self._in_flask = None
         self._in_bokeh = None
-        self._cookie_to_identifier = {}
+        self._cookie_to_ticket = {}
 
     ########################################################
     # Futures
@@ -848,6 +848,21 @@ class DSSClient(object):
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
 
+    def get_ticket_from_browser_headers(self, headers_dict):
+        """
+        Returns a ticket for the DSS user authenticated by the dictionary of
+        HTTP headers provided in headers_dict.
+
+        This is only used in webapp backends
+
+        This method returns a ticket to use as a X-DKU-APITicket header
+
+        :param: headers_dict dict: Dictionary of HTTP headers
+        :returns: a string
+        :rtype: string
+        """
+        return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
+
     def create_personal_api_key(self, label):
         """
         Creates a personal API key corresponding to the user doing the request.
@@ -904,30 +919,33 @@ class DSSClient(object):
                 self._in_bokeh = False # so that you don't try importing all the time
         return None
 
-    def _fetch_identifier_from_cookie(self, cookie):
+    def _fetch_ticket_from_cookie(self, cookie):
         # by the very definition of this call, it cannot be impersonated, so we flag it as such for the backend
-        self._session.headers['X-DKU-NoProxyUser'] = 'true'
+        self._session.headers['X-DKU-NoProxyTicket'] = 'true'
         try:
-            auth_info = self.get_auth_info_from_browser_headers({"Cookie":cookie})
-            return auth_info["authIdentifier"]
+            return self.get_ticket_from_browser_headers({"Cookie":cookie})['msg']
         finally:
-            del self._session.headers['X-DKU-NoProxyUser']
+            del self._session.headers['X-DKU-NoProxyTicket']
         return None
 
-    def _try_get_identifier_from_cookie(self, call_headers):
+    def _try_get_ticket_from_cookie(self, call_headers):
         cookie = call_headers.get("Cookie", call_headers.get("cookie", None))
         if cookie is not None:
-            if cookie not in self._cookie_to_identifier:
+            if cookie not in self._cookie_to_ticket:
                 try:
-                    self._cookie_to_identifier[cookie] = self._fetch_identifier_from_cookie(cookie)
+                    self._cookie_to_ticket[cookie] = self._fetch_ticket_from_cookie(cookie)
                 except:
                     logging.warn("Unable to get identifier from cookie")
-            return self._cookie_to_identifier.get(cookie, None)
+            return self._cookie_to_ticket.get(cookie, None)
         return None
 
-    def _try_get_proxy_user(self):
+    def _try_get_proxy_ticket(self):
+        # obey the context
+        if _get_current_impersonate_tickets() == False: 
+            # explicitely disabled
+            return None
         # prevent infinite recursion
-        if 'X-DKU-NoProxyUser' in self._session.headers:
+        if 'X-DKU-NoProxyTicket' in self._session.headers:
             return None
         if os.environ.get("DKU_IMPERSONATE_CALLS", '') == 'true':
             # fetch cookies from where you find something
@@ -941,7 +959,7 @@ class DSSClient(object):
                 
             if call_headers is not None:
                 # get DSS identity of caller (cache by cookie)
-                return self._try_get_identifier_from_cookie(call_headers)
+                return self._try_get_ticket_from_cookie(call_headers)
         return None
 
     ########################################################
@@ -954,12 +972,9 @@ class DSSClient(object):
         if raw_body is not None:
             body = raw_body
 
-        proxyuser = self._try_get_proxy_user()
-        if proxyuser is None:
-            if 'X-DKU-ProxyUser' in self._session.headers:
-                del self._session.headers['X-DKU-ProxyUser']
-        else:
-            self._session.headers['X-DKU-ProxyUser'] = proxyuser
+        proxyticket = self._try_get_proxy_ticket()
+        if proxyticket is not None:
+            self._session.headers['X-DKU-APITicket'] = proxyticket
 
         try:
             http_res = self._session.request(
