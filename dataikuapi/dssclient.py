@@ -14,7 +14,7 @@ from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 import os.path as osp
-from .utils import DataikuException, _get_current_impersonate_tickets
+from .utils import DataikuException
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -32,16 +32,16 @@ class DSSClient(object):
         self.host = host
         self._session = Session()
 
+        self._reset_auth_headers()
+            
+    def _reset_auth_headers(self):
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")
         elif self.internal_ticket is not None:
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
         else:
             raise ValueError("API Key is required")
-            
-        self._in_flask = None
-        self._in_bokeh = None
-        self._cookie_to_ticket = {}
+
 
     ########################################################
     # Futures
@@ -889,80 +889,6 @@ class DSSClient(object):
         return self._perform_json("GET", "/admin/licensing/status")
 
     ########################################################
-    # helper to find proxy user if relevant
-    ########################################################
-
-    def _try_get_flask_headers(self):
-        if self._in_flask is None or self._in_flask == True:
-            try:
-                from flask import request as flask_request
-                h = dict(flask_request.headers)
-                self._in_flask = True
-                return h
-            except:
-                # no flask
-                self._in_flask = False # so that you don't try importing all the time
-        return None
-
-    def _try_get_bokeh_headers(self):
-        if self._in_bokeh is None or self._in_bokeh == True:
-            try:
-                from bokeh.io import curdoc as bokeh_curdoc
-                session_id = bokeh_curdoc().session_context.id
-                # nota: this import will fail for a bokeh webapp not run from DSS. But it's fine
-                from dataiku.webapps.run_bokeh import get_session_headers as get_bokeh_session_headers
-                h = get_bokeh_session_headers().get(session_id, {})
-                self._in_bokeh = True
-                return h
-            except:
-                # no bokeh
-                self._in_bokeh = False # so that you don't try importing all the time
-        return None
-
-    def _fetch_ticket_from_cookie(self, cookie):
-        # by the very definition of this call, it cannot be impersonated, so we flag it as such for the backend
-        self._session.headers['X-DKU-NoProxyTicket'] = 'true'
-        try:
-            return self.get_ticket_from_browser_headers({"Cookie":cookie})['msg']
-        finally:
-            del self._session.headers['X-DKU-NoProxyTicket']
-        return None
-
-    def _try_get_ticket_from_cookie(self, call_headers):
-        cookie = call_headers.get("Cookie", call_headers.get("cookie", None))
-        if cookie is not None:
-            if cookie not in self._cookie_to_ticket:
-                try:
-                    self._cookie_to_ticket[cookie] = self._fetch_ticket_from_cookie(cookie)
-                except:
-                    logging.warn("Unable to get identifier from cookie")
-            return self._cookie_to_ticket.get(cookie, None)
-        return None
-
-    def _try_get_proxy_ticket(self):
-        # obey the context
-        if _get_current_impersonate_tickets() == False: 
-            # explicitely disabled
-            return None
-        # prevent infinite recursion
-        if 'X-DKU-NoProxyTicket' in self._session.headers:
-            return None
-        if os.environ.get("DKU_IMPERSONATE_CALLS", '') == 'true':
-            # fetch cookies from where you find something
-            call_headers = None
-            if call_headers is None:
-                # try flask 
-                call_headers = self._try_get_flask_headers()
-            if call_headers is None:
-                # try bokeh
-                call_headers = self._try_get_bokeh_headers()
-                
-            if call_headers is not None:
-                # get DSS identity of caller (cache by cookie)
-                return self._try_get_ticket_from_cookie(call_headers)
-        return None
-
-    ########################################################
     # Internal Request handling
     ########################################################
 
@@ -971,10 +897,6 @@ class DSSClient(object):
             body = json.dumps(body)
         if raw_body is not None:
             body = raw_body
-
-        proxyticket = self._try_get_proxy_ticket()
-        if proxyticket is not None:
-            self._session.headers['X-DKU-APITicket'] = proxyticket
 
         try:
             http_res = self._session.request(

@@ -1,4 +1,4 @@
-import csv, sys, threading
+import csv, sys
 from dateutil import parser as date_iso_parser
 from contextlib import closing
 
@@ -94,32 +94,3 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
-
-impersonate_tickets = threading.local()
-
-def _get_current_impersonate_tickets():
-    global impersonate_tickets
-    if hasattr(impersonate_tickets, 'x'):
-        return impersonate_tickets.x
-    else:
-        return None
-
-class DkuProxyingContext(object):
-    """
-    Use in a `with DkuProxyingContext(True):` to make all calls attempt to exchange the current
-    ticket for one impersonating the current browser identity. Conversely, use `with DkuProxyingContext(False):`
-    to make calls use the default ticket (in case impersonation has been set as default)
-    """
-    def __init__(self, impersonate):
-        self.impersonate = impersonate
-        self.previous = None
-
-    def __enter__(self):
-        global impersonate_tickets
-        self.previous = _get_current_impersonate_tickets()
-        impersonate_tickets.x = self.impersonate
-        
-    def __exit__(self, exception_type, exception_value, traceback):
-        global impersonate_tickets
-        impersonate_tickets.x = self.previous
-        
