@@ -5,6 +5,7 @@ import json
 import time
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
+from .future import DSSFuture
 
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
@@ -920,6 +921,29 @@ class DSSMLTask(object):
             return DSSTrainedClusteringModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
         else:
             return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
+
+    def start_render(self, id):
+        """
+        Call the render to docx task.
+
+        :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
+
+        :return: A :class:`DSSFuture` to follow task execution. Once complete, one should call the method render_download
+                with the result of the DSSFuture
+        :rtype: :class:`DSSFuture`
+        """
+        future = self.client._perform_json(
+            "GET", "/projects/%s/models/lab/%s/%s/models/%s/render" % (self.project_key, self.analysis_id, self.mltask_id,id))
+        return DSSFuture(self.client, future["jobId"])
+
+    def render_download(self, path):
+        """
+
+        :param path:
+        :return:
+        """
+        rendered_file = self.client._perform_http("GET", "/projects/%s/models/lab/render-download?filename=%s" % ( self.project_key, path))
+        return rendered_file.content
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
