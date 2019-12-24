@@ -5,6 +5,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
+from .worksheet import DSSStatisticalWorksheet, DSSStatisticalCard
 from .apiservice import DSSAPIService
 import sys
 import os.path as osp
@@ -15,7 +16,8 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
-from dataikuapi.utils import DataikuException
+from dataikuapi.utils import DataikuException, resolve_smart_name
+
 
 
 class DSSProject(object):
@@ -792,8 +794,87 @@ class DSSProject(object):
         Set the tags of this project.
         @param obj: must be a modified version of the object returned by list_tags
         """
-        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
+        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body=tags)
 
+    ########################################################
+    # Statistical worksheets
+    ########################################################
+
+    def list_worksheets(self, as_objects=False):
+        worksheets = self.client._perform_json(
+            "GET", "/projects/%s/eda/worksheets/" % self.project_key)
+        if as_objects:
+            return [self.get_worksheet(worksheet['id']) for worksheet in worksheets]
+        else:
+            return worksheets
+
+    def create_worksheet(self, input_dataset, name="My worksheet"):
+        """
+        Create a new worksheet in the project, and return a handle to interact with it.
+
+        :param string input_dataset: input dataset of the worksheet
+        :param string worksheet_name: name of the worksheet
+
+        Returns:
+            A :class:`dataikuapi.dss.dataset.DSSStatisticalWorksheet` dataset handle
+        """
+        dataset_project_key, dataset_name = resolve_smart_name(
+            input_dataset, self.project_key)
+
+        worksheet_definition = {
+            "projectKey": self.project_key,
+            "name": name,
+            "dataSpec": {
+                "dataset": {"id": dataset_name, "projectKey": dataset_project_key},
+                "datasetSelection": {
+                    "partitionSelectionMethod": "ALL",
+                    "maxRecords": 30000,
+                    "samplingMethod": "FULL"
+                }
+            }
+        }
+        created_worksheet = self.client._perform_json(
+            "POST", "/projects/%s/eda/worksheets/" % self.project_key,
+            body=worksheet_definition
+        )
+        return self.get_worksheet(created_worksheet['id'])
+
+    def get_worksheet(self, worksheet_id):
+        """
+        Get a handle to interact with a specific worksheet
+
+        :param string worksheet_id: the ID of the desired worksheet
+
+        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticalWorksheet` worksheet handle
+        """
+        return DSSStatisticalWorksheet(self.client, self.project_key, worksheet_id)
+
+    def standalone_card(self, input_dataset, card):
+        """
+        Get a handle to interact with a standalone card (a card outside a worksheet)
+
+        :param string input_dataset: the input dataset
+        :param dict card: the card definition
+
+        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticalCard` card handle
+        """
+
+        dataset_project_key, dataset_name = resolve_smart_name(
+            input_dataset, self.project_key)
+        data_spec = {
+            "dataset": {"id": dataset_name, "projectKey": dataset_project_key},
+            "datasetSelection": {
+                "partitionSelectionMethod": "ALL",
+                "maxRecords": 30000,
+                "samplingMethod": "FULL"
+            }
+        }
+
+        fixed_card = self.client._perform_json(
+            "POST", "/projects/%s/eda/worksheets/fix-card" % self.project_key,
+            body=card)
+
+        return DSSStatisticalCard(self.client, self.project_key, data_spec, fixed_card)
 
     ########################################################
     # Macros
