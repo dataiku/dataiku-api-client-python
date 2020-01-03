@@ -5,7 +5,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
-from .worksheet import DSSStatisticalWorksheet, DSSStatisticalCard
+from .worksheet import DSSStatisticalWorksheet, DSSStatisticsCard
 from .apiservice import DSSAPIService
 import sys
 import os.path as osp
@@ -800,9 +800,9 @@ class DSSProject(object):
     # Statistical worksheets
     ########################################################
 
-    def list_worksheets(self, as_objects=False):
+    def list_worksheets(self, as_objects=True):
         worksheets = self.client._perform_json(
-            "GET", "/projects/%s/eda/worksheets/" % self.project_key)
+            "GET", "/projects/%s/statistics/worksheets/" % self.project_key)
         if as_objects:
             return [self.get_worksheet(worksheet['id']) for worksheet in worksheets]
         else:
@@ -834,7 +834,7 @@ class DSSProject(object):
             }
         }
         created_worksheet = self.client._perform_json(
-            "POST", "/projects/%s/eda/worksheets/" % self.project_key,
+            "POST", "/projects/%s/statistics/worksheets/" % self.project_key,
             body=worksheet_definition
         )
         return self.get_worksheet(created_worksheet['id'])
@@ -848,33 +848,6 @@ class DSSProject(object):
         :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticalWorksheet` worksheet handle
         """
         return DSSStatisticalWorksheet(self.client, self.project_key, worksheet_id)
-
-    def standalone_card(self, input_dataset, card):
-        """
-        Get a handle to interact with a standalone card (a card outside a worksheet)
-
-        :param string input_dataset: the input dataset
-        :param dict card: the card definition
-
-        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticalCard` card handle
-        """
-
-        dataset_project_key, dataset_name = resolve_smart_name(
-            input_dataset, self.project_key)
-        data_spec = {
-            "dataset": {"id": dataset_name, "projectKey": dataset_project_key},
-            "datasetSelection": {
-                "partitionSelectionMethod": "ALL",
-                "maxRecords": 30000,
-                "samplingMethod": "FULL"
-            }
-        }
-
-        fixed_card = self.client._perform_json(
-            "POST", "/projects/%s/eda/worksheets/fix-card" % self.project_key,
-            body=card)
-
-        return DSSStatisticalCard(self.client, self.project_key, data_spec, fixed_card)
 
     ########################################################
     # Macros
