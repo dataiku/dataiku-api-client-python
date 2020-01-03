@@ -5,7 +5,7 @@ from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 
 
-class DSSStatisticalWorksheet(object):
+class DSSStatisticsWorksheet(object):
     """
     A handle to interact with a worksheet on the DSS instance
     """

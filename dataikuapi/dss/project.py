@@ -5,7 +5,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
-from .worksheet import DSSStatisticalWorksheet, DSSStatisticsCard
+from .worksheet import DSSStatisticsWorksheet, DSSStatisticsCard
 from .apiservice import DSSAPIService
 import sys
 import os.path as osp
@@ -797,7 +797,7 @@ class DSSProject(object):
         return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body=tags)
 
     ########################################################
-    # Statistical worksheets
+    # Statistics worksheets
     ########################################################
 
     def list_worksheets(self, as_objects=True):
@@ -816,7 +816,7 @@ class DSSProject(object):
         :param string worksheet_name: name of the worksheet
 
         Returns:
-            A :class:`dataikuapi.dss.dataset.DSSStatisticalWorksheet` dataset handle
+            A :class:`dataikuapi.dss.dataset.DSSStatisticsWorksheet` dataset handle
         """
         dataset_project_key, dataset_name = resolve_smart_name(
             input_dataset, self.project_key)
@@ -845,9 +845,9 @@ class DSSProject(object):
 
         :param string worksheet_id: the ID of the desired worksheet
 
-        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticalWorksheet` worksheet handle
+        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticsWorksheet` worksheet handle
         """
-        return DSSStatisticalWorksheet(self.client, self.project_key, worksheet_id)
+        return DSSStatisticsWorksheet(self.client, self.project_key, worksheet_id)
 
     ########################################################
     # Macros
