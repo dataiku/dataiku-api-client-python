@@ -800,15 +800,15 @@ class DSSProject(object):
     # Statistics worksheets
     ########################################################
 
-    def list_worksheets(self, as_objects=True):
+    def list_statistics_worksheets(self, as_objects=True):
         worksheets = self.client._perform_json(
             "GET", "/projects/%s/statistics/worksheets/" % self.project_key)
         if as_objects:
-            return [self.get_worksheet(worksheet['id']) for worksheet in worksheets]
+            return [self.get_statistics_worksheet(worksheet['id']) for worksheet in worksheets]
         else:
             return worksheets
 
-    def create_worksheet(self, input_dataset, name="My worksheet"):
+    def create_statistics_worksheet(self, input_dataset, name="My worksheet"):
         """
         Create a new worksheet in the project, and return a handle to interact with it.
 
@@ -837,9 +837,9 @@ class DSSProject(object):
             "POST", "/projects/%s/statistics/worksheets/" % self.project_key,
             body=worksheet_definition
         )
-        return self.get_worksheet(created_worksheet['id'])
+        return self.get_statistics_worksheet(created_worksheet['id'])
 
-    def get_worksheet(self, worksheet_id):
+    def get_statistics_worksheet(self, worksheet_id):
         """
         Get a handle to interact with a specific worksheet
 
