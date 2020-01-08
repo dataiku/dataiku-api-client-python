@@ -5,6 +5,7 @@ import json
 import time
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
+from .future import DSSFuture
 
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
@@ -592,6 +593,124 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-pmml" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
 
+    ## Post-train computations
+
+    def compute_subpopulation_analyses(self, split_by, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
+        """
+        Launch computation of Subpopulation analyses for this trained model.
+
+        :param list split_by: columns on which subpopulation analyses are to be computed
+        :param bool wait: if True, the call blocks until the run is finished and returns the results
+        :param int sample_size: number of records of the dataset to use for the computation 
+        :param int random_state: random state to use to build sample. Ensure reproducibility
+        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param bool debug_mode: if True, output all logs (slower)
+
+        :returns: if wait is True, a dict containing the Subpopulation analyses, else a future to wait on the result
+        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        
+        body = {
+            "features": split_by,
+            "computationParams": {
+                "sample_size": sample_size,
+                "random_state": random_state,
+                "n_jobs": n_jobs,
+                "debug_mode": debug_mode,
+            }}
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                body=body
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                body=body
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+
+
+    def get_subpopulation_analyses(self):
+        """
+        Retrieve all subpopulation analyses computed for this trained model as a dict
+        """
+        
+        if self.mltask is not None:
+            return self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            return self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+
+    def compute_partial_dependencies(self, features, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
+        """
+        Launch computation of Partial dependencies for this trained model.
+
+        :param list features: features on which partial dependencies are to be computed
+        :param bool wait: if True, the call blocks until the run is finished and returns the results
+        :param int sample_size: number of records of the dataset to use for the computation 
+        :param int random_state: random state to use to build sample. Ensure reproducibility
+        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param bool debug_mode: if True, output all logs (slower)
+
+        :returns: if wait is True, a dict containing the Partial dependencies, else a future to wait on the result
+        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        """
+
+        body = {
+            "features": features,
+            "computationParams": {
+                "sample_size": sample_size,
+                "random_state": random_state,
+                "n_jobs": n_jobs,
+                "debug_mode": debug_mode,
+            }}
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                body=body
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                body=body
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+
+    def get_partial_dependencies(self):
+        """
+        Retrieve all partial dependencies computed for this trained model as a dict
+        """
+
+        if self.mltask is not None:
+            return self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            return self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
 
 class DSSClustersFacts(object):
     def __init__(self, clusters_facts):
