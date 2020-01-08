@@ -42,7 +42,7 @@ class DSSStatisticsWorksheet(object):
 
     def set_definition(self, definition):
         """
-        Set the definition of the dataset
+        Set the definition of the worksheet
 
         Args:
             definition: the definition, as a JSON object. You should only set a definition object 
@@ -109,7 +109,7 @@ class DSSStatisticsCard(object):
 
     def compute(self):
         """
-        Compute the results of a single card (without worksheet)
+        Compute the results of this single card (without worksheet)
 
         :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing card's results
         """
