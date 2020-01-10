@@ -6,6 +6,7 @@ from requests.auth import HTTPBasicAuth
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
+from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
@@ -181,6 +182,28 @@ class DSSClient(object):
                    "description" : description
                }, params=params)
         return DSSProject(self, project_key)
+
+    ########################################################
+    # Apps
+    ########################################################
+
+    def list_apps(self):
+        """
+        List the apps
+
+        :returns: a list of apps, each as a dict. Each dictcontains at least a 'appId' field
+        :rtype: list of dicts
+        """
+        return self._perform_json("GET", "/apps/")
+
+    def get_app(self, app_id):
+        """
+        Get a handle to interact with a specific app.
+
+        :param str app_id: the id of the desired app
+        :returns: A :class:`dataikuapi.dss.app.DSSApp` to interact with this project
+        """
+        return DSSApp(self, app_id)
 
     ########################################################
     # Plugins
