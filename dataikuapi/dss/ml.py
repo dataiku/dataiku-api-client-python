@@ -599,10 +599,10 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Launch computation of Subpopulation analyses for this trained model.
 
-        :param list split_by: columns on which subpopulation analyses are to be computed
-        :param bool wait: if True, the call blocks until the run is finished and returns the results
+        :param list split_by: columns on which subpopulation analyses are to be computed (one analysis per column)
+        :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
-        :param int random_state: random state to use to build sample. Ensure reproducibility
+        :param int random_state: random state to use to build sample, for reproducibility
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
@@ -659,9 +659,9 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         Launch computation of Partial dependencies for this trained model.
 
         :param list features: features on which partial dependencies are to be computed
-        :param bool wait: if True, the call blocks until the run is finished and returns the results
+        :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
-        :param int random_state: random state to use to build sample. Ensure reproducibility
+        :param int random_state: random state to use to build sample, for reproducibility
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
