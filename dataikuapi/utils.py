@@ -94,12 +94,3 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
-
-def resolve_smart_name(smart_name, context_project_key):
-    parts = smart_name.split('.')
-    if len(parts) == 1:
-        return context_project_key, smart_name
-    elif len(parts) == 2:
-        return parts[0], parts[1]
-    else:
-        raise ValueError('Invalid smart name: %s' % smart_name)

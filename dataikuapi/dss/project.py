@@ -5,7 +5,6 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
-from .worksheet import DSSStatisticsWorksheet, DSSStatisticsCard
 from .apiservice import DSSAPIService
 import sys
 import os.path as osp
@@ -16,8 +15,7 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
-from dataikuapi.utils import DataikuException, resolve_smart_name
-
+from dataikuapi.utils import DataikuException
 
 
 class DSSProject(object):
@@ -794,60 +792,8 @@ class DSSProject(object):
         Set the tags of this project.
         @param obj: must be a modified version of the object returned by list_tags
         """
-        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body=tags)
+        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
 
-    ########################################################
-    # Statistics worksheets
-    ########################################################
-
-    def list_statistics_worksheets(self, as_objects=True):
-        worksheets = self.client._perform_json(
-            "GET", "/projects/%s/statistics/worksheets/" % self.project_key)
-        if as_objects:
-            return [self.get_statistics_worksheet(worksheet['id']) for worksheet in worksheets]
-        else:
-            return worksheets
-
-    def create_statistics_worksheet(self, input_dataset, name="My worksheet"):
-        """
-        Create a new worksheet in the project, and return a handle to interact with it.
-
-        :param string input_dataset: input dataset of the worksheet
-        :param string worksheet_name: name of the worksheet
-
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSStatisticsWorksheet` dataset handle
-        """
-        dataset_project_key, dataset_name = resolve_smart_name(
-            input_dataset, self.project_key)
-
-        worksheet_definition = {
-            "projectKey": self.project_key,
-            "name": name,
-            "dataSpec": {
-                "dataset": {"id": dataset_name, "projectKey": dataset_project_key},
-                "datasetSelection": {
-                    "partitionSelectionMethod": "ALL",
-                    "maxRecords": 30000,
-                    "samplingMethod": "FULL"
-                }
-            }
-        }
-        created_worksheet = self.client._perform_json(
-            "POST", "/projects/%s/statistics/worksheets/" % self.project_key,
-            body=worksheet_definition
-        )
-        return self.get_statistics_worksheet(created_worksheet['id'])
-
-    def get_statistics_worksheet(self, worksheet_id):
-        """
-        Get a handle to interact with a specific worksheet
-
-        :param string worksheet_id: the ID of the desired worksheet
-
-        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticsWorksheet` worksheet handle
-        """
-        return DSSStatisticsWorksheet(self.client, self.project_key, worksheet_id)
 
     ########################################################
     # Macros

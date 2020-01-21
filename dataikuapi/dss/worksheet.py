@@ -10,9 +10,10 @@ class DSSStatisticsWorksheet(object):
     A handle to interact with a worksheet on the DSS instance
     """
 
-    def __init__(self, client, project_key, worksheet_id):
+    def __init__(self, client, project_key, dataset_name, worksheet_id):
         self.client = client
         self.project_key = project_key
+        self.dataset_name = dataset_name
         self.worksheet_id = worksheet_id
 
     ########################################################
@@ -24,7 +25,7 @@ class DSSStatisticsWorksheet(object):
         Delete the worksheet
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s/statistics/worksheets/%s" % (self.project_key, self.worksheet_id))
+            "DELETE", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id))
 
     ########################################################
     # Worksheet definition
@@ -38,7 +39,7 @@ class DSSStatisticsWorksheet(object):
             the definition, as a JSON object
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/statistics/worksheets/%s" % (self.project_key, self.worksheet_id))
+            "GET", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id))
 
     def set_definition(self, definition):
         """
@@ -49,7 +50,7 @@ class DSSStatisticsWorksheet(object):
             that has been retrieved using the get_definition call.
         """
         return self.client._perform_json(
-            "PUT", "/projects/%s/statistics/worksheets/%s" % (self.project_key, self.worksheet_id), body=definition)
+            "PUT", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id), body=definition)
 
     def add_card(self, card_definition):
         """
@@ -73,7 +74,8 @@ class DSSStatisticsWorksheet(object):
         definition = self.get_definition()
         standalone_cards = []
         for card in definition["rootCard"]["cards"]:
-            standalone_cards.append(DSSStatisticsCard(self.client, self.project_key, definition['dataSpec'], card))
+            standalone_cards.append(DSSStatisticsCard(
+                self.client, self.project_key, self.dataset_name, definition['dataSpec'], card))
 
         return standalone_cards
 
@@ -89,7 +91,7 @@ class DSSStatisticsWorksheet(object):
         """
 
         future_response = self.client._perform_json(
-            "POST", "/projects/%s/statistics/worksheets/%s/actions/compute-worksheet" % (self.project_key, self.worksheet_id))
+            "POST", "/projects/%s/datasets/%s/statistics/worksheets/%s/actions/compute-worksheet" % (self.project_key, self.dataset_name, self.worksheet_id))
 
         return DSSFuture(self.client, future_response.get("jobId", None), future_response)
 
@@ -101,9 +103,10 @@ class DSSStatisticsCard(object):
     Unlike a worksheet, a standalone card is not persisted on the DSS instance
     """
 
-    def __init__(self, client, project_key, data_spec, card):
+    def __init__(self, client, project_key, dataset_name, data_spec, card):
         self.client = client
         self.project_key = project_key
+        self.dataset_name = dataset_name
         self.data_spec = data_spec
         self.card = card
 
@@ -115,6 +118,7 @@ class DSSStatisticsCard(object):
         """
 
         future_response = self.client._perform_json(
-            "POST", "/projects/%s/statistics/cards/compute-card" % self.project_key,
+            "POST", "/projects/%s/datasets/%s/statistics/cards/compute-card" % (
+                self.project_key, self.dataset_name),
             body={"card": self.card, "dataSpec": self.data_spec})
         return DSSFuture(self.client, future_response.get("jobId", None), future_response)
