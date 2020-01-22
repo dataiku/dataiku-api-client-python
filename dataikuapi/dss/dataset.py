@@ -204,6 +204,23 @@ class DSSDataset(object):
                     "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name),
                     params={'partition':partition}, body=checks)
 
+    def uploaded_add_file(self, fp, filename):
+        """
+        Adds a file to an "uploaded files" dataset
+
+        :param file fp: A file-like object that represents the file to upload
+        :param str filename: The filename for the file to upload 
+        """
+        self.client._perform_empty("POST", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name),
+         files={"file":(filename, fp)})
+
+    def uploaded_list_files(self):
+        """
+        List the files in an "uploaded files" dataset
+        """
+        return self.client._perform_json("GET", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name))
+
+
     ########################################################
     # Metrics
     ########################################################
