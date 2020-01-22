@@ -568,6 +568,21 @@ class DSSProject(object):
         self.client._perform_empty(
             "PUT", "/projects/%s/variables/" % self.project_key, body=obj)
 
+
+    def update_variables(self, variables, type="standard"):
+        """
+        Updates a set of variables for this project
+
+        :param variables dict: a dict of variable name -> value to set. Keys of the dict must be strings.
+                    Values in the dict can be strings, numbers, booleans, lists or dicts
+        :param type str: Can be "standard" to update regular variables or "local" to update local-only
+                    variables that are not part of bundles for this project
+        """
+
+        current_variables = self.get_variables()
+        current_variables[type].update(variables)
+        self.set_variables(current_variables)
+
     ########################################################
     # API Services
     ########################################################
