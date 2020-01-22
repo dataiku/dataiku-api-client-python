@@ -1016,6 +1016,32 @@ class DSSProjectSettings(object):
             self.settings["settings"]["cluster"]["clusterId"] = cluster
             self.settings["settings"]["cluster"]["defaultClusterId"] = fallback_cluster
 
+    def add_exposed_object(self, object_type, object_id, target_project):
+        """
+        Exposes an object from this project to another project.
+        Does nothing if the object was already exposed to the target project
+        """
+
+        found_eo = None
+        for eo in self.settings["exposedObjects"]["objects"]:
+            if eo["type"] == object_type and eo["localName"] == object_id:
+                found_eo = eo
+                break
+
+        if found_eo is None:
+            found_eo = {"type" : object_type, "localName" : object_id, "rules" : []}
+            self.settings["exposedObjects"]["objects"].append(found_eo)
+
+        already_exists = False
+        for rule in found_eo["rules"]:
+            if rule["targetProject"] == target_project:
+                already_exists = True
+                break
+
+        if not already_exists:
+            found_eo["rules"].append({"targetProject": target_project})
+
+
     def save(self):
         """Saves back the settings to the project"""
 

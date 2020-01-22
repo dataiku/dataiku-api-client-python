@@ -7,7 +7,6 @@ from dataikuapi.utils import DataikuException
 class DSSApp(object):
     """
     A handle to interact with a app on the DSS instance.
-
     Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_app``
     """
     def __init__(self, client, app_id):
@@ -30,3 +29,11 @@ class DSSApp(object):
             "GET", "/apps/%s/instances/" % self.app_id)
 
 
+class DSSDataikuAppInstance(object):
+
+    def __init__(self, client, project_key):
+       self.client = client
+       self.project_key = project_key
+
+    def get_as_project(self):
+        self
