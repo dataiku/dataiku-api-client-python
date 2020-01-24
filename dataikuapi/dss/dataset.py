@@ -4,7 +4,7 @@ from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
-from .worksheet import DSSStatisticsWorksheet, DSSStatisticsCard
+from .statistics import DSSStatisticsWorksheet, DSSStatisticsCard
 
 class DSSDataset(object):
     """
