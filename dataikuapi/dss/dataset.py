@@ -2,6 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 
@@ -151,6 +152,23 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "DELETE", "/projects/%s/datasets/%s/data" % (self.project_key, self.dataset_name),
                 params={"partitions" : partitions})
+
+    def copy_to(self, target, sync_schema=True, write_mode="OVERWRITE"):
+        """
+        Copies the data of this dataset to another dataset
+
+        :param target Dataset: a :class:`dataikuapi.dss.dataset.DSSDataset` representing the target of this copy
+        :returns: a DSSFuture representing the operation
+        """
+        dqr = {
+             "targetProjectKey" : target.project_key,
+             "targetDatasetName": target.dataset_name,
+             "syncSchema": sync_schema,
+             "writeMode" : write_mode
+        }
+        print(dqr)
+        future_resp = self.client._perform_json("POST", "/projects/%s/datasets/%s/actions/copyTo" % (self.project_key, self.dataset_name), body=dqr)
+        return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
 
     ########################################################
     # Dataset actions
