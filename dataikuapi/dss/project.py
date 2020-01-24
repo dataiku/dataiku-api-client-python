@@ -15,6 +15,7 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
+from .flow import DSSProjectFlow
 from dataikuapi.utils import DataikuException
 
 
@@ -756,6 +757,13 @@ class DSSProject(object):
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
     ########################################################
+    # Flow
+    ########################################################
+
+    def get_flow(self):
+        return DSSProjectFlow(self.client, self)
+
+    ########################################################
     # Security
     ########################################################
     
@@ -1021,7 +1029,6 @@ class DSSProjectSettings(object):
         Exposes an object from this project to another project.
         Does nothing if the object was already exposed to the target project
         """
-
         found_eo = None
         for eo in self.settings["exposedObjects"]["objects"]:
             if eo["type"] == object_type and eo["localName"] == object_id:

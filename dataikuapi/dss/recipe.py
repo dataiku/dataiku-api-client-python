@@ -211,6 +211,40 @@ class DSSRecipeDefinitionAndPayload(object):
         """
         self.data['payload'] = json.dumps(payload)
 
+    def has_input(self, input_ref):
+        """Returns whether this recipe has a given ref as input"""
+        inputs = self.get_recipe_inputs()
+        for (input_role_name, input_role) in inputs.items():
+            for item in input_role.get("items", []):
+                if item.get("ref", None) == input_ref:
+                    return True
+        return False
+
+    def has_output(self, output_ref):
+        """Returns whether this recipe has a given ref as output"""
+        outputs = self.get_recipe_outputs()
+        for (output_role_name, output_role) in outputs.items():
+            for item in output_role.get("items", []):
+                if item.get("ref", None) == output_ref:
+                    return True
+        return False
+
+    def replace_input(self, current_input_ref, new_input_ref):
+        """Replaces an object reference as input of this recipe by another"""
+        inputs = self.get_recipe_inputs()
+        for (input_role_name, input_role) in inputs.items():
+            for item in input_role.get("items", []):
+                if item.get("ref", None) == current_input_ref:
+                    item["ref"] = new_input_ref
+
+    def replace_output(self, current_output_ref, new_output_ref):
+        """Replaces an object reference as output of this recipe by another"""
+        outputs = self.get_recipe_outputs()
+        for (output_role_name, output_role) in outputs.items():
+            for item in output_role.get("items", []):
+                if item.get("ref", None) == current_output_ref:
+                    item["ref"] = new_output_ref
+
 class DSSRecipeCreator(object):
     """
     Helper to create new recipes

@@ -191,7 +191,7 @@ class DSSClient(object):
         """
         List the apps
 
-        :returns: a list of apps, each as a dict. Each dictcontains at least a 'appId' field
+        :returns: a list of apps, each as a dict. Each dict contains at least a 'appId' field
         :rtype: list of dicts
         """
         return self._perform_json("GET", "/apps/")
