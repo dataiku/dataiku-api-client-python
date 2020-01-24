@@ -94,3 +94,65 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+
+class DSSExtendableDict(dict):
+    
+    def __init__(self, orig_dict=None):
+        if orig_dict is None:
+            self.internal_dict = dict()
+        else:
+            self.internal_dict = orig_dict
+
+    def __getitem__(self, key):
+        return self.internal_dict[key]
+
+    def __iter__(self):
+        return self.internal_dict.__iter__()
+
+    def __setitem__(self, key, value):
+        self.internal_dict[key] = value
+
+    def __str__(self):
+        return self.internal_dict.__str__()
+    
+    def __len__(self):
+        return self.internal_dict.__len__()
+
+    def clear(self):
+        self.internal_dict.clear()
+    
+    def __contains__(self, key):
+        return self.internal_dict.__contains__(key)
+
+    def copy(self):
+        return self.internal_dict.copy()
+
+    def fromkeys(self, sequence, value=None):
+        return self.internal_dict.fromkeys(sequence, value)
+
+    def get(self, key, value=None):
+        return self.internal_dict.get(key, value)
+
+    def items(self):
+        return self.internal_dict.items()
+
+    def keys(self):
+        return self.internal_dict.keys()
+
+    def popitem(self):
+        return self.internal_dict.popitem()
+
+    def pop(self, key, *argv):
+        return self.internal_dict.pop(key, *argv)
+
+    def setdefault(self, key, default_value=None):
+        return self.internal_dict.setdefault(key, default_value)
+
+    def update(self,*args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], DSSExtendableDict):
+            self.internal_dict.update(args[0].internal_dict, **kwargs)
+        else:
+            self.internal_dict.update(*args, **kwargs)
+
+    def values(self):
+        return self.internal_dict.values()

@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+from ..utils import DSSExtendableDict
 import json
 import time
 from .metrics import ComputedMetrics
@@ -606,8 +607,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
-        :returns: if wait is True, a dict containing the Subpopulation analyses, else a future to wait on the result
-        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses` or :class:`dataikuapi.dss.future.DSSFuture`
         """
         
         body = {
@@ -633,26 +634,30 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return future.wait_for_result()
+            return DSSSubpopulationAnalyses(future.wait_for_result())
         else:
             return future
 
 
     def get_subpopulation_analyses(self):
         """
-        Retrieve all subpopulation analyses computed for this trained model as a dict
+        Retrieve all subpopulation analyses computed for this trained model
+        
+        :returns: the subpopulation analyses
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses`
         """
         
         if self.mltask is not None:
-            return self.mltask.client._perform_json(
+            data = self.mltask.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
                 (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
             )
         else:
-            return self.saved_model.client._perform_json(
+            data = self.saved_model.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
+        return DSSSubpopulationAnalyses(data)
 
     def compute_partial_dependencies(self, features, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
         """
@@ -711,6 +716,74 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
+
+class DSSSubpopulationAnalysis(DSSExtendableDict):
+    """
+    Object to read details of a subpopulation analysis of a trained model
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
+    """
+
+    def __init__(self, analysis):
+        super(DSSSubpopulationAnalysis, self).__init__(analysis)
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        computation_params = {}
+        computation_params["nbRecords"] = self.get("nbRecords")
+        computation_params["randomState"] = self.get("randomState")
+        computation_params["onSample"] = self.get("onSample")
+        return computation_params
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis
+        """
+        return self.internal_dict
+
+
+class DSSSubpopulationAnalyses(DSSExtendableDict):
+    """
+    Object to read details of subpopulation analyses of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
+    """
+
+    def __init__(self, data):
+        super(DSSSubpopulationAnalyses, self).__init__(data)
+        self.analyses = []
+        for analysis in data.get("subpopulationAnalyses", []):
+            self.analyses.append(DSSSubpopulationAnalysis(analysis))
+    
+    def get_raw(self):
+        """
+        Gets the raw dictionary of subpopulation analyses
+        """
+        return self.internal_dict
+    
+    def get_all_dataset(self):
+        """
+        Retrieve information and performance on the full dataset used to compute the subpopulation analyses
+        """
+        return self.get("allDataset")
+
+    def list_analyses(self):
+        """
+        Lists all features on which subpopulation analyses have been computed
+        """
+        return [analysis["feature"] for analysis in self.analyses]
+    
+    def get_analysis(self, feature):
+        """
+        Retrieves the subpopulation analysis for a particular feature
+        """
+        if feature not in self.list_analyses():
+            raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
+
+        return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
+
 
 class DSSClustersFacts(object):
     def __init__(self, clusters_facts):
