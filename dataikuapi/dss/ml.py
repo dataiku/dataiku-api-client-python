@@ -670,8 +670,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
-        :returns: if wait is True, a dict containing the Partial dependencies, else a future to wait on the result
-        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        :returns: if wait is True, an object containing the Partial dependencies, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies` or :class:`dataikuapi.dss.future.DSSFuture`
         """
 
         body = {
@@ -697,25 +697,30 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return future.wait_for_result()
+            return DSSPartialDependencies(future.wait_for_result()) 
         else:
             return future
 
     def get_partial_dependencies(self):
         """
-        Retrieve all partial dependencies computed for this trained model as a dict
+        Retrieve all partial dependencies computed for this trained model
+
+        :returns: the partial dependencies
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies`
         """
 
         if self.mltask is not None:
-            return self.mltask.client._perform_json(
+            data = self.mltask.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
                 (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
             )
         else:
-            return self.saved_model.client._perform_json(
+            data = self.saved_model.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
+        return DSSPartialDependencies(data)
+
 
 class DSSSubpopulationAnalysis(DSSExtendableDict):
     """
@@ -783,6 +788,68 @@ class DSSSubpopulationAnalyses(DSSExtendableDict):
             raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
 
         return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
+
+
+class DSSPartialDependence(DSSExtendableDict):
+    """
+    Object to read details of partial dependence of a trained model
+
+    Do not create this object directly, use :meth:`DSSPartialDependencies.get_partial_dependence(feature)` instead
+    """
+
+    def __init__(self, data):
+        super(DSSPartialDependence, self).__init__(data)
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        computation_params = {}
+        computation_params["nbRecords"] = self.get("nbRecords")
+        computation_params["randomState"] = self.get("randomState")
+        computation_params["onSample"] = self.get("onSample")
+        return computation_params
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the partial dependence
+        """
+        return self.internal_dict
+
+
+class DSSPartialDependencies(DSSExtendableDict):
+    """
+    Object to read details of partial dependencies of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_partial_dependencies()` instead
+    """
+
+    def __init__(self, data):
+        super(DSSPartialDependencies, self).__init__(data)
+        self.partial_dependencies = []
+        for pd in data.get("partialDependencies", []):
+            self.partial_dependencies.append(DSSPartialDependence(pd))
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of partial dependencies
+        """
+        return self.internal_dict
+
+    def list_partial_dependencies(self):
+        """
+        Lists all features on which partial dependencies have been computed
+        """
+        return [partial_dep["feature"] for partial_dep in self.partial_dependencies]
+
+    def get_partial_dependence(self, feature):
+        """
+        Retrieves the subpopulation analysis for a particular feature
+        """
+        if feature not in self.list_partial_dependencies():
+            raise ValueError("Partial dependence for feature '%s' cannot be found" % feature)
+
+        return next(pd for pd in self.partial_dependencies if pd["feature"] == feature)
 
 
 class DSSClustersFacts(object):
