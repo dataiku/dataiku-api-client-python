@@ -722,6 +722,86 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return DSSPartialDependencies(data)
 
 
+class DSSSubpopulationModality(DSSExtendableDict):
+    """
+    Object to read details of a subpopulation analysis modality
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality(definition)` instead
+    """
+
+    def __init__(self, computed_as_type, data):
+        super(DSSSubpopulationModality, self).__init__(data)
+
+        if computed_as_type == "CATEGORY":
+            self.definition = DSSSubpopulationCategoryModalityDefinition(data)
+        elif computed_as_type == "NUMERIC":
+            self.definition = DSSSubpopulationNumericModalityDefinition(data)
+    
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis modality
+        """
+        return self.internal_dict
+    
+    def get_definition(self):
+        """
+        Gets the definition of the subpopulation analysis modality
+
+        :returns: definition
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+        """
+        return self.definition
+    
+    def excluded(self):
+        """
+        Whether modality has been excluded from analysis (e.g. too few rows in the subpopulation)
+        """
+        return self.get("excluded")
+
+    def get_perf(self):
+        """
+        Gets the performance of the modality
+        """
+        if self.excluded():
+            raise ValueError("Excluded modalities do not have perf")
+        return self.get("perf")
+
+
+class DSSSubpopulationModalityDefinition(object):
+
+    def __init__(self, data):
+        self.missing_values = data.get("missing_values")
+        self.index = data.get("index")
+    
+    def missing_values(self):
+        return self.missing_values
+
+
+class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefinition):
+    
+    def __init__(self, data):
+        super(DSSSubpopulationNumericModalityDefinition, self).__init__(data)
+        self.lte = data.get("lte", None)
+        self.gt = data.get("gt", None)
+        self.gte = data.get("gte", None)
+    
+    def contains(self, value):
+        lte = self.lte if self.lte is not None else float("inf")
+        gt = self.gt if self.gt is not None else float("-inf")
+        gte = self.gte if self.gte is not None else float("-inf")
+        return gt < value and gte <= value and lte >= value
+
+
+class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
+
+    def __init__(self, data):
+        super(DSSSubpopulationCategoryModalityDefinition, self).__init__(data)
+        self.value = data.get("value", None)
+    
+    def contains(self, value):
+        return value == self.value
+
+
 class DSSSubpopulationAnalysis(DSSExtendableDict):
     """
     Object to read details of a subpopulation analysis of a trained model
@@ -731,6 +811,8 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
 
     def __init__(self, analysis):
         super(DSSSubpopulationAnalysis, self).__init__(analysis)
+        self.computed_as_type = self.get("computed_as_type")
+        self.modalities = [DSSSubpopulationModality(self.computed_as_type, m) for m in self.get("modalities", [])]
 
     def get_computation_params(self):
         """
@@ -741,6 +823,44 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
         computation_params["randomState"] = self.get("randomState")
         computation_params["onSample"] = self.get("onSample")
         return computation_params
+    
+    def list_modalities(self):
+        """
+        List definitions of modalities
+        """
+        return [m.definition for m in self.modalities]
+
+    def get_modality(self, definition=None, missing_values=False):
+        """
+        Retrieves modality from definition
+
+        :param definition: definition of modality to retrieve. Can be:
+                   * :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+                   * for category modality, can be a str corresponding to the value of the modality
+                   * for numeric modality, can be a number inside the modality
+        :param missing_values: whether to retrieve modality corresponding to missing values. If True, 
+                               `definition` is ignored
+        
+        :returns: the modality
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModality`
+        """
+
+        if missing_values:
+            for m in self.modalities:
+                if m.definition.missing_values:
+                    return m
+            raise ValueError("No 'missing values' modality found")
+
+        if isinstance(definition, DSSSubpopulationModalityDefinition):
+            modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
+            if len(modality_candidates) == 0:
+                raise ValueError("Modality with index '%s' not found" % modality["index"])
+            return modality_candidates[0]
+        
+        for m in self.modalities:
+            if m.definition.contains(definition):
+                return m
+        raise ValueError("Modality not found")
 
     def get_raw(self):
         """
