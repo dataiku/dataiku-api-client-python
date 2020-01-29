@@ -166,7 +166,6 @@ class DSSDataset(object):
              "syncSchema": sync_schema,
              "writeMode" : write_mode
         }
-        print(dqr)
         future_resp = self.client._perform_json("POST", "/projects/%s/datasets/%s/actions/copyTo" % (self.project_key, self.dataset_name), body=dqr)
         return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
 
