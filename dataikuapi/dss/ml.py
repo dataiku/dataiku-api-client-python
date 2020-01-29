@@ -752,28 +752,30 @@ class DSSSubpopulationModality(DSSExtendableDict):
         """
         return self.definition
     
-    def excluded(self):
+    def is_excluded(self):
         """
         Whether modality has been excluded from analysis (e.g. too few rows in the subpopulation)
         """
-        return self.get("excluded")
+        return self.get("excluded", False)
 
     def get_perf(self):
         """
-        Gets the performance of the modality
+        Gets the performance results of the modality
         """
-        if self.excluded():
+        if self.is_excluded():
             raise ValueError("Excluded modalities do not have perf")
         return self.get("perf")
 
 
 class DSSSubpopulationModalityDefinition(object):
 
+    MISSING_VALUES = "__DSSSubpopulationModalidityDefinition__MISSINGVALUES"
+
     def __init__(self, data):
-        self.missing_values = data.get("missing_values")
+        self.missing_values = data.get("missing_values", False)
         self.index = data.get("index")
     
-    def missing_values(self):
+    def is_missing_values(self):
         return self.missing_values
 
 
@@ -789,7 +791,7 @@ class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefiniti
         lte = self.lte if self.lte is not None else float("inf")
         gt = self.gt if self.gt is not None else float("-inf")
         gte = self.gte if self.gte is not None else float("-inf")
-        return gt < value and gte <= value and lte >= value
+        return not self.missing_values and gt < value and gte <= value and lte >= value
 
 
 class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
@@ -818,11 +820,11 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
         """
         Gets computation params
         """
-        computation_params = {}
-        computation_params["nbRecords"] = self.get("nbRecords")
-        computation_params["randomState"] = self.get("randomState")
-        computation_params["onSample"] = self.get("onSample")
-        return computation_params
+        return {
+            "nbRecords":  self.get("nbRecords"),
+            "randomState":  self.get("randomState"),
+            "onSample":  self.get("onSample")
+        }
     
     def list_modalities(self):
         """
@@ -830,22 +832,22 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
         """
         return [m.definition for m in self.modalities]
 
-    def get_modality(self, definition=None, missing_values=False):
+    def get_modality(self, definition=None):
         """
         Retrieves modality from definition
 
         :param definition: definition of modality to retrieve. Can be:
                    * :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+                   * `dataikuapi.dss.ml.DSSSubpopulationModalityDefinition.MISSING_VALUES` 
+                      to retrieve modality corresponding to missing values
                    * for category modality, can be a str corresponding to the value of the modality
                    * for numeric modality, can be a number inside the modality
-        :param missing_values: whether to retrieve modality corresponding to missing values. If True, 
-                               `definition` is ignored
-        
+
         :returns: the modality
         :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModality`
         """
 
-        if missing_values:
+        if definition == DSSSubpopulationModalityDefinition.MISSING_VALUES:
             for m in self.modalities:
                 if m.definition.missing_values:
                     return m
@@ -860,7 +862,7 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
         for m in self.modalities:
             if m.definition.contains(definition):
                 return m
-        raise ValueError("Modality not found")
+        raise ValueError("Modality not found: %s" % definition)
 
     def get_raw(self):
         """
@@ -904,10 +906,10 @@ class DSSSubpopulationAnalyses(DSSExtendableDict):
         """
         Retrieves the subpopulation analysis for a particular feature
         """
-        if feature not in self.list_analyses():
+        try:
+            return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
+        except StopIteration:
             raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
-
-        return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
 
 
 class DSSPartialDependence(DSSExtendableDict):
@@ -924,11 +926,11 @@ class DSSPartialDependence(DSSExtendableDict):
         """
         Gets computation params
         """
-        computation_params = {}
-        computation_params["nbRecords"] = self.get("nbRecords")
-        computation_params["randomState"] = self.get("randomState")
-        computation_params["onSample"] = self.get("onSample")
-        return computation_params
+        return {
+            "nbRecords":  self.get("nbRecords"),
+            "randomState":  self.get("randomState"),
+            "onSample":  self.get("onSample")
+        }
 
     def get_raw(self):
         """
@@ -964,12 +966,12 @@ class DSSPartialDependencies(DSSExtendableDict):
 
     def get_partial_dependence(self, feature):
         """
-        Retrieves the subpopulation analysis for a particular feature
+        Retrieves the partial dependencies for a particular feature
         """
-        if feature not in self.list_partial_dependencies():
+        try:
+            return next(pd for pd in self.partial_dependencies if pd["feature"] == feature)
+        except StopIteration:
             raise ValueError("Partial dependence for feature '%s' cannot be found" % feature)
-
-        return next(pd for pd in self.partial_dependencies if pd["feature"] == feature)
 
 
 class DSSClustersFacts(object):
