@@ -95,7 +95,16 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
 
-class DSSExtendableDict(dict):
+class DSSExtensibleDict(dict):
+    """
+    Utility to define dict-like objects that can be sub-classed.
+    
+    Behaves like dict for most common operations. In particular, 
+    it is possible to update an instance of `:class:`dataikuapi.dss.ml.DSSExtensibleDict` 
+    with either a dict or another instance of `:class:`dataikuapi.dss.ml.DSSExtensibleDict`.
+    
+    Provides an `internal_dict` dict field that is the actual holder of the data.
+    """
     
     def __init__(self, orig_dict=None):
         if orig_dict is None:
@@ -149,7 +158,7 @@ class DSSExtendableDict(dict):
         return self.internal_dict.setdefault(key, default_value)
 
     def update(self, *args, **kwargs):
-        if len(args) == 1 and isinstance(args[0], DSSExtendableDict):
+        if len(args) == 1 and isinstance(args[0], DSSExtensibleDict):
             self.internal_dict.update(args[0].internal_dict, **kwargs)
         else:
             self.internal_dict.update(*args, **kwargs)

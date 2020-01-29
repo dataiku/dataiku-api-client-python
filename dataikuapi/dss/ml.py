@@ -1,7 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from ..utils import DSSExtendableDict
+from ..utils import DSSExtensibleDict
 import json
 import time
 from .metrics import ComputedMetrics
@@ -722,7 +722,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return DSSPartialDependencies(data)
 
 
-class DSSSubpopulationModality(DSSExtendableDict):
+class DSSSubpopulationModality(DSSExtensibleDict):
     """
     Object to read details of a subpopulation analysis modality
 
@@ -804,7 +804,7 @@ class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinit
         return value == self.value
 
 
-class DSSSubpopulationAnalysis(DSSExtendableDict):
+class DSSSubpopulationAnalysis(DSSExtensibleDict):
     """
     Object to read details of a subpopulation analysis of a trained model
 
@@ -871,7 +871,7 @@ class DSSSubpopulationAnalysis(DSSExtendableDict):
         return self.internal_dict
 
 
-class DSSSubpopulationAnalyses(DSSExtendableDict):
+class DSSSubpopulationAnalyses(DSSExtensibleDict):
     """
     Object to read details of subpopulation analyses of a trained model
 
@@ -912,7 +912,7 @@ class DSSSubpopulationAnalyses(DSSExtendableDict):
             raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
 
 
-class DSSPartialDependence(DSSExtendableDict):
+class DSSPartialDependence(DSSExtensibleDict):
     """
     Object to read details of partial dependence of a trained model
 
@@ -939,7 +939,7 @@ class DSSPartialDependence(DSSExtendableDict):
         return self.internal_dict
 
 
-class DSSPartialDependencies(DSSExtendableDict):
+class DSSPartialDependencies(DSSExtensibleDict):
     """
     Object to read details of partial dependencies of a trained model
 
