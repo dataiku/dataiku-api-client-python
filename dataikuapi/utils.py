@@ -148,7 +148,7 @@ class DSSExtendableDict(dict):
     def setdefault(self, key, default_value=None):
         return self.internal_dict.setdefault(key, default_value)
 
-    def update(self,*args, **kwargs):
+    def update(self, *args, **kwargs):
         if len(args) == 1 and isinstance(args[0], DSSExtendableDict):
             self.internal_dict.update(args[0].internal_dict, **kwargs)
         else:
