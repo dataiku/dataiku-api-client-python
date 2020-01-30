@@ -600,7 +600,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Launch computation of Subpopulation analyses for this trained model.
 
-        :param list split_by: columns on which subpopulation analyses are to be computed (one analysis per column)
+        :param list|str split_by: column(s) on which subpopulation analyses are to be computed (one analysis per column)
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
@@ -610,9 +610,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
         :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses` or :class:`dataikuapi.dss.future.DSSFuture`
         """
-        
         body = {
-            "features": split_by,
+            "features": split_by if isinstance(split_by, list) else [split_by],
             "computationParams": {
                 "sample_size": sample_size,
                 "random_state": random_state,
@@ -663,7 +662,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Launch computation of Partial dependencies for this trained model.
 
-        :param list features: features on which partial dependencies are to be computed
+        :param list|str features: feature(s) on which partial dependencies are to be computed
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
@@ -675,7 +674,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
 
         body = {
-            "features": features,
+            "features": features if isinstance(features, list) else [features],
             "computationParams": {
                 "sample_size": sample_size,
                 "random_state": random_state,
@@ -726,16 +725,16 @@ class DSSSubpopulationModality(DSSExtensibleDict):
     """
     Object to read details of a subpopulation analysis modality
 
-    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality(definition)` instead
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
     """
 
-    def __init__(self, computed_as_type, data):
+    def __init__(self, feature_name, computed_as_type, data):
         super(DSSSubpopulationModality, self).__init__(data)
 
         if computed_as_type == "CATEGORY":
-            self.definition = DSSSubpopulationCategoryModalityDefinition(data)
+            self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
         elif computed_as_type == "NUMERIC":
-            self.definition = DSSSubpopulationNumericModalityDefinition(data)
+            self.definition = DSSSubpopulationNumericModalityDefinition(feature_name, data)
     
     def get_raw(self):
         """
@@ -771,9 +770,10 @@ class DSSSubpopulationModalityDefinition(object):
 
     MISSING_VALUES = "__DSSSubpopulationModalidityDefinition__MISSINGVALUES"
 
-    def __init__(self, data):
+    def __init__(self, feature_name, data):
         self.missing_values = data.get("missing_values", False)
         self.index = data.get("index")
+        self.feature_name = feature_name
     
     def is_missing_values(self):
         return self.missing_values
@@ -781,8 +781,8 @@ class DSSSubpopulationModalityDefinition(object):
 
 class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefinition):
     
-    def __init__(self, data):
-        super(DSSSubpopulationNumericModalityDefinition, self).__init__(data)
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationNumericModalityDefinition, self).__init__(feature_name, data)
         self.lte = data.get("lte", None)
         self.gt = data.get("gt", None)
         self.gte = data.get("gte", None)
@@ -792,16 +792,39 @@ class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefiniti
         gt = self.gt if self.gt is not None else float("-inf")
         gte = self.gte if self.gte is not None else float("-inf")
         return not self.missing_values and gt < value and gte <= value and lte >= value
+    
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationNumericModalityDefinition(missing_values)"
+        else:
+            if self.gt is not None:
+                repr_gt = "%s<" % self.gt
+            elif self.gte is not None:
+                repr_gt = "%s<=" % self.gte
+            else:
+                repr_gt = ""
 
+            if self.lte is not None:
+                repr_lt = "<=%s" % self.lte
+            else:
+                repr_lt = ""
+
+            return "DSSSubpopulationNumericModalityDefinition(%s%s%s)" % (repr_gt, self.feature_name, repr_lt)
 
 class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
 
-    def __init__(self, data):
-        super(DSSSubpopulationCategoryModalityDefinition, self).__init__(data)
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationCategoryModalityDefinition, self).__init__(feature_name, data)
         self.value = data.get("value", None)
     
     def contains(self, value):
         return value == self.value
+
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationCategoryModalityDefinition(missing_values)"
+        else:
+            return "DSSSubpopulationCategoryModalityDefinition(%s='%s')" % (self.feature_name, self.value)
 
 
 class DSSSubpopulationAnalysis(DSSExtensibleDict):
@@ -814,7 +837,7 @@ class DSSSubpopulationAnalysis(DSSExtensibleDict):
     def __init__(self, analysis):
         super(DSSSubpopulationAnalysis, self).__init__(analysis)
         self.computed_as_type = self.get("computed_as_type")
-        self.modalities = [DSSSubpopulationModality(self.computed_as_type, m) for m in self.get("modalities", [])]
+        self.modalities = [DSSSubpopulationModality(analysis.get("feature"), self.computed_as_type, m) for m in self.get("modalities", [])]
 
     def get_computation_params(self):
         """
@@ -832,7 +855,7 @@ class DSSSubpopulationAnalysis(DSSExtensibleDict):
         """
         return [m.definition for m in self.modalities]
 
-    def get_modality(self, definition=None):
+    def get_modality_data(self, definition=None):
         """
         Retrieves modality from definition
 
@@ -890,11 +913,11 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
         """
         return self.internal_dict
     
-    def get_all_dataset(self):
+    def get_global(self):
         """
-        Retrieve information and performance on the full dataset used to compute the subpopulation analyses
+        Retrieves information and performance on the full dataset used to compute the subpopulation analyses
         """
-        return self.get("allDataset")
+        return self.get("global")
 
     def list_analyses(self):
         """
@@ -958,7 +981,7 @@ class DSSPartialDependencies(DSSExtensibleDict):
         """
         return self.internal_dict
 
-    def list_partial_dependencies(self):
+    def list_features(self):
         """
         Lists all features on which partial dependencies have been computed
         """

@@ -121,8 +121,8 @@ class DSSExtensibleDict(dict):
     def __setitem__(self, key, value):
         self.internal_dict[key] = value
 
-    def __str__(self):
-        return self.internal_dict.__str__()
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + self.internal_dict.__repr__() + ")"
     
     def __len__(self):
         return self.internal_dict.__len__()
