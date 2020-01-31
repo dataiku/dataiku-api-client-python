@@ -723,6 +723,44 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return DSSPartialDependencies(data)
 
 
+class DSSSubpopulationGlobal(DSSExtensibleDict):
+    """
+    Object to read details of performance on global dataset used for subpopulation analyses.
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
+    """
+
+    def __init__(self, data, prediction_type):
+        super(DSSSubpopulationGlobal, self).__init__(data)
+        self.prediction_type = prediction_type
+
+    def get_performance_metrics(self):
+        """
+        Gets the performance results of the global dataset used for the subpopulation analysis
+        """
+        return self.get("performanceMetrics")
+
+    def get_prediction_info(self):
+        """
+        Gets the prediction info of the global dataset used for the subpopulation analysis
+        """
+        global_metrics = self.get("perf").get("globalMetrics")
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
+
+
 class DSSSubpopulationModality(DSSExtensibleDict):
     """
     Object to read details of a subpopulation analysis modality
@@ -769,6 +807,9 @@ class DSSSubpopulationModality(DSSExtensibleDict):
         return self.get("performanceMetrics")
 
     def get_prediction_info(self):
+        """
+        Gets the prediction info of the modality
+        """
         if self.is_excluded():
             raise ValueError("Excluded modalities do not have prediction info")
         global_metrics = self.get("perf").get("globalMetrics")
@@ -925,6 +966,7 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
 
     def __init__(self, data, prediction_type):
         super(DSSSubpopulationAnalyses, self).__init__(data)
+        self.prediction_type = prediction_type
         self.analyses = []
         for analysis in data.get("subpopulationAnalyses", []):
             self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
@@ -939,7 +981,7 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
         """
         Retrieves information and performance on the full dataset used to compute the subpopulation analyses
         """
-        return self.get("global")
+        return DSSSubpopulationGlobal(self.get("global"), self.prediction_type)
 
     def list_analyses(self):
         """
