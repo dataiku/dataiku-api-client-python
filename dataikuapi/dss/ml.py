@@ -633,7 +633,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return DSSSubpopulationAnalyses(future.wait_for_result())
+            prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+            return DSSSubpopulationAnalyses(future.wait_for_result(), prediction_type)
         else:
             return future
 
@@ -656,7 +657,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
-        return DSSSubpopulationAnalyses(data)
+        prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+        return DSSSubpopulationAnalyses(data, prediction_type)
 
     def compute_partial_dependencies(self, features, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
         """
@@ -728,9 +730,10 @@ class DSSSubpopulationModality(DSSExtensibleDict):
     Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
     """
 
-    def __init__(self, feature_name, computed_as_type, data):
+    def __init__(self, feature_name, computed_as_type, data, prediction_type):
         super(DSSSubpopulationModality, self).__init__(data)
 
+        self.prediction_type = prediction_type
         if computed_as_type == "CATEGORY":
             self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
         elif computed_as_type == "NUMERIC":
@@ -757,13 +760,32 @@ class DSSSubpopulationModality(DSSExtensibleDict):
         """
         return self.get("excluded", False)
 
-    def get_perf(self):
+    def get_performance_metrics(self):
         """
         Gets the performance results of the modality
         """
         if self.is_excluded():
-            raise ValueError("Excluded modalities do not have perf")
-        return self.get("perf")
+            raise ValueError("Excluded modalities do not have performance metrics")
+        return self.get("performanceMetrics")
+
+    def get_prediction_info(self):
+        if self.is_excluded():
+            raise ValueError("Excluded modalities do not have prediction info")
+        global_metrics = self.get("perf").get("globalMetrics")
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
 
 
 class DSSSubpopulationModalityDefinition(object):
@@ -834,10 +856,10 @@ class DSSSubpopulationAnalysis(DSSExtensibleDict):
     Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
     """
 
-    def __init__(self, analysis):
+    def __init__(self, analysis, prediction_type):
         super(DSSSubpopulationAnalysis, self).__init__(analysis)
         self.computed_as_type = self.get("computed_as_type")
-        self.modalities = [DSSSubpopulationModality(analysis.get("feature"), self.computed_as_type, m) for m in self.get("modalities", [])]
+        self.modalities = [DSSSubpopulationModality(analysis.get("feature"), self.computed_as_type, m, prediction_type) for m in self.get("modalities", [])]
 
     def get_computation_params(self):
         """
@@ -901,11 +923,11 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
     Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
     """
 
-    def __init__(self, data):
+    def __init__(self, data, prediction_type):
         super(DSSSubpopulationAnalyses, self).__init__(data)
         self.analyses = []
         for analysis in data.get("subpopulationAnalyses", []):
-            self.analyses.append(DSSSubpopulationAnalysis(analysis))
+            self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
     
     def get_raw(self):
         """
