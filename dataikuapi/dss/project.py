@@ -16,6 +16,7 @@ from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
+from .app import DSSAppManifest
 from dataikuapi.utils import DataikuException
 
 
@@ -929,6 +930,15 @@ class DSSProject(object):
         def to_schema_table_pair(x):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
         return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
+
+    ########################################################
+    # App designer
+    ########################################################
+
+    def get_app_manifest(self):
+        raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
+        return DSSAppManifest(self.client, raw_data)
+
 
 class TablesImportDefinition(object):
     """
