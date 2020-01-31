@@ -725,7 +725,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
 class DSSSubpopulationGlobal(DSSExtensibleDict):
     """
-    Object to read details of performance on global dataset used for subpopulation analyses.
+    Object to read details of performance on global population used for subpopulation analyses.
 
     Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
     """
@@ -736,13 +736,13 @@ class DSSSubpopulationGlobal(DSSExtensibleDict):
 
     def get_performance_metrics(self):
         """
-        Gets the performance results of the global dataset used for the subpopulation analysis
+        Gets the performance results of the global population used for the subpopulation analysis
         """
         return self.get("performanceMetrics")
 
     def get_prediction_info(self):
         """
-        Gets the prediction info of the global dataset used for the subpopulation analysis
+        Gets the prediction info of the global population used for the subpopulation analysis
         """
         global_metrics = self.get("perf").get("globalMetrics")
         if self.prediction_type == "BINARY_CLASSIFICATION":
