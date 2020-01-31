@@ -80,3 +80,11 @@ class AnyLoc(object):
             return AnyLoc(elts[0], elts[1])
         else:
             return AnyLoc(context_project_key, ref)
+
+    @staticmethod
+    def from_full(ref):
+        if ref.find(".") >= 0:
+            elts = ref.split(".")
+            return AnyLoc(elts[0], elts[1])
+        else:
+            raise Exception("Cannot parse object id, it's not a full id")
