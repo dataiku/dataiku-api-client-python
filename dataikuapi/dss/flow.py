@@ -30,7 +30,7 @@ class DSSProjectFlow(object):
         new_loc = AnyLoc.from_ref(self.project.project_key, new_ref)
 
         if new_loc.project_key != self.project.project_key:
-            logging.debug("New ref is in project %s, exposing it to project %s" % (new_loc.project_key, self.project.project_key))
+            logging.info("New ref is in project %s, exposing it to project %s" % (new_loc.project_key, self.project.project_key))
             new_ref_src_project = self.client.get_project(new_loc.project_key)
             settings = new_ref_src_project.get_settings()
             settings.add_exposed_object(type, new_loc.object_id, self.project.project_key)
@@ -39,7 +39,7 @@ class DSSProjectFlow(object):
         for recipe in self.project.list_recipes():
             fake_rap = DSSRecipeDefinitionAndPayload({"recipe" : recipe})
             if fake_rap.has_input(current_ref):
-                logging.debug("Recipe %s has %s as input, performing the replacement by %s"% \
+                logging.info("Recipe %s has %s as input, performing the replacement by %s"% \
                     (recipe["name"], current_ref, new_ref))
                 recipe_obj = self.project.get_recipe(recipe["name"])
                 dap = recipe_obj.get_definition_and_payload()
