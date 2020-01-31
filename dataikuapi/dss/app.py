@@ -39,6 +39,9 @@ class DSSApp(object):
         else:
             return future
 
+    def make_random_project_key(self):
+        return "%s_tmp_%s" % (self.app_id, random_string(10))
+
     def create_temporary_instance(self):
         """
         Creates a new temporary instance of this app.
@@ -46,7 +49,7 @@ class DSSApp(object):
         instance is deleted
         :return a :class:`TemporaryDSSAppInstance`
         """
-        key = "%s_tmp_%s" % (self.app_id, random_string(10))
+        key = self.make_random_project_key()
         instance = self.create_instance(key, key, True)
         return TemporaryDSSAppInstance(self.client, key)
 
