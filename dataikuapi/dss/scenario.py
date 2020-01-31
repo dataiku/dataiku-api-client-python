@@ -156,6 +156,13 @@ class DSSScenario(object):
             return None
         return sum([run.get_duration() for run in last_runs]) / len(last_runs)
 
+    def delete(self):
+        """
+        Deletes this scenario
+        """
+        return self.client._perform_json(
+            "DELETE", "/projects/%s/scenarios/%s" % (self.project_key, self.id))
+
     ########################################################
     # Discussions
     ########################################################
