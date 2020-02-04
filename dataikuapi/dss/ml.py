@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+from ..utils import DSSExtensibleDict
 import json
 import time
 from .metrics import ComputedMetrics
@@ -599,19 +600,18 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Launch computation of Subpopulation analyses for this trained model.
 
-        :param list split_by: columns on which subpopulation analyses are to be computed (one analysis per column)
+        :param list|str split_by: column(s) on which subpopulation analyses are to be computed (one analysis per column)
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
-        :returns: if wait is True, a dict containing the Subpopulation analyses, else a future to wait on the result
-        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses` or :class:`dataikuapi.dss.future.DSSFuture`
         """
-        
         body = {
-            "features": split_by,
+            "features": split_by if isinstance(split_by, list) else [split_by],
             "computationParams": {
                 "sample_size": sample_size,
                 "random_state": random_state,
@@ -633,44 +633,50 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return future.wait_for_result()
+            prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+            return DSSSubpopulationAnalyses(future.wait_for_result(), prediction_type)
         else:
             return future
 
 
     def get_subpopulation_analyses(self):
         """
-        Retrieve all subpopulation analyses computed for this trained model as a dict
+        Retrieve all subpopulation analyses computed for this trained model
+        
+        :returns: the subpopulation analyses
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses`
         """
         
         if self.mltask is not None:
-            return self.mltask.client._perform_json(
+            data = self.mltask.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
                 (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
             )
         else:
-            return self.saved_model.client._perform_json(
+            data = self.saved_model.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
+        prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+        return DSSSubpopulationAnalyses(data, prediction_type)
 
     def compute_partial_dependencies(self, features, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
         """
         Launch computation of Partial dependencies for this trained model.
 
-        :param list features: features on which partial dependencies are to be computed
+        :param list|str features: feature(s) on which partial dependencies are to be computed
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
         :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
         :param bool debug_mode: if True, output all logs (slower)
 
-        :returns: if wait is True, a dict containing the Partial dependencies, else a future to wait on the result
-        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
+        :returns: if wait is True, an object containing the Partial dependencies, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies` or :class:`dataikuapi.dss.future.DSSFuture`
         """
 
         body = {
-            "features": features,
+            "features": features if isinstance(features, list) else [features],
             "computationParams": {
                 "sample_size": sample_size,
                 "random_state": random_state,
@@ -692,25 +698,368 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return future.wait_for_result()
+            return DSSPartialDependencies(future.wait_for_result()) 
         else:
             return future
 
     def get_partial_dependencies(self):
         """
-        Retrieve all partial dependencies computed for this trained model as a dict
+        Retrieve all partial dependencies computed for this trained model
+
+        :returns: the partial dependencies
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies`
         """
 
         if self.mltask is not None:
-            return self.mltask.client._perform_json(
+            data = self.mltask.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
                 (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
             )
         else:
-            return self.saved_model.client._perform_json(
+            data = self.saved_model.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
+        return DSSPartialDependencies(data)
+
+
+class DSSSubpopulationGlobal(DSSExtensibleDict):
+    """
+    Object to read details of performance on global population used for subpopulation analyses.
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
+    """
+
+    def __init__(self, data, prediction_type):
+        super(DSSSubpopulationGlobal, self).__init__(data)
+        self.prediction_type = prediction_type
+
+    def get_performance_metrics(self):
+        """
+        Gets the performance results of the global population used for the subpopulation analysis
+        """
+        return self.get("performanceMetrics")
+
+    def get_prediction_info(self):
+        """
+        Gets the prediction info of the global population used for the subpopulation analysis
+        """
+        global_metrics = self.get("perf").get("globalMetrics")
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
+
+
+class DSSSubpopulationModality(DSSExtensibleDict):
+    """
+    Object to read details of a subpopulation analysis modality
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
+    """
+
+    def __init__(self, feature_name, computed_as_type, data, prediction_type):
+        super(DSSSubpopulationModality, self).__init__(data)
+
+        self.prediction_type = prediction_type
+        if computed_as_type == "CATEGORY":
+            self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
+        elif computed_as_type == "NUMERIC":
+            self.definition = DSSSubpopulationNumericModalityDefinition(feature_name, data)
+    
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis modality
+        """
+        return self.internal_dict
+    
+    def get_definition(self):
+        """
+        Gets the definition of the subpopulation analysis modality
+
+        :returns: definition
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+        """
+        return self.definition
+    
+    def is_excluded(self):
+        """
+        Whether modality has been excluded from analysis (e.g. too few rows in the subpopulation)
+        """
+        return self.get("excluded", False)
+
+    def get_performance_metrics(self):
+        """
+        Gets the performance results of the modality
+        """
+        if self.is_excluded():
+            raise ValueError("Excluded modalities do not have performance metrics")
+        return self.get("performanceMetrics")
+
+    def get_prediction_info(self):
+        """
+        Gets the prediction info of the modality
+        """
+        if self.is_excluded():
+            raise ValueError("Excluded modalities do not have prediction info")
+        global_metrics = self.get("perf").get("globalMetrics")
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
+
+
+class DSSSubpopulationModalityDefinition(object):
+
+    MISSING_VALUES = "__DSSSubpopulationModalidityDefinition__MISSINGVALUES"
+
+    def __init__(self, feature_name, data):
+        self.missing_values = data.get("missing_values", False)
+        self.index = data.get("index")
+        self.feature_name = feature_name
+    
+    def is_missing_values(self):
+        return self.missing_values
+
+
+class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefinition):
+    
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationNumericModalityDefinition, self).__init__(feature_name, data)
+        self.lte = data.get("lte", None)
+        self.gt = data.get("gt", None)
+        self.gte = data.get("gte", None)
+    
+    def contains(self, value):
+        lte = self.lte if self.lte is not None else float("inf")
+        gt = self.gt if self.gt is not None else float("-inf")
+        gte = self.gte if self.gte is not None else float("-inf")
+        return not self.missing_values and gt < value and gte <= value and lte >= value
+    
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationNumericModalityDefinition(missing_values)"
+        else:
+            if self.gt is not None:
+                repr_gt = "%s<" % self.gt
+            elif self.gte is not None:
+                repr_gt = "%s<=" % self.gte
+            else:
+                repr_gt = ""
+
+            if self.lte is not None:
+                repr_lt = "<=%s" % self.lte
+            else:
+                repr_lt = ""
+
+            return "DSSSubpopulationNumericModalityDefinition(%s%s%s)" % (repr_gt, self.feature_name, repr_lt)
+
+class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
+
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationCategoryModalityDefinition, self).__init__(feature_name, data)
+        self.value = data.get("value", None)
+    
+    def contains(self, value):
+        return value == self.value
+
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationCategoryModalityDefinition(missing_values)"
+        else:
+            return "DSSSubpopulationCategoryModalityDefinition(%s='%s')" % (self.feature_name, self.value)
+
+
+class DSSSubpopulationAnalysis(DSSExtensibleDict):
+    """
+    Object to read details of a subpopulation analysis of a trained model
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
+    """
+
+    def __init__(self, analysis, prediction_type):
+        super(DSSSubpopulationAnalysis, self).__init__(analysis)
+        self.computed_as_type = self.get("computed_as_type")
+        self.modalities = [DSSSubpopulationModality(analysis.get("feature"), self.computed_as_type, m, prediction_type) for m in self.get("modalities", [])]
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        return {
+            "nbRecords":  self.get("nbRecords"),
+            "randomState":  self.get("randomState"),
+            "onSample":  self.get("onSample")
+        }
+    
+    def list_modalities(self):
+        """
+        List definitions of modalities
+        """
+        return [m.definition for m in self.modalities]
+
+    def get_modality_data(self, definition=None):
+        """
+        Retrieves modality from definition
+
+        :param definition: definition of modality to retrieve. Can be:
+                   * :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+                   * `dataikuapi.dss.ml.DSSSubpopulationModalityDefinition.MISSING_VALUES` 
+                      to retrieve modality corresponding to missing values
+                   * for category modality, can be a str corresponding to the value of the modality
+                   * for numeric modality, can be a number inside the modality
+
+        :returns: the modality
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModality`
+        """
+
+        if definition == DSSSubpopulationModalityDefinition.MISSING_VALUES:
+            for m in self.modalities:
+                if m.definition.missing_values:
+                    return m
+            raise ValueError("No 'missing values' modality found")
+
+        if isinstance(definition, DSSSubpopulationModalityDefinition):
+            modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
+            if len(modality_candidates) == 0:
+                raise ValueError("Modality with index '%s' not found" % modality["index"])
+            return modality_candidates[0]
+        
+        for m in self.modalities:
+            if m.definition.contains(definition):
+                return m
+        raise ValueError("Modality not found: %s" % definition)
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis
+        """
+        return self.internal_dict
+
+
+class DSSSubpopulationAnalyses(DSSExtensibleDict):
+    """
+    Object to read details of subpopulation analyses of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
+    """
+
+    def __init__(self, data, prediction_type):
+        super(DSSSubpopulationAnalyses, self).__init__(data)
+        self.prediction_type = prediction_type
+        self.analyses = []
+        for analysis in data.get("subpopulationAnalyses", []):
+            self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
+    
+    def get_raw(self):
+        """
+        Gets the raw dictionary of subpopulation analyses
+        """
+        return self.internal_dict
+    
+    def get_global(self):
+        """
+        Retrieves information and performance on the full dataset used to compute the subpopulation analyses
+        """
+        return DSSSubpopulationGlobal(self.get("global"), self.prediction_type)
+
+    def list_analyses(self):
+        """
+        Lists all features on which subpopulation analyses have been computed
+        """
+        return [analysis["feature"] for analysis in self.analyses]
+    
+    def get_analysis(self, feature):
+        """
+        Retrieves the subpopulation analysis for a particular feature
+        """
+        try:
+            return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
+        except StopIteration:
+            raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
+
+
+class DSSPartialDependence(DSSExtensibleDict):
+    """
+    Object to read details of partial dependence of a trained model
+
+    Do not create this object directly, use :meth:`DSSPartialDependencies.get_partial_dependence(feature)` instead
+    """
+
+    def __init__(self, data):
+        super(DSSPartialDependence, self).__init__(data)
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        return {
+            "nbRecords":  self.get("nbRecords"),
+            "randomState":  self.get("randomState"),
+            "onSample":  self.get("onSample")
+        }
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the partial dependence
+        """
+        return self.internal_dict
+
+
+class DSSPartialDependencies(DSSExtensibleDict):
+    """
+    Object to read details of partial dependencies of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_partial_dependencies()` instead
+    """
+
+    def __init__(self, data):
+        super(DSSPartialDependencies, self).__init__(data)
+        self.partial_dependencies = []
+        for pd in data.get("partialDependencies", []):
+            self.partial_dependencies.append(DSSPartialDependence(pd))
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of partial dependencies
+        """
+        return self.internal_dict
+
+    def list_features(self):
+        """
+        Lists all features on which partial dependencies have been computed
+        """
+        return [partial_dep["feature"] for partial_dep in self.partial_dependencies]
+
+    def get_partial_dependence(self, feature):
+        """
+        Retrieves the partial dependencies for a particular feature
+        """
+        try:
+            return next(pd for pd in self.partial_dependencies if pd["feature"] == feature)
+        except StopIteration:
+            raise ValueError("Partial dependence for feature '%s' cannot be found" % feature)
+
 
 class DSSClustersFacts(object):
     def __init__(self, clusters_facts):
