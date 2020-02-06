@@ -534,8 +534,8 @@ class DSSProject(object):
     def set_variables(self, obj):
         """
         Sets the variables of this project.
-        WARNING: when executed in a python recipe (single run), the changes made by `set_variables` will not be "seen" in the recipe.
-                 Use the internal API instead if this behavior is needed
+        WARNING: if executed from a python recipe, the changes made by `set_variables` will not be "seen" in that recipe.
+                 Use the internal API dataiku.get_custom_variables() instead if this behavior is needed
 
         @param dict obj: must be a modified version of the object returned by get_variables
         """
