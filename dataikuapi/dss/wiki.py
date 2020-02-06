@@ -327,6 +327,7 @@ class DSSWikiArticleData(object):
 
     def save(self):
         """
-        Save the current article data to the backend
+        Save the current article data to the backend.
+        We are using the UUID of the page due to restriction on the REST API.
         """
-        self.article_data = self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, dku_quote_fn(self.article_id)), body=self.article_data)
+        self.article_data = self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, self.article_data["article"]['id']), body=self.article_data)
