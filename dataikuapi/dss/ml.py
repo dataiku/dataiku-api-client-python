@@ -151,8 +151,6 @@ class DSSMLTaskSettings(object):
         self.mltask_settings['time']['timeVariable'] = feature_name
         self.mltask_settings['time']['ascending'] = ascending
         self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['numerical_handling'] = "REGULAR"
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['rescaling'] = "NONE"
         if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
             self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
             self.mltask_settings['splitParams']['ssdColumn'] = feature_name
