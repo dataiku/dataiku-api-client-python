@@ -109,5 +109,13 @@ class DSSInternalDict(object):
     def get(self, name, default=None):
         return self._internal_dict.get(name, default=default)
 
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the actual data
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
     def __repr__(self):
         return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"

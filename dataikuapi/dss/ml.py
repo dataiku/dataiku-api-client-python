@@ -777,12 +777,6 @@ class DSSSubpopulationModality(DSSInternalDict):
         elif computed_as_type == "NUMERIC":
             self.definition = DSSSubpopulationNumericModalityDefinition(feature_name, data)
     
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the subpopulation analysis modality
-        """
-        return self._internal_dict
-    
     def get_definition(self):
         """
         Gets the definition of the subpopulation analysis modality
@@ -950,12 +944,6 @@ class DSSSubpopulationAnalysis(DSSInternalDict):
                 return m
         raise ValueError("Modality not found: %s" % definition)
 
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the subpopulation analysis
-        """
-        return self._internal_dict
-
 
 class DSSSubpopulationAnalyses(DSSInternalDict):
     """
@@ -970,12 +958,6 @@ class DSSSubpopulationAnalyses(DSSInternalDict):
         self.analyses = []
         for analysis in data.get("subpopulationAnalyses", []):
             self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
-    
-    def get_raw(self):
-        """
-        Gets the raw dictionary of subpopulation analyses
-        """
-        return self._internal_dict
     
     def get_global(self):
         """
@@ -1019,12 +1001,6 @@ class DSSPartialDependence(DSSInternalDict):
             "onSample":  self.get("onSample")
         }
 
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the partial dependence
-        """
-        return self._internal_dict
-
 
 class DSSPartialDependencies(DSSInternalDict):
     """
@@ -1038,12 +1014,6 @@ class DSSPartialDependencies(DSSInternalDict):
         self.partial_dependencies = []
         for pd in data.get("partialDependencies", []):
             self.partial_dependencies.append(DSSPartialDependence(pd))
-
-    def get_raw(self):
-        """
-        Gets the raw dictionary of partial dependencies
-        """
-        return self._internal_dict
 
     def list_features(self):
         """
