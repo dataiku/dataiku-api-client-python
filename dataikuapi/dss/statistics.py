@@ -7,7 +7,7 @@ from .discussion import DSSObjectDiscussions
 
 class DSSStatisticsWorksheet(object):
     """
-    A handle to interact with a worksheet on the DSS instance
+    A handle to interact with a worksheet.
     """
 
     def __init__(self, client, project_key, dataset_name, worksheet_id):
@@ -16,109 +16,169 @@ class DSSStatisticsWorksheet(object):
         self.dataset_name = dataset_name
         self.worksheet_id = worksheet_id
 
-    ########################################################
-    # Worksheet deletion
-    ########################################################
-
     def delete(self):
         """
-        Delete the worksheet
+        Deletes the worksheet
         """
         return self.client._perform_empty(
             "DELETE", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id))
 
-    ########################################################
-    # Worksheet definition
-    ########################################################
-
-    def get_definition(self):
+    def get_settings(self):
         """
-        Get the definition of the worksheet
+        Fetches the settings of this worksheet.
 
-        Returns:
-            the definition, as a JSON object
+        :return: an object to interact with the settings
+        :rtype: :class:`DSSStatisticsWorksheetSettings`
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id))
+        worksheet_json = self.client._perform_json(
+            "GET", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (
+                self.project_key, self.dataset_name, self.worksheet_id)
+        )
+        return DSSStatisticsWorksheetSettings(self.client, self.project_key,
+                                              self.dataset_name, self.worksheet_id, worksheet_json)
 
-    def set_definition(self, definition):
+    def run_worksheet(self):
         """
-        Set the definition of the worksheet
+        Computes the results of the whole worksheet.
 
-        Args:
-            definition: the definition, as a JSON object. You should only set a definition object 
-            that has been retrieved using the get_definition call.
-        """
-        return self.client._perform_json(
-            "PUT", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id), body=definition)
-
-    def add_card(self, card_definition):
-        """
-        Add a new card to the worksheet
-
-        The precise structure of ``card_definition`` depends on the specific card type. To know which 
-        fields exist for a given card type, create a worksheet from the UI,  and use 
-        :meth:`get_definition` to retrieve the configuration of the worksheet and inspect it.
-        """
-        worksheet = self.get_definition()
-        worksheet["rootCard"]["cards"].append(card_definition)
-        self.set_definition(worksheet)
-
-    def get_standalone_cards(self):
-        """
-        Extract cards from this worksheet. A standalone card can be computed without worksheet.
-
-        :returns: An list of :class:`dataikuapi.dss.worksheet.DSSStatisticsCard`
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle
         """
 
-        definition = self.get_definition()
-        standalone_cards = []
-        for card in definition["rootCard"]["cards"]:
-            standalone_cards.append(DSSStatisticsCard(
-                self.client, self.project_key, self.dataset_name, definition['dataSpec'], card))
+        root_card = self.get_settings().get_raw()['rootCard']
+        return self.run_card(root_card)
 
-        return standalone_cards
-
-    ########################################################
-    # Obtaining worksheet results
-    ########################################################
-
-    def compute(self):
+    def run_card(self, card):
         """
-        Compute the results of the worksheet
+        Runs a card in the context of the worksheet.
 
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing worksheet's results
-        """
+        Note: the card does not need to belong to the worksheet.
 
-        future_response = self.client._perform_json(
-            "POST", "/projects/%s/datasets/%s/statistics/worksheets/%s/actions/compute-worksheet" % (self.project_key, self.dataset_name, self.worksheet_id))
-
-        return DSSFuture(self.client, future_response.get("jobId", None), future_response)
-
-
-class DSSStatisticsCard(object):
-    """
-    A handle to interact with a standalone card (a card outside a worksheet)
-
-    Unlike a worksheet, a standalone card is not persisted on the DSS instance
-    """
-
-    def __init__(self, client, project_key, dataset_name, data_spec, card):
-        self.client = client
-        self.project_key = project_key
-        self.dataset_name = dataset_name
-        self.data_spec = data_spec
-        self.card = card
-
-    def compute(self):
-        """
-        Compute the results of this single card (without worksheet)
-
+        :param card: a card to compute
+        :type card: :class:`DSSStatisticsCardSettings` or dict
         :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing card's results
         """
 
+        card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
         future_response = self.client._perform_json(
-            "POST", "/projects/%s/datasets/%s/statistics/cards/compute-card" % (
-                self.project_key, self.dataset_name),
-            body={"card": self.card, "dataSpec": self.data_spec})
+            "POST",
+            "/projects/%s/datasets/%s/statistics/worksheets/%s/actions/run-card" % (
+                self.project_key, self.dataset_name, self.worksheet_id),
+            body=card.get_raw()
+        )
         return DSSFuture(self.client, future_response.get("jobId", None), future_response)
+
+    def run_computation(self, computation):
+        """
+        Runs a computation in the context of the worksheet.
+
+        :param computation: a card to compute
+        :type computation: :class:`DSSStatisticsComputationSettings` or dict
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing computation's results
+        """
+
+        computation = DSSStatisticsComputationSettings._from_computation_or_dict(
+            computation)
+        future_response = self.client._perform_json(
+            "POST",
+            "/projects/%s/datasets/%s/statistics/worksheets/%s/actions/run-computation" % (
+                self.project_key, self.dataset_name, self.worksheet_id),
+            body=computation.get_raw()
+        )
+        return DSSFuture(self.client, future_response.get("jobId", None), future_response)
+
+
+class DSSStatisticsWorksheetSettings(object):
+    def __init__(self, client, project_key, dataset_name, worksheet_id, worksheet_definition):
+        self.client = client
+        self.project_key = project_key
+        self.dataset_name = dataset_name
+        self.worksheet_id = worksheet_id
+        self._worksheet_definition = worksheet_definition
+
+    def add_card(self, card):
+        """
+        Adds a new card to the worksheet.
+
+        :param card: card to be added
+        :type card: :class:`DSSStatisticsCardSettings` or dict
+        """
+        card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
+        self._worksheet_definition['rootCard']['cards'].append(card)
+
+    def list_cards(self):
+        """
+        Lists the cards of this worksheet.
+
+        :rtype: list of :class:`DSSStatisticsCardSettings`
+        """
+        return [DSSStatisticsCardSettings(self.client, card_definition)
+                for card_definition in self._worksheet_definition['rootCard']['cards']]
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw settings of the worksheet.
+
+        :rtype: dict
+        """
+        return self._worksheet_definition
+
+    def save(self):
+        """
+        Saves the settings to DSS
+        """
+        return self.client._perform_json(
+            "PUT",
+            "/projects/%s/datasets/%s/statistics/worksheets/%s" % (
+                self.project_key, self.dataset_name, self.worksheet_id),
+            body=self._worksheet_definition
+        )
+
+
+class DSSStatisticsCardSettings(object):
+    def __init__(self, client, card_definition):
+        self.client = client
+        self._card_definition = card_definition
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw settings of the card.
+
+        :rtype: dict
+        """
+        return self._card_definition
+
+    def compile(self):
+        """
+        Gets the underlying computation used to compute the card results.
+
+        :rtype: DSSStatisticsComputationSettings
+        """
+        computation_json = self.client._perform_json(
+            "POST", "/statistics/cards/compile", body=self._card_definition
+        )
+        return DSSStatisticsComputationSettings(computation_json)
+
+    @staticmethod
+    def _from_card_or_dict(client, card_or_dict):
+        if isinstance(card_or_dict, DSSStatisticsCardSettings):
+            card_or_dict = card_or_dict.get_raw()
+        return DSSStatisticsCardSettings(client, card_or_dict)
+
+
+class DSSStatisticsComputationSettings(object):
+    def __init__(self, computation_definition):
+        self._computation_definition = computation_definition
+
+    def get_raw(self):
+        """
+        Gets the raw settings of the computation.
+
+        :rtype: dict
+        """
+        return self._computation_definition
+
+    @staticmethod
+    def _from_computation_or_dict(computation_or_dict):
+        if isinstance(computation_or_dict, DSSStatisticsComputationSettings):
+            computation_or_dict = computation_or_dict.get_raw()
+        return DSSStatisticsComputationSettings(computation_or_dict)

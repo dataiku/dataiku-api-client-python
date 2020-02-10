@@ -4,7 +4,7 @@ from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
-from .statistics import DSSStatisticsWorksheet, DSSStatisticsCard
+from .statistics import DSSStatisticsWorksheet
 
 class DSSDataset(object):
     """
@@ -210,6 +210,11 @@ class DSSDataset(object):
     ########################################################
 
     def list_statistics_worksheets(self, as_objects=True):
+        """
+        List the statistics worksheets associated to this dataset.
+
+        :rtype: list of :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet`
+        """
         worksheets = self.client._perform_json(
             "GET", "/projects/%s/datasets/%s/statistics/worksheets/" % (self.project_key, self.dataset_name))
         if as_objects:
@@ -219,13 +224,13 @@ class DSSDataset(object):
 
     def create_statistics_worksheet(self, name="My worksheet"):
         """
-        Create a new worksheet in the project, and return a handle to interact with it.
+        Create a new worksheet in the dataset, and return a handle to interact with it.
 
         :param string input_dataset: input dataset of the worksheet
         :param string worksheet_name: name of the worksheet
 
         Returns:
-            A :class:`dataikuapi.dss.dataset.DSSStatisticsWorksheet` dataset handle
+            A :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet` dataset handle
         """
 
         worksheet_definition = {
@@ -248,11 +253,11 @@ class DSSDataset(object):
 
     def get_statistics_worksheet(self, worksheet_id):
         """
-        Get a handle to interact with a specific worksheet
+        Get a handle to interact with a statistics worksheet
 
         :param string worksheet_id: the ID of the desired worksheet
 
-        :returns: A :class:`dataikuapi.dss.worksheet.DSSStatisticsWorksheet` worksheet handle
+        :returns: A :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet` worksheet handle
         """
         return DSSStatisticsWorksheet(self.client, self.project_key, self.dataset_name, worksheet_id)
 
