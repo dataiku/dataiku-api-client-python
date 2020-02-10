@@ -1,7 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from ..utils import DSSExtensibleDict
+from ..utils import DSSInternalDict
 import json
 import time
 from .metrics import ComputedMetrics
@@ -723,7 +723,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return DSSPartialDependencies(data)
 
 
-class DSSSubpopulationGlobal(DSSExtensibleDict):
+class DSSSubpopulationGlobal(DSSInternalDict):
     """
     Object to read details of performance on global population used for subpopulation analyses.
 
@@ -761,7 +761,7 @@ class DSSSubpopulationGlobal(DSSExtensibleDict):
             }
 
 
-class DSSSubpopulationModality(DSSExtensibleDict):
+class DSSSubpopulationModality(DSSInternalDict):
     """
     Object to read details of a subpopulation analysis modality
 
@@ -776,12 +776,6 @@ class DSSSubpopulationModality(DSSExtensibleDict):
             self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
         elif computed_as_type == "NUMERIC":
             self.definition = DSSSubpopulationNumericModalityDefinition(feature_name, data)
-    
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the subpopulation analysis modality
-        """
-        return self.internal_dict
     
     def get_definition(self):
         """
@@ -890,7 +884,7 @@ class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinit
             return "DSSSubpopulationCategoryModalityDefinition(%s='%s')" % (self.feature_name, self.value)
 
 
-class DSSSubpopulationAnalysis(DSSExtensibleDict):
+class DSSSubpopulationAnalysis(DSSInternalDict):
     """
     Object to read details of a subpopulation analysis of a trained model
 
@@ -942,7 +936,7 @@ class DSSSubpopulationAnalysis(DSSExtensibleDict):
         if isinstance(definition, DSSSubpopulationModalityDefinition):
             modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
             if len(modality_candidates) == 0:
-                raise ValueError("Modality with index '%s' not found" % modality["index"])
+                raise ValueError("Modality with index '%s' not found" % definition.index)
             return modality_candidates[0]
         
         for m in self.modalities:
@@ -950,14 +944,8 @@ class DSSSubpopulationAnalysis(DSSExtensibleDict):
                 return m
         raise ValueError("Modality not found: %s" % definition)
 
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the subpopulation analysis
-        """
-        return self.internal_dict
 
-
-class DSSSubpopulationAnalyses(DSSExtensibleDict):
+class DSSSubpopulationAnalyses(DSSInternalDict):
     """
     Object to read details of subpopulation analyses of a trained model
 
@@ -971,12 +959,6 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
         for analysis in data.get("subpopulationAnalyses", []):
             self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
     
-    def get_raw(self):
-        """
-        Gets the raw dictionary of subpopulation analyses
-        """
-        return self.internal_dict
-    
     def get_global(self):
         """
         Retrieves information and performance on the full dataset used to compute the subpopulation analyses
@@ -987,19 +969,19 @@ class DSSSubpopulationAnalyses(DSSExtensibleDict):
         """
         Lists all features on which subpopulation analyses have been computed
         """
-        return [analysis["feature"] for analysis in self.analyses]
+        return [analysis.get("feature") for analysis in self.analyses]
     
     def get_analysis(self, feature):
         """
         Retrieves the subpopulation analysis for a particular feature
         """
         try:
-            return next(analysis for analysis in self.analyses if analysis["feature"] == feature)
+            return next(analysis for analysis in self.analyses if analysis.get("feature") == feature)
         except StopIteration:
             raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
 
 
-class DSSPartialDependence(DSSExtensibleDict):
+class DSSPartialDependence(DSSInternalDict):
     """
     Object to read details of partial dependence of a trained model
 
@@ -1019,14 +1001,8 @@ class DSSPartialDependence(DSSExtensibleDict):
             "onSample":  self.get("onSample")
         }
 
-    def get_raw(self):
-        """
-        Gets the raw dictionary of the partial dependence
-        """
-        return self.internal_dict
 
-
-class DSSPartialDependencies(DSSExtensibleDict):
+class DSSPartialDependencies(DSSInternalDict):
     """
     Object to read details of partial dependencies of a trained model
 
@@ -1039,24 +1015,18 @@ class DSSPartialDependencies(DSSExtensibleDict):
         for pd in data.get("partialDependencies", []):
             self.partial_dependencies.append(DSSPartialDependence(pd))
 
-    def get_raw(self):
-        """
-        Gets the raw dictionary of partial dependencies
-        """
-        return self.internal_dict
-
     def list_features(self):
         """
         Lists all features on which partial dependencies have been computed
         """
-        return [partial_dep["feature"] for partial_dep in self.partial_dependencies]
+        return [partial_dep.get("feature") for partial_dep in self.partial_dependencies]
 
     def get_partial_dependence(self, feature):
         """
         Retrieves the partial dependencies for a particular feature
         """
         try:
-            return next(pd for pd in self.partial_dependencies if pd["feature"] == feature)
+            return next(pd for pd in self.partial_dependencies if pd.get("feature") == feature)
         except StopIteration:
             raise ValueError("Partial dependence for feature '%s' cannot be found" % feature)
 

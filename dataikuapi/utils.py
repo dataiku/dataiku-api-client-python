@@ -95,73 +95,27 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
 
-class DSSExtensibleDict(dict):
+class DSSInternalDict(object):
     """
-    Utility to define dict-like objects that can be sub-classed.
-    
-    Behaves like dict for most common operations. In particular, 
-    it is possible to update an instance of `:class:`dataikuapi.dss.ml.DSSExtensibleDict` 
-    with either a dict or another instance of `:class:`dataikuapi.dss.ml.DSSExtensibleDict`.
-    
-    Provides an `internal_dict` dict field that is the actual holder of the data.
+    Class that provides some helpers and an `_internal_dict` dict field that is the actual holder of the data.
     """
     
     def __init__(self, orig_dict=None):
         if orig_dict is None:
-            self.internal_dict = dict()
+            self._internal_dict = dict()
         else:
-            self.internal_dict = orig_dict
+            self._internal_dict = orig_dict
 
-    def __getitem__(self, key):
-        return self.internal_dict[key]
+    def get(self, name, default=None):
+        return self._internal_dict.get(name, default)
 
-    def __iter__(self):
-        return self.internal_dict.__iter__()
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the actual data
 
-    def __setitem__(self, key, value):
-        self.internal_dict[key] = value
+        :rtype: dict
+        """
+        return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self.internal_dict.__repr__() + ")"
-    
-    def __len__(self):
-        return self.internal_dict.__len__()
-
-    def clear(self):
-        self.internal_dict.clear()
-    
-    def __contains__(self, key):
-        return self.internal_dict.__contains__(key)
-
-    def copy(self):
-        return self.internal_dict.copy()
-
-    def fromkeys(self, sequence, value=None):
-        return self.internal_dict.fromkeys(sequence, value)
-
-    def get(self, key, value=None):
-        return self.internal_dict.get(key, value)
-
-    def items(self):
-        return self.internal_dict.items()
-
-    def keys(self):
-        return self.internal_dict.keys()
-
-    def popitem(self):
-        return self.internal_dict.popitem()
-
-    def pop(self, key, *argv):
-        return self.internal_dict.pop(key, *argv)
-
-    def setdefault(self, key, default_value=None):
-        return self.internal_dict.setdefault(key, default_value)
-
-    def update(self, *args, **kwargs):
-        if len(args) == 1 and isinstance(args[0], DSSExtensibleDict):
-            self.internal_dict.update(args[0].internal_dict, **kwargs)
-        else:
-            self.internal_dict.update(*args, **kwargs)
-
-    def values(self):
-        return self.internal_dict.values()
+        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
