@@ -738,7 +738,7 @@ class DSSSubpopulationGlobal(DSSInternalDict):
         """
         Gets the performance results of the global population used for the subpopulation analysis
         """
-        return self._internal_dict.get("performanceMetrics")
+        return self.get("performanceMetrics")
 
     def get_prediction_info(self):
         """
