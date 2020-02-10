@@ -942,7 +942,7 @@ class DSSSubpopulationAnalysis(DSSInternalDict):
         if isinstance(definition, DSSSubpopulationModalityDefinition):
             modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
             if len(modality_candidates) == 0:
-                raise ValueError("Modality with index '%s' not found" % modality["index"])
+                raise ValueError("Modality with index '%s' not found" % definition.index)
             return modality_candidates[0]
         
         for m in self.modalities:
