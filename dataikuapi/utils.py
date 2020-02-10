@@ -107,7 +107,7 @@ class DSSInternalDict(object):
             self._internal_dict = orig_dict
 
     def get(self, name, default=None):
-        return self._internal_dict.get(name, default=default)
+        return self._internal_dict.get(name, default)
 
     def get_raw(self):
         """
