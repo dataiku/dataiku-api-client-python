@@ -103,7 +103,7 @@ class DSSStatisticsWorksheetSettings(object):
         :type card: :class:`DSSStatisticsCardSettings` or dict
         """
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
-        self._worksheet_definition['rootCard']['cards'].append(card)
+        self._worksheet_definition['rootCard']['cards'].append(card.get_raw())
 
     def list_cards(self):
         """
