@@ -126,7 +126,7 @@ class DSSStatisticsWorksheetSettings(object):
         """
         Saves the settings to DSS
         """
-        return self.client._perform_json(
+        self._worksheet_definition = self.client._perform_json(
             "PUT",
             "/projects/%s/datasets/%s/statistics/worksheets/%s" % (
                 self.project_key, self.dataset_name, self.worksheet_id),
