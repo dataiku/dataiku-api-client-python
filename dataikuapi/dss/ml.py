@@ -912,7 +912,7 @@ class DSSSubpopulationAnalysis(DSSInternalDict):
         """
         return [m.definition for m in self.modalities]
 
-    def get_modality_data(self, definition=None):
+    def get_modality_data(self, definition):
         """
         Retrieves modality from definition
 
