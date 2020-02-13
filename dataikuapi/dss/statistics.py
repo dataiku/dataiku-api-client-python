@@ -1,5 +1,7 @@
 from ..utils import DataikuException
+from .utils import DSSDatasetSelectionBuilder
 from .future import DSSFuture
+from ..utils import DSSInternalDict
 import json
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -37,7 +39,7 @@ class DSSStatisticsWorksheet(object):
         return DSSStatisticsWorksheetSettings(self.client, self.project_key,
                                               self.dataset_name, self.worksheet_id, worksheet_json)
 
-    def run_worksheet(self):
+    def run_worksheet(self, wait=True):
         """
         Computes the results of the whole worksheet.
 
@@ -45,16 +47,16 @@ class DSSStatisticsWorksheet(object):
         """
 
         root_card = self.get_settings().get_raw()['rootCard']
-        return self.run_card(root_card)
+        return self.run_card(root_card, wait=wait)
 
-    def run_card(self, card):
+    def run_card(self, card, wait=True):
         """
         Runs a card in the context of the worksheet.
 
         Note: the card does not need to belong to the worksheet.
 
         :param card: a card to compute
-        :type card: :class:`DSSStatisticsCardSettings` or dict
+        :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
         :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing card's results
         """
 
@@ -65,14 +67,16 @@ class DSSStatisticsWorksheet(object):
                 self.project_key, self.dataset_name, self.worksheet_id),
             body=card.get_raw()
         )
-        return DSSFuture(self.client, future_response.get("jobId", None), future_response)
+        future = DSSFuture(self.client, future_response.get(
+            "jobId", None), future_response)
+        return future.wait_for_result() if wait else future
 
-    def run_computation(self, computation):
+    def run_computation(self, computation, wait=True):
         """
         Runs a computation in the context of the worksheet.
 
         :param computation: a card to compute
-        :type computation: :class:`DSSStatisticsComputationSettings` or dict
+        :type computation: :class:`DSSStatisticsComputationSettings` or dict (obtained from ``DSSStatisticsComputationSettings.get_raw()``)
         :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing computation's results
         """
 
@@ -84,26 +88,29 @@ class DSSStatisticsWorksheet(object):
                 self.project_key, self.dataset_name, self.worksheet_id),
             body=computation.get_raw()
         )
-        return DSSFuture(self.client, future_response.get("jobId", None), future_response)
+        future = DSSFuture(self.client, future_response.get(
+            "jobId", None), future_response)
+        return future.wait_for_result() if wait else future
 
 
-class DSSStatisticsWorksheetSettings(object):
+class DSSStatisticsWorksheetSettings(DSSInternalDict):
     def __init__(self, client, project_key, dataset_name, worksheet_id, worksheet_definition):
+        super(DSSStatisticsWorksheetSettings,
+              self).__init__(worksheet_definition)
         self.client = client
         self.project_key = project_key
         self.dataset_name = dataset_name
         self.worksheet_id = worksheet_id
-        self._worksheet_definition = worksheet_definition
 
     def add_card(self, card):
         """
         Adds a new card to the worksheet.
 
         :param card: card to be added
-        :type card: :class:`DSSStatisticsCardSettings` or dict
+        :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
         """
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
-        self._worksheet_definition['rootCard']['cards'].append(card.get_raw())
+        self._internal_dict['rootCard']['cards'].append(card.get_raw())
 
     def list_cards(self):
         """
@@ -112,7 +119,7 @@ class DSSStatisticsWorksheetSettings(object):
         :rtype: list of :class:`DSSStatisticsCardSettings`
         """
         return [DSSStatisticsCardSettings(self.client, card_definition)
-                for card_definition in self._worksheet_definition['rootCard']['cards']]
+                for card_definition in self._internal_dict['rootCard']['cards']]
 
     def get_raw(self):
         """
@@ -120,24 +127,43 @@ class DSSStatisticsWorksheetSettings(object):
 
         :rtype: dict
         """
-        return self._worksheet_definition
+        return self._internal_dict
+
+    def set_sampling_settings(self, selection):
+        """
+        Sets the sampling settings of the worksheet
+
+        :type card: :class:`DSSDatasetSelectionBuilder` or dict (obtained from ``get_raw_sampling_selection()``)
+        """
+        raw_selection = selection.build() if isinstance(
+            selection, DSSDatasetSelectionBuilder) else selection
+        self._internal_dict['dataSpec']['datasetSelection'] = raw_selection
+
+    def get_raw_sampling_settings(self):
+        """
+        Gets a reference to the raw sampling settings of the worksheet.
+
+        :rtype: dict
+        """
+        return self._internal_dict['dataSpec']['datasetSelection']
 
     def save(self):
         """
         Saves the settings to DSS
         """
-        self._worksheet_definition = self.client._perform_json(
+        self._internal_dict = self.client._perform_json(
             "PUT",
             "/projects/%s/datasets/%s/statistics/worksheets/%s" % (
                 self.project_key, self.dataset_name, self.worksheet_id),
-            body=self._worksheet_definition
+            body=self._internal_dict
         )
 
 
-class DSSStatisticsCardSettings(object):
+class DSSStatisticsCardSettings(DSSInternalDict):
     def __init__(self, client, card_definition):
+        super(DSSStatisticsCardSettings, self).__init__(card_definition)
         self.client = client
-        self._card_definition = card_definition
+        self._internal_dict = card_definition
 
     def get_raw(self):
         """
@@ -145,7 +171,7 @@ class DSSStatisticsCardSettings(object):
 
         :rtype: dict
         """
-        return self._card_definition
+        return self._internal_dict
 
     def compile(self):
         """
@@ -154,7 +180,7 @@ class DSSStatisticsCardSettings(object):
         :rtype: DSSStatisticsComputationSettings
         """
         computation_json = self.client._perform_json(
-            "POST", "/statistics/cards/compile", body=self._card_definition
+            "POST", "/statistics/cards/compile", body=self._internal_dict
         )
         return DSSStatisticsComputationSettings(computation_json)
 
@@ -165,9 +191,11 @@ class DSSStatisticsCardSettings(object):
         return DSSStatisticsCardSettings(client, card_or_dict)
 
 
-class DSSStatisticsComputationSettings(object):
+class DSSStatisticsComputationSettings(DSSInternalDict):
     def __init__(self, computation_definition):
-        self._computation_definition = computation_definition
+        super(DSSStatisticsComputationSettings,
+              self).__init__(computation_definition)
+        self._internal_dict = computation_definition
 
     def get_raw(self):
         """
@@ -175,7 +203,7 @@ class DSSStatisticsComputationSettings(object):
 
         :rtype: dict
         """
-        return self._computation_definition
+        return self._internal_dict
 
     @staticmethod
     def _from_computation_or_dict(computation_or_dict):
