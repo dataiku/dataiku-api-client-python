@@ -94,3 +94,28 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+
+class DSSInternalDict(object):
+    """
+    Class that provides some helpers and an `_internal_dict` dict field that is the actual holder of the data.
+    """
+    
+    def __init__(self, orig_dict=None):
+        if orig_dict is None:
+            self._internal_dict = dict()
+        else:
+            self._internal_dict = orig_dict
+
+    def get(self, name, default=None):
+        return self._internal_dict.get(name, default)
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the actual data
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"

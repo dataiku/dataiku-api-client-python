@@ -237,6 +237,16 @@ class DSSWikiArticle(object):
 
         self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(clean_filename, fp)})
 
+    def get_uploaded_file(self, upload_id):
+        """"
+        Download the attachement of an article
+
+        :param str upload_id: The attachement upload id
+        :returns: The requests.Response object
+        :rtype: :class:`requests.Response`
+        """
+        return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
+
     def delete(self):
         """
         Delete the article
