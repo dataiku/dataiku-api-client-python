@@ -138,7 +138,7 @@ class DSSMLTaskSettings(object):
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
 
-    def use_time_variable(self, feature_name, ascending=True):
+    def split_ordered_by(self, feature_name, ascending=True):
         """
         Uses a variable to sort the data for train/test split and hyperparameter optimization
         :param str feature_name: Name of the variable to use
@@ -159,7 +159,7 @@ class DSSMLTaskSettings(object):
         elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
 
-    def remove_time_variable(self):
+    def remove_ordered_split(self):
         """
         Remove time-based ordering.
         """
