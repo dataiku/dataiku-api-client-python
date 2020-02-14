@@ -49,7 +49,7 @@ class DSSProject(object):
     # Project export
     ########################################################
 
-    def get_export_stream(self, options = {}):
+    def get_export_stream(self, options=None):
         """
         Return a stream of the exported project
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
@@ -70,15 +70,19 @@ class DSSProject(object):
         :returns: a file-like obbject that is a stream of the export archive
         :rtype: file-like
         """
+        if options is None:
+            options = {}
         return self.client._perform_raw(
             "POST", "/projects/%s/export" % self.project_key, body=options).raw
 
-    def export_to_file(self, path, options={}):
+    def export_to_file(self, path, options=None):
         """
         Export the project to a file
         
         :param str path: the path of the file in which the exported project should be saved
         """
+        if options is None:
+            options = {}
         with open(path, 'wb') as f:
             export_stream = self.client._perform_raw(
                 "POST", "/projects/%s/export" % self.project_key, body=options)
@@ -98,7 +102,7 @@ class DSSProject(object):
                   export_saved_models=True,
                   export_git_repository=True,
                   export_insights_data=True,
-                  remapping={},
+                  remapping=None,
                   target_project_folder=None):
         """
         Duplicate the project
@@ -116,7 +120,8 @@ class DSSProject(object):
         :returns: A dict containing the original and duplicated project's keys
         :rtype: :class:`ProjectDuplicateResult`
         """
-
+        if remapping is None:
+            remapping = {}
         obj = {
             "targetProjectName": target_project_name,
             "targetProjectKey": target_project_key,
@@ -211,7 +216,7 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_dataset(self, dataset_name, type,
-                params={}, formatType=None, formatParams={}):
+                params=None, formatType=None, formatParams=None):
         """
         Create a new dataset in the project, and return a handle to interact with it.
 
@@ -232,6 +237,10 @@ class DSSProject(object):
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
+        if params is None:
+            params = {}
+        if formatParams is None:
+            formatParams = {}
         obj = {
             "name" : dataset_name,
             "projectKey" : self.project_key,
@@ -676,7 +685,7 @@ class DSSProject(object):
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
         
-    def create_scenario(self, scenario_name, type, definition={'params': {}}):
+    def create_scenario(self, scenario_name, type, definition=None):
         """
         Create a new scenario in the project, and return a handle to interact with it
 
@@ -688,6 +697,8 @@ class DSSProject(object):
 
         :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
         """
+        if definition is None:
+            definition = {'params': {}}
         definition['type'] = type
         definition['name'] = scenario_name
         scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
@@ -790,12 +801,14 @@ class DSSProject(object):
         """
         return self.client._perform_json("GET", "/projects/%s/tags" % self.project_key)
 
-    def set_tags(self, tags={}):
+    def set_tags(self, tags=None):
         """
         Set the tags of this project.
         @param obj: must be a modified version of the object returned by list_tags
         """
-        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body = tags)
+        if tags is None:
+            tags = {}
+        return self.client._perform_empty("PUT", "/projects/%s/tags" % self.project_key, body=tags)
 
 
     ########################################################

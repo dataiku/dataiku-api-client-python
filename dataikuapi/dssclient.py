@@ -245,7 +245,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf={}, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
@@ -262,6 +262,8 @@ class DSSClient(object):
         
         :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
+        if extra_conf is None:
+            extra_conf = {}
         return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string)
 
     ########################################################
@@ -290,7 +292,7 @@ class DSSClient(object):
         """
         return DSSUser(self, login)
 
-    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[], profile='DATA_SCIENTIST'):
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST'):
         """
         Create a user, and return a handle to interact with it
 
@@ -305,6 +307,8 @@ class DSSClient(object):
 
         :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
         """
+        if groups is None:
+            groups = []
         resp = self._perform_text(
                "POST", "/admin/users/", body={
                    "login" : login,
@@ -386,7 +390,7 @@ class DSSClient(object):
         """
         return DSSConnection(self, name)
 
-    def create_connection(self, name, type, params={}, usable_by='ALL', allowed_groups=[]):
+    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None):
         """
         Create a connection, and return a handle to interact with it
 
@@ -402,6 +406,10 @@ class DSSClient(object):
         
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
+        if params is None:
+            params = {}
+        if allowed_groups is None:
+            allowed_groups = []
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
                    "name" : name,
@@ -659,13 +667,15 @@ class DSSClient(object):
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
 
-    def log_custom_audit(self, custom_type, custom_params={}):
+    def log_custom_audit(self, custom_type, custom_params=None):
         """
         Log a custom entry to the audit trail
         
         :param str custom_type value for customMsgType in audit trail item
         :param dict custom_params value for customMsgParams in audit trail item
         """
+        if custom_params is None:
+            custom_params = {}
         return self._perform_empty("POST",
             "/admin/audit/custom/%s" % custom_type,
             body = custom_params)
@@ -780,10 +790,12 @@ class DSSClient(object):
     # Data Catalog
     ########################################################
 
-    def catalog_index_connections(self, connection_names=[], all_connections=False, indexing_mode="FULL"):
+    def catalog_index_connections(self, connection_names=None, all_connections=False, indexing_mode="FULL"):
         """
         Triggers an indexing of multiple connections in the data catalog
         """
+        if connection_names is None:
+            connection_names = []
         return self._perform_json("POST", "/catalog/index", body={
             "connectionNames": connection_names,
             "indexAllConnections": all_connections,
@@ -939,7 +951,7 @@ class TemporaryImportHandle(object):
         self.client = client
         self.import_id = import_id
 
-    def execute(self, settings = {}):
+    def execute(self, settings=None):
         """
         Executes the import with provided settings.
 
@@ -966,7 +978,7 @@ class TemporaryImportHandle(object):
         @warning: You must check the 'success' flag
         """
         # Empty JSON dicts can't be parsed properly
-        if settings == {}:
-            settings["_"] = "_"
+        if settings is None:
+            settings = {"_": "_"}
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)

@@ -1255,7 +1255,7 @@ class DSSMLTask(object):
         self.wait_train_complete()
         return self.get_trained_models_ids(session_id = train_ret["sessionId"])
 
-    def ensemble(self, model_ids=[], method=None):
+    def ensemble(self, model_ids=None, method=None):
         """
         Create an ensemble model of a set of models
         
@@ -1273,6 +1273,8 @@ class DSSMLTask(object):
         :return: A model identifier
         :rtype: string
         """
+        if model_ids is None:
+            model_ids = []
         train_ret = self.start_ensembling(model_ids, method)
         self.wait_train_complete()
         return train_ret
@@ -1296,7 +1298,7 @@ class DSSMLTask(object):
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
 
-    def start_ensembling(self, model_ids=[], method=None):
+    def start_ensembling(self, model_ids=None, method=None):
         """
         Creates asynchronously a new ensemble models of a set of models.
 
@@ -1308,6 +1310,8 @@ class DSSMLTask(object):
         :return: the model identifier of the ensemble
         :rtype: string
         """
+        if model_ids is None:
+            model_ids = []
         ensembling_request = {
                             "method" : method,
                             "modelsIds" : model_ids

@@ -33,7 +33,7 @@ class DSSMacro(object):
         return self.definition
 
 
-    def run(self, params={}, admin_params={}, wait=True):
+    def run(self, params=None, admin_params=None, wait=True):
         """
         Run the macro from the project
 
@@ -43,6 +43,10 @@ class DSSMacro(object):
         :param wait: if True, the call blocks until the run is finished
         :returns: a run identifier to use to abort or retrieve results
         """
+        if params is None:
+            params = {}
+        if admin_params is None:
+            admin_params = {}
         return self.client._perform_json(
             "POST", "/projects/%s/runnables/%s" % (self.project_key, self.runnable_type), 
             params={'wait':wait}, body={'params':params, 'adminParams':admin_params})['runId']
