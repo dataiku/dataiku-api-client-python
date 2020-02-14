@@ -979,6 +979,8 @@ class TemporaryImportHandle(object):
         """
         # Empty JSON dicts can't be parsed properly
         if settings is None:
-            settings = {"_": "_"}
+            settings = {}
+        if settings == {}:
+            settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)
