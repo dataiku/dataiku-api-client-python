@@ -191,7 +191,6 @@ class DSSMLTaskSettings(object):
         self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
         self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
 
-
     def remove_sample_weighting(self):
         """
         Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
@@ -235,6 +234,35 @@ class DSSMLTaskSettings(object):
         """
         self.get_algorithm_settings(algorithm_name)["enabled"] = enabled
 
+    def disable_all_algorithms(self):
+        """Disables all algorithms"""
+
+        for algorithm_name in self.__class__.algorithm_remap.keys():
+            key = self.__class__.algorithm_remap[algorithm_name]
+            if key in self.mltask_settings["modeling"]:
+                self.mltask_settings["modeling"][key]["enabled"] = False
+
+        for custom_mllib in self.mltask_settings["modeling"]["custom_mllib"]:
+            custom_mllib["enabled"] = False
+        for custom_python in self.mltask_settings["modeling"]["custom_python"]:
+            custom_python["enabled"] = False
+        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+            plugin["enabled"] = False
+
+    def get_all_possible_algorithm_names():
+        """
+        Returns the list of possible algorithm names, i.e. the list of valid
+        identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
+
+        This does not include Custom Python models, Custom MLLib models, plugin models.
+        This includes all possible algorithms, regardless of the prediction kind (regression/classification)
+        or engine, so some algorithms may be irrelevant
+
+        :returns: the list of algorithm names as a list of strings
+        :rtype: list of string
+        """
+        return self.__class__.algorithm_remap.keys()
+
     def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
         """
         Sets the score metric to optimize for a prediction ML Task
@@ -261,19 +289,42 @@ class DSSMLTaskSettings(object):
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
+            "RANDOM_FOREST_CLASSIFICATION": "random_forest_classification",
+            "RANDOM_FOREST_REGRESSION" : "random_forest_regression",
+            "EXTRA_TREES": "extra_trees",
+            "GBT_CLASSIFICATION" : "gbt_classification",
+            "GBT_REGRESSION" : "gbt_regression",
+            "DECISION_TREE_CLASSIFICATION" : "decision_tree_classification",
+            "DECISION_TREE_REGRESSION" : "decision_tree_regression",
+            "RIDGE_REGRESSION": "ridge_regression",
+            "LASSO_REGRESSION" : "lasso_regression",
+            "LEASTSQUARE_REGRESSION": "leastsquare_regression",
+            "SGD_REGRESSION" : "sgd_regression",
+            "KNN": "knn",
+            "LOGISTIC_REGRESSION" : "logistic_regression",
+            "NEURAL_NETWORK" :"neural_network",
             "SVC_CLASSIFICATION" : "svc_classifier",
+            "SVM_REGRESSION" : "svm_regression",
             "SGD_CLASSIFICATION" : "sgd_classifier",
+            "LARS" : "lars_params",
+            "XGBOOST_CLASSIFICATION" : "xgboost",
+            "XGBOOST_REGRESSION" : "xgboost",
             "SPARKLING_DEEP_LEARNING" : "deep_learning_sparkling",
             "SPARKLING_GBM" : "gbm_sparkling",
             "SPARKLING_RF" : "rf_sparkling",
             "SPARKLING_GLM" : "glm_sparkling",
             "SPARKLING_NB" : "nb_sparkling",
-            "XGBOOST_CLASSIFICATION" : "xgboost",
-            "XGBOOST_REGRESSION" : "xgboost",
             "MLLIB_LOGISTIC_REGRESSION" : "mllib_logit",
+            "MLLIB_NAIVE_BAYES" : "mllib_naive_bayes",
             "MLLIB_LINEAR_REGRESSION" : "mllib_linreg",
-            "MLLIB_RANDOM_FOREST" : "mllib_rf"
+            "MLLIB_RANDOM_FOREST" : "mllib_rf",
+            "MLLIB_GBT": "mllib_gbt",
+            "MLLIB_DECISION_TREE" : "mllib_dt",
+            "VERTICA_LINEAR_REGRESSION" : "vertica_linear_regression",
+            "VERTICA_LOGISTIC_REGRESSION" : "vertica_logistic_regression",
+            "KERAS_CODE" : "keras"
         }
+
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
