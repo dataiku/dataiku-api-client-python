@@ -544,6 +544,22 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return clean_snippet
 
 
+    def get_hyperparameter_search_points(self):
+        """
+        Gets the list of points in the hyperparameter search space that have been tested.
+
+        Returns a list of dict. Each entry in the list represents a point.
+
+        For each point, the dict contains at least:
+            - "score": the average value of the optimization metric over all the folds at this point
+            - "params": a dict of the parameters at this point. This dict has the same structure 
+               as the params of the best parameters
+        """
+
+        if not "gridCells" in self.details["iperf"]:
+            raise ValueError("No hyperparameter search result, maybe this model did not perform hyperparameter optimization")
+        return self.details["iperf"]["gridCells"]
+
     def get_preprocessing_settings(self):
         """
         Gets the preprocessing settings that were used to train this model
