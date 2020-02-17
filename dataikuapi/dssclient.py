@@ -795,7 +795,7 @@ class DSSClient(object):
         Triggers an indexing of multiple connections in the data catalog
 
         :param list connection_names: list of connections to index, ignored if `all_connections=True` (defaults to `[]`)
-        :param bool all_connections: index all connections, (defaults to `False`)
+        :param bool all_connections: index all connections (defaults to `False`)
         """
         if connection_names is None:
             connection_names = []

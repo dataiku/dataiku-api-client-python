@@ -705,7 +705,7 @@ class DSSProject(object):
                                 (although this is strongly recommended)
         :param str type: The type of the scenario. MUst be one of 'step_based' or 'custom_python'
         :param dict definition: the JSON definition of the scenario. Use ``get_definition(with_status=False)`` on an
-                existing ``DSSScenario`` object in order to get a sample definition object (defaults to `{}`)
+                existing ``DSSScenario`` object in order to get a sample definition object (defaults to `{'params': {}}`)
 
         :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
         """
