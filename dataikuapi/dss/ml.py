@@ -146,7 +146,7 @@ class DSSMLTaskSettings(object):
         :param str feature_name: Name of the variable to use
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
-        self.remove_time_variable()
+        self.remove_ordered_split()
         if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
             raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
         self.mltask_settings['time']['enabled'] = True
