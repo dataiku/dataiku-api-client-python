@@ -244,7 +244,7 @@ class DSSProject(object):
         :param string type: the type of the dataset
         :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
         :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
-        :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to empty)
+        :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to `{}`)
         
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle

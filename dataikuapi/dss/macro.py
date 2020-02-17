@@ -39,7 +39,7 @@ class DSSMacro(object):
 
         :param dict params: parameters to the macro run (defaults to `{}`)
         :param dict admin_params: admin parameters to the macro run (if the authentication of
-                             the api client does not cover admin rights, they are ignored, default to empty)
+                             the api client does not cover admin rights, they are ignored, default to `{}`)
         :param wait: if True, the call blocks until the run is finished
         :returns: a run identifier to use to abort or retrieve results
         """
