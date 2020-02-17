@@ -20,12 +20,14 @@ class DSSScenario(object):
         return self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/abort" % (self.project_key, self.id))
 
-    def run(self, params={}):
+    def run(self, params=None):
         """
         Requests a run of the scenario, which will start after a few seconds.
 
-        :params dict params: additional parameters that will be passed to the scenario through trigger params
+        :params dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
         """
+        if params is None:
+            params = {}
         trigger_fire = self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
         return DSSTriggerFire(self, trigger_fire)
@@ -47,16 +49,16 @@ class DSSScenario(object):
             })
         return DSSTriggerFire(self, trigger_fire)
 
-    def run_and_wait(self, params={}, no_fail=False):
+    def run_and_wait(self, params=None, no_fail=False):
         """
         Requests a run of the scenario, which will start after a few seconds. Wait the end of the run to complete.
 
-        Args:
-            params: additional parameters that will be passed to the scenario through trigger params
+        :param dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
 
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
+        :return: A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
         """
+        if params is None:
+            params = {}
         trigger_fire = self.run(params)
         scenario_run = trigger_fire.wait_for_scenario_run(no_fail)
         waiter = DSSScenarioRunWaiter(scenario_run, trigger_fire)
