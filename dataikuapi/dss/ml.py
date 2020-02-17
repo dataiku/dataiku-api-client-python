@@ -331,7 +331,7 @@ class DSSAlgorithmSettings(dict):
     def list_searchable_parameters(self):
         sp = []
         for key in self.keys():
-            if isinstance(self[key], dict) and "scaling" in self[key]:
+            if isinstance(self[key], dict) and ("gridMode" in self[key] or "values" in self[key]):
                 sp.append(key)
         return sp
 
@@ -340,8 +340,35 @@ class DSSAlgorithmSettings(dict):
             raise ValueError("parameter %s of algorithm %s is not searchable" % (parameter_name, self.algorithm))
         if not isinstance(values, list):
             raise ValueError("`values` argument should be a list of values")
-        self[parameter_name]["scaling"] = "EXPLICIT"
-        self[parameter_name]["values"] = values
+
+        if "values" in self[parameter_name]:
+            # This is a categorical dimension
+            for val in values:
+                if not isinstance(val, basestring):
+                    raise ValueError("parameter %s of algorithm is categorical, expected a list of strings" %(parameter_name, self.algorithm))
+            self[parameter_name]["values"] = {value: {"enabled": True} for value in values}
+        else:
+            # This is a numerical dimension
+            self[parameter_name]["scaling"] = "EXPLICIT"
+            self[parameter_name]["values"] = values
+
+    def set_params(self, **kwargs):
+        """Sets a mapping of parameters"""
+        for param_key in kwargs.keys():
+            param_value = kwargs[param_key]
+            existing_value = self.get(param_key, None)
+            if existing_value is None:
+                raise ValueError("algorithm %s does not accept parameter %s" % (self.algorithm, param_key))
+
+            if isinstance(param_value, list):
+                self.set_explicit_values(param_key, param_value)
+            #elif isinstance(param_value, RandomSearchRangeDefinition)
+            #  For DSS 8
+            else:
+                if param_key in self.list_searchable_parameters():
+                    self.set_explicit_values(param_key, [param_value])
+                else:
+                    self[param_key] = param_value
 
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
