@@ -258,7 +258,8 @@ class DSSMLTaskSettings(object):
         if algorithm_name in self.__class__.algorithm_remap:
             algorithm_name = self.__class__.algorithm_remap[algorithm_name]
 
-        return self.mltask_settings["modeling"][algorithm_name.lower()]
+        raw = self.mltask_settings["modeling"][algorithm_name.lower()]
+        return DSSAlgorithmSettings(algorithm_name, raw)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -321,6 +322,26 @@ class DSSMLTaskSettings(object):
         self.client._perform_empty(
                 "POST", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id),
                 body = self.mltask_settings)
+
+class DSSAlgorithmSettings(dict):
+    def __init__(self, algorithm, data):
+        super(DSSAlgorithmSettings, self).__init__(data)
+        self.algorithm = algorithm
+
+    def list_searchable_parameters(self):
+        sp = []
+        for key in self.keys():
+            if isinstance(self[key], dict) and "scaling" in self[key]:
+                sp.append(key)
+        return sp
+
+    def set_explicit_values(self, parameter_name, values):
+        if not parameter_name in self.list_searchable_parameters():
+            raise ValueError("parameter %s of algorithm %s is not searchable" % (parameter_name, self.algorithm))
+        if not isinstance(values, list):
+            raise ValueError("`values` argument should be a list of values")
+        self[parameter_name]["scaling"] = "EXPLICIT"
+        self[parameter_name]["values"] = values
 
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
