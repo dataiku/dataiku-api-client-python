@@ -302,7 +302,7 @@ class DSSClient(object):
         :param str password: the password of the new user
         :param str display_name: the displayed name for the new user
         :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
-        :param list groups: the names of the groups the new user belongs to
+        :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user, can be one of READER, DATA_ANALYST or DATA_SCIENTIST
 
         :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
@@ -398,11 +398,11 @@ class DSSClient(object):
 
         :param name: the name of the new connection
         :param type: the type of the new connection
-        :param params: the parameters of the new connection, as a JSON object
+        :param dict params: the parameters of the new connection, as a JSON object (defaults to `{}`)
         :param usable_by: the type of access control for the connection. Either 'ALL' (=no access control)
             or 'ALLOWED' (=access restricted to users of a list of groups)
-        :param allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list 
-            of names of the groups whose users are allowed to use the new connection
+        :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
+            of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
         
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
@@ -671,8 +671,8 @@ class DSSClient(object):
         """
         Log a custom entry to the audit trail
         
-        :param str custom_type value for customMsgType in audit trail item
-        :param dict custom_params value for customMsgParams in audit trail item
+        :param str custom_type: value for customMsgType in audit trail item
+        :param dict custom_params: value for customMsgParams in audit trail item (defaults to `{}`)
         """
         if custom_params is None:
             custom_params = {}
@@ -793,6 +793,9 @@ class DSSClient(object):
     def catalog_index_connections(self, connection_names=None, all_connections=False, indexing_mode="FULL"):
         """
         Triggers an indexing of multiple connections in the data catalog
+
+        :param list connection_names: list of connections to index, ignored if `all_connections=True` (defaults to `[]`)
+        :param bool all_connections: index all connections, (defaults to `False`)
         """
         if connection_names is None:
             connection_names = []
@@ -955,7 +958,7 @@ class TemporaryImportHandle(object):
         """
         Executes the import with provided settings.
 
-        :param dict settings: Dict of import settings. The following settings are available:
+        :param dict settings: Dict of import settings (defaults to `{}`). The following settings are available:
 
             * targetProjectKey (string): Key to import under. Defaults to the original project key
             * remapping (dict): Dictionary of connection and code env remapping settings.

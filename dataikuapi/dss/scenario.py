@@ -24,7 +24,7 @@ class DSSScenario(object):
         """
         Requests a run of the scenario, which will start after a few seconds.
 
-        :params dict params: additional parameters that will be passed to the scenario through trigger params
+        :params dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
         """
         if params is None:
             params = {}
@@ -53,11 +53,9 @@ class DSSScenario(object):
         """
         Requests a run of the scenario, which will start after a few seconds. Wait the end of the run to complete.
 
-        Args:
-            params: additional parameters that will be passed to the scenario through trigger params
+        :param dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
 
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
+        :return: A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
         """
         if params is None:
             params = {}

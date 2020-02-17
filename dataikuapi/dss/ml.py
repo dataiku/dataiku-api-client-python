@@ -1259,7 +1259,7 @@ class DSSMLTask(object):
         """
         Create an ensemble model of a set of models
         
-        :param list model_ids: A list of model identifiers
+        :param list model_ids: A list of model identifiers (defaults to `[]`)
         :param str method: the ensembling method. One of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
 
         This method waits for the ensemble train to complete. If you want to train asynchronously, use :meth:`start_ensembling` and :meth:`wait_train_complete`
@@ -1302,7 +1302,7 @@ class DSSMLTask(object):
         """
         Creates asynchronously a new ensemble models of a set of models.
 
-        :param list model_ids: A list of model identifiers
+        :param list model_ids: A list of model identifiers (defaults to `[]`)
         :param str method: the ensembling method (AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL)
 
         This returns immediately, before train is complete. To wait for train to complete, use :meth:`wait_train_complete`

@@ -54,7 +54,7 @@ class DSSProject(object):
         Return a stream of the exported project
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
-        :param dict options: Dictionary of export options. The following options are available:
+        :param dict options: Dictionary of export options (defaults to `{}`). The following options are available:
 
             * exportUploads (boolean): Exports the data of Uploaded datasets - default False
             * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
@@ -80,6 +80,18 @@ class DSSProject(object):
         Export the project to a file
         
         :param str path: the path of the file in which the exported project should be saved
+        :param dict options: Dictionary of export options (defaults to `{}`). The following options are available:
+
+            * exportUploads (boolean): Exports the data of Uploaded datasets - default False
+            * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
+            * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
+            * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportManagedFolders (boolean): Exports the data of managed folders - default False
+            * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
+            * exportAllDatasets (boolean): Exports the data of all datasets - default False
+            * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
+            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportInsightsData (boolean): Exports the data of static insights - default False
         """
         if options is None:
             options = {}
@@ -114,7 +126,7 @@ class DSSProject(object):
         :param bool export_saved_models:
         :param bool export_git_repository:
         :param bool export_insights_data:
-        :param dict remapping: dict of connections to be remapped for the new project
+        :param dict remapping: dict of connections to be remapped for the new project (defaults to `{}`)
         :param target_project_folder: the project folder where to put the duplicated project
         :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
         :returns: A dict containing the original and duplicated project's keys
@@ -230,9 +242,9 @@ class DSSProject(object):
         
         :param string dataset_name: the name for the new dataset
         :param string type: the type of the dataset
-        :param dict params: the parameters for the type, as a JSON object
+        :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
         :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
-        :param string formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets)
+        :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to empty)
         
         Returns:
             A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
@@ -692,8 +704,8 @@ class DSSProject(object):
         :param str scenario_name: The name for the new scenario. This does not need to be unique
                                 (although this is strongly recommended)
         :param str type: The type of the scenario. MUst be one of 'step_based' or 'custom_python'
-        :param object definition: the JSON definition of the scenario. Use ``get_definition(with_status=False)`` on an
-                existing ``DSSScenario`` object in order to get a sample definition object
+        :param dict definition: the JSON definition of the scenario. Use ``get_definition(with_status=False)`` on an
+                existing ``DSSScenario`` object in order to get a sample definition object (defaults to `{}`)
 
         :returns: a :class:`.scenario.DSSScenario` handle to interact with the newly-created scenario
         """
@@ -804,7 +816,7 @@ class DSSProject(object):
     def set_tags(self, tags=None):
         """
         Set the tags of this project.
-        @param obj: must be a modified version of the object returned by list_tags
+        :param dict tags: must be a modified version of the object returned by list_tags (defaults to `{}`)
         """
         if tags is None:
             tags = {}
