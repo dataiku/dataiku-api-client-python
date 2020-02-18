@@ -154,6 +154,16 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
+    def get_default_project(self):
+        """
+        Get a handle to interact with the current/default project. This is only valid if running inside of a DSS
+        project, or if a default project has been set with `dataiku.set_default_project_key`
+
+        :returns: A :class:`dataikuapi.dss.project.DSSProject` to interact with the current/default project
+        """
+        import dataiku
+        return self.get_project(dataiku.default_project_key())
+
     def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
         """
         Creates a new project, and return a project handle to interact with it.

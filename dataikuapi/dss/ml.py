@@ -256,10 +256,16 @@ class DSSMLTaskSettings(object):
         :rtype: dict 
         """
         if algorithm_name in self.__class__.algorithm_remap:
-            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
+            settings_key = self.__class__.algorithm_remap[algorithm_name]
+        else:
+            raise ValueError("unknown algorithm: %s" %  algorithm_name)
 
-        raw = self.mltask_settings["modeling"][algorithm_name.lower()]
-        return DSSAlgorithmSettings(algorithm_name, raw)
+        algo_settings = self.mltask_settings["modeling"][settings_key]
+
+        if not isinstance(algo_settings, DSSAlgorithmSettings):
+            self.mltask_settings["modeling"][settings_key] = DSSAlgorithmSettings(algorithm_name, algo_settings)
+            algo_settings = self.mltask_settings["modeling"][settings_key]
+        return algo_settings
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -283,10 +289,10 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
             plugin["enabled"] = False
 
-    def get_all_possible_algorithm_names():
+    def get_all_possible_algorithm_names(self):
         """
         Returns the list of possible algorithm names, i.e. the list of valid
         identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
@@ -341,15 +347,15 @@ class DSSAlgorithmSettings(dict):
         if not isinstance(values, list):
             raise ValueError("`values` argument should be a list of values")
 
-        if "values" in self[parameter_name]:
+        if "values" in self[parameter_name] and isinstance(self[parameter_name]["values"], dict):
             # This is a categorical dimension
             for val in values:
                 if not isinstance(val, basestring):
-                    raise ValueError("parameter %s of algorithm is categorical, expected a list of strings" %(parameter_name, self.algorithm))
+                    raise ValueError("parameter %s of algorithm %s is categorical, expected a list of strings" %(parameter_name, self.algorithm))
             self[parameter_name]["values"] = {value: {"enabled": True} for value in values}
         else:
             # This is a numerical dimension
-            self[parameter_name]["scaling"] = "EXPLICIT"
+            self[parameter_name]["gridMode"] = "EXPLICIT"
             self[parameter_name]["values"] = values
 
     def set_params(self, **kwargs):
@@ -366,6 +372,7 @@ class DSSAlgorithmSettings(dict):
             #  For DSS 8
             else:
                 if param_key in self.list_searchable_parameters():
+                    # Single value passed for a searchable parameter, automatically consider it as grid-of-one
                     self.set_explicit_values(param_key, [param_value])
                 else:
                     self[param_key] = param_value
