@@ -207,6 +207,99 @@ class DSSStatisticsComputationSettings(DSSInternalDict):
 
     @staticmethod
     def _from_computation_or_dict(computation_or_dict):
+        if isinstance(computation_or_dict, ComputationBase):
+            computation_or_dict = computation_or_dict.to_model()
         if isinstance(computation_or_dict, DSSStatisticsComputationSettings):
             computation_or_dict = computation_or_dict.get_raw()
         return DSSStatisticsComputationSettings(computation_or_dict)
+
+class ComputationBase(object):
+    def __init__(self):
+        pass
+
+    def grouped_by_alphanum(self, column, max_values=10, group_others=False):
+        return GroupedComputation(self, {
+            "type" : "anum",
+            "column" : column,
+            "maxValues":  max_values,
+            "groupOthers": group_others
+        })
+
+    def grouped_by_bins(self, column, nb_bins=None, bin_size=None, keep_na=False):
+        if nb_bins is not None:
+            return GroupedComputation(self, {
+                "type" : "binned",
+                "column" : column,
+                "mode":  "FIXED_NB",
+                "nbBins" : nb_bins,
+                "keepNA" : keep_na
+            })
+        elif bin_size is not None:
+            return GroupedComputation(self, {
+                "type" : "binned",
+                "column" : column,
+                "mode":  "FIXED_SIZE",
+                "binSize" : bin_size,
+                "keepNA" : keep_na
+            })
+
+class DescriptiveStatistics(ComputationBase):
+    def __init__(self, columns, mean=False, sum=False, stddev=False, variance=False, skewness=False,kurtosis=False,sem=False):
+        self.columns = columns
+        self.mean = mean
+        self.sum = sum
+        self.stddev = stddev
+        self.variance = variance
+        self.skewness = skewness
+        self.kurtosis = kurtosis
+        self.sem = sem
+
+    def to_model(self):
+        computations = []
+        for col in self.columns:
+            if self.mean:
+                computations.append({"type": "mean", "column": col})
+            if self.sum:
+                computations.append({"type": "sum", "column": col})
+            if self.stddev:
+                computations.append({"type": "std_dev", "column": col})
+            if self.variance:
+                computations.append({"type": "variance", "column": col})
+            if self.skewness:
+                computations.append({"type": "skewness", "column": col})
+            if self.kurtosis:
+                computations.append({"type": "kurtosis", "column": col})
+            if self.sem:
+                computations.append({"type": "sem", "column": col})
+        return {"type": "multi", "computations" : computations}
+
+class DistributionFit(ComputationBase):
+    def __init__(self, column, type="normal", test=True, **kwargs):
+        self.column = column
+        self.type = type
+        self.test = test
+        self.distribution_args = kwargs
+
+    def to_model(self):
+        distribution = {
+            "type" : self.type
+        }
+        distribution.update(self.distribution_args)
+        return {
+            "type": "fit_distribution",
+            "column" : self.column,
+            "distribution": distribution,
+            "test" :self.test
+        }
+
+class GroupedComputation(ComputationBase):
+    def __init__(self, computation, grouping):
+        self.computation = computation
+        self.grouping = grouping
+
+    def to_model(self):
+        return {
+            "type": "grouped",
+            "computation" : self.computation.to_model(),
+            "grouping":  self.grouping
+        }
