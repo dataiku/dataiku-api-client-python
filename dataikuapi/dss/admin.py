@@ -1,6 +1,56 @@
 from .future import DSSFuture
 import json
 
+class DSSConnectionInfo(dict):
+    """A class holding read-only information about a connection.
+    This class should not be created directly. Instead, use :meth:`DSSConnection.get_info`
+
+    The main use case of this class is to retrieve the decrypted credentials for a connection,
+    if allowed by the connection permissions.
+
+    Depending on the connection kind, the credential may be available using :meth:`get_basic_credential` 
+    or :meth:`get_aws_credential`
+
+    """
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`DSSConnection.get_info`"""
+        super(DSSConnectionInfo, self).__init__(data)
+
+    def get_type(self):
+        """Returns the type of the connection"""
+        return self["type"]
+
+    def get_params(self):
+        """Returns the parameters of the connection, as a dict"""
+        return self["params"]
+
+    def get_basic_credential(self):
+        """
+        Returns the basic credential (user/password pair) for this connection, if available
+
+        :returns: the credential, as a dict containing "user" and "password"
+        :rtype dict
+        """
+        if not "resolvedBasicCredential" in self:
+            raise ValueError("No basic credential available")
+        return self["resolvedBasicCredential"]
+
+    def get_aws_credential(self):
+        """
+        Returns the AWS credential for this connection, if available.
+        The AWS credential can either be a keypair or a STS token triplet
+
+        :returns: the credential, as a dict containing "accessKey", "secretKey", and "sessionToken" (only in the case of STS token)
+        :rtype dict
+        """
+        if not "resolvedAWSCredential" in self:
+            raise ValueError("No AWS credential available")
+        return self["resolvedAWSCredential"]
+
+
+
+
+
 class DSSConnection(object):
     """
     A connection on the DSS instance
@@ -14,6 +64,10 @@ class DSSConnection(object):
     ########################################################
 
     def get_location_info(self):
+        """Deprecated, use get_info"""
+        return self.get_info()
+
+    def get_info(self):
         """
         Gets information about this connection.
 
@@ -22,10 +76,10 @@ class DSSConnection(object):
         belongs to a group who has the rights to read connection
         details
 
-        :returns: a dict containing connection information
+        :returns: a :class:`DSSConnectionInfo` containing connection information
         """
-        return  self.client._perform_json(
-            "GET", "/connections/%s/info" % self.name)
+        return DSSConnectionInfo(self.client._perform_json(
+            "GET", "/connections/%s/info" % self.name))
     
     ########################################################
     # Connection deletion
