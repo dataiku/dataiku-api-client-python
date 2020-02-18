@@ -273,6 +273,17 @@ class DescriptiveStatistics(ComputationBase):
                 computations.append({"type": "sem", "column": col})
         return {"type": "multi", "computations" : computations}
 
+class TTest1Sample(ComputationBase):
+    def __init__(self, column, hypothesized_mean):
+        self.column = column
+        self.hypothesized_mean = hypothesized_mean
+    def to_model(self):
+        return {
+            "type": "ttest_1samp",
+            "column": self.column,
+            "hypothesizedMean" : self.hypothesized_mean
+        }
+
 class DistributionFit(ComputationBase):
     def __init__(self, column, type="normal", test=True, **kwargs):
         self.column = column
@@ -291,6 +302,31 @@ class DistributionFit(ComputationBase):
             "distribution": distribution,
             "test" :self.test
         }
+
+class _BasicBivariateComputation(ComputationBase):
+    def __init__(self, type, column1, column2):
+        self.type = type
+        self.column1 = column1
+        self.column2 = column2
+
+    def to_model(self):
+        return {
+            "type": self.type,
+            "xColumn": self.column1,
+            "yColumn": self.column2
+        }
+
+
+class Pearson(_BasicBivariateComputation):
+    def __init__(self, column1, column2):
+        super(Pearson, self).__init__("pearson", column1, column2)
+class Covariance(_BasicBivariateComputation):
+    def __init__(self, column1, column2):
+        super(Pearson, self).__init__("covariance", column1, column2)
+class Spearman(_BasicBivariateComputation):
+    def __init__(self, column1, column2):
+        super(Pearson, self).__init__("spearman", column1, column2)
+
 
 class GroupedComputation(ComputationBase):
     def __init__(self, computation, grouping):
