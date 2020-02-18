@@ -121,14 +121,6 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
         return [DSSStatisticsCardSettings(self.client, card_definition)
                 for card_definition in self._internal_dict['rootCard']['cards']]
 
-    def get_raw(self):
-        """
-        Gets a reference to the raw settings of the worksheet.
-
-        :rtype: dict
-        """
-        return self._internal_dict
-
     def set_sampling_settings(self, selection):
         """
         Sets the sampling settings of the worksheet
@@ -165,14 +157,6 @@ class DSSStatisticsCardSettings(DSSInternalDict):
         self.client = client
         self._internal_dict = card_definition
 
-    def get_raw(self):
-        """
-        Gets a reference to the raw settings of the card.
-
-        :rtype: dict
-        """
-        return self._internal_dict
-
     def compile(self):
         """
         Gets the underlying computation used to compute the card results.
@@ -196,14 +180,6 @@ class DSSStatisticsComputationSettings(DSSInternalDict):
         super(DSSStatisticsComputationSettings,
               self).__init__(computation_definition)
         self._internal_dict = computation_definition
-
-    def get_raw(self):
-        """
-        Gets the raw settings of the computation.
-
-        :rtype: dict
-        """
-        return self._internal_dict
 
     @staticmethod
     def _from_computation_or_dict(computation_or_dict):
