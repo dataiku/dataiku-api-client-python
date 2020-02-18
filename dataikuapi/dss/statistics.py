@@ -43,7 +43,7 @@ class DSSStatisticsWorksheet(object):
         """
         Computes the results of the whole worksheet.
 
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle
+        :returns: a :class:`DSSStatisticsCardResult` if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         root_card = self.get_settings().get_raw()['rootCard']
@@ -57,7 +57,7 @@ class DSSStatisticsWorksheet(object):
 
         :param card: a card to compute
         :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing card's results
+        :returns: a :class:`DSSStatisticsCardResult` if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
@@ -67,8 +67,13 @@ class DSSStatisticsWorksheet(object):
                 self.project_key, self.dataset_name, self.worksheet_id),
             body=card.get_raw()
         )
-        future = DSSFuture(self.client, future_response.get(
-            "jobId", None), future_response)
+
+        def wrap_card_result(result):
+            return DSSStatisticsCardResult(result)
+
+        future = DSSFuture(self.client, future_response.get("jobId", None),
+                           future_response, result_wrapper=wrap_card_result)
+
         return future.wait_for_result() if wait else future
 
     def run_computation(self, computation, wait=True):
@@ -77,7 +82,7 @@ class DSSStatisticsWorksheet(object):
 
         :param computation: a card to compute
         :type computation: :class:`DSSStatisticsComputationSettings` or dict (obtained from ``DSSStatisticsComputationSettings.get_raw()``)
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of computing computation's results
+        :returns: a :class:`DSSStatisticsComputationResult`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         computation = DSSStatisticsComputationSettings._from_computation_or_dict(
@@ -88,8 +93,13 @@ class DSSStatisticsWorksheet(object):
                 self.project_key, self.dataset_name, self.worksheet_id),
             body=computation.get_raw()
         )
-        future = DSSFuture(self.client, future_response.get(
-            "jobId", None), future_response)
+
+        def wrap_computation_result(result):
+            return DSSStatisticsComputationResult(result)
+
+        future = DSSFuture(self.client, future_response.get("jobId", None),
+                           future_response, result_wrapper=wrap_computation_result)
+
         return future.wait_for_result() if wait else future
 
 
@@ -152,6 +162,10 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
 
 
 class DSSStatisticsCardSettings(DSSInternalDict):
+    """
+    Object to manipulate the settings of a card
+    """
+
     def __init__(self, client, card_definition):
         super(DSSStatisticsCardSettings, self).__init__(card_definition)
         self.client = client
@@ -175,7 +189,18 @@ class DSSStatisticsCardSettings(DSSInternalDict):
         return DSSStatisticsCardSettings(client, card_or_dict)
 
 
+class DSSStatisticsCardResult(DSSInternalDict):
+    """
+    Object storing the results of a :class:`DSSStatisticsCardSettings`
+    """
+    pass
+
+
 class DSSStatisticsComputationSettings(DSSInternalDict):
+    """
+    Object to manipulate the settings of a computation
+    """
+
     def __init__(self, computation_definition):
         super(DSSStatisticsComputationSettings,
               self).__init__(computation_definition)
@@ -186,3 +211,10 @@ class DSSStatisticsComputationSettings(DSSInternalDict):
         if isinstance(computation_or_dict, DSSStatisticsComputationSettings):
             computation_or_dict = computation_or_dict.get_raw()
         return DSSStatisticsComputationSettings(computation_or_dict)
+
+
+class DSSStatisticsComputationResult(DSSInternalDict):
+    """
+    Object storing the results of a :class:`DSSStatisticsComputationSettings`
+    """
+    pass
