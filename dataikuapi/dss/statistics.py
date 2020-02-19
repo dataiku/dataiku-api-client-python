@@ -1,7 +1,6 @@
 from ..utils import DataikuException
 from .utils import DSSDatasetSelectionBuilder
 from .future import DSSFuture
-from ..utils import DSSInternalDict
 import json
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -103,10 +102,9 @@ class DSSStatisticsWorksheet(object):
         return future.wait_for_result() if wait else future
 
 
-class DSSStatisticsWorksheetSettings(DSSInternalDict):
+class DSSStatisticsWorksheetSettings(object):
     def __init__(self, client, project_key, dataset_name, worksheet_id, worksheet_definition):
-        super(DSSStatisticsWorksheetSettings,
-              self).__init__(worksheet_definition)
+        self._worksheet_definition = worksheet_definition
         self.client = client
         self.project_key = project_key
         self.dataset_name = dataset_name
@@ -120,7 +118,7 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
         :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
         """
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
-        self._internal_dict['rootCard']['cards'].append(card.get_raw())
+        self._worksheet_definition['rootCard']['cards'].append(card.get_raw())
 
     def list_cards(self):
         """
@@ -129,7 +127,15 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
         :rtype: list of :class:`DSSStatisticsCardSettings`
         """
         return [DSSStatisticsCardSettings(self.client, card_definition)
-                for card_definition in self._internal_dict['rootCard']['cards']]
+                for card_definition in self._worksheet_definition['rootCard']['cards']]
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw settings of the worksheet.
+
+        :rtype: dict
+        """
+        return self._worksheet_definition
 
     def set_sampling_settings(self, selection):
         """
@@ -139,7 +145,7 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
         """
         raw_selection = selection.build() if isinstance(
             selection, DSSDatasetSelectionBuilder) else selection
-        self._internal_dict['dataSpec']['datasetSelection'] = raw_selection
+        self._worksheet_definition['dataSpec']['datasetSelection'] = raw_selection
 
     def get_raw_sampling_settings(self):
         """
@@ -147,29 +153,36 @@ class DSSStatisticsWorksheetSettings(DSSInternalDict):
 
         :rtype: dict
         """
-        return self._internal_dict['dataSpec']['datasetSelection']
+        return self._worksheet_definition['dataSpec']['datasetSelection']
 
     def save(self):
         """
         Saves the settings to DSS
         """
-        self._internal_dict = self.client._perform_json(
+        self._worksheet_definition = self.client._perform_json(
             "PUT",
             "/projects/%s/datasets/%s/statistics/worksheets/%s" % (
                 self.project_key, self.dataset_name, self.worksheet_id),
-            body=self._internal_dict
+            body=self._worksheet_definition
         )
 
 
-class DSSStatisticsCardSettings(DSSInternalDict):
+class DSSStatisticsCardSettings(object):
     """
     Object to manipulate the settings of a card
     """
 
     def __init__(self, client, card_definition):
-        super(DSSStatisticsCardSettings, self).__init__(card_definition)
         self.client = client
-        self._internal_dict = card_definition
+        self._card_definition = card_definition
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw settings of the card.
+
+        :rtype: dict
+        """
+        return self._card_definition
 
     def compile(self):
         """
@@ -178,7 +191,7 @@ class DSSStatisticsCardSettings(DSSInternalDict):
         :rtype: DSSStatisticsComputationSettings
         """
         computation_json = self.client._perform_json(
-            "POST", "/statistics/cards/compile", body=self._internal_dict
+            "POST", "/statistics/cards/compile", body=self._card_definition
         )
         return DSSStatisticsComputationSettings(computation_json)
 
@@ -189,22 +202,38 @@ class DSSStatisticsCardSettings(DSSInternalDict):
         return DSSStatisticsCardSettings(client, card_or_dict)
 
 
-class DSSStatisticsCardResult(DSSInternalDict):
+class DSSStatisticsCardResult(object):
     """
     Object storing the results of a :class:`DSSStatisticsCardSettings`
     """
-    pass
+
+    def __init__(self, card_result):
+        self._card_result = card_result
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw results of the card
+
+        :rtype: dict
+        """
+        return self._card_result
 
 
-class DSSStatisticsComputationSettings(DSSInternalDict):
+class DSSStatisticsComputationSettings(object):
     """
     Object to manipulate the settings of a computation
     """
 
     def __init__(self, computation_definition):
-        super(DSSStatisticsComputationSettings,
-              self).__init__(computation_definition)
-        self._internal_dict = computation_definition
+        self._computation_definition = computation_definition
+
+    def get_raw(self):
+        """
+        Gets the raw settings of the computation.
+
+        :rtype: dict
+        """
+        return self._computation_definition
 
     @staticmethod
     def _from_computation_or_dict(computation_or_dict):
@@ -213,8 +242,18 @@ class DSSStatisticsComputationSettings(DSSInternalDict):
         return DSSStatisticsComputationSettings(computation_or_dict)
 
 
-class DSSStatisticsComputationResult(DSSInternalDict):
+class DSSStatisticsComputationResult(object):
     """
     Object storing the results of a :class:`DSSStatisticsComputationSettings`
     """
-    pass
+
+    def __init__(self, computation_result):
+        self._computation_result = computation_result
+
+    def get_raw(self):
+        """
+        Gets a reference to the raw results of the computation
+
+        :rtype: dict
+        """
+        return self._computation_result
