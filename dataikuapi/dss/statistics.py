@@ -67,11 +67,8 @@ class DSSStatisticsWorksheet(object):
             body=card.get_raw()
         )
 
-        def wrap_card_result(result):
-            return DSSStatisticsCardResult(result)
-
-        future = DSSFuture(self.client, future_response.get("jobId", None),
-                           future_response, result_wrapper=wrap_card_result)
+        future = DSSFuture(self.client, future_response.get("jobId", None), future_response,
+                           result_wrapper=lambda raw_result: DSSStatisticsCardResult(raw_result))
 
         return future.wait_for_result() if wait else future
 
@@ -93,11 +90,8 @@ class DSSStatisticsWorksheet(object):
             body=computation.get_raw()
         )
 
-        def wrap_computation_result(result):
-            return DSSStatisticsComputationResult(result)
-
-        future = DSSFuture(self.client, future_response.get("jobId", None),
-                           future_response, result_wrapper=wrap_computation_result)
+        future = DSSFuture(self.client, future_response.get("jobId", None), future_response,
+                           result_wrapper=lambda raw_result: DSSStatisticsComputationResult(raw_result))
 
         return future.wait_for_result() if wait else future
 
