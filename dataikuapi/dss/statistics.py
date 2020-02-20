@@ -273,6 +273,20 @@ class DescriptiveStatistics(ComputationBase):
                 computations.append({"type": "sem", "column": col})
         return {"type": "multi", "computations" : computations}
 
+class Quantiles(ComputationBase):
+    def __init__(self, column, freqs=[0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99], confidence=None):
+        self.column = column
+        self.freqs = freqs
+        self.confidence = confidence
+
+    def to_model(self):
+        return {
+            "type":  "quantiles",
+            "column" : self.column,
+            "freqs": self.freqs,
+            "confidence": self.confidence
+        }
+
 class TTest1Sample(ComputationBase):
     def __init__(self, column, hypothesized_mean):
         self.column = column
