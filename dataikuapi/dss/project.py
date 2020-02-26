@@ -1030,6 +1030,53 @@ class DSSProjectSettings(object):
         """
         return self.settings
 
+    def set_python_code_env(self, code_env_name):
+        """Sets the default Python code env used by this project
+
+        :param str code_env_name: Identifier of the code env to use. If None, sets the project to use the builtin Python env
+        """
+        if code_env_name is None:
+            self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = True
+        else:
+            self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = False
+            self.settings["settings"]["codeEnvs"]["python"]["envName"] = code_env_name
+
+    def set_r_code_env(self, code_env_name):
+        """Sets the default R code env used by this project
+
+        :param str code_env_name: Identifier of the code env to use. If None, sets the project to use the builtin R env
+        """
+        if code_env_name is None:
+            self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = True
+        else:
+            self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = False
+            self.settings["settings"]["codeEnvs"]["r"]["envName"] = code_env_name
+
+    def set_container_exec_config(self, config_name):
+        """Sets the default containerized execution config used by this project
+
+        :param str config_name: Identifier of the containerized execution config to use. If None, sets the project to use local execution
+        """
+        if config_name is None:
+            self.settings["settings"]["container"]["containerMode"] = "NONE"
+        else:
+            self.settings["settings"]["container"]["containerMode"] = "EXPLICIT_CONTAINER"
+            self.settings["settings"]["container"]["containerConf"] = config_name
+
+    def set_k8s_cluster(self, cluster, fallback_cluster=None):
+        """Sets the Kubernetes cluster used by this project
+
+        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project 
+                            to use the globally-defined cluster
+        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
+        """
+        if cluster is None:
+            self.settings["settings"]["k8sCluster"]["clusterMode"] = "INHERIT"
+        else:
+            self.settings["settings"]["k8sCluster"]["clusterMode"] = "EXPLICIT_CLUSTER"
+            self.settings["settings"]["k8sCluster"]["clusterId"] = cluster
+            self.settings["settings"]["k8sCluster"]["defaultClusterId"] = fallback_cluster
+
     def set_cluster(self, cluster, fallback_cluster=None):
         """Sets the Hadoop/Spark cluster used by this project
 
