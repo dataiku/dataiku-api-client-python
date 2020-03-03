@@ -1121,7 +1121,7 @@ class DSSSubpopulationAnalyses(object):
     def __repr__(self):
         return "{cls}(prediction_type={type}, analyses={analyses})".format(cls=self.__class__.__name__,
                                                                            type=self.prediction_type,
-                                                                           analyses=self.list_analyses)
+                                                                           analyses=self.list_analyses())
     def get_global(self):
         """
         Retrieves information and performance on the full dataset used to compute the subpopulation analyses
@@ -1611,4 +1611,3 @@ class DSSMLTask(object):
             "PUT",
             "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
             params = obj)
-
