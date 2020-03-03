@@ -831,10 +831,7 @@ class DSSSubpopulationGlobal(object):
     """
 
     def __init__(self, data, prediction_type):
-        if data is None:
-            self._internal_dict = dict()
-        else:
-            self._internal_dict = data
+        self._internal_dict = data
         self.prediction_type = prediction_type
 
     def get_raw(self):
@@ -883,11 +880,7 @@ class DSSSubpopulationModality(object):
     """
 
     def __init__(self, feature_name, computed_as_type, data, prediction_type):
-        if data is None:
-            self._internal_dict = dict()
-        else:
-            self._internal_dict = data
-
+        self._internal_dict = data
         self.prediction_type = prediction_type
         if computed_as_type == "CATEGORY":
             self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
@@ -1101,10 +1094,7 @@ class DSSSubpopulationAnalyses(object):
     """
 
     def __init__(self, data, prediction_type):
-        if data is None:
-            self._internal_dict = dict()
-        else:
-            self._internal_dict = data
+        self._internal_dict = data
         self.prediction_type = prediction_type
         self.analyses = []
         for analysis in data.get("subpopulationAnalyses", []):
@@ -1152,10 +1142,7 @@ class DSSPartialDependence(object):
     """
 
     def __init__(self, data):
-        if data is None:
-            self._internal_dict = dict()
-        else:
-            self._internal_dict = data
+        self._internal_dict = data
 
     def get_raw(self):
         """
@@ -1187,10 +1174,7 @@ class DSSPartialDependencies(object):
     """
 
     def __init__(self, data):
-        if data is None:
-            self._internal_dict = dict()
-        else:
-            self._internal_dict = data
+        self._internal_dict = data
         self.partial_dependencies = []
         for pd in data.get("partialDependencies", []):
             self.partial_dependencies.append(DSSPartialDependence(pd))
