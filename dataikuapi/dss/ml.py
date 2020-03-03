@@ -846,7 +846,7 @@ class DSSSubpopulationGlobal(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
+        return "{cls}(prediction_type={type})".format(cls=self.__class__.__name__, type=self.prediction_type)
 
     def get_performance_metrics(self):
         """
@@ -903,7 +903,12 @@ class DSSSubpopulationModality(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
+        computed_as_type = "CATEGORY" if isinstance(self.definition, DSSSubpopulationCategoryModalityDefinition) else 'NUMERIC'
+        return "{cls}(prediction_type={type}, feature={feature}, computed_as={computed_as_type})".format(
+            cls=self.__class__.__name__,
+            type=self.prediction_type,
+            feature=self.definition.feature_name,
+            computed_as_type=computed_as_type)
 
     def get_definition(self):
         """
@@ -1033,7 +1038,11 @@ class DSSSubpopulationAnalysis(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
+        return "{cls}(computed_as_type={type}, feature={feature}, modalities_count={modalities_count})".format(
+            cls=self.__class__.__name__,
+            type=self.computed_as_type,
+            feature=self._internal_dict["feature"],
+            modalities_count=len(self.modalities))
 
     def get_computation_params(self):
         """
@@ -1110,8 +1119,9 @@ class DSSSubpopulationAnalyses(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
-
+        return "{cls}(prediction_type={type}, analyses={analyses})".format(cls=self.__class__.__name__,
+                                                                           type=self.prediction_type,
+                                                                           analyses=self.list_analyses)
     def get_global(self):
         """
         Retrieves information and performance on the full dataset used to compute the subpopulation analyses
@@ -1156,7 +1166,7 @@ class DSSPartialDependence(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
+        return "{cls}(feature={feature})".format(cls=self.__class__.__name__, feature=self._internal_dict["feature"])
 
     def get_computation_params(self):
         """
@@ -1194,7 +1204,7 @@ class DSSPartialDependencies(object):
         return self._internal_dict
 
     def __repr__(self):
-        return self.__class__.__name__ + "(" + self._internal_dict.__repr__() + ")"
+        return "{cls}(features={features})".format(cls=self.__class__.__name__, features=self.list_features())
 
     def list_features(self):
         """
