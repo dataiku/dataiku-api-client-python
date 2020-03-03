@@ -839,7 +839,7 @@ class DSSSubpopulationGlobal(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of the global subpopulation performance
 
         :rtype: dict
         """
@@ -896,7 +896,7 @@ class DSSSubpopulationModality(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of the subpopulation analysis modality
 
         :rtype: dict
         """
@@ -1026,7 +1026,7 @@ class DSSSubpopulationAnalysis(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of the subpopulation analysis
 
         :rtype: dict
         """
@@ -1103,7 +1103,7 @@ class DSSSubpopulationAnalyses(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of subpopulation analyses
 
         :rtype: dict
         """
@@ -1149,7 +1149,7 @@ class DSSPartialDependence(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of the partial dependence
 
         :rtype: dict
         """
@@ -1187,7 +1187,7 @@ class DSSPartialDependencies(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the actual data
+        Gets the raw dictionary of partial dependencies
 
         :rtype: dict
         """
