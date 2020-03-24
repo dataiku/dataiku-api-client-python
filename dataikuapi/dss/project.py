@@ -15,6 +15,8 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
+from .flow import DSSProjectFlow
+from .app import DSSAppManifest
 from dataikuapi.utils import DataikuException
 
 
@@ -782,6 +784,13 @@ class DSSProject(object):
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
     ########################################################
+    # Flow
+    ########################################################
+
+    def get_flow(self):
+        return DSSProjectFlow(self.client, self)
+
+    ########################################################
     # Security
     ########################################################
     
@@ -950,6 +959,15 @@ class DSSProject(object):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
         return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
+    ########################################################
+    # App designer
+    ########################################################
+
+    def get_app_manifest(self):
+        raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
+        return DSSAppManifest(self.client, raw_data)
+
+
 class TablesImportDefinition(object):
     """
     Temporary structure holding the list of tables to import
@@ -1090,6 +1108,31 @@ class DSSProjectSettings(object):
             self.settings["settings"]["cluster"]["clusterMode"] = "EXPLICIT_CLUSTER"
             self.settings["settings"]["cluster"]["clusterId"] = cluster
             self.settings["settings"]["cluster"]["defaultClusterId"] = fallback_cluster
+
+    def add_exposed_object(self, object_type, object_id, target_project):
+        """
+        Exposes an object from this project to another project.
+        Does nothing if the object was already exposed to the target project
+        """
+        found_eo = None
+        for eo in self.settings["exposedObjects"]["objects"]:
+            if eo["type"] == object_type and eo["localName"] == object_id:
+                found_eo = eo
+                break
+
+        if found_eo is None:
+            found_eo = {"type" : object_type, "localName" : object_id, "rules" : []}
+            self.settings["exposedObjects"]["objects"].append(found_eo)
+
+        already_exists = False
+        for rule in found_eo["rules"]:
+            if rule["targetProject"] == target_project:
+                already_exists = True
+                break
+
+        if not already_exists:
+            found_eo["rules"].append({"targetProject": target_project})
+
 
     def save(self):
         """Saves back the settings to the project"""

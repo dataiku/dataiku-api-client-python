@@ -2,6 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
@@ -153,6 +154,22 @@ class DSSDataset(object):
                 "DELETE", "/projects/%s/datasets/%s/data" % (self.project_key, self.dataset_name),
                 params={"partitions" : partitions})
 
+    def copy_to(self, target, sync_schema=True, write_mode="OVERWRITE"):
+        """
+        Copies the data of this dataset to another dataset
+
+        :param target Dataset: a :class:`dataikuapi.dss.dataset.DSSDataset` representing the target of this copy
+        :returns: a DSSFuture representing the operation
+        """
+        dqr = {
+             "targetProjectKey" : target.project_key,
+             "targetDatasetName": target.dataset_name,
+             "syncSchema": sync_schema,
+             "writeMode" : write_mode
+        }
+        future_resp = self.client._perform_json("POST", "/projects/%s/datasets/%s/actions/copyTo" % (self.project_key, self.dataset_name), body=dqr)
+        return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
+
     ########################################################
     # Dataset actions
     ########################################################
@@ -204,6 +221,23 @@ class DSSDataset(object):
             return self.client._perform_json(
                     "POST" , "/projects/%s/datasets/%s/actions/runChecks" %(self.project_key, self.dataset_name),
                     params={'partition':partition}, body=checks)
+
+    def uploaded_add_file(self, fp, filename):
+        """
+        Adds a file to an "uploaded files" dataset
+
+        :param file fp: A file-like object that represents the file to upload
+        :param str filename: The filename for the file to upload 
+        """
+        self.client._perform_empty("POST", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name),
+         files={"file":(filename, fp)})
+
+    def uploaded_list_files(self):
+        """
+        List the files in an "uploaded files" dataset
+        """
+        return self.client._perform_json("GET", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name))
+
 
     ########################################################
     # Statistics worksheets
