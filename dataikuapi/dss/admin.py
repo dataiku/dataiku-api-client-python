@@ -156,8 +156,8 @@ class DSSConnection(object):
             "POST", "/admin/connections/%s/sync" % self.name,
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
-    
-        
+
+
 class DSSUser(object):
     """
     A handle for a user on the DSS instance.
@@ -167,10 +167,6 @@ class DSSUser(object):
         self.client = client
         self.login = login
 
-    ########################################################
-    # User deletion
-    ########################################################
-
     def delete(self):
         """
         Deletes the user
@@ -178,6 +174,15 @@ class DSSUser(object):
         """
         return self.client._perform_empty(
             "DELETE", "/admin/users/%s" % self.login)
+
+    def get_settings(self):
+        """
+        Gets the settings of the user
+
+        :rtype: :class:`DSSUserSettings`
+        """
+        raw =self.client._perform_json("GET", "/admin/users/%s" % self.login)
+        return DSSUserSettings(self.client, self.login, raw)
 
     ########################################################
     # User description
@@ -214,7 +219,104 @@ class DSSUser(object):
         return self.client._perform_json(
             "PUT", "/admin/users/%s" % self.login,
             body = definition)
-            
+
+    def get_client_as(self):
+        from dataikuapi.dssclient import DSSClient
+
+        if self.client.api_key is not None:
+            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})
+        elif self.client.internal_ticket is not None:
+            return DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
+                                         extra_headers={"X-DKU-ProxyUser":  self.login})
+        else:
+            raise ValueError("Don't know how to proxy this client")
+
+class DSSOwnUser(object):
+    """
+    A handle to interact with your own user
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_own_user`
+    """
+    def __init__(self, client):
+        self.client = client
+
+    def get_settings(self):
+        """
+        Gets your own settings
+
+        :rtype: :class:`DSSOwnUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/current-user")
+        return DSSOwnUserSettings(self.client, raw)
+
+
+class DSSUserSettingsBase(object):
+
+    def __init__(self, settings):
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        :returns: the raw settings of the user, as a dict. Modifications made to the returned object 
+        are reflected when saving
+
+        :rtype: dict
+        """
+        return self.settings
+
+    def set_basic_connection_credential(self, connection, user, password):
+        self.settings["credentials"][connection] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def remove_connection_credential(self,connection):
+        if connection in self.settings["credentials"]:
+            del self.settings["credentials"][connection]
+
+    def set_basic_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, user, password):
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def set_oauth2_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, refresh_token):
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "OAUTH_REFRESH_TOKEN",
+            "refreshToken": refresh_token
+        }
+
+    def remove_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name):
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        if name in self.settings["credentials"]:
+            del self.settings["credentials"][name]
+
+
+class DSSUserSettings(DSSUserSettingsBase):
+    def __init__(self, client, login, settings):
+        super(DSSUserSettings, self).__init__(settings)
+        self.client = client
+        self.login = login
+
+    def save(self):
+        self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
+
+
+class DSSOwnUserSettings(DSSUserSettingsBase):
+    def __init__(self, client, settings):
+        super(DSSOwnUserSettings, self).__init__(settings)
+        self.client = client
+
+    def save(self):
+        self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
 class DSSGroup(object):
     """
     A group on the DSS instance.
