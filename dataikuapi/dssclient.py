@@ -881,6 +881,21 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
+        
+    def get_ticket_from_browser_headers(self, headers_dict):
+         """
+         Returns a ticket for the DSS user authenticated by the dictionary of
+         HTTP headers provided in headers_dict.
+
+         This is only used in webapp backends
+
+         This method returns a ticket to use as a X-DKU-APITicket header
+
+         :param: headers_dict dict: Dictionary of HTTP headers
+         :returns: a string
+         :rtype: string
+         """
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
 
     def create_personal_api_key(self, label):
         """
