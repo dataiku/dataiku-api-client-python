@@ -948,7 +948,6 @@ class DSSClient(object):
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
 
-
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client

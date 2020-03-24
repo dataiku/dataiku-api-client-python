@@ -265,6 +265,33 @@ class DSSProject(object):
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
+    def create_empty_uploaded_files_dataset(self, dataset_name):
+        params = {}
+        obj = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : "UploadedFiles",
+            "params" : {}
+        }
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                       body = obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def create_filesystem_dataset(self, dataset_name, connection, path_in_connection):
+        params = {}
+        obj = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : "Filesystem",
+            "params" : {
+                "connection" : connection,
+                "path": path_in_connection
+            }
+        }
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                       body = obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
     def new_managed_dataset_creation_helper(self, dataset_name):
         """
         Creates a helper class to create a managed dataset in the project

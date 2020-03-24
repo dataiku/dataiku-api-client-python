@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+from .future import DSSFuture
 import json
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -34,6 +35,11 @@ class DSSDataset(object):
     ########################################################
     # Dataset definition
     ########################################################
+
+    def get_settings(self):
+        data = self.client._perform_json("GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
+        return DSSDatasetSettings(self, data)
+
 
     def get_definition(self):
         """
@@ -311,6 +317,61 @@ class DSSDataset(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)
+
+    ########################################################
+    # Test / Autofill
+    ########################################################
+
+    FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
+                    "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
+
+    def start_test_detect(self, infer_storage_types=False):
+        settings = self.get_settings()
+
+        if settings.get_type() in self.__class__.FS_TYPES:
+            future_resp = self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
+                body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
+
+            return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
+        else:
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+
+
+    def autodetect_settings(self, infer_storage_types=False):
+        settings = self.get_settings()
+
+        if settings.get_type() in self.__class__.FS_TYPES:
+            future = self.start_test_detect(infer_storage_types)
+            result = future.wait_for_result()
+
+            if not "format" in result or not result["format"]["ok"]:
+                raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["formatType"] = result["format"]["type"]
+            settings.get_raw()["formatParams"] = result["format"]["params"]
+            settings.get_raw()["schema"] = result["format"]["schemaDetection"]["newSchema"]
+
+            return settings
+
+        else:
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+
+class DSSDatasetSettings(object):
+    def __init__(self, dataset, settings):
+        self.dataset = dataset
+        self.settings = settings
+
+    def get_raw(self):
+        return self.settings
+
+    def get_type(self):
+        return self.settings["type"]
+
+    def save(self):
+        self.dataset.client._perform_empty(
+                "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
+                body=self.settings)
 
 class DSSManagedDatasetCreationHelper(object):
 
