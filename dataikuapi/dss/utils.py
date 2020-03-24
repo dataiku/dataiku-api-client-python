@@ -64,3 +64,27 @@ class DSSFilterBuilder(object):
         self.filter["expression"] = expression
         self.filter["uiData"]["mode"] = "CUSTOM"
         return self
+
+class AnyLoc(object):
+    def __init__(self, project_key, object_id):
+        self.project_key = project_key
+        self.object_id = object_id
+
+    def __eq__(self, obj):
+        return isinstance(obj, AnyLoc) and obj.project_key == self.project_key and obj.object_id == self.object_id
+
+    @staticmethod
+    def from_ref(context_project_key, ref):
+        if ref.find(".") >= 0:
+            elts = ref.split(".")
+            return AnyLoc(elts[0], elts[1])
+        else:
+            return AnyLoc(context_project_key, ref)
+
+    @staticmethod
+    def from_full(ref):
+        if ref.find(".") >= 0:
+            elts = ref.split(".")
+            return AnyLoc(elts[0], elts[1])
+        else:
+            raise Exception("Cannot parse object id, it's not a full id")

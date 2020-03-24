@@ -3,6 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 from .metrics import ComputedMetrics
+from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
 
 class DSSManagedFolder(object):
@@ -173,3 +174,22 @@ class DSSManagedFolder(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "MANAGED_FOLDER", self.odb_id)
+
+    ########################################################
+    # utilities
+    ########################################################
+    def copy_to(self, target, write_mode="OVERWRITE"):
+        """
+        Copies the data of this folder to another folder
+
+        :param target Folder: a :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` representing the target of this copy
+        :returns: a DSSFuture representing the operation
+        """
+        dqr = {
+             "targetProjectKey" : target.project_key,
+             "targetFolderId": target.odb_id,
+             "writeMode" : write_mode
+        }
+        future_resp = self.client._perform_json("POST", "/projects/%s/managedfolders/%s/actions/copyTo" % (self.project_key, self.odb_id), body=dqr)
+        return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
+

@@ -6,6 +6,7 @@ from requests.auth import HTTPBasicAuth
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
+from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
@@ -183,6 +184,28 @@ class DSSClient(object):
         return DSSProject(self, project_key)
 
     ########################################################
+    # Apps
+    ########################################################
+
+    def list_apps(self):
+        """
+        List the apps
+
+        :returns: a list of apps, each as a dict. Each dict contains at least a 'appId' field
+        :rtype: list of dicts
+        """
+        return self._perform_json("GET", "/apps/")
+
+    def get_app(self, app_id):
+        """
+        Get a handle to interact with a specific app.
+
+        :param str app_id: the id of the desired app
+        :returns: A :class:`dataikuapi.dss.app.DSSApp` to interact with this project
+        """
+        return DSSApp(self, app_id)
+
+    ########################################################
     # Plugins
     ########################################################
 
@@ -213,7 +236,6 @@ class DSSClient(object):
         f = self._perform_json("POST", "/plugins/actions/installFromStore", body={
             "pluginId": plugin_id
         })
-        print(f)
         return DSSFuture(self, f["jobId"])
 
     def install_plugin_from_git(self, repository_url, checkout = "master", subpath=None):
@@ -859,6 +881,21 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
+        
+    def get_ticket_from_browser_headers(self, headers_dict):
+         """
+         Returns a ticket for the DSS user authenticated by the dictionary of
+         HTTP headers provided in headers_dict.
+
+         This is only used in webapp backends
+
+         This method returns a ticket to use as a X-DKU-APITicket header
+
+         :param: headers_dict dict: Dictionary of HTTP headers
+         :returns: a string
+         :rtype: string
+         """
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
 
     def create_personal_api_key(self, label):
         """
