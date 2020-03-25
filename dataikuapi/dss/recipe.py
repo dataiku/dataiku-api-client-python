@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
 import json
+import logging
 
 class DSSRecipe(object):
     """
@@ -286,6 +287,13 @@ class DSSRecipeCreator(object):
         role_obj["items"].append({'ref':self._build_ref(dataset_name, None), 'appendMode': append})
         return self
 
+    def _get_input_refs(self):
+        ret = []
+        for role_key, role_obj in self.recipe_proto["inputs"].items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
     def with_input(self, dataset_name, project_key=None, role="main"):
         """
         Add an existing object as input to the recipe-to-be-created
@@ -311,8 +319,12 @@ class DSSRecipeCreator(object):
         return self._with_output(dataset_name, append, role)
 
     def build(self):
+        """Deprecated. Use create()"""
+        return self.create()
+
+    def create(self):
         """
-        Create a new recipe in the project, and return a handle to interact with it. 
+        Creates the new recipe in the project, and return a handle to interact with it. 
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
@@ -358,9 +370,9 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         :param str connection_id: name of the connection to create the dataset on
         :param str typeOptionId: sub-type of dataset, for connection where the type could be ambiguous. Typically,
                                  this is SCP or SFTP, for SSH connection
-        :param str format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
-                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
-                                     AVRO, ORC 
+        :param str format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
+                                     AVRO, ORC
         :param override_sql_schema: schema to force dataset, for SQL dataset. If left empty, will be autodetected
         :param str partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
                                            value of 'copy:dataset:foo'
@@ -507,6 +519,46 @@ class CodeRecipeCreator(DSSRecipeCreator):
         """
         self.script = script
         return self
+
+    def with_new_output_dataset(self, name, connection,
+                                type=None, format=None,
+                                copy_partitioning_from="FIRST_INPUT",
+                                append=False):
+        """
+        Create a new managed dataset as output to the recipe-to-be-created. The dataset is created immediately
+
+        :param str name: name of the dataset to create
+        :param str connection_id: name of the connection to create the dataset on
+        :param str type: type of dataset, for connection where the type could be ambiguous. Typically,
+                                 this is SCP or SFTP, for SSH connection
+        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
+                                     AVRO, ORC. If None, uses the default
+        :param str copy_partitioning_from: Whether to copy the partitioning from another thing.
+                    Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
+                    "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
+        :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
+        """
+
+        ch = self.project.new_managed_dataset_creation_helper(name)
+        ch.with_store_into(connection, type_option_id=type, format_option_id=format)
+
+        # FIXME: can't manage input folder
+        if copy_partitioning_from == "FIRST_INPUT":
+            inputs = self._get_input_refs()
+            if len(inputs) == 0:
+                logging.warn("No input declared yet, can't copy partitioning from first input")
+            else:
+                self.creation_settings["partitioningOptionId"] = "copy:dataset:%s" % (inputs[0])
+        elif copy_partitioning_from is not None:
+            self.creation_settings["partitioningOptionId"] = "copy:%s" % copy_partitioning_from
+
+        ch.create()
+
+        self.with_output(name, append=append)
+        return self
+
+    
 
     def _finish_creation_settings(self):
         super(CodeRecipeCreator, self)._finish_creation_settings()

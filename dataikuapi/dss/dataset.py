@@ -7,6 +7,7 @@ from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
+from . import recipe
 
 class DSSDataset(object):
     """
@@ -402,6 +403,25 @@ class DSSDataset(object):
 
         else:
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+
+    def get_as_core_dataset(self):
+        import dataiku
+        return dataiku.Dataset("%s.%s" % (self.project_key, self.dataset_name))
+
+    ########################################################
+    # Creation of recipes
+    ########################################################
+
+    def new_code_recipe(self, type, code=None, recipe_name=None):
+        """Starts creation of a new code recipe taking this dataset as input"""
+
+        if recipe_name is None:
+            recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
+        builder = recipe.CodeRecipeCreator(recipe_name, type, self.project)
+        builder.with_input(self.dataset_name)
+        if code is not None:
+            builder.with_script(code)
+        return builder
 
 class DSSDatasetSettings(object):
     def __init__(self, dataset, settings):
