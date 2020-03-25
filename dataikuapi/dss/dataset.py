@@ -14,6 +14,7 @@ class DSSDataset(object):
     """
     def __init__(self, client, project_key, dataset_name):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.dataset_name = dataset_name
 
@@ -179,6 +180,17 @@ class DSSDataset(object):
     ########################################################
     # Dataset actions
     ########################################################
+
+    def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True):
+        jd = self.project.new_job_definition_builder(job_type)
+
+        jd.with_output(self.dataset_name, partition=partitions)
+
+        if wait:
+            return self.project.start_job_and_wait(jd.get_definition())
+        else:
+            return self.project.start_job(jd.get_definition())
+
 
     def synchronize_hive_metastore(self):
         """
