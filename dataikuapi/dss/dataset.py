@@ -41,7 +41,13 @@ class DSSDataset(object):
 
     def get_settings(self):
         data = self.client._perform_json("GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
-        return DSSDatasetSettings(self, data)
+
+        if data["type"] in self.__class__.FS_TYPES:
+            return FSLikeDatasetSettings(self, data)
+        elif data["type"] in self.__class__.SQL_TYPES:
+            return SQLDatasetSettings(self, data)
+        else:
+            return DSSDatasetSettings(self, data)
 
 
     def get_definition(self):
@@ -370,9 +376,13 @@ class DSSDataset(object):
     ########################################################
 
     FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
-                    "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
+                "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
 
-    def start_test_detect(self, infer_storage_types=False):
+    SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
+                "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
+                "BigQuery", "Athena", "hiveserver2"]
+
+    def test_and_detect(self, infer_storage_types=False):
         settings = self.get_settings()
 
         if settings.get_type() in self.__class__.FS_TYPES:
@@ -381,15 +391,17 @@ class DSSDataset(object):
                 body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
 
             return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
+        elif settings.get_type() in self.__class__.SQL_TYPES:
+            return self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
         else:
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
-
 
     def autodetect_settings(self, infer_storage_types=False):
         settings = self.get_settings()
 
         if settings.get_type() in self.__class__.FS_TYPES:
-            future = self.start_test_detect(infer_storage_types)
+            future = self.test_and_detect(infer_storage_types)
             result = future.wait_for_result()
 
             if not "format" in result or not result["format"]["ok"]:
@@ -399,6 +411,15 @@ class DSSDataset(object):
             settings.get_raw()["formatParams"] = result["format"]["params"]
             settings.get_raw()["schema"] = result["format"]["schemaDetection"]["newSchema"]
 
+            return settings
+
+        elif settings.get_type() in self.__class__.SQL_TYPES:
+            result = self.test_and_detect()
+
+            if not "schemaDetection" in result:
+                raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["schema"] = result["schemaDetection"]["newSchema"]
             return settings
 
         else:
@@ -434,10 +455,48 @@ class DSSDatasetSettings(object):
     def get_type(self):
         return self.settings["type"]
 
+    def remove_partitioning(self):
+        self.settings["partitioning"] = {"dimensions" : []}
+
+    def add_discrete_partitioning_dimension(self, dim_name):
+        self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "value"})
+
+    def add_time_partitioning_dimension(self, dim_name, period="DAY"):
+        self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "time", "params":{"period": period}})
+
     def save(self):
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
                 body=self.settings)
+
+class FSLikeDatasetSettings(DSSDatasetSettings):
+    def __init__(self, dataset, settings):
+        super(FSLikeDatasetSettings, self).__init__(dataset, settings)
+
+    def set_format(format_type, format_params = None):
+        if format_params is None:
+            format_params = {}
+        self.settings["formatType"] = format_type
+        self.settings["formatParams"] = format_params
+
+    def set_csv_format(separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
+        format_params = {
+            "style" : style,
+            "separator":  separator,
+            "skipRowsBeforeHeader":  skip_rows_before,
+            "parseHeaderRow":  header_row,
+            "skipRowsAfterHeader":  skip_rows_after
+        }
+        self.set_format("csv", format_params)
+
+    def set_partitioning_file_pattern(self, pattern):
+        self.settings["partitioning"]["filePathPattern"] = pattern
+
+class SQLDatasetSettings(DSSDatasetSettings):
+    def __init__(self, dataset, settings):
+        super(SQLDatasetSettings, self).__init__(dataset, settings)
+
+
 
 class DSSManagedDatasetCreationHelper(object):
 

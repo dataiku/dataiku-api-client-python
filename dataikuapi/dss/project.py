@@ -267,14 +267,15 @@ class DSSProject(object):
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
-    def create_empty_uploaded_files_dataset(self, dataset_name):
-        params = {}
+    def create_upload_dataset(self, dataset_name, connection=None):
         obj = {
             "name" : dataset_name,
             "projectKey" : self.project_key,
             "type" : "UploadedFiles",
             "params" : {}
         }
+        if connection is not None:
+            obj["params"]["uploadConnection"] = connection
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
@@ -288,6 +289,22 @@ class DSSProject(object):
             "params" : {
                 "connection" : connection,
                 "path": path_in_connection
+            }
+        }
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                       body = obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
+        obj = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : type,
+            "params" : {
+                "connection" : connection,
+                "mode": "table",
+                "table" : table,
+                "schema" : schema
             }
         }
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
