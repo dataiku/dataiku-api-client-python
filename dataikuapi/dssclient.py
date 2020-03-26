@@ -155,6 +155,13 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
+    def get_default_project(self):
+        """
+        Get a handle to the current default project, if available (i.e. if dataiku.default_project_key() is valid)
+        """
+        import dataiku
+        return DSSProject(self, dataiku.default_project_key())
+
     def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
         """
         Creates a new project, and return a project handle to interact with it.

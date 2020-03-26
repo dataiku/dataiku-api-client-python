@@ -1,4 +1,4 @@
-import time
+import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from .managedfolder import DSSManagedFolder
@@ -6,8 +6,6 @@ from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
 from .apiservice import DSSAPIService
-import sys
-import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
@@ -281,18 +279,36 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_filesystem_dataset(self, dataset_name, connection, path_in_connection):
-        params = {}
-        obj = {
+        return self.create_fslike_dataset(dataset_name, "Filesystem", connection, path_in_connection)
+
+    def create_s3_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
+        """
+        Creates a new external S3 dataset in the project and returns a :class:`~dataikuapi.dss.dataset.DSSDataset` to interact with it.
+
+        The created dataset doesn not have its format and schema initialized, it is recommend to use 
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param dataset_name: Name of the dataset to create. Must not already exist
+        :rtype: `~dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if bucket is not None:
+            extra_params["bucket"] = bucket
+        return self.create_fslike_dataset(dataset_name, "S3", connection, path_in_connection, extra_params)
+
+    def create_fslike_dataset(self, dataset_name, dataset_type, connection, path_in_connection, extra_params=None):
+        body = {
             "name" : dataset_name,
             "projectKey" : self.project_key,
-            "type" : "Filesystem",
+            "type" : dataset_type,
             "params" : {
                 "connection" : connection,
                 "path": path_in_connection
             }
         }
-        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
-                       body = obj)
+        if extra_params is not None:
+            body["params"].update(extra_params)
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key, body = body)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
@@ -566,7 +582,7 @@ class DSSProject(object):
 
     def start_job_and_wait(self, definition, no_fail=False):
         """
-        Create a new job. Wait the end of the job to complete.
+        Starts a new job and waits for it to complete.
         
         Args:
             definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
@@ -579,8 +595,27 @@ class DSSProject(object):
         waiter = DSSJobWaiter(job)
         return waiter.wait(no_fail)
 
+    def new_job(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
+        """
+        Create a job to be run
+
+        You need to add outputs to the job (i.e. what you want to build) before running it.
+
+        .. code-block:: python
+
+            job_builder = project.new_job()
+            job_builder.with_output("mydataset")
+            complete_job = job_builder.start_and_wait()
+            print("Job %s done" % complete_job.id)
+
+        :rtype: :class:`JobDefinitionBuilder`
+        """
+        return JobDefinitionBuilder(self, job_type)
+
     def new_job_definition_builder(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
-        return JobDefinitionBuilder(self.project_key, job_type)
+        """Deprecated. Please use :meth:`new_job`"""
+        warnings.warn("new_job_definition_builder is deprecated, please use new_job", DeprecationWarning)
+        return JobDefinitionBuilder(self, job_type)
 
     ########################################################
     # Variables
@@ -1185,16 +1220,11 @@ class DSSProjectSettings(object):
                 body = self.settings)
 
 class JobDefinitionBuilder(object):
-    def __init__(self, project_key, job_type="NON_RECURSIVE_FORCED_BUILD"):
-        """
-        Create a helper to build a job definition
-
-        :param project_key: the project in which the job is launched
-        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
-                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
-
-        """
-        self.project_key = project_key
+    """
+    Helper to run a job. Do not create this class directly, use :meth:`DSSProject.new_job`
+    """
+    def __init__(self, project, job_type="NON_RECURSIVE_FORCED_BUILD"):
+        self.project = project
         self.definition = {'type':job_type, 'refreshHiveMetastore':False, 'outputs':[]}
 
     def with_type(self, job_type):
@@ -1217,10 +1247,39 @@ class JobDefinitionBuilder(object):
 
     def with_output(self, name, object_type=None, object_project_key=None, partition=None):
         """
-        Adds an item to build in the definition
+        Adds an item to build in this job
         """
         self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
         return self
 
     def get_definition(self):
+        """Gets the internal definition for this job"""
         return self.definition
+
+    def start(self):
+        """
+        Starts the job, and return a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it.
+
+        You need to wait for the returned job to complete
+        
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+        job_def = self.project.client._perform_json("POST", 
+                            "/projects/%s/jobs/" % self.project.project_key, body = self.definition)
+        return DSSJob(self.project.client, self.project.project_key, job_def['id'])
+
+    def start_and_wait(self, no_fail=False):
+        """
+        Starts the job, waits for it to complete and returns a a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it
+
+        Raises if the job failed.
+
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+        job = self.start()
+        waiter = DSSJobWaiter(job)
+        waiter.wait(no_fail)
+        return job

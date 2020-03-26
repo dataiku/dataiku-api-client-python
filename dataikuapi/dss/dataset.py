@@ -188,7 +188,22 @@ class DSSDataset(object):
     # Dataset actions
     ########################################################
 
-    def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True):
+    def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True, no_fail=False):
+        """
+        Starts a new job to build this dataset and wait for it to complete.
+        Raises if the job failed.
+
+        .. code-block:: python
+
+            job = dataset.build()
+            print("Job %s done" % job.id)
+
+        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param partitions: If the dataset is partitioned, a list of partition ids to build
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
         jd = self.project.new_job_definition_builder(job_type)
 
         jd.with_output(self.dataset_name, partition=partitions)
