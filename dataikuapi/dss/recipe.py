@@ -861,6 +861,58 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
 # Per-recipe-type classes: Code recipes
 #####################################################
 
+class CodeRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a code recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    def get_code(self):
+        """
+        Returns the code of the recipe as a string
+        :rtype string
+        """
+        self._payload_to_str()
+        return self.str_payload
+
+    def set_code(self, code):
+        """
+        Updates the code of the recipe
+        :param str code: The new code as a string
+        """
+        self.set_payload(code)
+
+    def get_code_env_settings(self):
+        """
+        Returns the code env settings for this recipe
+        :rtype dict
+        """
+        rp = self.get_recipe_params()
+        if not "envSelection" in rp:
+            raise ValueError("This recipe kind does not seem to take a code env selection")
+        return rp["envSelection"]
+
+    def set_code_env(self, code_env=None, inherit=False, use_builtin=False):
+        """
+        Sets the code env to use for this recipe.
+
+        Exactly one of `code_env`, `inherit` or `use_builtin` must be passed
+
+        :param str code_env: The name of a code env
+        :param bool inherit: Use the project's default code env
+        :param bool use_builtin: Use the builtin code env
+        """
+        rp = self.get_recipe_params()
+        if not "envSelection" in rp:
+            raise ValueError("This recipe kind does not seem to take a code env selection")
+
+        if code_env is not None:
+            rp["envSelection"] = {"envMode": "EXPLICIT_ENV", "envName": "code_env"}
+        elif inherit:
+            rp["envSelection"] = {"envMode": "INHERIT"}
+        elif use_builtin:
+            rp["envSelection"] = {"envMode": "USE_BUILTIN_MODE"}
+        else:
+            raise ValueError("No env setting selected")
+
 class CodeRecipeCreator(DSSRecipeCreator):
     def __init__(self, name, type, project):
         """
