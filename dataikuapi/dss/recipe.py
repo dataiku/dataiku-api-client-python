@@ -5,7 +5,8 @@ import logging
 
 class DSSRecipe(object):
     """
-    A handle to an existing recipe on the DSS instance
+    A handle to an existing recipe on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.project.DSSProject.get_recipe`
     """
     def __init__(self, client, project_key, recipe_name):
         self.client = client
@@ -15,6 +16,27 @@ class DSSRecipe(object):
     ########################################################
     # Dataset deletion
     ########################################################
+
+    def compute_schema_update(self):
+        """
+        Computes which updates are required to the outputs of this recipe.
+        The required updates are returned as a :class:`RequiredSchemaUpdates` object, which then
+        allows you to :meth:`~RequiredSchemaUpdates.apply` the changes.
+
+        Usage example:
+
+        .. code-block:: python
+
+            required_updates = recipe.compute_schema_update()
+            if required_updates.any_action_required():
+                print("Some schemas will be updated")
+
+            # Note that you can call apply even if no changes are required. This will be noop
+            required_updates.apply()
+        """
+        data = self.client._perform_json(
+            "GET", "/projects/%s/recipes/%s/schema-update" % (self.project_key, self.recipe_name))
+        return RequiredSchemaUpdates(self, data)
 
     def delete(self):
         """
@@ -27,6 +49,25 @@ class DSSRecipe(object):
     # Recipe definition
     ########################################################
 
+    def get_settings(self):
+        """
+        Gets the settings of the recipe, as a :class:`DSSRecipeSettings` or one of its subclasses.
+
+        Some recipes have a dedicated class for the settings, with additional helpers to read and modify the settings
+
+        Once you are done modifying the returned settings object, you can call :meth:`~DSSRecipeSettings.save` on it
+        in order to save the modifications to the DSS recipe
+        """
+        data = self.client._perform_json(
+                "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
+
+        type = data["recipe"]["type"]
+
+        if type == "grouping":
+            return GroupingRecipeSettings(self, data)
+        else:
+            return DSSRecipeSettings(self, data)
+
     def get_definition_and_payload(self):
         """
         Gets the definition of the recipe
@@ -36,7 +77,7 @@ class DSSRecipe(object):
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
-        return DSSRecipeDefinitionAndPayload(data)
+        return DSSRecipeDefinitionAndPayload(self, data)
 
     def set_definition_and_payload(self, definition):
         """
@@ -153,48 +194,75 @@ class DSSRecipeStatus(object):
         """
         return self.data["allMessagesForFrontend"]["messages"]
 
-class DSSRecipeDefinitionAndPayload(object):
+class DSSRecipeSettings(object):
     """
-    Definition for a recipe, that is, the recipe definition itself and its payload
+    Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
     """
-    def __init__(self, data):
+    def __init__(self, recipe, data):
+        self.recipe = recipe
         self.data = data
+        self.recipe_settings = self.data["recipe"]
+        self.str_payload = self.data.get("payload", None)
+        self.obj_payload = None
+
+    def save(self):
+        """
+        Saves back the recipe in DSS.
+        """
+        self._payload_to_str()
+        return self.recipe.client._perform_json(
+                "PUT", "/projects/%s/recipes/%s" % (self.recipe.project_key, self.recipe.recipe_name),
+                body=self.data)
+
+    def _payload_to_str(self):
+        if self.obj_payload is not None:
+            self.str_payload = json.dumps(self.obj_payload)
+            self.obj_payload = None
+        if self.str_payload is not None:
+            self.data["payload"] = self.str_payload
+
+    def _payload_to_obj(self):
+        if self.str_payload is not None:
+            self.obj_payload = json.loads(self.str_payload)
+            self.str_payload = None
 
     def get_recipe_raw_definition(self):
         """
-        Get the recipe definition as a raw JSON object
+        Get the recipe definition as a raw dict
         """
-        return self.data.get('recipe', None)
+        return self.recipe_settings
 
     def get_recipe_inputs(self):
         """
         Get the list of inputs of this recipe
         """
-        return self.data.get('recipe').get('inputs')
+        return self.recipe_settings.get('inputs')
 
     def get_recipe_outputs(self):
         """
         Get the list of outputs of this recipe
         """
-        return self.data.get('recipe').get('outputs')
+        return self.recipe_settings.get('outputs')
 
     def get_recipe_params(self):
         """
         Get the parameters of this recipe, as a raw JSON object
         """
-        return self.data.get('recipe').get('params')
+        return self.recipe_settings.get('params')
 
     def get_payload(self):
         """
         Get the payload or script of this recipe, as a raw string
         """
-        return self.data.get('payload', None)
+        self._payload_to_str()
+        return self.str_payload
 
     def get_json_payload(self):
         """
         Get the payload or script of this recipe, as a JSON object
         """
-        return json.loads(self.data.get('payload', None))
+        self._payload_to_obj()
+        return self.obj_payload
 
     def set_payload(self, payload):
         """
@@ -202,7 +270,8 @@ class DSSRecipeDefinitionAndPayload(object):
 
         :param str payload: the payload, as a string
         """
-        self.data['payload'] = payload
+        self.str_payload = payload
+        self.obj_payload = None
 
     def set_json_payload(self, payload):
         """
@@ -210,7 +279,8 @@ class DSSRecipeDefinitionAndPayload(object):
 
         :param dict payload: the payload, as a dict. The payload will be converted to a JSON string internally
         """
-        self.data['payload'] = json.dumps(payload)
+        self.str_payload = None
+        self.obj_payload = payload
 
     def has_input(self, input_ref):
         """Returns whether this recipe has a given ref as input"""
@@ -245,6 +315,61 @@ class DSSRecipeDefinitionAndPayload(object):
             for item in output_role.get("items", []):
                 if item.get("ref", None) == current_output_ref:
                     item["ref"] = new_output_ref
+
+# Old name
+class DSSRecipeDefinitionAndPayload(DSSRecipeSettings):
+    pass
+
+class GroupingRecipeSettings(DSSRecipeSettings):
+    def clear_grouping_keys(self):
+        self._payload_to_obj()
+        self.obj_payload["keys"] = []
+
+    def add_grouping_key(self, column):
+        self._payload_to_obj()
+        self.obj_payload["keys"].append({"column":column})
+
+    def set_global_count_enabled(self, enabled):
+        self._payload_to_obj()
+        self.obj_payload["globalCount"] = enabled
+
+    def get_or_create_column_settings(self, column):
+        """
+        Gets a dict representing the aggregations to perform on a column.
+        Creates it and adds it to the potential aggregations if it does not already exists
+        :param str column: The column name
+        :rtype dict
+        """
+        found = None
+        for gv in self.obj_payload["values"]:
+            if gv["column"] == column:
+                found = gv
+                break
+        if found is None:
+            found = {"column" : column}
+            self.obj_payload["values"].append(found)
+        return found
+
+    def set_column_aggregations(self, column, type, min=False, max=False, count=False, count_distinct=False,
+                                sum=False,concat=False,stddev=False,avg=False):
+        """
+        Sets the basic aggregations on a column.
+        Returns the dict representing the aggregations on the column
+
+        :param str column: The column name
+        :param str type: The type of the column (as a DSS schema type name)
+        :rtype dict
+        """
+        cs = self.get_or_create_column_settings(column)
+        cs["type"] = type
+        cs["min"] = min
+        cs["max"] = max
+        cs["count"] = count
+        cs["countDistinct"] = count_distinct
+        cs["sum"] = sum
+        cs["concat"] = concat
+        cs["stddev"] = stddev
+        return cs
 
 class DSSRecipeCreator(object):
     """
@@ -652,3 +777,36 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'download', name, project)
+
+
+class RequiredSchemaUpdates(object):
+    """
+    Representation of the updates required to the schema of the outputs of a recipe.
+    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_update`
+    """
+
+    def __init__(self, recipe, data):
+        self.recipe = recipe
+        self.data = data
+        self.drop_and_recreate = True
+        self.synchronize_metastore = True
+
+    def any_action_required(self):
+        return self.data["totalIncompatibilities"] > 0
+
+    def apply(self):
+        results  = []
+        for computable in self.data["computables"]:
+            osu = {
+                "computableType": computable["type"],
+                # dirty
+                "computableId": computable["type"] == "DATASET" and computable["datasetName"] or computable["id"],
+                "newSchema": computable["newSchema"],
+                "dropAndRecreate": self.drop_and_recreate,
+                "synchronizeMetastore" : self.synchronize_metastore
+            }
+
+            results.append(self.recipe.client._perform_json("POST",
+                    "/projects/%s/recipes/%s/actions/updateOutputSchema" % (self.recipe.project_key, self.recipe.recipe_name),
+                    body=osu))
+        return results

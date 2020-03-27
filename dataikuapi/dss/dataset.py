@@ -2,7 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .future import DSSFuture
-import json
+import json, warnings
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -40,6 +40,25 @@ class DSSDataset(object):
     ########################################################
 
     def get_settings(self):
+        """
+        Returns the settings of this dataset as a :class:`DSSDatasetSettings`, or one of its subclasses.
+
+        Know subclasses of :class:`DSSDatasetSettings` include :class:`FSLikeDatasetSettings` 
+        and :class:`SQLDatasetSettings`
+
+        You must use :meth:`~DSSDatasetSettings.save()` on the returned object to make your changes effective
+        on the dataset.
+
+        .. code-block:: python
+
+            # Example: activating discrete partitioning on a SQL dataset
+            dataset = project.get_dataset("my_database_table")
+            settings = dataset.get_settings()
+            settings.add_discrete_partitioning_dimension("country")
+            settings.save()
+
+        :rtype: :class:`DSSDatasetSettings`
+        """
         data = self.client._perform_json("GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
         if data["type"] in self.__class__.FS_TYPES:
@@ -52,22 +71,23 @@ class DSSDataset(object):
 
     def get_definition(self):
         """
-        Get the definition of the dataset
-
-        Returns:
-            the definition, as a JSON object
+        Deprecated. Use :meth:`get_settings`
+        Get the raw settings of the dataset as a dict
+        :rtype: dict
         """
+        warnings.warn("Dataset.get_definition is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
     def set_definition(self, definition):
         """
+        Deprecated. Use :meth:`get_settings` and :meth:`DSSDatasetSettings.save`
         Set the definition of the dataset
         
-        Args:
-            definition: the definition, as a JSON object. You should only set a definition object 
-            that has been retrieved using the get_definition call.
+        :param definition: the definition, as a dict. You should only set a definition object 
+                            that has been retrieved using the get_definition call.
         """
+        warnings.warn("Dataset.set_definition is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name),
                 body=definition)
@@ -457,6 +477,14 @@ class DSSDataset(object):
         builder.with_input(self.dataset_name)
         if code is not None:
             builder.with_script(code)
+        return builder
+
+    def new_grouping_recipe(self, first_group_by, recipe_name=None):
+        if recipe_name is None:
+            recipe_name = "grouping_recipe_from_%s" % (self.dataset_name)
+        builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
+        builder.with_input(self.dataset_name)
+        builder.with_group_key(first_group_by)
         return builder
 
 class DSSDatasetSettings(object):
