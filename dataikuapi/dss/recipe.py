@@ -13,10 +13,6 @@ class DSSRecipe(object):
         self.project_key = project_key
         self.recipe_name = recipe_name
 
-    ########################################################
-    # Dataset deletion
-    ########################################################
-
     def compute_schema_updates(self):
         """
         Computes which updates are required to the outputs of this recipe.
@@ -37,6 +33,37 @@ class DSSRecipe(object):
         data = self.client._perform_json(
             "GET", "/projects/%s/recipes/%s/schema-update" % (self.project_key, self.recipe_name))
         return RequiredSchemaUpdates(self, data)
+
+    def run(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True, no_fail=False):
+        """
+        Starts a new job to run this recipe and wait for it to complete.
+        Raises if the job failed.
+
+        .. code-block:: python
+
+            job = recipe.run()
+            print("Job %s done" % job.id)
+
+        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param partitions: If the outputs are partitioned, a list of partition ids to build
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+
+        settings = self.get_settings()
+        output_refs = settings.get_flat_output_refs()
+
+        if len(output_refs) == 0:
+            raise Exception("recipe has no outputs, can't run it")
+
+        jd = self.client.get_project(self.project_key).new_job(job_type)
+        jd.with_output(output_refs[0], partition=partitions)
+
+        if wait:
+            return jd.start_and_wait()
+        else:
+            return jd.start()
 
     def delete(self):
         """
@@ -60,7 +87,7 @@ class DSSRecipe(object):
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
-
+        print(data)
         type = data["recipe"]["type"]
 
         if type == "grouping":
@@ -315,6 +342,22 @@ class DSSRecipeSettings(object):
             for item in output_role.get("items", []):
                 if item.get("ref", None) == current_output_ref:
                     item["ref"] = new_output_ref
+
+    def get_flat_input_refs(self):
+        ret = []
+        for role_key, role_obj in self.get_recipe_inputs().items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
+    def get_flat_output_refs(self):
+        ret = []
+        for role_key, role_obj in self.get_recipe_outputs().items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
+
 
 # Old name
 class DSSRecipeDefinitionAndPayload(DSSRecipeSettings):

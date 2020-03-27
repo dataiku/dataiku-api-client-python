@@ -224,14 +224,12 @@ class DSSDataset(object):
         :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
-        jd = self.project.new_job_definition_builder(job_type)
-
+        jd = self.project.new_job(job_type)
         jd.with_output(self.dataset_name, partition=partitions)
-
         if wait:
-            return self.project.start_job_and_wait(jd.get_definition())
+            return jd.start_and_wait()
         else:
-            return self.project.start_job(jd.get_definition())
+            return jd.start()
 
 
     def synchronize_hive_metastore(self):
