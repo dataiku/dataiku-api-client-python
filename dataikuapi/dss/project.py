@@ -1,6 +1,7 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
+from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
@@ -829,13 +830,9 @@ class DSSProject(object):
 
     def get_recipe(self, recipe_name):
         """
-        Get a handle to interact with a specific recipe
-       
-        Args:
-            recipe_name: the name of the desired recipe
-        
-        Returns:
-            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        Gets a :class:`dataikuapi.dss.recipe.DSSRecipe` handle to interact with a recipe
+        :param str recipe_name: The name of the recipe
+        :rtype :class:`dataikuapi.dss.recipe.DSSRecipe`
         """
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
@@ -861,6 +858,67 @@ class DSSProject(object):
         recipe_name = self.client._perform_json("POST", "/projects/%s/recipes/" % self.project_key,
                        body = definition)['name']
         return DSSRecipe(self.client, self.project_key, recipe_name)
+
+    def new_recipe(self, type, name):
+        """
+        Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
+        or one of its subclasses to complete the creation of the recipe.
+
+        Usage example:
+
+        .. code-block:: python
+
+            grouping_recipe_builder = project.new_recipe("grouping")
+            grouping_recipe_builder.with_input("dataset_to_group_on")
+            # Create a new managed dataset for the output in the "filesystem_managed" connection
+            grouping_recipe_builder.with_new_output("grouped_dataset", "filesystem_managed")                                    
+            grouping_recipe_builder.with_group_key("column")
+            recipe = grouping_recipe_builder.build()
+
+            # After the recipe is created, you can edit its settings
+            recipe_settings = recipe.get_settings()
+            recipe_settings.set_column_aggregations("value", sum=True)
+            recipe_settings.save()
+
+            # And you may need to apply new schemas to the outputs
+            recipe.compute_schema_updates().apply()
+
+        :param str type: Type of the recipe
+        :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
+        """
+
+        if type == "grouping":
+            return recipe.GroupingRecipeCreator(name, self)
+        elif type == "window":
+            return recipe.WindowRecipeCreator(name, self)
+        elif type == "sync":
+            return recipe.SyncRecipeCreator(name, self)
+        elif type == "sort":
+            return recipe.SortRecipeCreator(name, self)
+        elif type == "topn":
+            return recipe.TopNRecipeCreator(name, self)
+        elif type == "distinct":
+            return recipe.DistinctRecipeCreator(name, self)
+        elif type == "join":
+            return recipe.JoinRecipeCreator(name, self)
+        elif type == "vstack":
+            return recipe.StackRecipeCreator(name, self)
+        elif type == "sampling":
+            return recipe.SamplingRecipeCreator(name, self)
+        elif type == "split":
+            return recipe.SplitRecipeCreator(name, self)
+        elif type == "prepare" or type == "shaker":
+            return recipe.PrepareRecipeCreator(name, self)
+        elif type == "prediction_scoring":
+            return recipe.PredictionScoringRecipeCreator(name, self)
+        elif type == "clustering_scoring":
+            return recipe.ClusteringScoringRecipeCreator(name, self)
+        elif type == "download":
+            return recipe.DownloadRecipeCreator(name, self)
+        elif type == "sql_query":
+            return recipe.SQLQueryRecipeCreator(name, self)
+        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+            return recipe.CodeRecipeCreator(name, type, self)
 
     ########################################################
     # Flow

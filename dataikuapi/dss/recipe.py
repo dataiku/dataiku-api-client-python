@@ -17,7 +17,7 @@ class DSSRecipe(object):
     # Dataset deletion
     ########################################################
 
-    def compute_schema_update(self):
+    def compute_schema_updates(self):
         """
         Computes which updates are required to the outputs of this recipe.
         The required updates are returned as a :class:`RequiredSchemaUpdates` object, which then
@@ -27,7 +27,7 @@ class DSSRecipe(object):
 
         .. code-block:: python
 
-            required_updates = recipe.compute_schema_update()
+            required_updates = recipe.compute_schema_updates()
             if required_updates.any_action_required():
                 print("Some schemas will be updated")
 
@@ -318,14 +318,25 @@ class DSSRecipeSettings(object):
 
 # Old name
 class DSSRecipeDefinitionAndPayload(DSSRecipeSettings):
+    """
+    Deprecated. Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
     pass
 
 class GroupingRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a grouping recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
     def clear_grouping_keys(self):
+        """Removes all grouping keys from this grouping recipe"""
         self._payload_to_obj()
         self.obj_payload["keys"] = []
 
     def add_grouping_key(self, column):
+        """
+        Adds grouping on a column
+        :param str column: Column to group on
+        """
         self._payload_to_obj()
         self.obj_payload["keys"].append({"column":column})
 
@@ -584,6 +595,13 @@ class DistinctRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'distinct', name, project)
 
+class PrepareRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Prepare recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'shaker', name, project)
+
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
     """
     Create a Group recipe
@@ -782,7 +800,7 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
 class RequiredSchemaUpdates(object):
     """
     Representation of the updates required to the schema of the outputs of a recipe.
-    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_update`
+    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_updates`
     """
 
     def __init__(self, recipe, data):

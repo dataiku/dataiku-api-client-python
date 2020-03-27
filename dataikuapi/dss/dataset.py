@@ -481,7 +481,7 @@ class DSSDataset(object):
 
     def new_grouping_recipe(self, first_group_by, recipe_name=None):
         if recipe_name is None:
-            recipe_name = "grouping_recipe_from_%s" % (self.dataset_name)
+            recipe_name = "group_%s" % (self.dataset_name)
         builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
         builder.with_input(self.dataset_name)
         builder.with_group_key(first_group_by)
