@@ -87,7 +87,6 @@ class DSSRecipe(object):
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
-        print(data)
         type = data["recipe"]["type"]
 
         if type == "grouping":
