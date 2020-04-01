@@ -117,6 +117,28 @@ class DSSPlugin(object):
         return self.client.get_future(ret["jobId"])
 
     ########################################################
+    # Plugin uninstall/delete
+    ########################################################
+
+    def prepare_delete(self):
+        """
+        Prepares deletion of the plugins. Check if it is possible, warns on usages.
+
+        :return: a json object with the counts of project and plugin elements in use
+        """
+        return self.client._perform_json("GET", "/plugins/%s/actions/prepareDelete" % (self.plugin_id))
+
+    def delete(self, force):
+        """
+        Deletes the plugin. Will fail if a usage is specified and force is not set to true
+
+        :return: a :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        ret = self.client._perform_json("GET", "/plugins/%s/actions/delete" % (self.plugin_id),
+                                        params={force: force})
+        return self.client.get_future(ret["jobId"])
+
+    ########################################################
     # Managing the dev plugin's contents
     ########################################################
 
