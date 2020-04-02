@@ -477,6 +477,13 @@ class DSSRecipeCreator(object):
                 ret.append(item["ref"])
         return ret
 
+    def get_name(self):
+        return self.recipe_proto['name']
+
+    def set_name(self, name):
+        self.recipe_proto['name'] = name
+        return self
+
     def with_input(self, dataset_name, project_key=None, role="main"):
         """
         Add an existing object as input to the recipe-to-be-created
@@ -505,13 +512,20 @@ class DSSRecipeCreator(object):
         """Deprecated. Use create()"""
         return self.create()
 
-    def create(self):
+    def create(self, overwrite=False):
         """
         Creates the new recipe in the project, and return a handle to interact with it. 
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
         """
+        if not overwrite and self.recipe_proto.get('name', None):
+            recipe_name = self.recipe_proto['name']
+            data = self.project.client._perform_json(
+                "GET", "/projects/%s/recipes/%s" % (self.project.project_key, recipe_name))
+            if data:
+                raise Exception("Recipe {} already exists, use overwrite=True to force delete".format(recipe_name))
+
         self._finish_creation_settings()
         return self.project.create_recipe(self.recipe_proto, self.creation_settings)
 
