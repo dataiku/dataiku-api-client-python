@@ -972,6 +972,18 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.script = script
         return self
 
+    def with_input_list(self, input_ds_names, project_key=None, role="main"):
+        if not isinstance(input_ds_names, list):
+            raise TypeError("Expected type: list and was given type: {}".format(type(input_ds_names)))
+        for ds_name in input_ds_names:
+            self.with_input(ds_name, project_key, role)
+
+    def with_output_list(self, output_ds_names, append=False, role="main"):
+        if not isinstance(output_ds_name, list):
+            raise TypeError("Expected type: list and was givent type {}".format(type(output_ds_names)))
+        for ds_name in output_ds_names:
+            self.with_output(ds_name, append, role)
+
     def with_new_output_dataset(self, name, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
@@ -1018,12 +1030,22 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.with_output(name, append=append)
         return self
 
-    
+     def with_new_output_dataset_list(self, output_ds_names, connection,
+                                type=None, format=None,
+                                copy_partitioning_from="FIRST_INPUT",
+                                append=False, force_delete=False):
+
+        if not isinstance(output_ds_names, list):
+            raise TypeError("Expected type: list and was given type: {}".format(type(output_ds_names)))
+        for ds_name in output_ds_names:
+            self.with_new_output_dataset(ds_name, connection,
+                                type=type, format=format,
+                                copy_partitioning_from=copy_partitioning_from,
+                                append=append, force_delete=force_delete)   
 
     def _finish_creation_settings(self):
         super(CodeRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['script'] = self.script
-
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
