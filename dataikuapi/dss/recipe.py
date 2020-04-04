@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
+import inspect
 
 #####################################################
 # Base classes
@@ -1030,7 +1031,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.with_output(name, append=append)
         return self
 
-     def with_new_output_dataset_list(self, output_ds_names, connection,
+    def with_new_output_dataset_list(self, output_ds_names, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
                                 append=False, force_delete=False):
@@ -1046,6 +1047,74 @@ class CodeRecipeCreator(DSSRecipeCreator):
     def _finish_creation_settings(self):
         super(CodeRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['script'] = self.script
+
+class FunctionCodeRecipeCreator(CodeRecipeCreator):
+
+    DEFAULT_RECIPE_CODE_TMPL = """
+import dataiku
+import json
+from {module_name} import {fname}
+
+input_ds_names = {input_ds_names}
+input_ds_list = [dataiku.Dataset(name) for name in input_ds_names]
+
+output_ds_names = {output_ds_names}
+output_ds_list = [dataiku.Dataset(name) for name in output_ds_names]
+
+params = json.loads({params_json})
+
+input_df_list = [ds.get_dataframe() for ds in input_ds_list]
+fn_input = input_df_list if len(input_df_list) > 1 else input_df_list[0]
+
+output_df_list = {fname}({input_arg}, **params)
+
+output = list(zip(output_ds_list, output_df_list))
+for ds, df in output:
+    ds.write_with_schema(df)
+
+"""
+
+    def __init__(self, name, type, project):
+        CodeRecipeCreator.__init__(self, name, type, project)
+
+    def with_function(self, fn, input_arg=None, code_template=None):
+
+        #TODO: add in documentation that relative imports wont work
+        module_name = inspect.getmodule(fn).__name__
+        fname = fn.__name__
+
+        input_ds_names = self.get_input_refs_for_role(role="main")
+        output_ds_names = self.get_output_refs_for_role(role="main")
+
+        input_arg = 'fn_input' if not input_arg else '{}=fn_input'.format(input_arg)
+
+        script_tmpl = FunctionCodeRecipeCreator.DEFAULT_RECIPE_CODE_TMPL if code_template is None else code_template
+
+        def generate_code_fn(**kwargs):
+            code_tmpl = script_tmpl.format(
+                module_name=module_name,
+                fname=fname,
+                input_ds_names=repr(input_ds_names),
+                output_ds_names=repr(output_ds_names),
+                input_arg=input_arg,
+                params_json = '{params_json}'
+                )
+
+            #TODO: deal with default args
+            argspec = inspect.getargspec(fn)
+            for k in kwargs.keys():
+                if k not in argspec.args:
+                    raise ValueError("Provided key argument {} not an argument of function {}".format(k, fname))
+
+            #params_string = ','.join(["{}='{}'".format(k,v) for k,v in kwargs.items()])
+            params_json = json.dumps(kwargs)
+            code = code_tmpl.format(params_json=repr(params_json))
+
+            self.with_script(code)
+
+            return self
+
+        return generate_code_fn
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
