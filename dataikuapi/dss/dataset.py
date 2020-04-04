@@ -587,3 +587,14 @@ class DSSManagedDatasetCreationHelper(object):
                 "creationSettings":  self.creation_settings
         })
         return DSSDataset(self.project.client, self.project.project_key, self.dataset_name)
+
+    def dataset_exists(self, dataset_name=None):
+        dataset_name = self.dataset_name if not dataset_name
+        dataset = self.project.get_dataset(dataset_name)
+        try:
+            dataset.get_metadata()
+        except Exception as e:
+            #TODO: may include some logging here and more generally in the API client
+            return False
+
+        return True

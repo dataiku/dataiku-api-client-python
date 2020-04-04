@@ -948,7 +948,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
     def with_new_output_dataset(self, name, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
-                                append=False):
+                                append=False, force_delete=False):
         """
         Create a new managed dataset as output to the recipe-to-be-created. The dataset is created immediately
 
@@ -963,10 +963,18 @@ class CodeRecipeCreator(DSSRecipeCreator):
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
                     "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
         :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
+        :param force_delete: delete the dataset if already exists, will not drop the data 
         """
 
         ch = self.project.new_managed_dataset_creation_helper(name)
         ch.with_store_into(connection, type_option_id=type, format_option_id=format)
+
+        if force_delete and ch.dataset_exists():
+            try:
+                self.project.get_dataset(name).delete()
+            except:
+                logging.warn("Force delete dataset {} in new_output_dataset creation failed".format(name))
+                raise
 
         # FIXME: can't manage input folder
         if copy_partitioning_from == "FIRST_INPUT":
