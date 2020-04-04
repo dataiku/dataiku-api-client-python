@@ -17,6 +17,10 @@ class DSSRecipe(object):
         self.project_key = project_key
         self.recipe_name = recipe_name
 
+    @property
+    def name(self):
+        return self.recipe_name
+    
     def compute_schema_updates(self):
         """
         Computes which updates are required to the outputs of this recipe.

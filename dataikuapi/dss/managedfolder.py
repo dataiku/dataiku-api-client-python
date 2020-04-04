@@ -15,6 +15,10 @@ class DSSManagedFolder(object):
         self.project_key = project_key
         self.odb_id = odb_id
 
+    @property
+    def name(self):
+        return self.odb_id
+    
     ########################################################
     # Managed folder deletion
     ########################################################

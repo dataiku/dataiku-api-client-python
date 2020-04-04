@@ -19,6 +19,10 @@ class DSSDataset(object):
         self.project_key = project_key
         self.dataset_name = dataset_name
 
+    @property
+    def name(self):
+        return self.dataset_name
+    
     ########################################################
     # Dataset deletion
     ########################################################
