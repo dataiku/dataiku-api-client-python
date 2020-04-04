@@ -477,6 +477,33 @@ class DSSRecipeCreator(object):
                 ret.append(item["ref"])
         return ret
 
+    def _get_output_refs(self):
+        ret = []
+        for role_key, role_obj in self.recipe_proto['outputs'].items():
+            for item in role_obj['items']:
+                ret.append(item['ref'])
+        return ref
+
+    def get_input_refs_for_role(self, role="main"):
+
+        role_obj = self.recipe_proto['inputs'].get(role, None)
+
+        ret = []
+        if role_obj is not None:
+            for item in role_obj['items']:
+                ret.append(item['ref'])
+        return ret
+
+    def get_output_refs_for_role(self, role="main"):
+
+        role_obj = self.recipe_proto['outputs'].get(role, None)
+
+        ret = []
+        if role_obj is not None:
+            for item in role_obj['items']:
+                ret.append(item['ref'])
+        return ret
+
     def get_name(self):
         return self.recipe_proto['name']
 
