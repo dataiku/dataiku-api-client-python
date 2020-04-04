@@ -208,15 +208,28 @@ class DSSProject(object):
     # Datasets
     ########################################################
 
-    def list_datasets(self):
+    def list_datasets(self, tags=None, foreign=False):
         """
         List the datasets in this project
+
+        :param list tags: list[string] of tags. The query will only return datasets having one of these tags
+        :param boolean foreign: if true, also lists the datasets from other projects that are exposed to the specified project
         
         :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
         :rtype: list of dicts
         """
+        options = {}
+        if tags:
+            if not isinstance(tags, list):
+                raise TypeError("Provided tags argument is not of type list")
+            options["tags"] = tags
+        if foreign:
+            options["foreign"] = "true"
+
+        options_string = "".join(["?{}={}".format(k,v) for k,v in options.items()])
+
         return self.client._perform_json(
-            "GET", "/projects/%s/datasets/" % self.project_key)
+            "GET", "/projects/%s/datasets/%s" % (self.project_key, options_string))
 
     def get_dataset(self, dataset_name):
         """
