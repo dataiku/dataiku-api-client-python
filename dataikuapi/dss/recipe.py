@@ -1072,6 +1072,13 @@ fn_input = input_df_list if len(input_df_list) > 1 else input_df_list[0]
 
 output_df_list = {fname}({input_arg}, **params)
 
+if not isinstance(output_df_list, list):
+    output_df_list = [output_df_list]
+
+if not len(output_df_list) == len(output_ds_list):
+    raise Exception("Code function {fname}() returned items len: %d, \\
+                    does not match expected recipe output len: %d" % (len(output_df_list), len(output_ds_list)))
+
 output = list(zip(output_ds_list, output_df_list))
 for ds, df in output:
     ds.write_with_schema(df)
