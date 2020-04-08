@@ -542,6 +542,7 @@ class DSSRecipeCreator(object):
 
     def build(self):
         """Deprecated. Use create()"""
+        warnings.warn("build() is deprecated, please use create()", DeprecationWarning)
         return self.create()
 
     def create(self, overwrite=False):
