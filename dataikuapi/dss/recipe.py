@@ -1029,17 +1029,11 @@ for ds, df in output:
         return self
 
     def with_function(self, fn, function_args=None, custom_template=None):
+        import inspect
         #TODO: add in documentation that relative imports wont work
         module_name = inspect.getmodule(fn).__name__
         fname = fn.__name__
-
-        # Validate that function_args apply to fn
-        argspec = inspect.getargspec(fn)
-        for k in function_args.keys():
-            if k not in argspec.args:
-                raise ValueError("Provided key argument {} not an argument of function {}".format(k, fname))
-
-        return with_function_name(module_name, fname, function_args, custom_template)
+        return self.with_function_name(module_name, fname, function_args, custom_template)
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
