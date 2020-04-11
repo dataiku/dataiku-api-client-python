@@ -410,6 +410,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :rtype: self
         """
+        warnings.warn("split_ordered_by is deprecated, please use split_params.set_order_by() instead", DeprecationWarning)
         self.split_params.set_order_by(feature_name, ascending=True)
 
         return self
@@ -420,6 +421,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :rtype: self
         """
+        warnings.warn("remove_ordered_split is deprecated, please use split_params.unset_order_by() instead", DeprecationWarning)
         self.split_params.unset_order_by()
 
         return self
