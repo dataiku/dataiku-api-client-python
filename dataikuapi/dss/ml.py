@@ -22,7 +22,7 @@ class PredictionSplitParamsHandler(object):
 
         :rtype: dict
         """
-        return self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+        return self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
 
 
     def set_split_random(self, train_ratio = 0.8, selection = None, dataset_name=None):
