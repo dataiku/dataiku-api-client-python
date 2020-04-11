@@ -437,9 +437,11 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         Uses a feature as sample weight
         :param str feature_name: Name of the feature to use
         """
-        self.remove_sample_weighting()
         if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
             raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+
+        self.remove_sample_weighting()
+        
         self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
         self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
         self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
