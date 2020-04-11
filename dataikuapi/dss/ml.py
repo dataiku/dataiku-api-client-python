@@ -10,9 +10,20 @@ from .future import DSSFuture
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
 
+    SPLIT_PARAMS_KEY = 'splitParams'
+
     def __init__(self, mltask_settings):
         """Do not call directly, use :meth:`DSSMLTaskSettings.get_split_params`"""
         self.mltask_settings = mltask_settings
+
+    def get_raw(self):
+        """Gets the raw settings of the prediction split configuration. This returns a reference to the raw settings, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        :rtype: dict
+        """
+        return self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+
 
     def set_split_random(self, train_ratio = 0.8, selection = None, dataset_name=None):
         """
@@ -22,7 +33,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -44,7 +55,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -69,7 +80,7 @@ class PredictionSplitParamsHandler(object):
         :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
         :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
             raise Exception("For explicit splitting a dataset_name is mandatory")
         if test_dataset_name is None or test_dataset_name == dataset_name:
