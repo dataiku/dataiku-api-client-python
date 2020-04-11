@@ -251,16 +251,15 @@ class DSSMLTaskSettings(object):
 
     def use_sample_weighting(self, feature_name):
         """
-        Uses a feature as sample weight
-        :param str feature_name: Name of the feature to use
+        Deprecated. Will be removed from DSSMLTaskSettings class
         """
-        raise NotImplementedError("use_sample_weighting not available for class {}".format(self.__class__))
+        raise NotImplementedError("use_sample_weighting() not available for class {}".format(self.__class__))
 
     def remove_sample_weighting(self):
         """
-        Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
+        Deprecated. Will be removed from DSSMLTaskSettings class
         """
-        raise NotImplementedError("remove_sample_weighting not available for class {}".format(self.__class__))
+        raise NotImplementedError("remove_sample_weighting() not available for class {}".format(self.__class__))
  
     def get_algorithm_settings(self, algorithm_name):
         """
@@ -387,6 +386,22 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "KERAS_CODE" : "keras"
         }
 
+    class PredictionTypes:
+        BINARY = "BINARY_CLASSIFICATION"
+        REGRESSION = "REGRESSION"
+        MULTICLASS = "MULTICLASS"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        DSSMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        if self.get_prediction_type() not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
+            raise ValueError("Unknown prediction type: {}".format(self.prediction_type))
+
+        self.classification_prediction_types = [self.PredictionTypes.BINARY, self.PredictionTypes.MULTICLASS]
+
+    def get_prediction_type(self):
+        return self.mltask_settings['predictionType']
+
     @property
     def split_params(self):
         """
@@ -416,7 +431,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :rtype: self
         """
-        warnings.warn("split_ordered_by is deprecated, please use split_params.set_order_by() instead", DeprecationWarning)
+        warnings.warn("split_ordered_by() is deprecated, please use split_params.set_order_by() instead", DeprecationWarning)
         self.split_params.set_order_by(feature_name, ascending=True)
 
         return self
@@ -427,33 +442,76 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :rtype: self
         """
-        warnings.warn("remove_ordered_split is deprecated, please use split_params.unset_order_by() instead", DeprecationWarning)
+        warnings.warn("remove_ordered_split() is deprecated, please use split_params.unset_order_by() instead", DeprecationWarning)
         self.split_params.unset_order_by()
 
         return self
 
     def use_sample_weighting(self, feature_name):
         """
+        Deprecated. use set_weighting()
+        """
+        warnings.warn("use_sample_weighting() is deprecated, please use set_weighting() instead", DeprecationWarning)
+        return self.set_weighting(method='SAMPLE_WEIGHT', feature_name=feature_name, )
+
+    def set_weighting(self, method, feature_name=None):
+        """
         Uses a feature as sample weight
         :param str feature_name: Name of the feature to use
         """
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+        self.unset_weighting()
 
-        self.remove_sample_weighting()
-        
-        self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
-        self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+        if method == "NO_WEIGHTING":
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "SAMPLE_WEIGHT":
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        elif method == "CLASS_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "CLASS_AND_SAMPLE_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+            
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        else:
+            raise ValueError("Unknown weighting method: {}".format(method))
+
+        return self
 
     def remove_sample_weighting(self):
         """
+        Deprecated. Use unset_weighting() instead
+        """
+        warnings.warn("remove_sample_weighting() is deprecated, please use unset_weighting() instead", DeprecationWarning)
+        return self.unset_weighting()
+
+    def unset_weighting(self):
+        """
         Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
+
+        :rtype: self
         """
         self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
         for feature_name in self.mltask_settings['preprocessing']['per_feature']:
             if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
                  self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
+
+        return self
 
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
