@@ -33,7 +33,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -55,7 +55,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -80,7 +80,7 @@ class PredictionSplitParamsHandler(object):
         :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
         :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
-        sp = self.mltask_setting[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
             raise Exception("For explicit splitting a dataset_name is mandatory")
         if test_dataset_name is None or test_dataset_name == dataset_name:
@@ -142,13 +142,28 @@ class DSSMLTaskSettings(object):
         """
         return self.mltask_settings
 
+    @property
+    def split_params(self):
+        """
+        Gets an handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return self.get_split_params()
+
     def get_split_params(self):
         """
-        Gets an object to modify train/test splitting params.
+        Gets an handle to modify train/test splitting params.
 
         :rtype: :class:`PredictionSplitParamsHandler`
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
+
+    @split_params.setter
+    def split_params(self, value):
+        raise AttributeError("split_params reference cannot be overwritten, get a handle and modify it with a set method instead")
+
+    #split_params = property(get_split_params, set_split_params_not_allowed)
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
