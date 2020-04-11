@@ -1,7 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json , warnings
+import json, warnings
 import time
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
@@ -47,6 +47,8 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
+        return self
+
     def set_split_kfold(self, n_folds = 5, selection = None, dataset_name=None):
         """
         Sets the train/test split to k-fold splitting of an extract of a single dataset
@@ -68,6 +70,8 @@ class PredictionSplitParamsHandler(object):
 
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
+
+        return self
 
     def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
@@ -118,6 +122,8 @@ class PredictionSplitParamsHandler(object):
                 test_split["filter"] = test_filter.build()
             else:
                 test_split["filter"] = test_filter
+
+        return self
 
     def set_order_by(self, feature_name, ascending=True):
         """
