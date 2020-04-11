@@ -209,22 +209,14 @@ class DSSMLTaskSettings(object):
         Uses a feature as sample weight
         :param str feature_name: Name of the feature to use
         """
-        self.remove_sample_weighting()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
-        self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
-        self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+        raise NotImplementedError("use_sample_weighting not available for class {}".format(self.__class__))
 
     def remove_sample_weighting(self):
         """
         Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
         """
-        self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
-        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
-                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
-
+        raise NotImplementedError("remove_sample_weighting not available for class {}".format(self.__class__))
+ 
     def get_algorithm_settings(self, algorithm_name):
         """
         Gets the training settings for a particular algorithm. This returns a reference to the
@@ -405,6 +397,27 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
         elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
+
+    def use_sample_weighting(self, feature_name):
+        """
+        Uses a feature as sample weight
+        :param str feature_name: Name of the feature to use
+        """
+        self.remove_sample_weighting()
+        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+        self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
+        self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+        self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+    def remove_sample_weighting(self):
+        """
+        Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
+        """
+        self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
+        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
+                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
 
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
