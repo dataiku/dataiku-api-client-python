@@ -145,7 +145,7 @@ class DSSMLTaskSettings(object):
     @property
     def split_params(self):
         """
-        Gets an handle to modify train/test splitting params.
+        Gets a handle to modify train/test splitting params.
 
         :rtype: :class:`PredictionSplitParamsHandler`
         """
@@ -153,7 +153,7 @@ class DSSMLTaskSettings(object):
 
     def get_split_params(self):
         """
-        Gets an handle to modify train/test splitting params.
+        Gets a handle to modify train/test splitting params.
 
         :rtype: :class:`PredictionSplitParamsHandler`
         """
@@ -162,8 +162,6 @@ class DSSMLTaskSettings(object):
     @split_params.setter
     def split_params(self, value):
         raise AttributeError("split_params reference cannot be overwritten, get a handle and modify it with a set method instead")
-
-    #split_params = property(get_split_params, set_split_params_not_allowed)
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
