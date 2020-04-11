@@ -384,6 +384,8 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
 
+        return self
+
     def remove_ordered_split(self):
         """
         Remove time-based ordering.
@@ -397,6 +399,8 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
         elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
             self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
+
+        return self
 
     def use_sample_weighting(self, feature_name):
         """
