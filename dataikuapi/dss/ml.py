@@ -142,26 +142,13 @@ class DSSMLTaskSettings(object):
         """
         return self.mltask_settings
 
-    @property
-    def split_params(self):
-        """
-        Gets a handle to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        return self.get_split_params()
-
     def get_split_params(self):
         """
         Gets a handle to modify train/test splitting params.
 
         :rtype: :class:`PredictionSplitParamsHandler`
         """
-        return PredictionSplitParamsHandler(self.mltask_settings)
-
-    @split_params.setter
-    def split_params(self, value):
-        raise AttributeError("split_params reference cannot be overwritten, get a handle and modify it with a set method instead")
+        raise NotImplementedError("get_split_params not available for class {}".format(self.__class__))
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
@@ -169,34 +156,13 @@ class DSSMLTaskSettings(object):
         :param str feature_name: Name of the variable to use
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
-        self.remove_ordered_split()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
-        self.mltask_settings['time']['enabled'] = True
-        self.mltask_settings['time']['timeVariable'] = feature_name
-        self.mltask_settings['time']['ascending'] = ascending
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
-        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
-            self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
-            self.mltask_settings['splitParams']['ssdColumn'] = feature_name
-        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "KFOLD":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_KFOLD"
-        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
+        raise NotImplementedError("split_ordered_by not available for class {}".format(self.__class__))
 
     def remove_ordered_split(self):
         """
         Remove time-based ordering.
         """
-        self.mltask_settings['time']['enabled'] = False
-        self.mltask_settings['time']['timeVariable'] = None
-        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
-            self.mltask_settings['splitParams']['ssdSplitMode'] = "RANDOM"
-            self.mltask_settings['splitParams']['ssdColumn'] = None
-        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_KFOLD":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
-        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
+        raise NotImplementedError("remove_ordered_split not available for class {}".format(self.__class__))
 
     def get_feature_preprocessing(self, feature_name):
         """
@@ -383,6 +349,62 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "VERTICA_LOGISTIC_REGRESSION" : "vertica_logistic_regression",
             "KERAS_CODE" : "keras"
         }
+
+    @property
+    def split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return self.get_split_params()
+
+    def get_split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+        
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return PredictionSplitParamsHandler(self.mltask_settings)
+
+    @split_params.setter
+    def split_params(self, value):
+        raise AttributeError("split_params reference cannot be overwritten, get a handle and modify it with a set method instead")
+
+    def split_ordered_by(self, feature_name, ascending=True):
+        """
+        Uses a variable to sort the data for train/test split and hyperparameter optimization
+        :param str feature_name: Name of the variable to use
+        :param bool ascending: True iff the test set is expected to have larger time values than the train set
+        """
+        self.remove_ordered_split()
+        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
+        self.mltask_settings['time']['enabled'] = True
+        self.mltask_settings['time']['timeVariable'] = feature_name
+        self.mltask_settings['time']['ascending'] = ascending
+        self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
+            self.mltask_settings['splitParams']['ssdColumn'] = feature_name
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
+
+    def remove_ordered_split(self):
+        """
+        Remove time-based ordering.
+        """
+        self.mltask_settings['time']['enabled'] = False
+        self.mltask_settings['time']['timeVariable'] = None
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "RANDOM"
+            self.mltask_settings['splitParams']['ssdColumn'] = None
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
 
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
