@@ -16,7 +16,7 @@ class PredictionSplitParamsHandler(object):
         """Do not call directly, use :meth:`DSSMLTaskSettings.get_split_params`"""
         self.mltask_settings = mltask_settings
 
-    def get_row(self):
+    def get_raw(self):
         """Gets the raw settings of the prediction split configuration. This returns a reference to the raw settings, not a copy,
         so changes made to the returned object will be reflected when saving.
 
