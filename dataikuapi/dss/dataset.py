@@ -499,6 +499,34 @@ class DSSDataset(object):
         builder.with_group_key(first_group_by)
         return builder
 
+    ########################################################
+    # Creation of analyses
+    ########################################################
+
+    def new_analysis(self):
+        analysis = self.project.create_analysis(self.name)
+        return analysis
+
+    def list_analyses(self):
+        """Returns a list of json short description description of analysis that has this dataset as inputDataset
+
+        :return: list of dict with keys {'analysisId', 'analysisName', 'inputDataset'}
+
+        """
+        project_analysis_desc_list = self.project.list_analyses()
+        return [desc for desc in project_analysis_desc_list if self.name == desc.get('inputDataset')]
+
+    def delete_analyses(self, drop_data=False):
+        """Deletes all analyses that have this dataset as inputDataset
+
+        :param: bool drop_data: will drop analysis data if True. Default is False
+        """
+
+        desc_list = self.list_analyses()
+        dss_analysis_list = [self.project.get_analysis(desc['analysisId']) for desc in desc_list]
+        return [analysis.delete(drop_data=drop_data) for analysis in dss_analysis_list]
+
+
 class DSSDatasetSettings(object):
     def __init__(self, dataset, settings):
         self.dataset = dataset
