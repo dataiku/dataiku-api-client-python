@@ -1115,7 +1115,6 @@ for ds, df in output:
         module_name = inspect.getmodule(fn).__name__
         fname = fn.__name__
         return self.with_function_name(module_name, fname, function_args, custom_template)
->>>>>>> origin/feature/new-dataset-management-apis
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """

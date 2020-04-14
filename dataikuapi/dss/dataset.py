@@ -485,16 +485,6 @@ class DSSDataset(object):
             builder.with_script(code)
         return builder
 
-    def new_function_recipe(self, type, recipe_name=None):
-        """Starts creation of a new function code recipe taking this dataset as input"""
-
-        if recipe_name is None:
-            recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
-        builder = recipe.FunctionCodeRecipeCreator(recipe_name, type, self.project)
-        builder.with_input(self.dataset_name)
-
-        return builder
-
     def new_grouping_recipe(self, first_group_by, recipe_name=None):
         if recipe_name is None:
             recipe_name = "group_%s" % (self.dataset_name)
