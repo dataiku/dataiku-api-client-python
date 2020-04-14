@@ -1100,6 +1100,7 @@ for ds, df in output:
         """
         Defines this recipe as being a functional recipe calling a function name from a module name
         """
+        #TODO add detailed documentation
         script_tmpl = PythonRecipeCreator.DEFAULT_RECIPE_CODE_TMPL if custom_template is None else custom_template
 
         if function_args is None:
@@ -1111,6 +1112,7 @@ for ds, df in output:
         return self
 
     def with_function(self, fn, function_args=None, custom_template=None):
+        #TODO: add detailed documentation, especially about the constrains on signature of said fn, e.g: input df lists
         import inspect
         #TODO: add in documentation that relative imports wont work
         module_name = inspect.getmodule(fn).__name__
