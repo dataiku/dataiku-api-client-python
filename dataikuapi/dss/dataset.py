@@ -475,7 +475,11 @@ class DSSDataset(object):
 
         if recipe_name is None:
             recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
-        builder = recipe.CodeRecipeCreator(recipe_name, type, self.project)
+
+        if type == "python":
+            builder = recipe.PythonRecipeCreator(recipe_name, self.project)
+        else:
+            builder = recipe.CodeRecipeCreator(recipe_name, type, self.project)
         builder.with_input(self.dataset_name)
         if code is not None:
             builder.with_script(code)

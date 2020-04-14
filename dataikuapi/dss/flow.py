@@ -1,5 +1,6 @@
 from .utils import AnyLoc
-from .recipe import DSSRecipeDefinitionAndPayload
+from .dataset import DSSDataset
+from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
 import logging
 
@@ -8,6 +9,9 @@ class DSSProjectFlow(object):
         self.client = client
         self.project = project
 
+    def get_graph(self):
+        data = self.client._perform_json("GET", "/projects/%s/flow/graph/" % (self.project.project_key))
+        return DSSProjectFlowGraph(self, data)
 
     def replace_input_computable(self, current_ref, new_ref, type="DATASET"):
         """
@@ -80,6 +84,84 @@ class DSSProjectFlow(object):
         update_future = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, dataset_name), params={'rebuild':rebuild}, body=data)
         return DSSFuture(self.client,update_future.get('jobId', None), update_future)
 
+
+class DSSProjectFlowGraph(object):
+
+    def __init__(self, flow, data):
+        self.flow = flow
+        self.data = data
+
+    def get_source_computables(self, as_type="dict"):
+        """
+        Returns the list of source computables.
+        :param as_type: How to return the source computables. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, each computable is returned as a dict containing at least "ref" and "type". 
+                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.dataset.DSSDataset`,
+                    :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                    :class:`dataikuapi.dss.savedmodel.DSSSavedModel`, or streaming endpoint
+        """
+        ret = []
+        for computable in self.data["computables"].values():
+            if len(computable["predecessors"]) == 0:
+                ret.append(computable)
+        return self._convert_computables_list(ret, as_type)
+
+    def get_source_datasets(self):
+        """
+        Returns the list of source datasets for this project.
+        :rtype list of :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        return [self._get_object_from_computable(x) for x in self.get_source_computables() if x["type"] == "COMPUTABLE_DATASET"]
+
+    def get_successor_recipes(self, node, as_type="name"):
+        """
+        Returns a list of recipes that are a successor of a graph node
+
+        :param node: Either a name or :class:`dataikuapi.dss.dataset.DSSDataset` object
+        :return if as_type="name", list of strings, recipe names
+                    else list of :class:`dataikuapi.dss.recipe.DSSRecipe`
+        """
+        if isinstance(node, DSSDataset):
+            node = node.dataset_name
+
+        computable = self.data["computables"].get(node, None)
+        if computable is None:
+            raise ValueError("Computable %s not found in Flow graph" % node)
+
+        names= computable["successors"]
+
+        if as_type == "object":
+            return [DSSRecipe(self.flow.client, self.flow.project.project_key, x) for x in names]
+        else:
+            return names
+
+    def get_successor_computables(self, node, as_type="dict"):
+        """
+        Returns a list of computables that are a successor of a given graph node
+        Each computable is returned as a dict containing at least "ref" and "type"
+        """
+        if isinstance(node, DSSRecipe):
+            node = node.recipe_name
+        runnable = self.data["runnables"].get(node, None)
+        if runnable is None:
+            raise ValueError("Runnable %s not found in Flow graph" % node)
+
+        computables = [self.data["computables"][x] for x in runnable["successors"]]
+        return self._convert_computables_list(computables, as_type)
+
+    def _convert_computables_list(self, computables, as_type):
+        if as_type == "object":
+            return [self._get_object_from_computable(computable) for computable in computables]
+        else:
+            return computables
+
+    def _get_object_from_computable(self, computable):
+        if computable["type"] == "COMPUTABLE_DATASET":
+            return DSSDataset(self.flow.client, self.flow.project.project_key, computable["ref"])
+        else:
+            # TODO
+            raise Exception("unsupported %s" % computable["type"])
 
 class DSSFlowTool(object):
     """
