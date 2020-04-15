@@ -171,7 +171,7 @@ class DSSAPIDeployerInfra(object):
         Deletes this infra
         You may only delete an infra if it has no deployments on it anymore.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/api-deployer/infras/%s" % (self.infra_id))
 
 
@@ -207,10 +207,10 @@ class DSSAPIDeployerInfraSettings(object):
 
         :param str node_url: URL of the node to remove
         """
-        for node in self.settings["apiNodes"]:
-            if node["url"] == node_url:
+        api_nodes = list(self.settings["apiNodes"])
+        for node in api_nodes:
+            if node.get("url") == node_url:
                 self.settings["apiNodes"].remove(node)
-                break
 
     def get_raw(self):
         """
