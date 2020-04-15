@@ -1111,7 +1111,7 @@ for ds, df in output:
 
         return self
 
-    def with_function(self, fn, function_args=None, custom_template=None):
+    def with_function(self, fn, custom_template=None, **function_args):
         #TODO: add detailed documentation, especially about the constrains on signature of said fn, e.g: input df lists
         import inspect
         #TODO: add in documentation that relative imports wont work
