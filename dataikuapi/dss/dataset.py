@@ -410,6 +410,7 @@ class DSSDataset(object):
 
     FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
                 "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
+    # HTTP is FSLike but not FS                
 
     SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
@@ -495,7 +496,12 @@ class DSSDatasetSettings(object):
         self.settings = settings
 
     def get_raw(self):
+        """Get the raw dataset settings as a dict"""
         return self.settings
+
+    def get_raw_params(self):
+        """Get the type-specific params, as a raw dict"""
+        return self.settings["params"]
 
     def get_type(self):
         return self.settings["type"]
@@ -509,6 +515,9 @@ class DSSDatasetSettings(object):
     def add_time_partitioning_dimension(self, dim_name, period="DAY"):
         self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "time", "params":{"period": period}})
 
+    def add_raw_schema_column(self, column):
+        self.settings["schema"]["columns"].append(column)
+
     def save(self):
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
@@ -518,13 +527,21 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
     def __init__(self, dataset, settings):
         super(FSLikeDatasetSettings, self).__init__(dataset, settings)
 
-    def set_format(format_type, format_params = None):
+    def set_connection_and_path(self, connection, path):
+        self.settings["params"]["connection"] = connection
+        self.settings["params"]["path"] = path
+
+    def get_raw_format_params(self):
+        """Get the raw format parameters as a dict""" 
+        return self.settings["formatParams"]
+
+    def set_format(self, format_type, format_params = None):
         if format_params is None:
             format_params = {}
         self.settings["formatType"] = format_type
         self.settings["formatParams"] = format_params
 
-    def set_csv_format(separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
+    def set_csv_format(self, separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
         format_params = {
             "style" : style,
             "separator":  separator,
@@ -541,7 +558,14 @@ class SQLDatasetSettings(DSSDatasetSettings):
     def __init__(self, dataset, settings):
         super(SQLDatasetSettings, self).__init__(dataset, settings)
 
-
+    def set_table(self, connection, schema, table):
+        """Sets this SQL dataset in 'table' mode, targeting a particular table of a connection"""
+        self.settings["params"].update({
+            "connection": connection,
+            "mode": "table",
+            "schema": schema,
+            "table": table
+        })
 
 class DSSManagedDatasetCreationHelper(object):
 
