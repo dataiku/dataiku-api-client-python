@@ -179,7 +179,7 @@ class DSSProjectFlowGraph(object):
     def get_items_in_traversal_order(self, as_type="dict"):
         ret = []
         def add_to_set(node):
-            print("*** Adding: %s" % node["ref"])
+            #print("*** Adding: %s" % node["ref"])
             ret.append(node)
         def in_set(obj):
             for candidate in ret:
@@ -189,20 +189,18 @@ class DSSProjectFlowGraph(object):
 
         def add_from(graph_node):
             #print("Add from %s" % graph_node["ref"])
-            # To keep traversal order, we add predecessors before successors. And we recurse before adding
-            # our own predecessors
+            # To keep traversal order, we recurse to predecessors first
             for predecessor_ref in graph_node["predecessors"]:
                 #print("  Pred = %s " % predecessor_ref)
                 predecessor_node = self.nodes[predecessor_ref]
                 if not in_set(predecessor_node):
                     add_from(predecessor_node)
 
-            # Then ourselves
-            #print("  Itself %s" % graph_node["ref"])
+            # Then add ourselves
             if not in_set(graph_node):
                 add_to_set(graph_node)
 
-            # For successors, we first add ourselves before successors
+            # Then recurse to successors
             for successor_ref in graph_node["successors"]:
                 #print("  Succ = %s " % successor_ref)
                 successor_node = self.nodes[successor_ref]
