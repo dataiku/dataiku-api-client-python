@@ -515,6 +515,9 @@ class DSSRecipeCreator(object):
         self._finish_creation_settings()
         return self.project.create_recipe(self.recipe_proto, self.creation_settings)
 
+    def set_raw_mode(self):
+        self.creation_settings["rawCreation"] = True
+
     def _finish_creation_settings(self):
         pass
 
