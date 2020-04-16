@@ -16,7 +16,8 @@ class APINodeClient(DSSBaseClient):
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
 
-    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None):
+    def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None,
+                       with_explanations=None, explanation_method=None, n_explanations=None, n_explanations_mc_steps=None):
         """
         Predicts a single record on a DSS API node endpoint (standard or custom prediction)
 
@@ -25,12 +26,25 @@ class APINodeClient(DSSBaseClient):
         :param forced_generation: See documentation about multi-version prediction
         :param dispatch_key: See documentation about multi-version prediction
         :param context: Optional, Python dictionary of additional context information. The context information is logged, but not directly used.
+        :param with_explanations: Whether individual explanations should be computed for each records.
+        Explanations must be enabled for the prediction endpoint.
+        :param explanation_method: Optional, method to compute those explanations. If None, will use the value configured in the endpoint.
+        :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
+        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
+         If None, will use the value configured in the endpoint.
 
         :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
         """
-        obj =  {
-            "features" :features
+        obj = {
+            "features": features,
+            "explanations": {
+                "enabled": with_explanations,
+                "method": explanation_method,
+                "nExplanations": n_explanations,
+                "nMonteCarloSteps": n_explanations_mc_steps
+            }
         }
+
         if context is not None:
             obj["context"] = context
         if forced_generation is not None:
@@ -40,7 +54,8 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/predict" % endpoint_id, body = obj)
 
-    def predict_records(self, endpoint_id, records, forced_generation=None, dispatch_key=None):
+    def predict_records(self, endpoint_id, records, forced_generation=None, dispatch_key=None, with_explanations=None,
+                        explanation_method=None, n_explanations=None, n_explanations_mc_steps=None):
         """
         Predicts a batch of records on a DSS API node endpoint (standard or custom prediction)
 
@@ -48,6 +63,12 @@ class APINodeClient(DSSBaseClient):
         :param records: Python list of records. Each record must be a Python dict. Each record must contain a "features" dict (see predict_record) and optionally a "context" dict.
         :param forced_generation: See documentation about multi-version prediction
         :param dispatch_key: See documentation about multi-version prediction
+        :param with_explanations: Whether individual explanations should be computed for each records.
+        Explanations must be enabled for the prediction endpoint.
+        :param explanation_method: Optional, method to compute those explanations. If None, will use the value configured in the endpoint.
+        :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
+        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
+         If None, will use the value configured in the endpoint.
 
         :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
         """
@@ -57,7 +78,13 @@ class APINodeClient(DSSBaseClient):
                 raise ValueError("Each record must contain a 'features' dict")
 
         obj = {
-            "items" : records
+            "items": records,
+            "explanations": {
+                    "enabled": with_explanations,
+                    "method": explanation_method,
+                    "nExplanations": n_explanations,
+                    "nMonteCarloSteps": n_explanations_mc_steps
+                }
         }
 
         if forced_generation is not None:
