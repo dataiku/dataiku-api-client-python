@@ -1,5 +1,5 @@
 from datetime import datetime
-import time
+import time, warnings
 from dataikuapi.utils import DataikuException
 from .discussion import DSSObjectDiscussions
 
@@ -158,6 +158,7 @@ class DSSScenario(object):
                               actions' definition. If False, the definition doesn't contain the run status
                               but has the scenario's actions definition
         """
+        warnings.warn("DSSScenario.get_definition is deprecated, please use get_settings", DeprecationWarning)
         suffix = '/light' if with_status else ''
         return self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix))
@@ -170,6 +171,7 @@ class DSSScenario(object):
         :param bool status: should be the same as the value passed to get_definition(). If True, the params, 
                          triggers and reporters fields of the scenario are ignored,
         """
+        warnings.warn("DSSScenario.set_definition is deprecated, please use get_settings", DeprecationWarning)
         suffix = '/light' if with_status else ''
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix), body = definition)
@@ -181,6 +183,7 @@ class DSSScenario(object):
         Returns the payload of the scenario
         :param str extension: the type of script. Default is 'py' for python
         """
+        warnings.warn("DSSScenario.get_payload is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id)).get('script', '')
 
@@ -191,6 +194,7 @@ class DSSScenario(object):
         Updates the payload of this scenario
         :param str extension: the type of script. Default is 'py' for python
         """
+        warnings.warn("DSSScenario.set_payload is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
 
