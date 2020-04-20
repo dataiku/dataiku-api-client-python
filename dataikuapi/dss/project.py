@@ -867,7 +867,7 @@ class DSSProject(object):
                        body = definition)['name']
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
-    def new_recipe(self, type, name):
+    def new_recipe(self, type, name=None):
         """
         Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         or one of its subclasses to complete the creation of the recipe.

@@ -448,6 +448,9 @@ class DSSRecipeCreator(object):
         self.creation_settings = {
         }
 
+    def set_name(self, name):
+        self.recipe_proto["name"] = name
+
     def _build_ref(self, object_id, project_key=None):
         if project_key is not None and project_key != self.project.project_key:
             return project_key + '.' + object_id
@@ -547,10 +550,10 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self._with_output(dataset_name, append)
         return self
 
-    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET', overwrite=False):
         """
         Create a new dataset as output to the recipe-to-be-created. The dataset is not created immediately,
-        but when the recipe is created (ie in the build() method)
+        but when the recipe is created (ie in the create() method)
 
         :param str name: name of the dataset or identifier of the managed folder
         :param str connection_id: name of the connection to create the dataset on
@@ -565,9 +568,15 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         :param append: whether the recipe should append or overwrite the output when running
                        (note: not available for all dataset types)
         :param str object_type: DATASET or MANAGED_FOLDER
+        :param overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
         if object_type == 'DATASET':
             assert self.create_output_dataset is None
+
+            dataset = self.project.get_dataset(name)
+            if overwrite and dataset.exists():
+                dataset.delete(drop_data=True)
+
             self.create_output_dataset = True
             self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'specificSettings':{'formatOptionId':format_option_id, 'overrideSQLSchema':override_sql_schema},'partitioningOptionId':partitioning_option_id}
             self._with_output(name, append)
@@ -952,7 +961,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
                     "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
         :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
-        :param overwrite: If the object being created already exists, overwrite it
+        :param overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
 
         ch = self.project.new_managed_dataset_creation_helper(name)

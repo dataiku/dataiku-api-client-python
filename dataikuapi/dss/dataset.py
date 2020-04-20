@@ -132,6 +132,14 @@ class DSSDataset(object):
                 "PUT", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name),
                 body=definition)
 
+    def exists(self):
+        """Returns whether this dataset exists"""
+        try:
+            self.get_metadata()
+            return True
+        except Exception as e:
+            return False
+
     ########################################################
     # Dataset metadata
     ########################################################
@@ -571,9 +579,6 @@ class DSSDataset(object):
     def new_code_recipe(self, type, code=None, recipe_name=None):
         """Starts creation of a new code recipe taking this dataset as input"""
 
-        if recipe_name is None:
-            recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
-
         if type == "python":
             builder = recipe.PythonRecipeCreator(recipe_name, self.project)
         else:
@@ -584,11 +589,15 @@ class DSSDataset(object):
         return builder
 
     def new_grouping_recipe(self, first_group_by, recipe_name=None):
-        if recipe_name is None:
-            recipe_name = "group_%s" % (self.dataset_name)
         builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
         builder.with_input(self.dataset_name)
         builder.with_group_key(first_group_by)
+        return builder
+
+    def new_recipe(self, type, recipe_name=None):
+        """Starts creation of a new recipe taking this dataset as input"""
+        builder = self.project.new_recipe(type, recipe_name)
+        builder.with_input(self.dataset_name)
         return builder
 
 class DSSDatasetSettings(object):
