@@ -705,15 +705,27 @@ class DSSManagedDatasetCreationHelper(object):
         self.creation_settings["partitioningOptionId"] = "copy:%s:%s" % (code, dataset_ref)
         return self
 
-    def create(self):
+    def create(self, overwrite=False):
         """
         Executes the creation of the managed dataset according to the selected options
-
+        :param overwrite: If the dataset being created already exists, delete it first (removing data)
         :return: The :class:`DSSDataset` corresponding to the newly created dataset
         """
+        if overwrite and self.already_exists():
+            self.project.get_dataset(self.dataset_name).delete(drop_data = True)
+
         self.project.client._perform_json("POST", "/projects/%s/datasets/managed" % self.project.project_key,
             body = {
                 "name": self.dataset_name,
                 "creationSettings":  self.creation_settings
         })
         return DSSDataset(self.project.client, self.project.project_key, self.dataset_name)
+
+    def already_exists(self):
+        """Returns whether this managed dataset already exists"""
+        dataset = self.project.get_dataset(self.dataset_name)
+        try:
+            dataset.get_metadata()
+            return True
+        except Exception as e:
+            return False

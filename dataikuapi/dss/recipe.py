@@ -937,7 +937,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
     def with_new_output_dataset(self, name, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
-                                append=False):
+                                append=False, overwrite=False):
         """
         Create a new managed dataset as output to the recipe-to-be-created. The dataset is created immediately
 
@@ -952,6 +952,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
                     "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
         :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
+        :param overwrite: If the object being created already exists, overwrite it
         """
 
         ch = self.project.new_managed_dataset_creation_helper(name)
@@ -967,7 +968,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
         elif copy_partitioning_from is not None:
             self.creation_settings["partitioningOptionId"] = "copy:%s" % copy_partitioning_from
 
-        ch.create()
+        ch.create(overwrite=overwrite)
 
         self.with_output(name, append=append)
         return self
