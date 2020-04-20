@@ -1,13 +1,17 @@
 from .utils import AnyLoc
-from .recipe import DSSRecipeDefinitionAndPayload
+from .dataset import DSSDataset
+from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
-import logging
+import logging, json
 
 class DSSProjectFlow(object):
     def __init__(self, client, project):
         self.client = client
         self.project = project
 
+    def get_graph(self):
+        data = self.client._perform_json("GET", "/projects/%s/flow/graph/" % (self.project.project_key))
+        return DSSProjectFlowGraph(self, data)
 
     def replace_input_computable(self, current_ref, new_ref, type="DATASET"):
         """
@@ -80,6 +84,140 @@ class DSSProjectFlow(object):
         update_future = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, dataset_name), params={'rebuild':rebuild}, body=data)
         return DSSFuture(self.client,update_future.get('jobId', None), update_future)
 
+
+class DSSProjectFlowGraph(object):
+
+    def __init__(self, flow, data):
+        self.flow = flow
+        self.data = data
+        self.nodes = data["nodes"]
+
+    def get_source_computables(self, as_type="dict"):
+        """
+        Returns the list of source computables.
+        :param as_type: How to return the source computables. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, each computable is returned as a dict containing at least "ref" and "type". 
+                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.dataset.DSSDataset`,
+                    :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                    :class:`dataikuapi.dss.savedmodel.DSSSavedModel`, or streaming endpoint
+        """
+        ret = []
+        for node in self.nodes.values():
+            if len(node["predecessors"]) == 0 and node["type"].startswith("COMPUTABLE"):
+                ret.append(node)
+        return self._convert_nodes_list(ret, as_type)
+
+    def get_source_recipes(self, as_type="dict"):
+        """
+        Returns the list of source recipes.
+        :param as_type: How to return the source recipes. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        """
+        ret = []
+        for node in self.nodes.values():
+            if len(node["predecessors"]) == 0 and node["type"] == "RUNNABLE_RECIPE":
+                ret.append(node)
+        return self._convert_nodes_list(ret, as_type)
+
+    def get_source_datasets(self):
+        """
+        Returns the list of source datasets for this project.
+        :rtype list of :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        return [self._get_object_from_graph_node(x) for x in self.get_source_computables() if x["type"] == "COMPUTABLE_DATASET"]
+
+    def get_successor_recipes(self, node, as_type="dict"):
+        """
+        Returns a list of recipes that are a successor of a graph node
+
+        :param node: Either a name or :class:`dataikuapi.dss.dataset.DSSDataset` object
+        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        """
+        if isinstance(node, DSSDataset):
+            node = node.dataset_name
+
+        computable = self.nodes.get(node, None)
+        if computable is None:
+            raise ValueError("Computable %s not found in Flow graph" % node)
+
+        runnables = [self.nodes[x] for x in computable["successors"]]
+        return self._convert_nodes_list(runnables, as_type)
+        
+    def get_successor_computables(self, node, as_type="dict"):
+        """
+        Returns a list of computables that are a successor of a given graph node
+        
+        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        """
+        if isinstance(node, DSSRecipe):
+            node = node.recipe_name
+        runnable = self.nodes.get(node, None)
+        if runnable is None:
+            raise ValueError("Runnable %s not found in Flow graph" % node)
+
+        computables = [self.nodes[x] for x in runnable["successors"]]
+        return self._convert_nodes_list(computables, as_type)
+
+    def _convert_nodes_list(self, nodes, as_type):
+        if as_type == "object" or as_type == "objects":
+            return [self._get_object_from_graph_node(node) for node in nodes]
+        else:
+            return nodes
+
+    def _get_object_from_graph_node(self, node):
+        if node["type"] == "COMPUTABLE_DATASET":
+            return DSSDataset(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "RUNNABLE_RECIPE":
+            return DSSRecipe(self.flow.client, self.flow.project.project_key, node["ref"])
+        else:
+            # TODO
+            raise Exception("unsupported node type  %s" % node["type"])
+
+    def get_items_in_traversal_order(self, as_type="dict"):
+        ret = []
+        def add_to_set(node):
+            #print("*** Adding: %s" % node["ref"])
+            ret.append(node)
+        def in_set(obj):
+            for candidate in ret:
+                if candidate["type"] == obj["type"] and candidate["ref"] == obj["ref"]:
+                    return True
+            return False
+
+        def add_from(graph_node):
+            #print("Add from %s" % graph_node["ref"])
+            # To keep traversal order, we recurse to predecessors first
+            for predecessor_ref in graph_node["predecessors"]:
+                #print("  Pred = %s " % predecessor_ref)
+                predecessor_node = self.nodes[predecessor_ref]
+                if not in_set(predecessor_node):
+                    add_from(predecessor_node)
+
+            # Then add ourselves
+            if not in_set(graph_node):
+                add_to_set(graph_node)
+
+            # Then recurse to successors
+            for successor_ref in graph_node["successors"]:
+                #print("  Succ = %s " % successor_ref)
+                successor_node = self.nodes[successor_ref]
+                if not in_set(successor_node):
+                    add_from(successor_node)
+
+        for source_computable in self.get_source_computables():
+            add_from(source_computable)
+
+        for source_recipe in self.get_source_recipes():
+            add_from(source_recipe)
+
+        return self._convert_nodes_list(ret, as_type)
 
 class DSSFlowTool(object):
     """

@@ -1,11 +1,53 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
+from .future import DSSFuture
+import json, warnings
+from .utils import DSSTaggableObjectListItem
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
+from . import recipe
+
+class DSSDatasetListItem(DSSTaggableObjectListItem):
+    """An item in a list of datasets. Do not instantiate this class"""
+    def __init__(self, client, data):
+        super(DSSDatasetListItem, self).__init__(data)
+        self.client = client
+
+    def to_dataset(self):
+        """Gets the :class:`DSSDataset` corresponding to this dataset"""
+        return DSSDataset(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["name"]
+    @property
+    def type(self):
+        return self._data["type"]
+    @property
+    def schema(self):
+        return self._data["schema"]
+
+    @property
+    def connection(self):
+        """Returns the connection on which this dataset is attached, or None if there is no connection for this dataset"""
+        if not "params" in self._data:
+            return None
+        return self._data["params"].get("connection", None)
+
+    def get_column(self, column):
+        """
+        Returns the schema column given a name.
+        :param str column: Column to find
+        :return a dict of the column settings or None if column does not exist
+        """
+        matched = [col for col in self.schema["columns"] if col["name"] == column]
+        return None if len(matched) == 0 else matched[0]
 
 class DSSDataset(object):
     """
@@ -13,6 +55,7 @@ class DSSDataset(object):
     """
     def __init__(self, client, project_key, dataset_name):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.dataset_name = dataset_name
 
@@ -36,24 +79,55 @@ class DSSDataset(object):
     # Dataset definition
     ########################################################
 
+    def get_settings(self):
+        """
+        Returns the settings of this dataset as a :class:`DSSDatasetSettings`, or one of its subclasses.
+
+        Know subclasses of :class:`DSSDatasetSettings` include :class:`FSLikeDatasetSettings` 
+        and :class:`SQLDatasetSettings`
+
+        You must use :meth:`~DSSDatasetSettings.save()` on the returned object to make your changes effective
+        on the dataset.
+
+        .. code-block:: python
+
+            # Example: activating discrete partitioning on a SQL dataset
+            dataset = project.get_dataset("my_database_table")
+            settings = dataset.get_settings()
+            settings.add_discrete_partitioning_dimension("country")
+            settings.save()
+
+        :rtype: :class:`DSSDatasetSettings`
+        """
+        data = self.client._perform_json("GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
+
+        if data["type"] in self.__class__.FS_TYPES:
+            return FSLikeDatasetSettings(self, data)
+        elif data["type"] in self.__class__.SQL_TYPES:
+            return SQLDatasetSettings(self, data)
+        else:
+            return DSSDatasetSettings(self, data)
+
+
     def get_definition(self):
         """
-        Get the definition of the dataset
-
-        Returns:
-            the definition, as a JSON object
+        Deprecated. Use :meth:`get_settings`
+        Get the raw settings of the dataset as a dict
+        :rtype: dict
         """
+        warnings.warn("Dataset.get_definition is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
     def set_definition(self, definition):
         """
+        Deprecated. Use :meth:`get_settings` and :meth:`DSSDatasetSettings.save`
         Set the definition of the dataset
         
-        Args:
-            definition: the definition, as a JSON object. You should only set a definition object 
-            that has been retrieved using the get_definition call.
+        :param definition: the definition, as a dict. You should only set a definition object 
+                            that has been retrieved using the get_definition call.
         """
+        warnings.warn("Dataset.set_definition is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name),
                 body=definition)
@@ -173,6 +247,30 @@ class DSSDataset(object):
     ########################################################
     # Dataset actions
     ########################################################
+
+    def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True, no_fail=False):
+        """
+        Starts a new job to build this dataset and wait for it to complete.
+        Raises if the job failed.
+
+        .. code-block:: python
+
+            job = dataset.build()
+            print("Job %s done" % job.id)
+
+        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param partitions: If the dataset is partitioned, a list of partition ids to build
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+        jd = self.project.new_job(job_type)
+        jd.with_output(self.dataset_name, partition=partitions)
+        if wait:
+            return jd.start_and_wait()
+        else:
+            return jd.start()
+
 
     def synchronize_hive_metastore(self):
         """
@@ -345,6 +443,170 @@ class DSSDataset(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)
+
+    ########################################################
+    # Test / Autofill
+    ########################################################
+
+    FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
+                "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
+    # HTTP is FSLike but not FS                
+
+    SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
+                "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
+                "BigQuery", "Athena", "hiveserver2"]
+
+    def test_and_detect(self, infer_storage_types=False):
+        settings = self.get_settings()
+
+        if settings.type in self.__class__.FS_TYPES:
+            future_resp = self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
+                body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
+
+            return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
+        elif settings.type in self.__class__.SQL_TYPES:
+            return self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
+        else:
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
+
+    def autodetect_settings(self, infer_storage_types=False):
+        settings = self.get_settings()
+
+        if settings.type in self.__class__.FS_TYPES:
+            future = self.test_and_detect(infer_storage_types)
+            result = future.wait_for_result()
+
+            if not "format" in result or not result["format"]["ok"]:
+                raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["formatType"] = result["format"]["type"]
+            settings.get_raw()["formatParams"] = result["format"]["params"]
+            settings.get_raw()["schema"] = result["format"]["schemaDetection"]["newSchema"]
+
+            return settings
+
+        elif settings.type in self.__class__.SQL_TYPES:
+            result = self.test_and_detect()
+
+            if not "schemaDetection" in result:
+                raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["schema"] = result["schemaDetection"]["newSchema"]
+            return settings
+
+        else:
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
+
+    def get_as_core_dataset(self):
+        import dataiku
+        return dataiku.Dataset("%s.%s" % (self.project_key, self.dataset_name))
+
+    ########################################################
+    # Creation of recipes
+    ########################################################
+
+    def new_code_recipe(self, type, code=None, recipe_name=None):
+        """Starts creation of a new code recipe taking this dataset as input"""
+
+        if recipe_name is None:
+            recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
+
+        if type == "python":
+            builder = recipe.PythonRecipeCreator(recipe_name, self.project)
+        else:
+            builder = recipe.CodeRecipeCreator(recipe_name, type, self.project)
+        builder.with_input(self.dataset_name)
+        if code is not None:
+            builder.with_script(code)
+        return builder
+
+    def new_grouping_recipe(self, first_group_by, recipe_name=None):
+        if recipe_name is None:
+            recipe_name = "group_%s" % (self.dataset_name)
+        builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
+        builder.with_input(self.dataset_name)
+        builder.with_group_key(first_group_by)
+        return builder
+
+class DSSDatasetSettings(object):
+    def __init__(self, dataset, settings):
+        self.dataset = dataset
+        self.settings = settings
+
+    def get_raw(self):
+        """Get the raw dataset settings as a dict"""
+        return self.settings
+
+    def get_raw_params(self):
+        """Get the type-specific params, as a raw dict"""
+        return self.settings["params"]
+
+    @property
+    def type(self):
+        return self.settings["type"]
+
+    def remove_partitioning(self):
+        self.settings["partitioning"] = {"dimensions" : []}
+
+    def add_discrete_partitioning_dimension(self, dim_name):
+        self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "value"})
+
+    def add_time_partitioning_dimension(self, dim_name, period="DAY"):
+        self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "time", "params":{"period": period}})
+
+    def add_raw_schema_column(self, column):
+        self.settings["schema"]["columns"].append(column)
+
+    def save(self):
+        self.dataset.client._perform_empty(
+                "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
+                body=self.settings)
+
+class FSLikeDatasetSettings(DSSDatasetSettings):
+    def __init__(self, dataset, settings):
+        super(FSLikeDatasetSettings, self).__init__(dataset, settings)
+
+    def set_connection_and_path(self, connection, path):
+        self.settings["params"]["connection"] = connection
+        self.settings["params"]["path"] = path
+
+    def get_raw_format_params(self):
+        """Get the raw format parameters as a dict""" 
+        return self.settings["formatParams"]
+
+    def set_format(self, format_type, format_params = None):
+        if format_params is None:
+            format_params = {}
+        self.settings["formatType"] = format_type
+        self.settings["formatParams"] = format_params
+
+    def set_csv_format(self, separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
+        format_params = {
+            "style" : style,
+            "separator":  separator,
+            "skipRowsBeforeHeader":  skip_rows_before,
+            "parseHeaderRow":  header_row,
+            "skipRowsAfterHeader":  skip_rows_after
+        }
+        self.set_format("csv", format_params)
+
+    def set_partitioning_file_pattern(self, pattern):
+        self.settings["partitioning"]["filePathPattern"] = pattern
+
+class SQLDatasetSettings(DSSDatasetSettings):
+    def __init__(self, dataset, settings):
+        super(SQLDatasetSettings, self).__init__(dataset, settings)
+
+    def set_table(self, connection, schema, table):
+        """Sets this SQL dataset in 'table' mode, targeting a particular table of a connection"""
+        self.settings["params"].update({
+            "connection": connection,
+            "mode": "table",
+            "schema": schema,
+            "table": table
+        })
 
 class DSSManagedDatasetCreationHelper(object):
 

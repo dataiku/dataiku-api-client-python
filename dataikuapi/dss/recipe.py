@@ -1,19 +1,72 @@
 from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
-import json
+import json, logging, warnings
+
+#####################################################
+# Base classes
+#####################################################
 
 class DSSRecipe(object):
     """
-    A handle to an existing recipe on the DSS instance
+    A handle to an existing recipe on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.project.DSSProject.get_recipe`
     """
     def __init__(self, client, project_key, recipe_name):
         self.client = client
         self.project_key = project_key
         self.recipe_name = recipe_name
 
-    ########################################################
-    # Dataset deletion
-    ########################################################
+    def compute_schema_updates(self):
+        """
+        Computes which updates are required to the outputs of this recipe.
+        The required updates are returned as a :class:`RequiredSchemaUpdates` object, which then
+        allows you to :meth:`~RequiredSchemaUpdates.apply` the changes.
+
+        Usage example:
+
+        .. code-block:: python
+
+            required_updates = recipe.compute_schema_updates()
+            if required_updates.any_action_required():
+                print("Some schemas will be updated")
+
+            # Note that you can call apply even if no changes are required. This will be noop
+            required_updates.apply()
+        """
+        data = self.client._perform_json(
+            "GET", "/projects/%s/recipes/%s/schema-update" % (self.project_key, self.recipe_name))
+        return RequiredSchemaUpdates(self, data)
+
+    def run(self, job_type="NON_RECURSIVE_FORCED_BUILD", partitions=None, wait=True, no_fail=False):
+        """
+        Starts a new job to run this recipe and wait for it to complete.
+        Raises if the job failed.
+
+        .. code-block:: python
+
+            job = recipe.run()
+            print("Job %s done" % job.id)
+
+        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param partitions: If the outputs are partitioned, a list of partition ids to build
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+
+        settings = self.get_settings()
+        output_refs = settings.get_flat_output_refs()
+
+        if len(output_refs) == 0:
+            raise Exception("recipe has no outputs, can't run it")
+
+        jd = self.client.get_project(self.project_key).new_job(job_type)
+        jd.with_output(output_refs[0], partition=partitions)
+
+        if wait:
+            return jd.start_and_wait()
+        else:
+            return jd.start()
 
     def delete(self):
         """
@@ -22,59 +75,91 @@ class DSSRecipe(object):
         return self.client._perform_empty(
             "DELETE", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
 
-    ########################################################
-    # Recipe definition
-    ########################################################
-
-    def get_definition_and_payload(self):
+    def get_settings(self):
         """
-        Gets the definition of the recipe
+        Gets the settings of the recipe, as a :class:`DSSRecipeSettings` or one of its subclasses.
 
-        :returns: the definition, as a :py:class:`DSSRecipeDefinitionAndPayload` object, containing the recipe definition itself and its payload
-        :rtype: :py:class:`DSSRecipeDefinitionAndPayload`
+        Some recipes have a dedicated class for the settings, with additional helpers to read and modify the settings
+
+        Once you are done modifying the returned settings object, you can call :meth:`~DSSRecipeSettings.save` on it
+        in order to save the modifications to the DSS recipe
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
-        return DSSRecipeDefinitionAndPayload(data)
+        type = data["recipe"]["type"]
+
+        if type == "grouping":
+            return GroupingRecipeSettings(self, data)
+        elif type == "window":
+            return WindowRecipeSettings(self, data)
+        elif type == "sync":
+            return SyncRecipeSettings(self, data)
+        elif type == "sort":
+            return SortRecipeSettings(self, data)
+        elif type == "topn":
+            return TopNRecipeSettings(self, data)
+        elif type == "distinct":
+            return DistinctRecipeSettings(self, data)
+        elif type == "join":
+            return JoinRecipeSettings(self, data)
+        elif type == "vstack":
+            return StackRecipeSettings(self, data)
+        elif type == "sampling":
+            return SamplingRecipeSettings(self, data)
+        elif type == "split":
+            return SplitRecipeSettings(self, data)
+        elif type == "prepare" or type == "shaker":
+            return PrepareRecipeSettings(self, data)
+        #elif type == "prediction_scoring":
+        #elif type == "clustering_scoring":
+        elif type == "download":
+            return DownloadRecipeSettings(self, data)
+        #elif type == "sql_query":
+        #    return WindowRecipeSettings(self, data)
+        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+            return CodeRecipeSettings(self, data)
+        else:
+            return DSSRecipeSettings(self, data)
+
+    def get_definition_and_payload(self):
+        """
+        Deprecated. Use :meth:`get_settings`
+        """
+        warnings.warn("Recipe.get_definition_and_payload is deprecated, please use get_settings", DeprecationWarning)
+
+        data = self.client._perform_json(
+                "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
+        return DSSRecipeDefinitionAndPayload(self, data)
 
     def set_definition_and_payload(self, definition):
         """
-        Sets and saves the definition of the recipe
-
-        :param definition object: the definition, as a :py:class:`DSSRecipeDefinitionAndPayload` object. You should only set a definition object 
-            that has been retrieved using the :py:meth:get_definition_and_payload call.
+        Deprecated. Use :meth:`get_settings` and :meth:`DSSRecipeSettings.save`
         """
+        warnings.warn("Recipe.set_definition_and_payload is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name),
                 body=definition.data)
-
-    ########################################################
-    # Recipe status
-    ########################################################
 
     def get_status(self):
         """
         Gets the status of this recipe (status messages, engines status, ...)
 
-        :return: an object to interact 
+        :return: a :class:`dataikuapi.dss.recipe.DSSRecipeStatus` object to interact with the status
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeStatus`
         """
         data = self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s/status" % (self.project_key, self.recipe_name))
         return DSSRecipeStatus(self.client, data)
 
-    ########################################################
-    # Recipe metadata
-    ########################################################
 
     def get_metadata(self):
         """
         Get the metadata attached to this recipe. The metadata contains label, description
         checklists, tags and custom metadata of the recipe
 
-        Returns:
-            a dict object. For more information on available metadata, please see
-            https://doc.dataiku.com/dss/api/5.0/rest/
+        :returns: a dict. For more information on available metadata, please see
+            https://doc.dataiku.com/dss/api/8.0/rest/
+        :rtype dict
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/recipes/%s/metadata" % (self.project_key, self.recipe_name))
@@ -82,18 +167,13 @@ class DSSRecipe(object):
     def set_metadata(self, metadata):
         """
         Set the metadata on this recipe.
-
-        Args:
-            metadata: the new state of the metadata for the recipe. You should only set a metadata object 
+        :params dict metadata: the new state of the metadata for the recipe. You should only set a metadata object 
             that has been retrieved using the get_metadata call.
         """
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s/metadata" % (self.project_key, self.recipe_name),
                 body=metadata)
 
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the recipe
@@ -103,7 +183,11 @@ class DSSRecipe(object):
         """
         return DSSObjectDiscussions(self.client, self.project_key, "RECIPE", self.recipe_name)
 
+
 class DSSRecipeStatus(object):
+    """Status of a recipce. 
+    Do not create that directly, use :meth:`DSSRecipe.get_status`"""
+
     def __init__(self, client, data):
         """Do not call that directly, use :meth:`dataikuapi.dss.recipe.DSSRecipe.get_status`"""
         self.client = client
@@ -152,64 +236,98 @@ class DSSRecipeStatus(object):
         """
         return self.data["allMessagesForFrontend"]["messages"]
 
-class DSSRecipeDefinitionAndPayload(object):
+
+class DSSRecipeSettings(object):
     """
-    Definition for a recipe, that is, the recipe definition itself and its payload
+    Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
     """
-    def __init__(self, data):
+    def __init__(self, recipe, data):
+        self.recipe = recipe
         self.data = data
+        self.recipe_settings = self.data["recipe"]
+        self.str_payload = self.data.get("payload", None)
+        self.obj_payload = None
+
+    def save(self):
+        """
+        Saves back the recipe in DSS.
+        """
+        self._payload_to_str()
+        return self.recipe.client._perform_json(
+                "PUT", "/projects/%s/recipes/%s" % (self.recipe.project_key, self.recipe.recipe_name),
+                body=self.data)
+
+    def _payload_to_str(self):
+        if self.obj_payload is not None:
+            self.str_payload = json.dumps(self.obj_payload)
+            self.obj_payload = None
+        if self.str_payload is not None:
+            self.data["payload"] = self.str_payload
+
+    def _payload_to_obj(self):
+        if self.str_payload is not None:
+            self.obj_payload = json.loads(self.str_payload)
+            self.str_payload = None
 
     def get_recipe_raw_definition(self):
         """
-        Get the recipe definition as a raw JSON object
+        Get the recipe definition as a raw dict
+        :rtype dict
         """
-        return self.data.get('recipe', None)
+        return self.recipe_settings
 
     def get_recipe_inputs(self):
         """
-        Get the list of inputs of this recipe
+        Get a structured dict of inputs to this recipe
+        :rtype dict
         """
-        return self.data.get('recipe').get('inputs')
+        return self.recipe_settings.get('inputs')
 
     def get_recipe_outputs(self):
         """
-        Get the list of outputs of this recipe
+        Get a structured dict of outputs of this recipe
+        :rtype dict
         """
-        return self.data.get('recipe').get('outputs')
+        return self.recipe_settings.get('outputs')
 
     def get_recipe_params(self):
         """
-        Get the parameters of this recipe, as a raw JSON object
+        Get the parameters of this recipe, as a dict
+        :rtype dict
         """
-        return self.data.get('recipe').get('params')
+        return self.recipe_settings.get('params')
 
     def get_payload(self):
         """
-        Get the payload or script of this recipe, as a raw string
+        Get the payload or script of this recipe, as a string
+        :rtype string
         """
-        return self.data.get('payload', None)
+        self._payload_to_str()
+        return self.str_payload
 
     def get_json_payload(self):
         """
-        Get the payload or script of this recipe, as a JSON object
+        Get the payload or script of this recipe, parsed from JSON, as a dict
+        :rtype dict
         """
-        return json.loads(self.data.get('payload', None))
+        self._payload_to_obj()
+        return self.obj_payload
 
     def set_payload(self, payload):
         """
-        Set the raw payload of this recipe
-
+        Set the payload of this recipe
         :param str payload: the payload, as a string
         """
-        self.data['payload'] = payload
+        self.str_payload = payload
+        self.obj_payload = None
 
     def set_json_payload(self, payload):
         """
-        Set the raw payload of this recipe
-
+        Set the payload of this recipe
         :param dict payload: the payload, as a dict. The payload will be converted to a JSON string internally
         """
-        self.data['payload'] = json.dumps(payload)
+        self.str_payload = None
+        self.obj_payload = payload
 
     def has_input(self, input_ref):
         """Returns whether this recipe has a given ref as input"""
@@ -244,6 +362,72 @@ class DSSRecipeDefinitionAndPayload(object):
             for item in output_role.get("items", []):
                 if item.get("ref", None) == current_output_ref:
                     item["ref"] = new_output_ref
+
+    def get_flat_input_refs(self):
+        """
+        Returns a list of all input refs of this recipe, regardless of the input role
+        :rtype list of strings
+        """
+        ret = []
+        for role_key, role_obj in self.get_recipe_inputs().items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
+    def get_flat_output_refs(self):
+        """
+        Returns a list of all output refs of this recipe, regardless of the output role
+        :rtype list of strings
+        """
+        ret = []
+        for role_key, role_obj in self.get_recipe_outputs().items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
+
+# Old name, deprecated
+class DSSRecipeDefinitionAndPayload(DSSRecipeSettings):
+    """
+    Deprecated. Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass
+
+class RequiredSchemaUpdates(object):
+    """
+    Representation of the updates required to the schema of the outputs of a recipe.
+    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_updates`
+    """
+
+    def __init__(self, recipe, data):
+        self.recipe = recipe
+        self.data = data
+        self.drop_and_recreate = True
+        self.synchronize_metastore = True
+
+    def any_action_required(self):
+        return self.data["totalIncompatibilities"] > 0
+
+    def apply(self):
+        results  = []
+        for computable in self.data["computables"]:
+            osu = {
+                "computableType": computable["type"],
+                # dirty
+                "computableId": computable["type"] == "DATASET" and computable["datasetName"] or computable["id"],
+                "newSchema": computable["newSchema"],
+                "dropAndRecreate": self.drop_and_recreate,
+                "synchronizeMetastore" : self.synchronize_metastore
+            }
+
+            results.append(self.recipe.client._perform_json("POST",
+                    "/projects/%s/recipes/%s/actions/updateOutputSchema" % (self.recipe.project_key, self.recipe.recipe_name),
+                    body=osu))
+        return results
+
+#####################################################
+# Recipes creation infrastructure
+#####################################################
 
 class DSSRecipeCreator(object):
     """
@@ -286,6 +470,13 @@ class DSSRecipeCreator(object):
         role_obj["items"].append({'ref':self._build_ref(dataset_name, None), 'appendMode': append})
         return self
 
+    def _get_input_refs(self):
+        ret = []
+        for role_key, role_obj in self.recipe_proto["inputs"].items():
+            for item in role_obj["items"]:
+                ret.append(item["ref"])
+        return ret
+
     def with_input(self, dataset_name, project_key=None, role="main"):
         """
         Add an existing object as input to the recipe-to-be-created
@@ -311,14 +502,21 @@ class DSSRecipeCreator(object):
         return self._with_output(dataset_name, append, role)
 
     def build(self):
+        """Deprecated. Use create()"""
+        return self.create()
+
+    def create(self):
         """
-        Create a new recipe in the project, and return a handle to interact with it. 
+        Creates the new recipe in the project, and return a handle to interact with it. 
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
         """
         self._finish_creation_settings()
         return self.project.create_recipe(self.recipe_proto, self.creation_settings)
+
+    def set_raw_mode(self):
+        self.creation_settings["rawCreation"] = True
 
     def _finish_creation_settings(self):
         pass
@@ -358,9 +556,9 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         :param str connection_id: name of the connection to create the dataset on
         :param str typeOptionId: sub-type of dataset, for connection where the type could be ambiguous. Typically,
                                  this is SCP or SFTP, for SSH connection
-        :param str format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
-                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
-                                     AVRO, ORC 
+        :param str format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
+                                     AVRO, ORC
         :param override_sql_schema: schema to force dataset, for SQL dataset. If left empty, will be autodetected
         :param str partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
                                            value of 'copy:dataset:foo'
@@ -407,45 +605,69 @@ class VirtualInputsSingleOutputRecipeCreator(SingleOutputRecipeCreator):
         super(VirtualInputsSingleOutputRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['virtualInputs'] = self.virtual_inputs
 
-########################
-#
-# actual recipe creators
-#
-########################
-class WindowRecipeCreator(SingleOutputRecipeCreator):
-    """
-    Create a Window recipe
-    """
-    def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'window', name, project)
 
-class SyncRecipeCreator(SingleOutputRecipeCreator):
-    """
-    Create a Sync recipe
-    """
-    def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'sync', name, project)
+#####################################################
+# Per-recipe-type classes: Visual recipes
+#####################################################
 
-class SortRecipeCreator(SingleOutputRecipeCreator):
+class GroupingRecipeSettings(DSSRecipeSettings):
     """
-    Create a Sort recipe
+    Settings of a grouping recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
     """
-    def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'sort', name, project)
+    def clear_grouping_keys(self):
+        """Removes all grouping keys from this grouping recipe"""
+        self._payload_to_obj()
+        self.obj_payload["keys"] = []
 
-class TopNRecipeCreator(DSSRecipeCreator):
-    """
-    Create a TopN recipe
-    """
-    def __init__(self, name, project):
-        DSSRecipeCreator.__init__(self, 'topn', name, project)
+    def add_grouping_key(self, column):
+        """
+        Adds grouping on a column
+        :param str column: Column to group on
+        """
+        self._payload_to_obj()
+        self.obj_payload["keys"].append({"column":column})
 
-class DistinctRecipeCreator(SingleOutputRecipeCreator):
-    """
-    Create a Distinct recipe
-    """
-    def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'distinct', name, project)
+    def set_global_count_enabled(self, enabled):
+        self._payload_to_obj()
+        self.obj_payload["globalCount"] = enabled
+
+    def get_or_create_column_settings(self, column):
+        """
+        Gets a dict representing the aggregations to perform on a column.
+        Creates it and adds it to the potential aggregations if it does not already exists
+        :param str column: The column name
+        :rtype dict
+        """
+        found = None
+        for gv in self.obj_payload["values"]:
+            if gv["column"] == column:
+                found = gv
+                break
+        if found is None:
+            found = {"column" : column}
+            self.obj_payload["values"].append(found)
+        return found
+
+    def set_column_aggregations(self, column, type, min=False, max=False, count=False, count_distinct=False,
+                                sum=False,concat=False,stddev=False,avg=False):
+        """
+        Sets the basic aggregations on a column.
+        Returns the dict representing the aggregations on the column
+
+        :param str column: The column name
+        :param str type: The type of the column (as a DSS schema type name)
+        :rtype dict
+        """
+        cs = self.get_or_create_column_settings(column)
+        cs["type"] = type
+        cs["min"] = min
+        cs["max"] = max
+        cs["count"] = count
+        cs["countDistinct"] = count_distinct
+        cs["sum"] = sum
+        cs["concat"] = concat
+        cs["stddev"] = stddev
+        return cs
 
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
     """
@@ -468,12 +690,121 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
         super(GroupingRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['groupKey'] = self.group_key
 
+
+class WindowRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a window recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for window
+
+class WindowRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Window recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'window', name, project)
+
+
+class SyncRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a sync recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for sync
+
+class SyncRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Sync recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'sync', name, project)
+
+
+class SortRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a sort recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for sort
+
+class SortRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Sort recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'sort', name, project)
+
+
+class TopNRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a topn recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for topn
+
+class TopNRecipeCreator(DSSRecipeCreator):
+    """
+    Create a TopN recipe
+    """
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'topn', name, project)
+
+
+class DistinctRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a distinct recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for distinct
+
+class DistinctRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Distinct recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'distinct', name, project)
+
+
+class PrepareRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a prepare recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass
+
+    def get_raw_steps(self):
+        """
+        Returns a raw list of the steps of this prepare recipe.
+        You can modify the returned list.
+
+        Each step is a dict of settings. The precise settings for each step are not documented
+        """
+        self._payload_to_obj()
+        return self.obj_payload["steps"]
+
+
+class PrepareRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Prepare recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'shaker', name, project)
+
+
+class JoinRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a join recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for join
+
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
     Create a Join recipe
     """
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'join', name, project)
+
+
+class StackRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a stack recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for stack
 
 class StackRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
@@ -482,12 +813,107 @@ class StackRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'vstack', name, project)
 
+
+class SamplingRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a sampling recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for sampling
+
 class SamplingRecipeCreator(SingleOutputRecipeCreator):
     """
     Create a Sample/Filter recipe
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sampling', name, project)
+
+
+class SplitRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a split recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for split
+
+class SplitRecipeCreator(DSSRecipeCreator):
+    """
+    Create a Split recipe
+    """
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, "split", name, project)
+
+    def _finish_creation_settings(self):
+        pass
+
+
+class DownloadRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a download recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for download
+
+class DownloadRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Download recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'download', name, project)
+
+
+#####################################################
+# Per-recipe-type classes: Code recipes
+#####################################################
+
+class CodeRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a code recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    def get_code(self):
+        """
+        Returns the code of the recipe as a string
+        :rtype string
+        """
+        self._payload_to_str()
+        return self.str_payload
+
+    def set_code(self, code):
+        """
+        Updates the code of the recipe
+        :param str code: The new code as a string
+        """
+        self.set_payload(code)
+
+    def get_code_env_settings(self):
+        """
+        Returns the code env settings for this recipe
+        :rtype dict
+        """
+        rp = self.get_recipe_params()
+        if not "envSelection" in rp:
+            raise ValueError("This recipe kind does not seem to take a code env selection")
+        return rp["envSelection"]
+
+    def set_code_env(self, code_env=None, inherit=False, use_builtin=False):
+        """
+        Sets the code env to use for this recipe.
+
+        Exactly one of `code_env`, `inherit` or `use_builtin` must be passed
+
+        :param str code_env: The name of a code env
+        :param bool inherit: Use the project's default code env
+        :param bool use_builtin: Use the builtin code env
+        """
+        rp = self.get_recipe_params()
+        if not "envSelection" in rp:
+            raise ValueError("This recipe kind does not seem to take a code env selection")
+
+        if code_env is not None:
+            rp["envSelection"] = {"envMode": "EXPLICIT_ENV", "envName": "code_env"}
+        elif inherit:
+            rp["envSelection"] = {"envMode": "INHERIT"}
+        elif use_builtin:
+            rp["envSelection"] = {"envMode": "USE_BUILTIN_MODE"}
+        else:
+            raise ValueError("No env setting selected")
 
 class CodeRecipeCreator(DSSRecipeCreator):
     def __init__(self, name, type, project):
@@ -508,10 +934,109 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.script = script
         return self
 
+    def with_new_output_dataset(self, name, connection,
+                                type=None, format=None,
+                                copy_partitioning_from="FIRST_INPUT",
+                                append=False):
+        """
+        Create a new managed dataset as output to the recipe-to-be-created. The dataset is created immediately
+
+        :param str name: name of the dataset to create
+        :param str connection_id: name of the connection to create the dataset on
+        :param str type: type of dataset, for connection where the type could be ambiguous. Typically,
+                                 this is SCP or SFTP, for SSH connection
+        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
+                                     AVRO, ORC. If None, uses the default
+        :param str copy_partitioning_from: Whether to copy the partitioning from another thing.
+                    Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
+                    "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
+        :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
+        """
+
+        ch = self.project.new_managed_dataset_creation_helper(name)
+        ch.with_store_into(connection, type_option_id=type, format_option_id=format)
+
+        # FIXME: can't manage input folder
+        if copy_partitioning_from == "FIRST_INPUT":
+            inputs = self._get_input_refs()
+            if len(inputs) == 0:
+                logging.warn("No input declared yet, can't copy partitioning from first input")
+            else:
+                self.creation_settings["partitioningOptionId"] = "copy:dataset:%s" % (inputs[0])
+        elif copy_partitioning_from is not None:
+            self.creation_settings["partitioningOptionId"] = "copy:%s" % copy_partitioning_from
+
+        ch.create()
+
+        self.with_output(name, append=append)
+        return self
+
     def _finish_creation_settings(self):
         super(CodeRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['script'] = self.script
 
+class PythonRecipeCreator(CodeRecipeCreator):
+    """
+    Creates a Python recipe.
+    A Python recipe can be defined either by its complete code, like a normal Python recipe, or
+    by a function signature.
+
+    When using a function, the function must take as arguments:
+     * A list of dataframes corresponding to the dataframes of the input datasets
+     * Optional named arguments corresponding to arguments passed to the creator
+    """
+
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, "python", name, project)
+
+    DEFAULT_RECIPE_CODE_TMPL = """
+# This code is autogenerated by PythonRecipeCreator function mode
+import dataiku, dataiku.recipe, json
+from {module_name} import {fname}
+input_datasets = dataiku.recipe.get_inputs_as_datasets()
+output_datasets = dataiku.recipe.get_outputs_as_datasets()
+params = json.loads('{params_json}')
+
+logging.info("Reading %d input datasets as dataframes" % len(input_datasets))
+input_dataframes = [ds.get_dataframe() for ds in input_datasets]
+
+logging.info("Calling user function {fname}")
+function_input = input_dataframes if len(input_dataframes) > 1 else input_dataframes[0]
+output_dataframes = {fname}(function_input, **params)
+
+if not isinstance(output_dataframes, list):
+    output_dataframes = [output_dataframes]
+
+if not len(output_dataframes) == len(output_datasets):
+    raise Exception("Code function {fname}() returned %d dataframes but recipe expects %d output datasets", \\
+                                            (len(output_dataframes), len(output_datasets)))
+output = list(zip(output_datasets, output_dataframes))
+for ds, df in output:
+    logging.info("Writing function result to dataset %s" % ds.name)
+    ds.write_with_schema(df)
+"""
+
+    def with_function_name(self, module_name, function_name, function_args=None, custom_template=None):
+        """
+        Defines this recipe as being a functional recipe calling a function name from a module name
+        """
+        script_tmpl = PythonRecipeCreator.DEFAULT_RECIPE_CODE_TMPL if custom_template is None else custom_template
+
+        if function_args is None:
+            function_args = {}
+
+        code = script_tmpl.format(module_name=module_name, fname=function_name, params_json = json.dumps(function_args))
+        self.with_script(code)
+
+        return self
+
+    def with_function(self, fn, function_args=None, custom_template=None):
+        import inspect
+        #TODO: add in documentation that relative imports wont work
+        module_name = inspect.getmodule(fn).__name__
+        fname = fn.__name__
+        return self.with_function_name(module_name, fname, function_args, custom_template)
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
@@ -520,15 +1045,10 @@ class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sql_query', name, project)
 
-class SplitRecipeCreator(DSSRecipeCreator):
-    """
-    Create a Split recipe
-    """
-    def __init__(self, name, project):
-        DSSRecipeCreator.__init__(self, "split", name, project)
 
-    def _finish_creation_settings(self):
-        pass
+#####################################################
+# Per-recipe-type classes: ML recipes
+#####################################################
 
 class PredictionScoringRecipeCreator(SingleOutputRecipeCreator):
     """
@@ -600,3 +1120,36 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'download', name, project)
+
+
+class RequiredSchemaUpdates(object):
+    """
+    Representation of the updates required to the schema of the outputs of a recipe.
+    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_updates`
+    """
+
+    def __init__(self, recipe, data):
+        self.recipe = recipe
+        self.data = data
+        self.drop_and_recreate = True
+        self.synchronize_metastore = True
+
+    def any_action_required(self):
+        return self.data["totalIncompatibilities"] > 0
+
+    def apply(self):
+        results  = []
+        for computable in self.data["computables"]:
+            osu = {
+                "computableType": computable["type"],
+                # dirty
+                "computableId": computable["type"] == "DATASET" and computable["datasetName"] or computable["id"],
+                "newSchema": computable["newSchema"],
+                "dropAndRecreate": self.drop_and_recreate,
+                "synchronizeMetastore" : self.synchronize_metastore
+            }
+
+            results.append(self.recipe.client._perform_json("POST",
+                    "/projects/%s/recipes/%s/actions/updateOutputSchema" % (self.recipe.project_key, self.recipe.recipe_name),
+                    body=osu))
+        return results
