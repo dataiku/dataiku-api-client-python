@@ -3,11 +3,51 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .future import DSSFuture
 import json, warnings
+from .utils import DSSTaggableObjectListItem
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
 from . import recipe
+
+class DSSDatasetListItem(DSSTaggableObjectListItem):
+    """An item in a list of datasets. Do not instantiate this class"""
+    def __init__(self, client, data):
+        super(DSSDatasetListItem, self).__init__(data)
+        self.client = client
+
+    def to_dataset(self):
+        """Gets the :class:`DSSDataset` corresponding to this dataset"""
+        return DSSDataset(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["name"]
+    @property
+    def type(self):
+        return self._data["type"]
+    @property
+    def schema(self):
+        return self._data["schema"]
+
+    @property
+    def connection(self):
+        """Returns the connection on which this dataset is attached, or None if there is no connection for this dataset"""
+        if not "params" in self._data:
+            return None
+        return self._data["params"].get("connection", None)
+
+    def get_column(self, column):
+        """
+        Returns the schema column given a name.
+        :param str column: Column to find
+        :return a dict of the column settings or None if column does not exist
+        """
+        matched = [col for col in self.schema["columns"] if col["name"] == column]
+        return None if len(matched) == 0 else matched[0]
 
 class DSSDataset(object):
     """

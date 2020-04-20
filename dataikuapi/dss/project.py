@@ -1,5 +1,5 @@
 import time, warnings, sys, os.path as osp
-from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
+from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from . import recipe
 from .managedfolder import DSSManagedFolder
@@ -208,15 +208,22 @@ class DSSProject(object):
     # Datasets
     ########################################################
 
-    def list_datasets(self):
+    def list_datasets(self, rtype="listitems"):
         """
-        List the datasets in this project
-        
-        :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
-        :rtype: list of dicts
+        List the datasets in this project.
+
+        :param str rtype: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the datasets. If "rtype" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
+                  If "rtype" is "objects", each one as a :class:`dataset.DSSDataset`
+        :rtype: list
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/datasets/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/datasets/" % self.project_key)
+        if rtype == "listitems":
+            return [DSSDatasetListItem(self.client, item) for item in items]
+        elif rtype == "objects":
+            return [DSSDataset(self.client, self.project_key, item["name"]) for item in items]
+        else:
+            raise ValueError("Unknown rtype")
 
     def get_dataset(self, dataset_name):
         """

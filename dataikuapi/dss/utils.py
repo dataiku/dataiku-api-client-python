@@ -88,3 +88,14 @@ class AnyLoc(object):
             return AnyLoc(elts[0], elts[1])
         else:
             raise Exception("Cannot parse object id, it's not a full id")
+
+
+class DSSTaggableObjectListItem(dict):
+    """An item in a list of taggable objects. Do not instantiate this class"""
+    def __init__(self, data):
+        super(DSSTaggableObjectListItem, self).__init__(data)
+        self._data = data
+
+    @property
+    def tags(self):
+        return self._data["tags"]
