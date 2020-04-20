@@ -1027,7 +1027,7 @@ for ds, df in output:
     ds.write_with_schema(df)
 """
 
-    def with_function_name(self, module_name, function_name, function_args=None, custom_template=None):
+    def with_function_name(self, module_name, function_name, custom_template=None, **function_args):
         """
         Defines this recipe as being a functional recipe calling a function name from a module name
         """
@@ -1041,12 +1041,12 @@ for ds, df in output:
 
         return self
 
-    def with_function(self, fn, function_args=None, custom_template=None):
+    def with_function(self, fn, custom_template=None, **function_args):
         import inspect
         #TODO: add in documentation that relative imports wont work
         module_name = inspect.getmodule(fn).__name__
         fname = fn.__name__
-        return self.with_function_name(module_name, fname, function_args, custom_template)
+        return self.with_function_name(module_name, fname, custom_template, **function_args)
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
