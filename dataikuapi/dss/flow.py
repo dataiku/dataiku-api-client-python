@@ -162,7 +162,7 @@ class DSSProjectFlowGraph(object):
         return self._convert_nodes_list(computables, as_type)
 
     def _convert_nodes_list(self, nodes, as_type):
-        if as_type == "object":
+        if as_type == "object" or as_type == "objects":
             return [self._get_object_from_graph_node(node) for node in nodes]
         else:
             return nodes

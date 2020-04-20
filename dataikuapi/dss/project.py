@@ -208,22 +208,22 @@ class DSSProject(object):
     # Datasets
     ########################################################
 
-    def list_datasets(self, rtype="listitems"):
+    def list_datasets(self, as_type="listitems"):
         """
         List the datasets in this project.
 
-        :param str rtype: How to return the list. Supported values are "listitems" and "objects".
-        :returns: The list of the datasets. If "rtype" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
-                  If "rtype" is "objects", each one as a :class:`dataset.DSSDataset`
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the datasets. If "as_type" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataset.DSSDataset`
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/datasets/" % self.project_key)
-        if rtype == "listitems":
+        if as_type == "listitems" or as_type == "listitem":
             return [DSSDatasetListItem(self.client, item) for item in items]
-        elif rtype == "objects":
+        elif as_type == "objects" or as_type == "object":
             return [DSSDataset(self.client, self.project_key, item["name"]) for item in items]
         else:
-            raise ValueError("Unknown rtype")
+            raise ValueError("Unknown as_type")
 
     def get_dataset(self, dataset_name):
         """
