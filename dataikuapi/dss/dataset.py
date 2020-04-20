@@ -336,6 +336,67 @@ class DSSDataset(object):
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name))
 
+    ########################################################
+    # Lab and ML
+    # Don't forget to synchronize with DSSProject.*
+    ########################################################
+
+    def create_prediction_ml_task(self, target_variable,
+                                  ml_backend_type="PY_MEMORY",
+                                  guess_policy="DEFAULT",
+                                  prediction_type=None,
+                                  wait_guess_complete=True):
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+        :param string input_dataset: the dataset to use for training/testing the model
+        :param string target_variable: the variable to predict
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
+        :param string prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        """
+        return self.project.create_prediction_ml_task(self.dataset_name, 
+             target_variable = target_variable, ml_backend_type = ml_backend_type,
+             guess_policy = guess_policy, prediction_type = prediction_type, wait_guess_complete = wait_guess_complete)
+
+    def create_clustering_ml_task(self, input_dataset,
+                                   ml_backend_type = "PY_MEMORY",
+                                   guess_policy = "KMEANS"):
+        """Creates a new clustering task in a new visual analysis lab
+        for a dataset.
+
+
+        The returned ML task will be in 'guessing' state, i.e. analyzing
+        the input dataset to determine feature handling and algorithms.
+
+        You should wait for the guessing to be completed by calling
+        ``wait_guess_complete`` on the returned object before doing anything
+        else (in particular calling ``train`` or ``get_settings``)
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
+        """
+        return self.project.create_clustering_ml_task(self.dataset_name, 
+            ml_backend_type = ml_backend_type, guess_policy = guess_policy)
+
+    def create_analysis(self):
+        """
+        Creates a new visual analysis lab
+        """
+        return self.project_create_analysis(self.dataset_name)
+ 
+    def list_analyses(self):
+        """
+        List the visual analyses on this dataset
+        :return list of dicts
+        """
+        analysis_list = self.project.list_analyses()
+        return [desc for desc in analysis_list if self.dataset_name == desc.get('inputDataset')]
 
     ########################################################
     # Statistics worksheets

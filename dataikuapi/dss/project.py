@@ -345,7 +345,8 @@ class DSSProject(object):
         return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
-    # ML
+    # Lab and ML
+    # Don't forget to synchronize with DSSDataset.*
     ########################################################
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
