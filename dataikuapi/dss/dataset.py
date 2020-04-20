@@ -459,22 +459,22 @@ class DSSDataset(object):
     def test_and_detect(self, infer_storage_types=False):
         settings = self.get_settings()
 
-        if settings.get_type() in self.__class__.FS_TYPES:
+        if settings.type in self.__class__.FS_TYPES:
             future_resp = self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
                 body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
 
             return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
-        elif settings.get_type() in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__.SQL_TYPES:
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
         else:
-            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def autodetect_settings(self, infer_storage_types=False):
         settings = self.get_settings()
 
-        if settings.get_type() in self.__class__.FS_TYPES:
+        if settings.type in self.__class__.FS_TYPES:
             future = self.test_and_detect(infer_storage_types)
             result = future.wait_for_result()
 
@@ -487,7 +487,7 @@ class DSSDataset(object):
 
             return settings
 
-        elif settings.get_type() in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__.SQL_TYPES:
             result = self.test_and_detect()
 
             if not "schemaDetection" in result:
@@ -497,7 +497,7 @@ class DSSDataset(object):
             return settings
 
         else:
-            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def get_as_core_dataset(self):
         import dataiku
@@ -543,7 +543,8 @@ class DSSDatasetSettings(object):
         """Get the type-specific params, as a raw dict"""
         return self.settings["params"]
 
-    def get_type(self):
+    @property
+    def type(self):
         return self.settings["type"]
 
     def remove_partitioning(self):
