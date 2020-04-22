@@ -63,6 +63,16 @@ class DSSScenario(object):
             })
         return [DSSScenarioRun(self.client, run) for run in runs]
 
+    def get_last_finished_run(self):
+        """
+        Gets the last run that completed (either successfully or not)
+        :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
+        """
+        lr = self.get_last_runs(only_finished_runs=True)
+        if len(lr) == 0:
+            raise ValueError("No scenario run completed")
+        return lr[0]
+
     def get_current_run(self):
         """
         Get the current run of the scenario, or None if it is not running at the moment
@@ -360,6 +370,11 @@ class DSSScenarioRun(object):
     def __init__(self, client, run):
         self.client = client
         self.run = run
+
+    @property
+    def id(self):
+        """The run id of this run"""
+        return self.run["runId"]
 
     def refresh(self):
         """Refreshes the details (outcome, running, info, ...) from the scenario"""
