@@ -1,7 +1,6 @@
 from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
-import inspect
 
 #####################################################
 # Base classes
@@ -17,10 +16,6 @@ class DSSRecipe(object):
         self.project_key = project_key
         self.recipe_name = recipe_name
 
-    @property
-    def name(self):
-        return self.recipe_name
-    
     def compute_schema_updates(self):
         """
         Computes which updates are required to the outputs of this recipe.
@@ -485,40 +480,6 @@ class DSSRecipeCreator(object):
                 ret.append(item["ref"])
         return ret
 
-    def _get_output_refs(self):
-        ret = []
-        for role_key, role_obj in self.recipe_proto['outputs'].items():
-            for item in role_obj['items']:
-                ret.append(item['ref'])
-        return ref
-
-    def get_input_refs_for_role(self, role="main"):
-
-        role_obj = self.recipe_proto['inputs'].get(role, None)
-
-        ret = []
-        if role_obj is not None:
-            for item in role_obj['items']:
-                ret.append(item['ref'])
-        return ret
-
-    def get_output_refs_for_role(self, role="main"):
-
-        role_obj = self.recipe_proto['outputs'].get(role, None)
-
-        ret = []
-        if role_obj is not None:
-            for item in role_obj['items']:
-                ret.append(item['ref'])
-        return ret
-
-    def get_name(self):
-        return self.recipe_proto['name']
-
-    def set_name(self, name):
-        self.recipe_proto['name'] = name
-        return self
-
     def with_input(self, dataset_name, project_key=None, role="main"):
         """
         Add an existing object as input to the recipe-to-be-created
@@ -545,23 +506,15 @@ class DSSRecipeCreator(object):
 
     def build(self):
         """Deprecated. Use create()"""
-        warnings.warn("build() is deprecated, please use create()", DeprecationWarning)
         return self.create()
 
-    def create(self, overwrite=False):
+    def create(self):
         """
         Creates the new recipe in the project, and return a handle to interact with it. 
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
         """
-        if not overwrite and self.recipe_proto.get('name', None):
-            recipe_name = self.recipe_proto['name']
-            data = self.project.client._perform_json(
-                "GET", "/projects/%s/recipes/%s" % (self.project.project_key, recipe_name))
-            if data:
-                raise Exception("Recipe {} already exists, use overwrite=True to force delete".format(recipe_name))
-
         self._finish_creation_settings()
         return self.project.create_recipe(self.recipe_proto, self.creation_settings)
 
@@ -1087,18 +1040,6 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.script = script
         return self
 
-    def with_input_list(self, input_ds_names, project_key=None, role="main"):
-        if not isinstance(input_ds_names, list):
-            raise TypeError("Expected type: list and was given type: {}".format(type(input_ds_names)))
-        for ds_name in input_ds_names:
-            self.with_input(ds_name, project_key, role)
-
-    def with_output_list(self, output_ds_names, append=False, role="main"):
-        if not isinstance(output_ds_name, list):
-            raise TypeError("Expected type: list and was givent type {}".format(type(output_ds_names)))
-        for ds_name in output_ds_names:
-            self.with_output(ds_name, append, role)
-
     def with_new_output_dataset(self, name, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
@@ -1123,13 +1064,6 @@ class CodeRecipeCreator(DSSRecipeCreator):
         ch = self.project.new_managed_dataset_creation_helper(name)
         ch.with_store_into(connection, type_option_id=type, format_option_id=format)
 
-        if force_delete and ch.dataset_exists():
-            try:
-                self.project.get_dataset(name).delete()
-            except:
-                logging.warn("Force delete dataset {} in new_output_dataset creation failed".format(name))
-                raise
-
         # FIXME: can't manage input folder
         if copy_partitioning_from == "FIRST_INPUT":
             inputs = self._get_input_refs()
@@ -1145,23 +1079,9 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.with_output(name, append=append)
         return self
 
-    def with_new_output_dataset_list(self, output_ds_names, connection,
-                                type=None, format=None,
-                                copy_partitioning_from="FIRST_INPUT",
-                                append=False, force_delete=False):
-
-        if not isinstance(output_ds_names, list):
-            raise TypeError("Expected type: list and was given type: {}".format(type(output_ds_names)))
-        for ds_name in output_ds_names:
-            self.with_new_output_dataset(ds_name, connection,
-                                type=type, format=format,
-                                copy_partitioning_from=copy_partitioning_from,
-                                append=append, force_delete=force_delete)   
-
     def _finish_creation_settings(self):
         super(CodeRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['script'] = self.script
-
 
 class PythonRecipeCreator(CodeRecipeCreator):
     """
@@ -1180,7 +1100,6 @@ class PythonRecipeCreator(CodeRecipeCreator):
     DEFAULT_RECIPE_CODE_TMPL = """
 # This code is autogenerated by PythonRecipeCreator function mode
 import dataiku, dataiku.recipe, json
-
 from {module_name} import {fname}
 input_datasets = dataiku.recipe.get_inputs_as_datasets()
 output_datasets = dataiku.recipe.get_outputs_as_datasets()
@@ -1209,7 +1128,6 @@ for ds, df in output:
         """
         Defines this recipe as being a functional recipe calling a function name from a module name
         """
-        #TODO add detailed documentation
         script_tmpl = PythonRecipeCreator.DEFAULT_RECIPE_CODE_TMPL if custom_template is None else custom_template
 
         if function_args is None:
