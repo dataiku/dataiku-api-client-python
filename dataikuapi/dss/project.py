@@ -5,7 +5,7 @@ from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
-from .scenario import DSSScenario
+from .scenario import DSSScenario, DSSScenarioListItem
 from .apiservice import DSSAPIService
 from .future import DSSFuture
 from .notebook import DSSNotebook
@@ -778,18 +778,22 @@ class DSSProject(object):
     # Scenarios
     ########################################################
 
-    def list_scenarios(self):
+    def list_scenarios(self, as_type="listitems"):
         """
         List the scenarios in this project.
 
-        This method returns a list of Python dictionaries. Each dictionary represents
-        a scenario. Each dictionary contains at least a "id" field, that you can then pass
-        to the :meth:`get_scenario`
-
-        :returns: the list of scenarios, each one as a Python dictionary
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the datasets. If "rtype" is "listitems", each one as a :class:`scenario.DSSScenarioListItem`.
+                  If "rtype" is "objects", each one as a :class:`scenario.DSSScenario`
+        :rtype: list
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/scenarios/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/scenarios/" % self.project_key)
+        if as_type == "listitems":
+            return [DSSScenarioListItem(self.client, item) for item in items]
+        elif as_type == "objects":
+            return [DSSScenario(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_scenario(self, scenario_id):
         """

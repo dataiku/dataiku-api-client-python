@@ -2,6 +2,7 @@ from datetime import datetime
 import time, warnings
 from dataikuapi.utils import DataikuException
 from .discussion import DSSObjectDiscussions
+from .utils import DSSTaggableObjectListItem
 
 class DSSScenario(object):
     """
@@ -86,6 +87,14 @@ class DSSScenario(object):
         run_details = self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/%s/" % (self.project_key, self.id, run_id))
         return DSSScenarioRun(self.client, run_details["scenarioRun"])
+
+    def get_status(self):
+        """
+        Returns the status of this scenario
+        :rtype :class:`DSSScenarioStatus`
+        """
+        data = self.client._perform_json("GET", "/projects/%s/scenarios/%s/light" % (self.project_key, self.id))
+        return DSSScenarioStatus(self, data)
 
     def get_settings(self):
         """
@@ -198,6 +207,34 @@ class DSSScenario(object):
         return self.client._perform_json(
             "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
 
+class DSSScenarioStatus(object):
+    """Status of a scenario. Do not instantiate this class, use :meth:`DSSScenario.get_status`"""
+
+    def __init__(self, scenario, data):
+        self.scenario = scenario
+        self.data = data
+
+    def get_raw(self):
+        return self.data
+
+    @property
+    def running(self):
+        return self.data["running"]
+
+    @property
+    def next_run(self):
+        """
+        Time at which the scenario is expected to next run based on its triggers.
+
+        May be None if there are no temporal triggers
+
+        This is an approximate indication as scenario run may be delayed, especially in the case of 
+        multiple triggers or high load
+        """
+        if not "nextRun" in self.data or self.data["nextRun"] == 0:
+            return None
+        return datetime.fromtimestamp(self.data["nextRun"] / 1000)
+
 
 class DSSScenarioSettings(object):
     """Settings of a scenario. Do not instantiate this class, use :meth:`DSSScenario.get_settings`"""
@@ -209,8 +246,45 @@ class DSSScenarioSettings(object):
     def get_raw(self):
         return self.data
 
-    def set_active(self, active):
+    @property 
+    def active(self):
+        """
+        Whether this scenario is currently active, i.e. its auto-triggers are executing
+        """
+        return self.data["active"]
+    @active.setter
+    def active(self, active):
         self.data["active"] = active
+
+    @property 
+    def run_as(self):
+        """
+        The configured 'run as' of the scenario. None means that the scenario runs as its last modifier.
+        Only administrators may set a non-None value
+        """
+        return self.data.get("runAsUser", None)
+    @run_as.setter
+    def run_as(self, run_as):
+        self.data["runAsUser"] = run_as
+
+    @property
+    def effective_run_as(self):
+        """
+        The effective 'run as' of the scenario. If a run_as has been configured by an administrator, 
+        this will be used. Else, this will be the last modifier of the scenario.
+
+        If this method returns None, it means that it was not possible to identify who this
+        scenario runs as. This scenario is probably not currently functioning.
+        """
+        # Note: this logic must match the one in ScenarioBaseService
+        if "runAsUser" in self.data:
+            return self.data["runAsUser"]
+        elif "versionTag" in self.data:
+            return self.data["versionTag"]["lastModifiedBy"]["login"]
+        elif "creationTag" in self.data:
+            return self.data["creationTag"]["lastModifiedBy"]["login"]
+        else:
+            return Non
 
     @property
     def raw_triggers(self):
@@ -343,8 +417,16 @@ class DSSScenarioRun(object):
 
         :rtype dict
         """
-        return self.client._perform_json(
+        raw_data = self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/%s/" % (self.run['scenario']['projectKey'], self.run['scenario']['id'], self.run['runId']))
+
+        details = DSSScenarioRunDetails(raw_data)
+        if "stepRuns" in details:
+            structured_steps = []
+            for step in details["stepRuns"]:
+                structured_steps.append(DSSStepRunDetails(step))
+            details["stepRuns"] = structured_steps
+        return details
 
     def get_start_time(self):
         """
@@ -375,6 +457,31 @@ class DSSScenarioRun(object):
         duration = (end_time - self.get_start_time()).total_seconds()
         return duration
     duration = property(get_duration)
+
+class DSSScenarioRunDetails(dict):
+    def __init__(self, data):
+        super(DSSScenarioRunDetails, self).__init__(data)
+
+    @property
+    def steps(self):
+        return self["stepRuns"]
+
+    @property
+    def last_step(self):
+        return self["stepRuns"][len(self["stepRuns"]) - 1]
+
+class DSSStepRunDetails(dict):
+    def __init__(self, data):
+        super(DSSStepRunDetails, self).__init__(data)
+
+    @property
+    def outcome(self):
+        return self["result"]["outcome"]
+
+    @property
+    def job_ids(self):
+        """The list of DSS job ids that were ran as part of this step"""
+        return [ri["jobId"] for ri in self["additionalReportItems"] if ri["type"] == "JOB_EXECUTED"]
 
 class DSSScenarioRunWaiter(object):
     """
@@ -459,3 +566,17 @@ class DSSTriggerFire(object):
             })
         return self.trigger_fire["cancelled"]
 
+
+class DSSScenarioListItem(DSSTaggableObjectListItem):
+    """An item in a list of scenarios. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_scenarios"""
+    def __init__(self, client, data):
+        super(DSSScenarioListItem, self).__init__(data)
+        self.client = client
+
+    def to_scenario(self):
+        """Gets the :class:`DSSScenario` corresponding to this scenario"""
+        return DSSScenario(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def id(self):
+        return self._data["name"]
