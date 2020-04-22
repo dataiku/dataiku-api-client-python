@@ -310,6 +310,10 @@ class DSSScenarioSettings(object):
     def raw_triggers(self):
         return self.data["triggers"]
 
+    @property
+    def raw_reporters(self):
+        return self.data["reporters"]
+
     def add_periodic_trigger(self, every_minutes=5):
         """Adds a trigger that runs the scenario every X minutes"""
         trigger = {"active": True, "type": "temporal", "params": { "frequency": "Minutely", "count": every_minutes}}
