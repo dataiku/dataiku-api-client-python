@@ -52,7 +52,7 @@ class DSSScenario(object):
 
     def get_last_runs(self, limit=10, only_finished_runs=False):
         """
-        Get the list of the last runs of the scenario.
+        Get the list of the last runs of the scenario
 
         :return: A list of :class:`dataikuapi.dss.scenario.DSSScenarioRun`
         """
@@ -65,12 +65,22 @@ class DSSScenario(object):
 
     def get_last_finished_run(self):
         """
-        Gets the last run that completed (either successfully or not)
+        Gets the last run that completed (successfully or not)
+        :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
+        """
+        lr = [sr for sr in self.get_last_runs() if not sr.running]
+        if len(lr) == 0:
+            raise ValueError("No scenario run completed")
+        return lr[0]
+
+    def get_last_successful_run(self):
+        """
+        Gets the last run that completed successfully
         :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
         """
         lr = self.get_last_runs(only_finished_runs=True)
         if len(lr) == 0:
-            raise ValueError("No scenario run completed")
+            raise ValueError("No scenario run completed successfully")
         return lr[0]
 
     def get_current_run(self):
@@ -485,6 +495,18 @@ class DSSScenarioRunDetails(dict):
     def last_step(self):
         return self["stepRuns"][len(self["stepRuns"]) - 1]
 
+    @property
+    def first_error_details(self):
+        """
+        Try to get the details of the first error if this run failed. This will not always be able
+        to find the error details (it returns None in that case)
+        """
+        for step in self.steps:
+            step_error = step.first_error_details
+            if step_error is not None:
+                return step_error
+
+
 class DSSStepRunDetails(dict):
     def __init__(self, data):
         super(DSSStepRunDetails, self).__init__(data)
@@ -497,6 +519,23 @@ class DSSStepRunDetails(dict):
     def job_ids(self):
         """The list of DSS job ids that were ran as part of this step"""
         return [ri["jobId"] for ri in self["additionalReportItems"] if ri["type"] == "JOB_EXECUTED"]
+
+    @property
+    def first_error_details(self):
+        """
+        Try to get the details of the first error if this step failed. This will not always be able
+        to find the error details (it returns None in that case)
+        """
+        if self.outcome == 'FAILED':
+            step_thrown = self.get('result').get('thrown', None)
+            if step_thrown is not None:
+                return step_thrown
+
+        for item in self['additionalReportItems']:
+            if item.get("outcome", None) == 'FAILED':
+                item_thrown = item.get('thrown', None)
+                if item_thrown is not None:
+                    return item_thrown
 
 class DSSScenarioRunWaiter(object):
     """
