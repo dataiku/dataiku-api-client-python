@@ -453,6 +453,9 @@ class DSSRecipeCreator(object):
         self.creation_settings = {
         }
 
+    def set_name(self, name):
+        self.recipe_proto["name"] = name
+
     def _build_ref(self, object_id, project_key=None):
         if project_key is not None and project_key != self.project.project_key:
             return project_key + '.' + object_id
@@ -562,6 +565,9 @@ class DSSRecipeCreator(object):
         self._finish_creation_settings()
         return self.project.create_recipe(self.recipe_proto, self.creation_settings)
 
+    def set_raw_mode(self):
+        self.creation_settings["rawCreation"] = True
+
     def _finish_creation_settings(self):
         pass
 
@@ -591,10 +597,10 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self._with_output(dataset_name, append)
         return self
 
-    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET'):
+    def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET', overwrite=False):
         """
         Create a new dataset as output to the recipe-to-be-created. The dataset is not created immediately,
-        but when the recipe is created (ie in the build() method)
+        but when the recipe is created (ie in the create() method)
 
         :param str name: name of the dataset or identifier of the managed folder
         :param str connection_id: name of the connection to create the dataset on
@@ -609,9 +615,15 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         :param append: whether the recipe should append or overwrite the output when running
                        (note: not available for all dataset types)
         :param str object_type: DATASET or MANAGED_FOLDER
+        :param overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
         if object_type == 'DATASET':
             assert self.create_output_dataset is None
+
+            dataset = self.project.get_dataset(name)
+            if overwrite and dataset.exists():
+                dataset.delete(drop_data=True)
+
             self.create_output_dataset = True
             self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':typeOptionId,'specificSettings':{'formatOptionId':format_option_id, 'overrideSQLSchema':override_sql_schema},'partitioningOptionId':partitioning_option_id}
             self._with_output(name, append)
@@ -723,16 +735,18 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
 
     def with_group_key(self, group_key):
         """
-        Set a column as grouping key
+        Set a column as the first grouping key. Only a single grouping key may be set 
+        at recipe creation time. For additional groupings, get the recipe settings
 
-        :param str group_key: name of a column in the input
+        :param str group_key: name of a column in the input dataset
         """
         self.group_key = group_key
         return self
 
     def _finish_creation_settings(self):
         super(GroupingRecipeCreator, self)._finish_creation_settings()
-        self.creation_settings['groupKey'] = self.group_key
+        if self.group_key is not None:
+            self.creation_settings['groupKey'] = self.group_key
 
 
 class WindowRecipeSettings(DSSRecipeSettings):
@@ -833,8 +847,103 @@ class PrepareRecipeCreator(SingleOutputRecipeCreator):
 class JoinRecipeSettings(DSSRecipeSettings):
     """
     Settings of a join recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+
+    In order to enable self-joins, join recipes are based on a concept of "virtual inputs".
+    Every join, computed pre-join column, pre-join filter, ... is based on one virtual input, and
+    each virtual input references an input of the recipe, by index
+
+    For example, if a recipe has inputs A and B and declares two joins:
+        - A->B
+        - A->A(based on a computed column)
+
+    There are 3 virtual inputs:
+        * 0: points to recipe input 0 (i.e. dataset A)
+        * 1: points to recipe input 1 (i.e. dataset B)
+        * 2: points to recipe input 0 (i.e. dataset A) and includes the computed column
+
+    * The first join is between virtual inputs 0 and 1
+    * The second join is between virtual inputs 0 and 2
     """
     pass # TODO: Write helpers for join
+
+    @property
+    def raw_virtual_inputs(self):
+        """
+        Returns the raw list of virtual inputs
+        :rtype list of dict
+        """
+        return self.get_json_payload()["virtualInputs"]
+
+    @property
+    def raw_joins(self):
+        """
+        Returns the raw list of joins
+        :rtype list of dict
+        """
+        return self.get_json_payload()["joins"]
+
+    def add_virtual_input(self, input_dataset_index):
+        """
+        Adds a virtual input pointing to the specified input dataset of the recipe
+        (referenced by index in the inputs list)
+        """
+        self.raw_virtual_inputs.append({"index": input_dataset_index})
+
+    def add_pre_join_computed_column(self, virtual_input_index, computed_column):
+        """
+        Adds a computed column to a virtual input
+
+        Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object
+        """
+        self.raw_virtual_inputs[virtual_input_index]["computedColumns"].append(computed_column)
+
+    def add_join(self, join_type="LEFT", input1=0, input2=1):
+        """
+        Adds a join between two virtual inputs. The join is initialized with no condition.
+
+        Use :meth:`add_condition_to_join` on the return value to add a join condition (for example column equality)
+        to the join
+
+        :returns the newly added join as a dict
+        :rtype dict
+        """
+        jp = self.get_json_payload()
+        if not "joins" in jp:
+            jp["joins"] = []
+        join = {
+            "conditionsMode": "AND",
+            "on": [],
+            "table1": input1,
+            "table2": input2,
+            "type": join_type
+        }
+        jp["joins"].append(join)
+        return join
+
+    def add_condition_to_join(self, join, type="EQ", column1=None, column2=None):
+        """
+        Adds a condition to a join
+        :param str column1: Name of "left" column
+        :param str column2: Name of "right" column
+        """
+        cond = {
+            "type" : type,
+            "column1": {"name": column1, "table": join["table1"]},
+            "column2": {"name": column2, "table": join["table2"]},
+        }
+        join["on"].append(cond)
+        return cond
+
+    def add_post_join_computed_column(self, computed_column):
+        """
+        Adds a post-join computed column
+
+        Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object
+        """
+        self.get_json_payload()["computedColumns"].append(computed_column)
+
+    def set_post_filter(self, postfilter):
+        self.get_json_payload()["postFilter"] = postfilter
 
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
@@ -993,7 +1102,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
     def with_new_output_dataset(self, name, connection,
                                 type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
-                                append=False, force_delete=False):
+                                append=False, overwrite=False):
         """
         Create a new managed dataset as output to the recipe-to-be-created. The dataset is created immediately
 
@@ -1008,7 +1117,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
                     "dataset:XXX" to copy from a dataset name, or "folder:XXX" to copy from a folder id
         :param append: whether the recipe should append or overwrite the output when running (note: not available for all dataset types)
-        :param force_delete: delete the dataset if already exists, will not drop the data 
+        :param overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
 
         ch = self.project.new_managed_dataset_creation_helper(name)
@@ -1031,7 +1140,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
         elif copy_partitioning_from is not None:
             self.creation_settings["partitioningOptionId"] = "copy:%s" % copy_partitioning_from
 
-        ch.create()
+        ch.create(overwrite=overwrite)
 
         self.with_output(name, append=append)
         return self
@@ -1096,7 +1205,7 @@ for ds, df in output:
     ds.write_with_schema(df)
 """
 
-    def with_function_name(self, module_name, function_name, function_args=None, custom_template=None):
+    def with_function_name(self, module_name, function_name, custom_template=None, **function_args):
         """
         Defines this recipe as being a functional recipe calling a function name from a module name
         """
@@ -1112,12 +1221,11 @@ for ds, df in output:
         return self
 
     def with_function(self, fn, custom_template=None, **function_args):
-        #TODO: add detailed documentation, especially about the constrains on signature of said fn, e.g: input df lists
         import inspect
         #TODO: add in documentation that relative imports wont work
         module_name = inspect.getmodule(fn).__name__
         fname = fn.__name__
-        return self.with_function_name(module_name, fname, function_args, custom_template)
+        return self.with_function_name(module_name, fname, custom_template, **function_args)
 
 class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """

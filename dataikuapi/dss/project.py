@@ -1,5 +1,5 @@
 import time, warnings, sys, os.path as osp
-from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
+from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
 from . import recipe
 from .managedfolder import DSSManagedFolder
@@ -208,28 +208,22 @@ class DSSProject(object):
     # Datasets
     ########################################################
 
-    def list_datasets(self, tags=None, foreign=False):
+    def list_datasets(self, as_type="listitems"):
         """
-        List the datasets in this project
+        List the datasets in this project.
 
-        :param list tags: list[string] of tags. The query will only return datasets having one of these tags
-        :param boolean foreign: if true, also lists the datasets from other projects that are exposed to the specified project
-        
-        :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
-        :rtype: list of dicts
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the datasets. If "as_type" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataset.DSSDataset`
+        :rtype: list
         """
-        options = {}
-        if tags:
-            if not isinstance(tags, list):
-                raise TypeError("Provided tags argument is not of type list")
-            options["tags"] = tags
-        if foreign:
-            options["foreign"] = "true"
-
-        options_string = "".join(["?{}={}".format(k,v) for k,v in options.items()])
-
-        return self.client._perform_json(
-            "GET", "/projects/%s/datasets/%s" % (self.project_key, options_string))
+        items = self.client._perform_json("GET", "/projects/%s/datasets/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSDatasetListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSDataset(self.client, self.project_key, item["name"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_dataset(self, dataset_name):
         """
@@ -351,7 +345,8 @@ class DSSProject(object):
         return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
-    # ML
+    # Lab and ML
+    # Don't forget to synchronize with DSSDataset.*
     ########################################################
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
@@ -872,7 +867,7 @@ class DSSProject(object):
                        body = definition)['name']
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
-    def new_recipe(self, type, name):
+    def new_recipe(self, type, name=None):
         """
         Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         or one of its subclasses to complete the creation of the recipe.
@@ -897,6 +892,7 @@ class DSSProject(object):
             recipe.compute_schema_updates().apply()
 
         :param str type: Type of the recipe
+        :param str name: Optional, base name for the new recipe.
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         """
 

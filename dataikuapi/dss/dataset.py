@@ -3,11 +3,51 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .future import DSSFuture
 import json, warnings
+from .utils import DSSTaggableObjectListItem
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
 from . import recipe
+
+class DSSDatasetListItem(DSSTaggableObjectListItem):
+    """An item in a list of datasets. Do not instantiate this class"""
+    def __init__(self, client, data):
+        super(DSSDatasetListItem, self).__init__(data)
+        self.client = client
+
+    def to_dataset(self):
+        """Gets the :class:`DSSDataset` corresponding to this dataset"""
+        return DSSDataset(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["name"]
+    @property
+    def type(self):
+        return self._data["type"]
+    @property
+    def schema(self):
+        return self._data["schema"]
+
+    @property
+    def connection(self):
+        """Returns the connection on which this dataset is attached, or None if there is no connection for this dataset"""
+        if not "params" in self._data:
+            return None
+        return self._data["params"].get("connection", None)
+
+    def get_column(self, column):
+        """
+        Returns the schema column given a name.
+        :param str column: Column to find
+        :return a dict of the column settings or None if column does not exist
+        """
+        matched = [col for col in self.schema["columns"] if col["name"] == column]
+        return None if len(matched) == 0 else matched[0]
 
 class DSSDataset(object):
     """
@@ -95,6 +135,14 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name),
                 body=definition)
+
+    def exists(self):
+        """Returns whether this dataset exists"""
+        try:
+            self.get_metadata()
+            return True
+        except Exception as e:
+            return False
 
     ########################################################
     # Dataset metadata
@@ -300,6 +348,67 @@ class DSSDataset(object):
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name))
 
+    ########################################################
+    # Lab and ML
+    # Don't forget to synchronize with DSSProject.*
+    ########################################################
+
+    def create_prediction_ml_task(self, target_variable,
+                                  ml_backend_type="PY_MEMORY",
+                                  guess_policy="DEFAULT",
+                                  prediction_type=None,
+                                  wait_guess_complete=True):
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+        :param string input_dataset: the dataset to use for training/testing the model
+        :param string target_variable: the variable to predict
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
+        :param string prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        """
+        return self.project.create_prediction_ml_task(self.dataset_name, 
+             target_variable = target_variable, ml_backend_type = ml_backend_type,
+             guess_policy = guess_policy, prediction_type = prediction_type, wait_guess_complete = wait_guess_complete)
+
+    def create_clustering_ml_task(self, input_dataset,
+                                   ml_backend_type = "PY_MEMORY",
+                                   guess_policy = "KMEANS"):
+        """Creates a new clustering task in a new visual analysis lab
+        for a dataset.
+
+
+        The returned ML task will be in 'guessing' state, i.e. analyzing
+        the input dataset to determine feature handling and algorithms.
+
+        You should wait for the guessing to be completed by calling
+        ``wait_guess_complete`` on the returned object before doing anything
+        else (in particular calling ``train`` or ``get_settings``)
+
+        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
+        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
+        """
+        return self.project.create_clustering_ml_task(self.dataset_name, 
+            ml_backend_type = ml_backend_type, guess_policy = guess_policy)
+
+    def create_analysis(self):
+        """
+        Creates a new visual analysis lab
+        """
+        return self.project_create_analysis(self.dataset_name)
+ 
+    def list_analyses(self):
+        """
+        List the visual analyses on this dataset
+        :return list of dicts
+        """
+        analysis_list = self.project.list_analyses()
+        return [desc for desc in analysis_list if self.dataset_name == desc.get('inputDataset')]
 
     ########################################################
     # Statistics worksheets
@@ -414,6 +523,7 @@ class DSSDataset(object):
 
     FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
                 "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
+    # HTTP is FSLike but not FS                
 
     SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
@@ -422,22 +532,22 @@ class DSSDataset(object):
     def test_and_detect(self, infer_storage_types=False):
         settings = self.get_settings()
 
-        if settings.get_type() in self.__class__.FS_TYPES:
+        if settings.type in self.__class__.FS_TYPES:
             future_resp = self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
                 body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
 
             return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
-        elif settings.get_type() in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__.SQL_TYPES:
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
         else:
-            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def autodetect_settings(self, infer_storage_types=False):
         settings = self.get_settings()
 
-        if settings.get_type() in self.__class__.FS_TYPES:
+        if settings.type in self.__class__.FS_TYPES:
             future = self.test_and_detect(infer_storage_types)
             result = future.wait_for_result()
 
@@ -450,7 +560,7 @@ class DSSDataset(object):
 
             return settings
 
-        elif settings.get_type() in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__.SQL_TYPES:
             result = self.test_and_detect()
 
             if not "schemaDetection" in result:
@@ -460,7 +570,7 @@ class DSSDataset(object):
             return settings
 
         else:
-            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.get_type())
+            raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def get_as_core_dataset(self):
         import dataiku
@@ -471,10 +581,11 @@ class DSSDataset(object):
     ########################################################
 
     def new_code_recipe(self, type, code=None, recipe_name=None):
-        """Starts creation of a new code recipe taking this dataset as input"""
-
-        if recipe_name is None:
-            recipe_name = "%s_recipe_from_%s" % (type, self.dataset_name)
+        """
+        Starts creation of a new code recipe taking this dataset as input
+        :param str type: Type of the recipe ('python', 'r', 'pyspark', 'sparkr', 'sql', 'sparksql', 'hive', ...)
+        :param str code: The code of the recipe
+        """
 
         if type == "python":
             builder = recipe.PythonRecipeCreator(recipe_name, self.project)
@@ -485,12 +596,15 @@ class DSSDataset(object):
             builder.with_script(code)
         return builder
 
-    def new_grouping_recipe(self, first_group_by, recipe_name=None):
-        if recipe_name is None:
-            recipe_name = "group_%s" % (self.dataset_name)
-        builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
+    def new_recipe(self, type, recipe_name=None):
+        """
+        Starts creation of a new recipe taking this dataset as input.
+        For more details, please see :meth:`dataikuapi.dss.project.DSSProject.new_recipe`
+
+        :param str type: Type of the recipe
+        """
+        builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
-        builder.with_group_key(first_group_by)
         return builder
 
     ########################################################
@@ -527,9 +641,15 @@ class DSSDatasetSettings(object):
         self.settings = settings
 
     def get_raw(self):
+        """Get the raw dataset settings as a dict"""
         return self.settings
 
-    def get_type(self):
+    def get_raw_params(self):
+        """Get the type-specific params, as a raw dict"""
+        return self.settings["params"]
+
+    @property
+    def type(self):
         return self.settings["type"]
 
     def remove_partitioning(self):
@@ -541,6 +661,9 @@ class DSSDatasetSettings(object):
     def add_time_partitioning_dimension(self, dim_name, period="DAY"):
         self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "time", "params":{"period": period}})
 
+    def add_raw_schema_column(self, column):
+        self.settings["schema"]["columns"].append(column)
+
     def save(self):
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
@@ -550,13 +673,21 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
     def __init__(self, dataset, settings):
         super(FSLikeDatasetSettings, self).__init__(dataset, settings)
 
-    def set_format(format_type, format_params = None):
+    def set_connection_and_path(self, connection, path):
+        self.settings["params"]["connection"] = connection
+        self.settings["params"]["path"] = path
+
+    def get_raw_format_params(self):
+        """Get the raw format parameters as a dict""" 
+        return self.settings["formatParams"]
+
+    def set_format(self, format_type, format_params = None):
         if format_params is None:
             format_params = {}
         self.settings["formatType"] = format_type
         self.settings["formatParams"] = format_params
 
-    def set_csv_format(separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
+    def set_csv_format(self, separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
         format_params = {
             "style" : style,
             "separator":  separator,
@@ -573,7 +704,14 @@ class SQLDatasetSettings(DSSDatasetSettings):
     def __init__(self, dataset, settings):
         super(SQLDatasetSettings, self).__init__(dataset, settings)
 
-
+    def set_table(self, connection, schema, table):
+        """Sets this SQL dataset in 'table' mode, targeting a particular table of a connection"""
+        self.settings["params"].update({
+            "connection": connection,
+            "mode": "table",
+            "schema": schema,
+            "table": table
+        })
 
 class DSSManagedDatasetCreationHelper(object):
 
@@ -611,12 +749,15 @@ class DSSManagedDatasetCreationHelper(object):
         self.creation_settings["partitioningOptionId"] = "copy:%s:%s" % (code, dataset_ref)
         return self
 
-    def create(self):
+    def create(self, overwrite=False):
         """
         Executes the creation of the managed dataset according to the selected options
-
+        :param overwrite: If the dataset being created already exists, delete it first (removing data)
         :return: The :class:`DSSDataset` corresponding to the newly created dataset
         """
+        if overwrite and self.already_exists():
+            self.project.get_dataset(self.dataset_name).delete(drop_data = True)
+
         self.project.client._perform_json("POST", "/projects/%s/datasets/managed" % self.project.project_key,
             body = {
                 "name": self.dataset_name,
@@ -624,13 +765,11 @@ class DSSManagedDatasetCreationHelper(object):
         })
         return DSSDataset(self.project.client, self.project.project_key, self.dataset_name)
 
-    def dataset_exists(self, dataset_name=None):
-        dataset_name = self.dataset_name if not dataset_name else dataset_name
-        dataset = self.project.get_dataset(dataset_name)
+    def already_exists(self):
+        """Returns whether this managed dataset already exists"""
+        dataset = self.project.get_dataset(self.dataset_name)
         try:
             dataset.get_metadata()
+            return True
         except Exception as e:
-            #TODO: may include some logging here and more generally in the API client
             return False
-
-        return True
