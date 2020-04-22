@@ -842,6 +842,14 @@ class JoinRecipeSettings(DSSRecipeSettings):
         """
         self.raw_virtual_inputs.append({"index": input_dataset_index})
 
+    def add_computed_column(self, virtual_input_index, computed_column):
+        """
+        Adds a computed column to a virtual input
+
+        Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object
+        """
+        self.raw_virtual_inputs[virtual_input_index]["computedColumns"].append(computed_column)
+
     def add_join(self, join_type="LEFT", input1=0, input2=1):
         """
         Adds a join between two virtual inputs. The join is initialized with no condition.

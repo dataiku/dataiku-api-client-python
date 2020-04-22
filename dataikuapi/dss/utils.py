@@ -41,6 +41,11 @@ class DSSDatasetSelectionBuilder(object):
         self.selection["selectedPartitions"] = ids
         return self
 
+class DSSComputedColumn(object):
+
+    @staticmethod
+    def formula(name, formula, type="double"):
+        return {"expr": formula, "mode": "GREL", "name": name, "type": type}
 
 class DSSFilterBuilder(object):
     """
