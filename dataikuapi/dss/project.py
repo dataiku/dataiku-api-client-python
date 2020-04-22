@@ -892,6 +892,7 @@ class DSSProject(object):
             recipe.compute_schema_updates().apply()
 
         :param str type: Type of the recipe
+        :param str name: Optional, base name for the new recipe.
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         """
 

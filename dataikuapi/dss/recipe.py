@@ -688,16 +688,18 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
 
     def with_group_key(self, group_key):
         """
-        Set a column as grouping key
+        Set a column as the first grouping key. Only a single grouping key may be set 
+        at recipe creation time. For additional groupings, get the recipe settings
 
-        :param str group_key: name of a column in the input
+        :param str group_key: name of a column in the input dataset
         """
         self.group_key = group_key
         return self
 
     def _finish_creation_settings(self):
         super(GroupingRecipeCreator, self)._finish_creation_settings()
-        self.creation_settings['groupKey'] = self.group_key
+        if self.group_key is not None:
+            self.creation_settings['groupKey'] = self.group_key
 
 
 class WindowRecipeSettings(DSSRecipeSettings):
@@ -798,8 +800,84 @@ class PrepareRecipeCreator(SingleOutputRecipeCreator):
 class JoinRecipeSettings(DSSRecipeSettings):
     """
     Settings of a join recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+
+    In order to enable self-joins, join recipes are based on a concept of "virtual inputs".
+    Every join, computed pre-join column, pre-join filter, ... is based on one virtual input, and
+    each virtual input references an input of the recipe, by index
+
+    For example, if a recipe has inputs A and B and declares two joins:
+        - A->B
+        - A->A(based on a computed column)
+
+    There are 3 virtual inputs:
+        * 0: points to recipe input 0 (i.e. dataset A)
+        * 1: points to recipe input 1 (i.e. dataset B)
+        * 2: points to recipe input 0 (i.e. dataset A) and includes the computed column
+
+    * The first join is between virtual inputs 0 and 1
+    * The second join is between virtual inputs 0 and 2
     """
     pass # TODO: Write helpers for join
+
+    @property
+    def raw_virtual_inputs(self):
+        """
+        Returns the raw list of virtual inputs
+        :rtype list of dict
+        """
+        return self.get_json_payload()["virtualInputs"]
+
+    @property
+    def raw_joins(self):
+        """
+        Returns the raw list of joins
+        :rtype list of dict
+        """
+        return self.get_json_payload()["joins"]
+
+    def add_virtual_input(self, input_dataset_index):
+        """
+        Adds a virtual input pointing to the specified input dataset of the recipe
+        (referenced by index in the inputs list)
+        """
+        self.raw_virtual_inputs.append({"index": input_dataset_index})
+
+    def add_join(self, join_type="LEFT", input1=0, input2=1):
+        """
+        Adds a join between two virtual inputs. The join is initialized with no condition.
+
+        Use :meth:`add_condition_to_join` on the return value to add a join condition (for example column equality)
+        to the join
+
+        :returns the newly added join as a dict
+        :rtype dict
+        """
+        jp = self.get_json_payload()
+        if not "joins" in jp:
+            jp["joins"] = []
+        join = {
+            "conditionsMode": "AND",
+            "on": [],
+            "table1": input1,
+            "table2": input2,
+            "type": join_type
+        }
+        jp["joins"].append(join)
+        return join
+
+    def add_condition_to_join(self, join, type="EQ", column1=None, column2=None):
+        """
+        Adds a condition to a join
+        :param str column1: Name of "left" column
+        :param str column2: Name of "right" column
+        """
+        cond = {
+            "type" : type,
+            "column1": {"name": column1, "table": join["table1"]},
+            "column2": {"name": column2, "table": join["table2"]},
+        }
+        join["on"].append(cond)
+        return cond
 
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """

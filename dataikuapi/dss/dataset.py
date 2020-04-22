@@ -577,7 +577,11 @@ class DSSDataset(object):
     ########################################################
 
     def new_code_recipe(self, type, code=None, recipe_name=None):
-        """Starts creation of a new code recipe taking this dataset as input"""
+        """
+        Starts creation of a new code recipe taking this dataset as input
+        :param str type: Type of the recipe ('python', 'r', 'pyspark', 'sparkr', 'sql', 'sparksql', 'hive', ...)
+        :param str code: The code of the recipe
+        """
 
         if type == "python":
             builder = recipe.PythonRecipeCreator(recipe_name, self.project)
@@ -588,15 +592,14 @@ class DSSDataset(object):
             builder.with_script(code)
         return builder
 
-    def new_grouping_recipe(self, first_group_by, recipe_name=None):
-        builder = recipe.GroupingRecipeCreator(recipe_name, self.project)
-        builder.with_input(self.dataset_name)
-        builder.with_group_key(first_group_by)
-        return builder
-
     def new_recipe(self, type, recipe_name=None):
-        """Starts creation of a new recipe taking this dataset as input"""
-        builder = self.project.new_recipe(type, recipe_name)
+        """
+        Starts creation of a new recipe taking this dataset as input.
+        For more details, please see :meth:`dataikuapi.dss.project.DSSProject.new_recipe`
+
+        :param str type: Type of the recipe
+        """
+        builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
         return builder
 
