@@ -842,7 +842,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         """
         self.raw_virtual_inputs.append({"index": input_dataset_index})
 
-    def add_computed_column(self, virtual_input_index, computed_column):
+    def add_pre_join_computed_column(self, virtual_input_index, computed_column):
         """
         Adds a computed column to a virtual input
 
@@ -886,6 +886,17 @@ class JoinRecipeSettings(DSSRecipeSettings):
         }
         join["on"].append(cond)
         return cond
+
+    def add_post_join_computed_column(self, computed_column):
+        """
+        Adds a post-join computed column
+
+        Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object
+        """
+        self.get_json_payload()["computedColumns"].append(computed_column)
+
+    def set_post_filter(self, postfilter):
+        self.get_json_payload()["postFilter"] = postfilter
 
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """

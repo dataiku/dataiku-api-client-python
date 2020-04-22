@@ -47,6 +47,120 @@ class DSSComputedColumn(object):
     def formula(name, formula, type="double"):
         return {"expr": formula, "mode": "GREL", "name": name, "type": type}
 
+from enum import Enum
+class DSSFilterOperator(Enum):
+    EMPTY_ARRAY = "empty array"
+    NOT_EMPTY_ARRAY = "not empty array"
+    CONTAINS_ARRAY = "array contains"
+    NOT_EMPTY = "not empty"
+    EMPTY = "is empty"
+    NOT_EMPTY_STRING = "not empty string"
+    EMPTY_STRING = "empty string"
+    IS_TRUE = "true"
+    IS_FALSE = "false"
+    EQUALS_STRING = "== [string]"
+    EQUALS_CASE_INSENSITIVE_STRING = "== [string]i"
+    NOT_EQUALS_STRING = "!= [string]"
+    SAME = "== [NaNcolumn]"
+    DIFFERENT = "!= [NaNcolumn]"
+    EQUALS_NUMBER = "== [number]"
+    NOT_EQUALS_NUMBER = "!= [number]"
+    GREATER_NUMBER = ">  [number]"
+    LESS_NUMBER = "<  [number]"
+    GREATER_OR_EQUAL_NUMBER = ">= [number]"
+    LESS_OR_EQUAL_NUMBER = "<= [number]"
+    EQUALS_DATE = "== [date]"
+    GREATER_DATE = ">  [date]"
+    GREATER_OR_EQUAL_DATE = ">= [date]"
+    LESS_DATE = "<  [date]"
+    LESS_OR_EQUAL_DATE = "<= [date]"
+    BETWEEN_DATE = ">< [date]"
+    EQUALS_COL = "== [column]"
+    NOT_EQUALS_COL = "!= [column]"
+    GREATER_COL = ">  [column]"
+    LESS_COL = "<  [column]"
+    GREATER_OR_EQUAL_COL = ">= [column]"
+    LESS_OR_EQUAL_COL = "<= [column]"
+    CONTAINS_STRING = "contains"
+    REGEX = "regex"
+
+class DSSFilter(object):
+    """Helper class to build filter objects for use in visual recipes"""
+    @staticmethod
+    def of_single_condition(column, operator, string = None, num = None, date = None, time = None, date2 = None, time2 = None, unit = None):
+        return {
+            "enabled": True,
+            "uiData": {
+                'conditions': [DSSFilter.condition(column, operator, string, num, date, time, date2, time2, unit)],
+                "mode": "&&"
+            }
+        }
+
+    @staticmethod
+    def of_and_conditions(conditions):
+        return {
+            "enabled": True,
+            "uiData": {
+                'conditions': conditions,
+                "mode": "&&"
+            }
+        }
+
+    @staticmethod
+    def of_or_conditions(conditions):
+        return {
+            "enabled": True,
+            "uiData": {
+                'conditions': conditions,
+                "mode": "||"
+            }
+        }
+
+    @staticmethod
+    def of_formula(formula):
+        return {
+            "enabled": True,
+            "uiData": {
+                "mode": "CUSTOM"
+            },
+            "expression" : formula
+        }
+
+    @staticmethod
+    def of_sql_expression(sql_expression):
+        return {
+            "enabled": True,
+            "uiData": {
+                "mode": "SQL"
+            },
+            "expression" : sql_expression
+        }
+
+    @staticmethod
+    def condition(column, operator, string = None, num = None, date = None, time = None, date2 = None, time2 = None, unit = None):
+        if isinstance(operator, DSSFilterOperator):
+            operator = operator.value
+        cond = {
+            "input": column,
+            "operator":  operator 
+        }
+        if string is not None:
+            cond["string"] = string
+        if num is not None:
+            cond["num"] = num
+        if date is not None:
+            cond["date"] = date
+        if time is not None:
+            cond["time"] = time
+        if date2 is not None:
+            cond["date2"] = date2
+        if time2 is not None:
+            cond["time2"] = time2
+        if unit is not None:
+            cond["unit"] = unit
+
+        return cond
+
 class DSSFilterBuilder(object):
     """
     Builder for a "filter". In DSS, a filter is used to define a subset of rows for processing.
