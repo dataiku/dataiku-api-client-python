@@ -245,8 +245,8 @@ class DSSRecipeSettings(object):
         self.recipe = recipe
         self.data = data
         self.recipe_settings = self.data["recipe"]
-        self.str_payload = self.data.get("payload", None)
-        self.obj_payload = None
+        self._str_payload = self.data.get("payload", None)
+        self._obj_payload = None
 
     def save(self):
         """
@@ -257,17 +257,37 @@ class DSSRecipeSettings(object):
                 "PUT", "/projects/%s/recipes/%s" % (self.recipe.project_key, self.recipe.recipe_name),
                 body=self.data)
 
+    @property
+    def type(self):
+        return self.recipe_settings["type"]
+
+    @property
+    def str_payload(self):
+        """The raw "payload" of the recipe, as a string"""
+        self._payload_to_str()
+        return self._str_payload
+    @str_payload.setter
+    def str_payload(self, payload):
+        self._str_payload = payload
+        self._obj_payload = None
+
+    @property
+    def obj_payload(self):
+        """The raw "payload" of the recipe, as a dict"""
+        self._payload_to_obj()
+        return self._obj_payload
+
     def _payload_to_str(self):
-        if self.obj_payload is not None:
-            self.str_payload = json.dumps(self.obj_payload)
-            self.obj_payload = None
-        if self.str_payload is not None:
-            self.data["payload"] = self.str_payload
+        if self._obj_payload is not None:
+            self._str_payload = json.dumps(self._obj_payload)
+            self._obj_payload = None
+        if self._str_payload is not None:
+            self.data["payload"] = self._str_payload
 
     def _payload_to_obj(self):
-        if self.str_payload is not None:
-            self.obj_payload = json.loads(self.str_payload)
-            self.str_payload = None
+        if self._str_payload is not None:
+            self._obj_payload = json.loads(self._str_payload)
+            self._str_payload = None
 
     def get_recipe_raw_definition(self):
         """
@@ -303,7 +323,7 @@ class DSSRecipeSettings(object):
         :rtype string
         """
         self._payload_to_str()
-        return self.str_payload
+        return self._str_payload
 
     def get_json_payload(self):
         """
@@ -311,23 +331,23 @@ class DSSRecipeSettings(object):
         :rtype dict
         """
         self._payload_to_obj()
-        return self.obj_payload
+        return self._obj_payload
 
     def set_payload(self, payload):
         """
         Set the payload of this recipe
         :param str payload: the payload, as a string
         """
-        self.str_payload = payload
-        self.obj_payload = None
+        self._str_payload = payload
+        self._obj_payload = None
 
     def set_json_payload(self, payload):
         """
         Set the payload of this recipe
         :param dict payload: the payload, as a dict. The payload will be converted to a JSON string internally
         """
-        self.str_payload = None
-        self.obj_payload = payload
+        self._str_payload = None
+        self._obj_payload = payload
 
     def has_input(self, input_ref):
         """Returns whether this recipe has a given ref as input"""
@@ -362,6 +382,42 @@ class DSSRecipeSettings(object):
             for item in output_role.get("items", []):
                 if item.get("ref", None) == current_output_ref:
                     item["ref"] = new_output_ref
+
+    def add_input(self, role, ref, partition_deps=None):
+        if partition_deps is None:
+            partition_deps = []
+        self._get_or_create_input_role(role)["items"].append({"ref": ref, "deps": partition_deps})
+
+    def add_output(self, role, ref, append_mode=False):
+        self._get_or_create_output_role(role)["items"].append({"ref": ref, "appendMode": append_mode})
+
+    def _get_or_create_input_role(self, role):
+        inputs = self.get_recipe_inputs()
+        if not role in inputs:
+            role_obj = {"items": []}
+            inputs[role] = role_obj
+        return inputs[role]
+
+    def _get_or_create_output_role(self, role):
+        outputs = self.get_recipe_outputs()
+        if not role in outputs:
+            role_obj = {"items": []}
+            outputs[role] = role_obj
+        return outputs[role]
+
+    def _get_flat_inputs(self):
+        ret = []
+        for role_key, role_obj in self.get_recipe_inputs().items():
+            for item in role_obj["items"]:
+                ret.append((role_key, item))
+        return ret
+
+    def _get_flat_outputs(self):
+        ret = []
+        for role_key, role_obj in self.get_recipe_outputs().items():
+            for item in role_obj["items"]:
+                ret.append((role_key, item))
+        return ret
 
     def get_flat_input_refs(self):
         """
@@ -625,7 +681,6 @@ class GroupingRecipeSettings(DSSRecipeSettings):
     """
     def clear_grouping_keys(self):
         """Removes all grouping keys from this grouping recipe"""
-        self._payload_to_obj()
         self.obj_payload["keys"] = []
 
     def add_grouping_key(self, column):
@@ -633,11 +688,9 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         Adds grouping on a column
         :param str column: Column to group on
         """
-        self._payload_to_obj()
         self.obj_payload["keys"].append({"column":column})
 
     def set_global_count_enabled(self, enabled):
-        self._payload_to_obj()
         self.obj_payload["globalCount"] = enabled
 
     def get_or_create_column_settings(self, column):
@@ -778,16 +831,35 @@ class PrepareRecipeSettings(DSSRecipeSettings):
     """
     pass
 
-    def get_raw_steps(self):
+    @property
+    def raw_steps(self):
         """
         Returns a raw list of the steps of this prepare recipe.
         You can modify the returned list.
 
         Each step is a dict of settings. The precise settings for each step are not documented
         """
-        self._payload_to_obj()
         return self.obj_payload["steps"]
 
+    def add_processor_step(self, type, params):
+        step = {
+            "metaType": "PROCESSOR",
+            "type": type,
+            "params": params
+        }
+        self.raw_steps.append(step)
+
+    def add_filter_on_bad_meaning(self, meaning, columns):
+        params = {
+            "action" : "REMOVE_ROW",
+            "type" : meaning
+        }
+        if isinstance(columns, basestring):
+            params["appliesTo"] = "SINGLE_COLUMN"
+            params["columns"] = [columns]
+        elif isinstance(columns, list):
+            params["appliesTo"] = "COLUMNS"
+            params["columns"] = columns
 
 class PrepareRecipeCreator(SingleOutputRecipeCreator):
     """
@@ -825,7 +897,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         Returns the raw list of virtual inputs
         :rtype list of dict
         """
-        return self.get_json_payload()["virtualInputs"]
+        return self.obj_payload["virtualInputs"]
 
     @property
     def raw_joins(self):
@@ -833,7 +905,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         Returns the raw list of joins
         :rtype list of dict
         """
-        return self.get_json_payload()["joins"]
+        return self.obj_payload["joins"]
 
     def add_virtual_input(self, input_dataset_index):
         """
@@ -860,7 +932,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         :returns the newly added join as a dict
         :rtype dict
         """
-        jp = self.get_json_payload()
+        jp = self.obj_payload
         if not "joins" in jp:
             jp["joins"] = []
         join = {
@@ -893,10 +965,10 @@ class JoinRecipeSettings(DSSRecipeSettings):
 
         Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object
         """
-        self.get_json_payload()["computedColumns"].append(computed_column)
+        self.obj_payload["computedColumns"].append(computed_column)
 
     def set_post_filter(self, postfilter):
-        self.get_json_payload()["postFilter"] = postfilter
+        self.obj_payload["postFilter"] = postfilter
 
 class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
@@ -979,7 +1051,7 @@ class CodeRecipeSettings(DSSRecipeSettings):
         :rtype string
         """
         self._payload_to_str()
-        return self.str_payload
+        return self._str_payload
 
     def set_code(self, code):
         """

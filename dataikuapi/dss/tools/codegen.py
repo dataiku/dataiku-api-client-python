@@ -12,11 +12,6 @@ class _IndentContext(object):
     def __exit__(self, b, c, d):
         self.flow_code_generator.cur_indent -= 1
 
-def output_to_code(obj):
-        if isinstance(obj, basestring):
-            return "\"%s\"" % obj
-        else:
-            return obj
 
 def slugify(name):
     return re.sub("[^A-Za-z0-9_]", "_", name)
@@ -26,7 +21,8 @@ class FlowCodeGenerator(object):
         self.code = ""
         self.cur_indent = 0
 
-    def set_options(self):
+    def set_options(self, remove_metrics_on_datasets=False):
+        self.remove_metrics_on_datasets = remove_metrics_on_datasets
         pass
 
 
@@ -59,7 +55,7 @@ class FlowCodeGenerator(object):
                     entrypoint_name = "create_dataset_%s" % slugify(item.dataset_name)
                     self._generate_code_for_dataset(item, entrypoint_name)
                 else:
-                    entrypoint_name = "create_recipe%s" % slugify(item.recipe_name)
+                    entrypoint_name = "create_recipe_%s" % slugify(item.recipe_name)
                     self._generate_code_for_recipe(item, entrypoint_name)
                 entrypoints_to_call.append(entrypoint_name)
 
@@ -103,7 +99,7 @@ class FlowCodeGenerator(object):
 
                 srcp = raw["params"]
                 self.gen("    settings.set_connection_and_path(%s, %s)" % \
-                             (output_to_code(srcp.get("connection")), output_to_code(srcp.get("path"))))
+                             (self.objstr(srcp.get("connection")), self.objstr(srcp.get("path"))))
                 self.codegen_object_fields(srcp, templates["abstractFSConfig"], 
                                               ["connection", "path"], "settings.get_raw_params()")
                 do_not_copy.append("params")
@@ -115,11 +111,12 @@ class FlowCodeGenerator(object):
                 srcp = raw["params"]
                 if srcp.get("mode", None) == "table":
                     self.gen("    settings.set_table(%s, %s, %s)" % \
-                            (output_to_code(srcp.get("connection")), output_to_code(srcp.get("schema")), 
-                             output_to_code(srcp.get("table"))))
+                            (self.objstr(srcp.get("connection")), self.objstr(srcp.get("schema")), 
+                             self.objstr(srcp.get("table"))))
 
                     self.codegen_object_fields(srcp, templates["abstractSQLConfig"], 
                                               ["mode", "connection", "schema", "table"], "settings.get_raw_params()")
+                    do_not_copy.append("params")
             else:
                 self.gen("    dataset = project.create_dataset(\"%s\", \"%s\")" % (dataset.dataset_name, raw["type"]))
                 self.gen("    settings = dataset.get_settings()")
@@ -154,6 +151,12 @@ class FlowCodeGenerator(object):
             for column in settings.get_raw()["schema"]["columns"]:
                 self.gen("    settings.add_raw_schema_column(%s)" % column)
 
+            if not self.remove_metrics_on_datasets:
+                self.lf()
+                self.gen("    # Metrics")
+                self.codegen_object_fields(settings.get_raw()["metrics"], templates["dataset"]["metrics"], [], "settings.get_raw()[\"metrics\"]")
+            do_not_copy.append("metrics")
+
             self.lf()
             self.gen("    # Other dataset params")
             self.codegen_object_fields(settings.get_raw(), templates["dataset"], do_not_copy, "settings.get_raw()")
@@ -163,9 +166,12 @@ class FlowCodeGenerator(object):
             self.lf()
 
     def _generate_code_for_recipe(self, recipe, entrypoint_name):
+        logging.info("Codegen for recipe %s" % entrypoint_name)
         self.gen("def %s(project):" % entrypoint_name)
         settings = recipe.get_settings()
         raw = settings.get_recipe_raw_definition()
+
+        templates = recipe.client._perform_json("GET", "/projects/%s/recipes/templates" % recipe.project_key)
         
         template = {"tags":[], "optionalDependencies": False, "redispatchPartitioning": False,
                     "maxRunningActivities": 0, "neverRecomputeExistingPartitions" : False,
@@ -191,17 +197,77 @@ class FlowCodeGenerator(object):
 
         self.lf()
         self.gen("    # Recipe inputs/outputs")
-        self.codegen_object_fields_explicit(raw, template, ["inputs", "outputs"], "settings.get_recipe_raw_definition()")
+        for (input_role, input_item) in settings._get_flat_inputs():
+            if len(input_item["deps"]) > 0:
+                self.gen("    settings.add_input(%s, %s, %s)" % (self.objstr(input_role),
+                                                                self.objstr(input_item["ref"]),
+                                                                self.objstr(input_item["deps"])))
+            else:
+                self.gen("    settings.add_input(%s, %s)" % (self.objstr(input_role),
+                                                                self.objstr(input_item["ref"])))
+        for (output_role, output_item) in settings._get_flat_outputs():
+            self.gen("    settings.add_output(%s, %s, %s)" % (self.objstr(output_role),
+                                                            self.objstr(output_item["ref"]),
+                                                            self.objstr(output_item["appendMode"])))
+        #self.codegen_object_fields_explicit(raw, template, ["inputs", "outputs"], "settings.get_recipe_raw_definition()")
         self.lf()
+
+        types_with_obj_payload = ["join", "grouping", "shaker"]
+
+        # A bit of "classical cleanup"
+        # Remove the dirty "map" in Spark read params
+        if settings.type in types_with_obj_payload and "engineParams" in settings.obj_payload:
+            rp = settings.obj_payload["engineParams"].get("spark", {}).get("readParams", {})
+            if rp.get("mode", "?") == "AUTO":
+                rp["map"] = {}
+        if raw is not None and "params" in raw and "engineParams" in raw["params"]:
+            rp = raw["params"]["engineParams"].get("spark", {}).get("readParams", {})
+            if rp.get("mode", "?") == "AUTO":
+                rp["map"] = {}
         
-        self.gen("    # Recipe payload")
+        
         if isinstance(settings, CodeRecipeSettings):
             code = settings.get_code()
+            self.gen("    # Recipe code")
             self.gen("    settings.set_code(\"\"\"%s\n\"\"\")" % code)
+
+        elif isinstance(settings, PrepareRecipeSettings):
+            self.gen("    # Prepare script")
+            payload = settings.obj_payload
+            payload_template = templates["payloadsByType"]["shaker"]
+            self.gen("    settings.set_payload(\"{}\")")
+            self.codegen_object_fields(payload, payload_template, [], "settings.obj_payload")
+        
+        elif isinstance(settings, JoinRecipeSettings):
+            self.gen("    # Join details")
+            payload = settings.obj_payload
+
+            for vi in settings.raw_virtual_inputs:
+                if not vi["preFilter"]["enabled"]:
+                    del vi["preFilter"]
+
+            payload_template = templates["payloadsByType"]["join"]
+            self.gen("    settings.set_payload(\"{}\")")
+            self.codegen_object_fields(payload, payload_template, [], "settings.obj_payload")
+
+        elif settings.type in types_with_obj_payload:
+            self.gen("    # Recipe payload")
+            payload = settings.obj_payload
+            payload_template = templates["payloadsByType"][settings.type]
+            self.gen("    settings.set_payload(\"{}\")")
+            self.codegen_object_fields(payload, payload_template, [], "settings.obj_payload")
+
         else:
-            self.gen("    # No specific handling, simply copy payload")
+            self.gen("    # Recipe payload")
             self.gen("    settings.set_payload(\"\"\"%s\n\"\"\")" % settings.get_payload())
 
+        if settings.type in templates["paramsByType"] and "params" in raw:
+            self.lf()
+            self.gen("    # Type-specific parameters")
+            self.codegen_object_fields(raw["params"], templates["paramsByType"][settings.type], [], 
+                                       "settings.get_recipe_raw_definition()[\"params\"]")
+            do_not_copy.append("params")
+        
         self.lf()
         self.gen("    # Other parameters")
         self.codegen_object_fields(raw, template, do_not_copy, "settings.get_recipe_raw_definition()")
@@ -216,6 +282,13 @@ class FlowCodeGenerator(object):
 
     def lf(self):
         self.code += "\n"
+
+    def objstr(self, obj):
+        #if isinstance(obj, basestring):
+        #    return "\"%s\"" % obj
+        #else:
+        return ObjectFieldFormatter(self.cur_indent + 1).format(obj)
+
 
     def codegen_object_fields_explicit(self, object, template, copy, prefix):
         for key in copy:
@@ -233,11 +306,60 @@ class FlowCodeGenerator(object):
         value_for_key = object[key]
         default_value_for_key = template.get(key, None)
         
-        if default_value_for_key is not None and json.dumps(value_for_key) == json.dumps(default_value_for_key):
+        if default_value_for_key is not None and value_for_key == default_value_for_key:
             #print("Skipping value equal to default: %s" % key)
             return
         else:
-            #print("Not equal for %s"  % key)
-            #print("Template: %s" % default_value_for_key)
-            #print("Real:     %s" % value_for_key)
-            self.gen("    %s[\"%s\"] = %s" % ( prefix, key, output_to_code(value_for_key)))
+            if key == "engineParams":
+                print("Not equal for %s"  % key)
+                print("Template: %s" % default_value_for_key)
+                print("Real:     %s" % value_for_key)
+            self.gen("    %s[\"%s\"] = %s" % ( prefix, key, self.objstr(value_for_key)))
+
+
+class ObjectFieldFormatter(object):
+    def __init__(self, base_indent):
+        self.formatters = {
+            dict: self.__class__.format_dict,
+            list: self.__class__.format_list,
+        }
+        self.sp = "    "
+        self.base_indent = base_indent
+        self.no_pretty_level = 0
+
+    def format(self, value, depth=0):
+        base_repr = repr(value)
+        if len(base_repr) < 25:
+            # This entire value is very small, don't bother pretty-priting it
+            return base_repr
+        elif type(value) in self.formatters:
+            return self.formatters[type(value)](self, value, depth)
+        else:
+            return base_repr
+
+    def format_dict(self, value, depth):
+        indent = self.base_indent + depth
+        if depth > 2 or self.no_pretty_level > 0:
+            return repr(value)
+        else:
+            items = [
+                "\n" + self.sp * (indent + 1) + repr(key) + ': ' + self.format(value[key], depth + 1)
+                for key in value
+            ]
+            return '{%s}' % (','.join(items) + "\n" + self.sp * indent)
+
+    def format_list(self, value, depth):
+        indent = self.base_indent + depth
+        if depth > 2 or self.no_pretty_level > 0 or len(value) == 0:
+            return repr(value)
+        else:
+            # Big array, don't pretty-print inner
+            if len(value) > 3:
+                self.no_pretty_level += 1
+            items = [
+                "\n" + self.sp * (indent + 1) + self.format(item, depth + 1)
+                for item in value
+            ]
+            if len(value) > 3:
+                self.no_pretty_level -= 1
+        return '[%s]' % (','.join(items) +  "\n" + self.sp * indent)
