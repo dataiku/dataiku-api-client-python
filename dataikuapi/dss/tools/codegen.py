@@ -93,13 +93,14 @@ class FlowCodeGenerator(object):
                 do_not_copy.append("params")
 
             elif raw["type"] in DSSDataset.FS_TYPES:
-                self.gen("    dataset = project.create_dataset(\"%s\", \"%s\")" % (dataset.dataset_name, raw["type"]))
+                srcp = raw["params"]
+                self.gen("    dataset = project.create_fslike_dataset(\"%s\", \"%s\", \"%s\", \"%s\")" % \
+                            (dataset.dataset_name, raw["type"], srcp["connection"], srcp.get("path", "/")))
                 self.gen("    settings = dataset.get_settings()")
                 self.lf()
 
-                srcp = raw["params"]
-                self.gen("    settings.set_connection_and_path(%s, %s)" % \
-                             (self.objstr(srcp.get("connection")), self.objstr(srcp.get("path"))))
+                #self.gen("    settings.set_connection_and_path(%s, %s)" % \
+                #             (self.objstr(srcp.get("connection")), self.objstr(srcp.get("path"))))
                 self.codegen_object_fields(srcp, templates["abstractFSConfig"], 
                                               ["connection", "path"], "settings.get_raw_params()")
                 do_not_copy.append("params")
@@ -327,10 +328,9 @@ class FlowCodeGenerator(object):
             #print("Skipping value equal to default: %s" % key)
             return
         else:
-            if key == "engineParams":
-                print("Not equal for %s"  % key)
-                print("Template: %s" % default_value_for_key)
-                print("Real:     %s" % value_for_key)
+            #print("Not equal for %s"  % key)
+            #print("Template: %s" % default_value_for_key)
+            #print("Real:     %s" % value_for_key)
             self.gen("    %s[\"%s\"] = %s" % ( prefix, key, self.objstr(value_for_key)))
 
 
