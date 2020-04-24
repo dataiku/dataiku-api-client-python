@@ -224,8 +224,25 @@ class FlowCodeGenerator(object):
             rp = raw["params"]["engineParams"].get("spark", {}).get("readParams", {})
             if rp.get("mode", "?") == "AUTO":
                 rp["map"] = {}
-        
-        
+
+        def cleanup_grouping():
+            for grouping_key in settings.obj_payload.get("keys", []):
+                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "avg", "concat", "first"]:
+                    if item in grouping_key and grouping_key[item] == False:
+                        del grouping_key[item]
+            for aggregation in settings.obj_payload.get("values", []):
+                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "avg", "concat", "first",
+                            "concatDistinct", "$idx", "sum2", "firstLastNotNull"]:
+                    if item in aggregation and aggregation.get(item, None) == False:
+                        del aggregation[item]
+
+        cleanup_by_type = {
+            "grouping":  cleanup_grouping
+        }
+
+        if settings.type in cleanup_by_type:
+            cleanup_by_type[settings.type]()
+
         if isinstance(settings, CodeRecipeSettings):
             code = settings.get_code()
             self.gen("    # Recipe code")
