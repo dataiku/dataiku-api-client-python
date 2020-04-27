@@ -277,6 +277,11 @@ class DSSRecipeSettings(object):
         self._payload_to_obj()
         return self._obj_payload
 
+    @property
+    def raw_params(self):
+        """The raw 'params' field of the recipe settings, as a dict"""
+        return self.recipe_settings["params"]
+
     def _payload_to_str(self):
         if self._obj_payload is not None:
             self._str_payload = json.dumps(self._obj_payload)
