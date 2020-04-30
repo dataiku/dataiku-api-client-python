@@ -603,6 +603,77 @@ class DSSDataset(object):
         builder.with_input(self.dataset_name)
         return builder
 
+    def list_snapshots(self):
+        """
+        Lists the data snapshots of the project containing data for this dataset
+        """
+        snapshots = self.client._perform_json("GET",
+                "/projects/%s/datasets/%s/snapshots"% (self.project_key, self.dataset_name))
+
+        return [DSSDatasetSnapshot(self, snapshot) for snapshot in snapshots]
+
+    def restore_snapshot(self, snapshot_id, target_name, target_settings):
+        future_response = self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/snapshots/%s/actions/restoreToNew"% (self.project_key, self.dataset_name, snapshot_id),
+                body = {"creationSettings" : target_settings})
+
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
+class DSSDatasetSnapshot(object):
+    """
+    A reference to a data snapshot of a project containing data for a particular dataset.
+    Do not instantiate this class, use :meth:`DSSDataset.list_snapshots`
+    """
+    def __init__(self, dataset, snapshot):
+        self.dataset = dataset
+        self.snapshot = snapshot 
+
+    @property 
+    def id(self):
+        """Snapshot id"""
+        return self.snapshot["bundleId"]
+
+    @property
+    def type(self):
+        """
+        Type of this data snapshot. Either DATA_SNAPSHOT for a pure data snapshot or BUNDLE for a 
+        full project bundle
+        """
+        return self.snapshot["exportManifest"]["exportType"]
+
+    @property
+    def git_commit_info(self):
+        """
+        Details about the last commit of the project prior to the snapshot, if available
+
+        Returns a dict, that may be empty if information is not available
+        """
+        return self.snapshot["exportManifest"].get("gitCommitInfo", {})
+
+    def restore_to_new_managed_dataset(self, name, connection, type=None, format=None):
+        """
+        Restores data from this snapshot to a new managed dataset.
+
+        Returns a future to wait for the restore task to complete
+
+        :param str name: name of the dataset to create
+        :param str connection: name of the connection to create the dataset on
+        :param str type: type of dataset, for connection where the type could be ambiguous. Typically,
+                                 this is SCP or SFTP, for SSH connection
+        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
+                                     AVRO, ORC. If None, uses the default
+        :rtype: `dataikuapi.dss.future.DSSFuture`
+        """
+        ch = self.dataset.project.new_managed_dataset_creation_helper(name)
+        ch.with_store_into(connection, type_option_id=type, format_option_id=format)
+
+        future_response = self.dataset.client._perform_json("POST",
+                "/projects/%s/datasets/%s/snapshots/%s/actions/restoreToNew"% (self.dataset.project_key, self.dataset.dataset_name, self.id),
+                body = {"creationSettings" : ch.creation_settings})
+        return DSSFuture(self.dataset.client, future_response.get('jobId', None), future_response,
+                            lambda x: DSSDataset(self.dataset.client, self.dataset.project_key, name))
+
 class DSSDatasetSettings(object):
     def __init__(self, dataset, settings):
         self.dataset = dataset

@@ -1113,6 +1113,38 @@ class DSSProject(object):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data)
 
+    def new_snapshot(self, snapshot_id):
+        return SnapshotBuilder(self, snapshot_id)
+
+
+
+class SnapshotBuilder(object):
+    def __init__(self, project, snapshot_id):
+        self.project = project
+        self.project_key = project.project_key
+        self.client = project.client
+        self.snapshot_id = snapshot_id
+        self.settings = {
+            "includedDatasetsData" : [],
+            "includedSavedModels" : [],
+            "includedManagedFolders" : []
+        }
+
+    def add_dataset(self, dataset):
+        if isinstance(dataset, DSSDataset):
+            dataset = dataset.name
+        self.settings["includedDatasetsData"].append({"name" : dataset})
+
+    def start(self):
+        future_response = self.client._perform_json("PUT",
+                "/projects/%s/snapshots/%s" % (self.project_key, self.snapshot_id),
+                body = self.settings)
+
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
+
+
+
 
 class TablesImportDefinition(object):
     """
