@@ -41,7 +41,8 @@ class DSSProjectFlow(object):
             settings.save()
 
         for recipe in self.project.list_recipes():
-            fake_rap = DSSRecipeDefinitionAndPayload({"recipe" : recipe})
+            recipe_handle = self.project.get_recipe(recipe["name"])
+            fake_rap = DSSRecipeDefinitionAndPayload(recipe_handle, {"recipe" : recipe})
             if fake_rap.has_input(current_ref):
                 logging.info("Recipe %s has %s as input, performing the replacement by %s"% \
                     (recipe["name"], current_ref, new_ref))
