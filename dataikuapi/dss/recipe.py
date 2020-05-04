@@ -136,6 +136,7 @@ class DSSRecipe(object):
         Deprecated. Use :meth:`get_settings` and :meth:`DSSRecipeSettings.save`
         """
         warnings.warn("Recipe.set_definition_and_payload is deprecated, please use get_settings", DeprecationWarning)
+        definition._payload_to_str()
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name),
                 body=definition.data)
