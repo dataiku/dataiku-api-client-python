@@ -16,7 +16,7 @@ class DSSManagedFolder(object):
         self.odb_id = odb_id
 
     @property
-    def name(self):
+    def id(self):
         return self.odb_id
     
     ########################################################
