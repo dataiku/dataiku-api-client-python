@@ -413,11 +413,18 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     def set_weighting(self, method, feature_name=None):
         """
         Sets the method to weight samples. 
+
+        If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
+
         :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
                         CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
         :param str feature_name: Name of the feature to use as sample weight
         """
-        self.unset_weighting()
+
+        # First, if there was a WEIGHT feature, restore it as INPUT
+        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
+                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
 
         if method == "NO_WEIGHTING":
             self.mltask_settings['weight']['weightMethod'] = method
@@ -455,22 +462,8 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
         Deprecated. Use unset_weighting() instead
         """
-        warnings.warn("remove_sample_weighting() is deprecated, please use unset_weighting() instead", DeprecationWarning)
+        warnings.warn("remove_sample_weighting() is deprecated, please use set_weigthing(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
         return self.unset_weighting()
-
-    def unset_weighting(self):
-        """
-        Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
-
-        :rtype: self
-        """
-        self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
-        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
-                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
-
-        return self
-
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
