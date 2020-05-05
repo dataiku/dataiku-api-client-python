@@ -19,6 +19,7 @@ class DSSRecipe(object):
 
     @property
     def name(self):
+        """The name of the recipe"""
         return self.recipe_name
 
     def compute_schema_updates(self):

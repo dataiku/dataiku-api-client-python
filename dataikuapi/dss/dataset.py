@@ -59,6 +59,10 @@ class DSSDataset(object):
         self.project_key = project_key
         self.dataset_name = dataset_name
 
+    @property
+    def name(self):
+        return self.dataset_name
+    
     ########################################################
     # Dataset deletion
     ########################################################
@@ -398,13 +402,31 @@ class DSSDataset(object):
         """
         return self.project_create_analysis(self.dataset_name)
  
-    def list_analyses(self):
+    def list_analyses(self, as_type="listitems"):
         """
         List the visual analyses on this dataset
-        :return list of dicts
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the analyses. If "as_type" is "listitems", each one as a dict,
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.analysis.DSSAnalysis` 
+        :rtype: list
         """
-        analysis_list = self.project.list_analyses()
-        return [desc for desc in analysis_list if self.dataset_name == desc.get('inputDataset')]
+        analysis_list = [al for al in self.project.list_analyses() if self.dataset_name == al.get('inputDataset')]
+
+        if as_type == "listitems" or as_type == "listitem":
+            return analysis_list
+        elif as_type == "objects" or as_type == "object":
+            return [self.project.get_analysis(item["analysisId"])for item in analysis_list]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def delete_analyses(self, drop_data=False):
+        """
+        Deletes all analyses that have this dataset as input dataset. Also deletes
+        ML tasks that are part of the analysis
+
+        :param: bool drop_data: whether to drop data for all ML tasks in the analysis
+        """
+        [analysis.delete(drop_data=drop_data) for analysis in self.list_analyses(as_type="objects")]
 
     ########################################################
     # Statistics worksheets
