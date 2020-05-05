@@ -125,13 +125,13 @@ class PredictionSplitParamsHandler(object):
 
         return self
 
-    def set_order_by(self, feature_name, ascending=True):
+    def set_time_ordering(self, feature_name, ascending=True):
         """
-        Uses a variable to sort the data for train/test split and hyperparameter optimization
+        Uses a variable to sort the data for train/test split and hyperparameter optimization by time
         :param str feature_name: Name of the variable to use
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
-        self.unset_order_by()
+        self.unset_time_ordering()
         if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
             raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
         self.mltask_settings['time']['enabled'] = True
@@ -148,9 +148,9 @@ class PredictionSplitParamsHandler(object):
 
         return self
 
-    def unset_order_by(self):
+    def unset_time_ordering(self):
         """
-        Remove time-based ordering.
+        Remove time-based ordering for train/test split and hyperparameter optimization
         """
         self.mltask_settings['time']['enabled'] = False
         self.mltask_settings['time']['timeVariable'] = None
@@ -186,28 +186,6 @@ class DSSMLTaskSettings(object):
         :rtype: dict
         """
         return self.mltask_settings
-
-    def get_split_params(self):
-        """
-        Gets a handle to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        raise NotImplementedError("get_split_params not available for class {}".format(self.__class__))
-
-    def split_ordered_by(self, feature_name, ascending=True):
-        """
-        Uses a variable to sort the data for train/test split and hyperparameter optimization
-        :param str feature_name: Name of the variable to use
-        :param bool ascending: True iff the test set is expected to have larger time values than the train set
-        """
-        raise NotImplementedError("split_ordered_by not available for class {}".format(self.__class__))
-
-    def remove_ordered_split(self):
-        """
-        Remove time-based ordering.
-        """
-        raise NotImplementedError("remove_ordered_split not available for class {}".format(self.__class__))
 
     def get_feature_preprocessing(self, feature_name):
         """
@@ -249,18 +227,6 @@ class DSSMLTaskSettings(object):
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
 
-    def use_sample_weighting(self, feature_name):
-        """
-        Deprecated. Will be removed from DSSMLTaskSettings class
-        """
-        raise NotImplementedError("use_sample_weighting() not available for class {}".format(self.__class__))
-
-    def remove_sample_weighting(self):
-        """
-        Deprecated. Will be removed from DSSMLTaskSettings class
-        """
-        raise NotImplementedError("remove_sample_weighting() not available for class {}".format(self.__class__))
- 
     def get_algorithm_settings(self, algorithm_name):
         """
         Gets the training settings for a particular algorithm. This returns a reference to the
@@ -419,31 +385,21 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
 
-    @split_params.setter
-    def split_params(self, value):
-        raise AttributeError("split_params reference cannot be overwritten, get a handle and modify it with a set method instead")
-
     def split_ordered_by(self, feature_name, ascending=True):
         """
-        Uses a variable to sort the data for train/test split and hyperparameter optimization
-        :param str feature_name: Name of the variable to use
-        :param bool ascending: True iff the test set is expected to have larger time values than the train set
-
-        :rtype: self
+        Deprecated. Use split_params.set_time_ordering()
         """
-        warnings.warn("split_ordered_by() is deprecated, please use split_params.set_order_by() instead", DeprecationWarning)
-        self.split_params.set_order_by(feature_name, ascending=True)
+        warnings.warn("split_ordered_by() is deprecated, please use split_params.set_time_ordering() instead", DeprecationWarning)
+        self.split_params.set_time_ordering(feature_name, ascending=ascending)
 
         return self
 
     def remove_ordered_split(self):
         """
-        Remove time-based ordering.
-
-        :rtype: self
+        Deprecated. Use split_params.unset_time_ordering()
         """
-        warnings.warn("remove_ordered_split() is deprecated, please use split_params.unset_order_by() instead", DeprecationWarning)
-        self.split_params.unset_order_by()
+        warnings.warn("remove_ordered_split() is deprecated, please use split_params.unset_time_ordering() instead", DeprecationWarning)
+        self.split_params.unset_time_ordering()
 
         return self
 
@@ -456,8 +412,10 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def set_weighting(self, method, feature_name=None):
         """
-        Uses a feature as sample weight
-        :param str feature_name: Name of the feature to use
+        Sets the method to weight samples. 
+        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
+                        CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
+        :param str feature_name: Name of the feature to use as sample weight
         """
         self.unset_weighting()
 

@@ -3,7 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .future import DSSFuture
 import json, warnings
-from .utils import DSSTaggableObjectListItem
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -402,13 +402,31 @@ class DSSDataset(object):
         """
         return self.project_create_analysis(self.dataset_name)
  
-    def list_analyses(self):
+    def list_analyses(self, as_type="listitems"):
         """
         List the visual analyses on this dataset
-        :return list of dicts
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the analyses. If "as_type" is "listitems", each one as a dict,
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.analysis.DSSAnalysis` 
+        :rtype: list
         """
-        analysis_list = self.project.list_analyses()
-        return [desc for desc in analysis_list if self.dataset_name == desc.get('inputDataset')]
+        analysis_list = [al for al in self.project.list_analyses() if self.dataset_name == al.get('inputDataset')]
+
+        if as_type == "listitems" or as_type == "listitem":
+            return analysis_list
+        elif as_type == "objects" or as_type == "object":
+            return [self.project.get_analysis(item["analysisId"])for item in analysis_list]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def delete_analyses(self, drop_data=False):
+        """
+        Deletes all analyses that have this dataset as input dataset. Also deletes
+        ML tasks that are part of the analysis
+
+        :param: bool drop_data: whether to drop data for all ML tasks in the analysis
+        """
+        [analysis.delete(drop_data=drop_data) for analysis in self.list_analyses(as_type="objects")]
 
     ########################################################
     # Statistics worksheets
@@ -607,36 +625,9 @@ class DSSDataset(object):
         builder.with_input(self.dataset_name)
         return builder
 
-    ########################################################
-    # Creation of analyses
-    ########################################################
-
-    def new_analysis(self):
-        analysis = self.project.create_analysis(self.name)
-        return analysis
-
-    def list_analyses(self):
-        """Returns a list of json short description description of analysis that has this dataset as inputDataset
-
-        :return: list of dict with keys {'analysisId', 'analysisName', 'inputDataset'}
-
-        """
-        project_analysis_desc_list = self.project.list_analyses()
-        return [desc for desc in project_analysis_desc_list if self.name == desc.get('inputDataset')]
-
-    def delete_analyses(self, drop_data=False):
-        """Deletes all analyses that have this dataset as inputDataset
-
-        :param: bool drop_data: will drop analysis data if True. Default is False
-        """
-
-        desc_list = self.list_analyses()
-        dss_analysis_list = [self.project.get_analysis(desc['analysisId']) for desc in desc_list]
-        return [analysis.delete(drop_data=drop_data) for analysis in dss_analysis_list]
-
-
-class DSSDatasetSettings(object):
+class DSSDatasetSettings(DSSTaggableObjectSettings):
     def __init__(self, dataset, settings):
+        super(DSSDatasetSettings, self).__init__(settings)
         self.dataset = dataset
         self.settings = settings
 
