@@ -3,7 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .future import DSSFuture
 import json, warnings
-from .utils import DSSTaggableObjectListItem
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -603,8 +603,9 @@ class DSSDataset(object):
         builder.with_input(self.dataset_name)
         return builder
 
-class DSSDatasetSettings(object):
+class DSSDatasetSettings(DSSTaggableObjectSettings):
     def __init__(self, dataset, settings):
+        super(DSSDatasetSettings, self).__init__(settings)
         self.dataset = dataset
         self.settings = settings
 

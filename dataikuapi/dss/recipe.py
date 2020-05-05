@@ -1,4 +1,5 @@
 from ..utils import DataikuException
+from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
 
@@ -15,6 +16,10 @@ class DSSRecipe(object):
         self.client = client
         self.project_key = project_key
         self.recipe_name = recipe_name
+
+    @property
+    def name(self):
+        return self.recipe_name
 
     def compute_schema_updates(self):
         """
@@ -238,11 +243,12 @@ class DSSRecipeStatus(object):
         return self.data["allMessagesForFrontend"]["messages"]
 
 
-class DSSRecipeSettings(object):
+class DSSRecipeSettings(DSSTaggableObjectSettings):
     """
     Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
     """
     def __init__(self, recipe, data):
+        super(DSSRecipeSettings, self).__init__(data["recipe"])
         self.recipe = recipe
         self.data = data
         self.recipe_settings = self.data["recipe"]
