@@ -15,7 +15,7 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 
 
 class DSSProject(object):
