@@ -1,6 +1,6 @@
 import time
 import sys, json
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 
 class DSSMacro(object):
     """
