@@ -1111,7 +1111,7 @@ class DSSProject(object):
 
     def get_app_manifest(self):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
-        return DSSAppManifest(self.client, raw_data)
+        return DSSAppManifest(self.client, raw_data, self.project_key)
 
 
 class TablesImportDefinition(object):
