@@ -26,8 +26,7 @@ class APINodeClient(DSSBaseClient):
         :param forced_generation: See documentation about multi-version prediction
         :param dispatch_key: See documentation about multi-version prediction
         :param context: Optional, Python dictionary of additional context information. The context information is logged, but not directly used.
-        :param with_explanations: Whether individual explanations should be computed for each records.
-        Explanations must be enabled for the prediction endpoint.
+        :param with_explanations: Optional, whether individual explanations should be computed for each records. The prediction endpoint must be compatible.
         :param explanation_method: Optional, method to compute those explanations. If None, will use the value configured in the endpoint.
         :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
         :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
@@ -63,8 +62,7 @@ class APINodeClient(DSSBaseClient):
         :param records: Python list of records. Each record must be a Python dict. Each record must contain a "features" dict (see predict_record) and optionally a "context" dict.
         :param forced_generation: See documentation about multi-version prediction
         :param dispatch_key: See documentation about multi-version prediction
-        :param with_explanations: Whether individual explanations should be computed for each records.
-        Explanations must be enabled for the prediction endpoint.
+        :param with_explanations: Optional, whether individual explanations should be computed for each records. The prediction endpoint must be compatible.
         :param explanation_method: Optional, method to compute those explanations. If None, will use the value configured in the endpoint.
         :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
         :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
