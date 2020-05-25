@@ -69,6 +69,22 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
 
+    def delete_versions(self, versions, remove_intermediate=True):
+        """
+        Delete version(s) of the saved model
+
+        :param versions: list of versions to delete
+        :type versions: list[str]
+        :param remove_intermediate: also remove intermediate versions (default: True). In the case of a partitioned
+        model, an intermediate version is created every time a partition has finished training.
+        :type remove_intermediate: bool
+        """
+        self.client._perform_empty(
+            "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
+            params={
+                'versions': json.dumps(versions),
+                'removeIntermediate': remove_intermediate
+            })
     ########################################################
     # Metrics
     ########################################################
