@@ -475,6 +475,13 @@ class JoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'join', name, project)
 
+class FuzzyJoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
+    """
+    Create a FuzzyJoin recipe
+    """
+    def __init__(self, name, project):
+        VirtualInputsSingleOutputRecipeCreator.__init__(self, 'fuzzyjoin', name, project)
+
 class StackRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
     Create a Stack recipe
