@@ -82,7 +82,7 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
             params={
-                'versions': json.dumps(versions),
+                'versions': versions,
                 'removeIntermediate': remove_intermediate
             })
     ########################################################
