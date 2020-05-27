@@ -78,11 +78,11 @@ class APINodeClient(DSSBaseClient):
         obj = {
             "items": records,
             "explanations": {
-                    "enabled": with_explanations,
-                    "method": explanation_method,
-                    "nExplanations": n_explanations,
-                    "nMonteCarloSteps": n_explanations_mc_steps
-                }
+                "enabled": with_explanations,
+                "method": explanation_method,
+                "nExplanations": n_explanations,
+                "nMonteCarloSteps": n_explanations_mc_steps
+            }
         }
 
         if forced_generation is not None:
