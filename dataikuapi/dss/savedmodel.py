@@ -77,6 +77,8 @@ class DSSSavedModel(object):
         model, an intermediate version is created every time a partition has finished training.
         :type remove_intermediate: bool
         """
+        if not isinstance(versions, list):
+            versions = [versions]
         body = {
             "versions": versions,
             "removeIntermediate": remove_intermediate
