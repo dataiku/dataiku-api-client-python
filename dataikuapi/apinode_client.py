@@ -29,7 +29,7 @@ class APINodeClient(DSSBaseClient):
         :param with_explanations: Optional, whether individual explanations should be computed for each record. The prediction endpoint must be compatible. If None, will use the value configured in the endpoint.
         :param explanation_method: Optional, method to compute explanations. Valid values are 'SHAPLEY' or 'ICE'. If None, will use the value configured in the endpoint.
         :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
-        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
+        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 1000).
          If None, will use the value configured in the endpoint.
 
         :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
@@ -65,7 +65,7 @@ class APINodeClient(DSSBaseClient):
         :param with_explanations: Optional, whether individual explanations should be computed for each record. The prediction endpoint must be compatible. If None, will use the value configured in the endpoint.
         :param explanation_method: Optional, method to compute explanations. Valid values are 'SHAPLEY' or 'ICE'. If None, will use the value configured in the endpoint.
         :param n_explanations: Optional, number of explanations to output per prediction. If None, will use the value configured in the endpoint.
-        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 400).
+        :param n_explanations_mc_steps: Optional, precision parameter for SHAPLEY method, higher means more precise but slower (between 25 and 1000).
          If None, will use the value configured in the endpoint.
 
         :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
