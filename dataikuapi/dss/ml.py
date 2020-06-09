@@ -1690,6 +1690,7 @@ class DSSMLTask(object):
         """
         Guess the feature handling and the algorithms.
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
+        :param bool redetect: if True then the DSS automatically initializes ML task settings, if False, only the target values are remapped
         """
         obj = {}
         if prediction_type is not None:
