@@ -47,7 +47,13 @@ class DSSComputedColumn(object):
     def formula(name, formula, type="double"):
         return {"expr": formula, "mode": "GREL", "name": name, "type": type}
 
-from enum import Enum
+import sys
+if sys.version_info > (3,4):
+    from enum import Enum
+else:
+    class Enum(object):
+        pass
+
 class DSSFilterOperator(Enum):
     EMPTY_ARRAY = "empty array"
     NOT_EMPTY_ARRAY = "not empty array"
