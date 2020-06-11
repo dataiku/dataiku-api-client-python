@@ -1,12 +1,3 @@
-from .dataset import DSSDataset
-from .recipe import DSSRecipe
-from .managedfolder import DSSManagedFolder
-from .savedmodel import DSSSavedModel
-from .job import DSSJob
-from .scenario import DSSScenario
-from .apiservice import DSSAPIService
-import sys
-
 class DSSPluginSettings(object):
     """
     The settings of a plugin.
@@ -124,43 +115,13 @@ class DSSPlugin(object):
         """
         Get the list of usages of the plugin.
 
-        Returns a dict with two keys:
-        - usages, a list of (elementKind, elementType, objectType, projectKey, objectId) tuples
-        - missingTypes, a list of (missingType, objectType, projectKey, objectId) tuples
-
-        Each element of the usages list contains:
-        - an elementKind of the plugin element, such as webapps, python-probes, python-checks, etc.
-        - an elementType of the plugin element,
-        - the objectType and objectId of the object using this plugin element, along with their projectKey,
-        if pertinent. Some objects, for instance clusters, are not contained in a project.
-
-        Some custom types may not be found during the analysis. This typically occurs when a plugin was removed,
-        while still being used. This prevents further analysis of the object relying on this type and may hide
-        some uses of the plugin. Thus, those missingTypes are enumerated in the missingTypes list, which
-        includes the missingType along with the same information on the object as for usages.
-
         :param str project_key: optional key of project where to look for usages. Default is None and looking in all projects.
-        :return: dict
+        :return: a :class:`DSSPluginUsages`
         """
-        params = {}
-        if project_key:
-            params["projectKey"] = project_key
-        return self.client._perform_json("GET", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id), body=params)
-
-    def prepare_delete(self):
-        """
-        Request pre-deletion checks, as aggregated information on the usage of the plugin.
-
-        Information is provided as a dict with the following entries:
-        - projectCount: count of projects using at least an element of this plugin
-        - usedElemCount: count of elements of this plugin in use
-        - objectAnalysisErrors: count of errors encountered while analyzing usages.
-
-        Detailed information can be obtained by calling :func:`list_usages`.
-        :return: dict
-        """
-
-        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete".format(pluginId=self.plugin_id))
+        return DSSPluginUsages.build(
+            self.client._perform_json("GET", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id),
+                                      params={"projectKey": project_key})
+        )
 
     def delete(self, force=False):
         """
@@ -213,3 +174,96 @@ class DSSPlugin(object):
         file_name = path.split('/')[-1]
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)
+
+
+class DSSPluginUsage(object):
+    """
+    Information on a usage of an element of a plugin.
+
+    object_id, object_type and project_key are usually provided, excepted for some global
+    types, such as cluster types.
+    """
+    def __init__(self, element_kind, element_type, object_id, object_type, project_key):
+        """
+
+        :param str element_kind:
+        :param str element_type:
+        :param str object_id:
+        :param str object_type:
+        :param str project_key:
+        """
+        self.element_kind = element_kind
+        self.element_type = element_type
+        self.object_id = object_id
+        self.object_type = object_type
+        self.project_key = project_key
+
+    @staticmethod
+    def build(json_object):
+        return DSSPluginUsage(
+            json_object["elementKind"],
+            json_object["elementType"],
+            json_object.get("objectId", None),
+            json_object.get("objectType", None),
+            json_object.get("projectKey", None)
+        )
+
+
+class DSSMissingType(object):
+    """
+    Information on a type not found while analyzing usages of a plugin.
+
+    object_id, object_type and project_key are usually provided, excepted for some global
+    types, such as cluster types.
+    """
+    def __init__(self, missing_type, object_id, object_type, project_key):
+        """
+
+        :param str missing_type: the missing type
+        :param str object_id: the object using the missing type (can be None)
+        :param str object_type: the type of the object using the missing type (can be None)
+        :param str project_key: the project key where the type was found missing (can be None)
+        """
+        self.missing_type = missing_type
+        self.object_id = object_id
+        self.object_type = object_type
+        self.project_key = project_key
+
+    @staticmethod
+    def build(json_object):
+        return DSSMissingType(
+            json_object["missingType"],
+            json_object.get("objectId", None),
+            json_object.get("objectType", None),
+            json_object.get("projectKey", None)
+        )
+
+
+class DSSPluginUsages(object):
+    """
+    Information on the usages of a plugin.
+
+    Contains both usages (a list of instances of :class:`DSSPluginUsage`) and analysis errors, if any
+    (a list of instances of :class:`DSSMissingType`).
+
+    Some custom types may not be found during usage analysis, typically when a plugin was removed
+    but is still used. This prevents some detailed analysis and may hide some uses.
+    This information is provided in missingTypes.
+    """
+    def __init__(self, usages, missing_types):
+        """
+        :param list(:class:`DSSPluginUsage`) usages: plugin usages
+        :param list(:class:`DSSMissingType`) missing_types:
+        """
+        self.usages = usages
+        self.missing_types = missing_types
+
+    @staticmethod
+    def build(json_object):
+        usages = []
+        missing_types = []
+        for json_usage in json_object.get("usages", []):
+            usages.append(DSSPluginUsage.build(json_usage))
+        for json_missing_type in json_object.get("missingTypes"):
+            missing_types.append(DSSMissingType.build(json_missing_type))
+        return DSSPluginUsages(usages, missing_types)
