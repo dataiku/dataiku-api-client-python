@@ -145,7 +145,7 @@ class DSSPlugin(object):
         params = {}
         if project_key:
             params["projectKey"] = project_key
-        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/listUsages" % self.plugin_id, body=params)
+        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id), body=params)
 
     def prepare_delete(self):
         """
@@ -160,7 +160,7 @@ class DSSPlugin(object):
         :return: dict
         """
 
-        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete" % self.plugin_id)
+        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete".format(pluginId=self.plugin_id))
 
     def delete(self, force=False):
         """
@@ -177,9 +177,11 @@ class DSSPlugin(object):
         params = {
             "force": force
         }
-        ret = self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete" % self.plugin_id,
+        ret = self.client._perform_json("POST", "/plugins/{pluginId}/actions/delete".format(pluginId=self.plugin_id),
                                         body=params)
-        return self.client.get_future(ret["jobId"])
+        if "projectCount" in ret:
+            raise Exception("Plugin has usages or analysis errors.")
+        return self.client.get_future(ret.get("jobId", None))
 
     ########################################################
     # Managing the dev plugin's contents
