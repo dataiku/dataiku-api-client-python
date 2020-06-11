@@ -301,7 +301,7 @@ class DSSPluginUsages(object):
         return self._json_object
 
     def needs_force_delete(self):
-        return not self._usages or not self._missing_types
+        return not (not self._usages and not self._missing_types)
 
     @property
     def usages(self):
