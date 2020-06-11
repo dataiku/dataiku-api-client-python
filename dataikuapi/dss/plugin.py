@@ -118,7 +118,7 @@ class DSSPlugin(object):
         :param str project_key: optional key of project where to look for usages. Default is None and looking in all projects.
         :return: a :class:`DSSPluginUsages`
         """
-        return DSSPluginUsages.build(
+        return DSSPluginUsages(
             self.client._perform_json("GET", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id),
                                       params={"projectKey": project_key})
         )
@@ -179,64 +179,97 @@ class DSSPlugin(object):
 class DSSPluginUsage(object):
     """
     Information on a usage of an element of a plugin.
-
-    object_id, object_type and project_key are usually provided, excepted for some global
-    types, such as cluster types.
     """
-    def __init__(self, element_kind, element_type, object_id, object_type, project_key):
-        """
+    def __init__(self, json_object):
+        self._json_object = json_object
 
-        :param str element_kind:
-        :param str element_type:
-        :param str object_id:
-        :param str object_type:
-        :param str project_key:
-        """
-        self.element_kind = element_kind
-        self.element_type = element_type
-        self.object_id = object_id
-        self.object_type = object_type
-        self.project_key = project_key
+    def get_raw(self):
+        return self._json_object
 
-    @staticmethod
-    def build(json_object):
-        return DSSPluginUsage(
-            json_object["elementKind"],
-            json_object["elementType"],
-            json_object.get("objectId", None),
-            json_object.get("objectType", None),
-            json_object.get("projectKey", None)
-        )
+    @property
+    def element_kind(self):
+        """
+        Element kind (webapps, python-formats,...)
+        :return: the element kind
+        :rtype: str
+        """
+        return self._json_object["elementKind"]
+
+    @property
+    def element_type(self):
+        """
+        Element type
+        :return: the element type
+        :rtype: str
+        """
+        return self._json_object["elementType"]
+
+    @property
+    def object_id(self):
+        """
+        :return: Id of the object using the plugin element
+        :rtype: str or none
+        """
+        return self._json_object.get("objectId", None)
+
+    @property
+    def object_type(self):
+        """
+        :return: Type of the object using the plugin element
+        :rtype: str or none
+        """
+        return self._json_object.get("objectType", None)
+
+    @property
+    def project_key(self):
+        """
+        :return: Project key of the object using the plugin element
+        :rtype: str or none
+        """
+        return self._json_object.get("projectKey", None)
 
 
 class DSSMissingType(object):
     """
     Information on a type not found while analyzing usages of a plugin.
-
-    object_id, object_type and project_key are usually provided, excepted for some global
-    types, such as cluster types.
     """
-    def __init__(self, missing_type, object_id, object_type, project_key):
-        """
+    def __init__(self, json_object):
+        self._json_object = json_object
 
-        :param str missing_type: the missing type
-        :param str object_id: the object using the missing type (can be None)
-        :param str object_type: the type of the object using the missing type (can be None)
-        :param str project_key: the project key where the type was found missing (can be None)
-        """
-        self.missing_type = missing_type
-        self.object_id = object_id
-        self.object_type = object_type
-        self.project_key = project_key
+    def get_raw(self):
+        return self._json_object
 
-    @staticmethod
-    def build(json_object):
-        return DSSMissingType(
-            json_object["missingType"],
-            json_object.get("objectId", None),
-            json_object.get("objectType", None),
-            json_object.get("projectKey", None)
-        )
+    @property
+    def missing_type(self):
+        """
+        :return: the missing type
+        :rtype: str
+        """
+        return self._json_object["missingType"]
+
+    @property
+    def object_id(self):
+        """
+        :return: Id of the object relying on the missing type
+        :rtype: str or none
+        """
+        return self._json_object.get("objectId", None)
+
+    @property
+    def object_type(self):
+        """
+        :return: Type of the object relying on the missing type
+        :rtype: str or none
+        """
+        return self._json_object.get("objectType", None)
+
+    @property
+    def project_key(self):
+        """
+        :return: Project key of the object relying on the missing type
+        :rtype: str or none
+        """
+        return self._json_object.get("projectKey", None)
 
 
 class DSSPluginUsages(object):
@@ -250,20 +283,40 @@ class DSSPluginUsages(object):
     but is still used. This prevents some detailed analysis and may hide some uses.
     This information is provided in missingTypes.
     """
-    def __init__(self, usages, missing_types):
+    def __init__(self, json_object):
         """
+        :param dict json_object: the usages as json dict
         :param list(:class:`DSSPluginUsage`) usages: plugin usages
         :param list(:class:`DSSMissingType`) missing_types:
         """
-        self.usages = usages
-        self.missing_types = missing_types
-
-    @staticmethod
-    def build(json_object):
-        usages = []
-        missing_types = []
+        self._json_object = json_object
+        self._usages = []
+        self._missing_types = []
         for json_usage in json_object.get("usages", []):
-            usages.append(DSSPluginUsage.build(json_usage))
+            self._usages.append(DSSPluginUsage(json_usage))
         for json_missing_type in json_object.get("missingTypes"):
-            missing_types.append(DSSMissingType.build(json_missing_type))
-        return DSSPluginUsages(usages, missing_types)
+            self._missing_types.append(DSSMissingType(json_missing_type))
+
+    def get_raw(self):
+        return self._json_object
+
+    def needs_force_delete(self):
+        return not self._usages or not self._missing_types
+
+    @property
+    def usages(self):
+        """
+        List of plugin usages
+        :return: plugin usages
+        :rtype: list(:class:`DSSPluginUsage`)
+        """
+        return self._usages
+
+    @property
+    def missing_types(self):
+        """
+        List of missing types
+        :return: missing types
+        :rtype: list(:class:`DSSMissingType` )
+        """
+        return self._missing_types
