@@ -145,7 +145,7 @@ class DSSPlugin(object):
         params = {}
         if project_key:
             params["projectKey"] = project_key
-        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id), body=params)
+        return self.client._perform_json("GET", "/plugins/{pluginId}/actions/listUsages".format(pluginId=self.plugin_id), body=params)
 
     def prepare_delete(self):
         """
