@@ -120,22 +120,65 @@ class DSSPlugin(object):
     # Plugin uninstall/delete
     ########################################################
 
+    def list_usages(self, project_key=None):
+        """
+        Get the list of usages of the plugin.
+
+        Returns a dict with two keys:
+        - usages, a list of (elementKind, elementType, objectType, projectKey, objectId) tuples
+        - missingTypes, a list of (missingType, objectType, projectKey, objectId) tuples
+
+        Each element of the usages list contains:
+        - an elementKind of the plugin element, such as webapps, python-probes, python-checks, etc.
+        - an elementType of the plugin element,
+        - the objectType and objectId of the object using this plugin element, along with their projectKey,
+        if pertinent. Some objects, for instance clusters, are not contained in a project.
+
+        Some custom types may not be found during the analysis. This typically occurs when a plugin was removed,
+        while still being used. This prevents further analysis of the object relying on this type and may hide
+        some uses of the plugin. Thus, those missingTypes are enumerated in the missingTypes list, which
+        includes the missingType along with the same information on the object as for usages.
+
+        :param str project_key: optional key of project where to look for usages. Default is None and looking in all projects.
+        :return: dict
+        """
+        params = {}
+        if project_key:
+            params["projectKey"] = project_key
+        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/listUsages" % self.plugin_id, body=params)
+
     def prepare_delete(self):
         """
-        Prepares deletion of the plugins. Check if it is possible, warns on usages.
+        Request pre-deletion checks, as aggregated information on the usage of the plugin.
 
-        :return: a json object with the counts of project and plugin elements in use
-        """
-        return self.client._perform_json("GET", "/plugins/%s/actions/prepareDelete" % (self.plugin_id))
+        Information is provided as a dict with the following entries:
+        - projectCount: count of projects using at least an element of this plugin
+        - usedElemCount: count of elements of this plugin in use
+        - objectAnalysisErrors: count of errors encountered while analyzing usages.
 
-    def delete(self, force):
+        Detailed information can be obtained by calling :func:`list_usages`.
+        :return: dict
         """
-        Deletes the plugin. Will fail if a usage is specified and force is not set to true
 
-        :return: a :class:`~dataikuapi.dss.future.DSSFuture`
+        return self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete" % self.plugin_id)
+
+    def delete(self, force=False):
         """
-        ret = self.client._perform_json("GET", "/plugins/%s/actions/delete" % (self.plugin_id),
-                                        params={force: force})
+        Delete a plugin.
+
+        If not forced (default), pre-deletion checks will be run (as by :func:`prepare_delete` and the deletion will be
+        performed if and only if no usage of the plugin is detected and no error occurred during usages analysis.
+
+        :param bool force: if True, plugin will be deleted even if usages are found or errors occurred during usages
+        analysis. Default is False.
+        :return: a :class:`dataikuapi.dssfuture.DSSFuture`
+        """
+
+        params = {
+            "force": force
+        }
+        ret = self.client._perform_json("POST", "/plugins/{pluginId}/actions/prepareDelete" % self.plugin_id,
+                                        body=params)
         return self.client.get_future(ret["jobId"])
 
     ########################################################
@@ -168,5 +211,3 @@ class DSSPlugin(object):
         file_name = path.split('/')[-1]
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)
-
-        
