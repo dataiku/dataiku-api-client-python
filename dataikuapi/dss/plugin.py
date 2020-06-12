@@ -183,141 +183,73 @@ class DSSPlugin(object):
 class DSSPluginUsage(object):
     """
     Information on a usage of an element of a plugin.
+
+    Has the following properties:
+    - element_kind: webapps, python-formats,...
+    - element_type: type name of the element
+    - object_id: id of the object using the plugin element. Can be None.
+    - object_type: type of the object using the plugin element. Can be None.
+    - project_key: project key of the object using the plugin element. Can be None.
     """
     def __init__(self, data):
         """
         Instantiate a DSSPluginUsage from the dict of its properties.
         :param dict data: dict of properties
         """
-        self._data = data
-
-    def get_raw(self):
-        """
-        Get plugin usage as a dictionary
-        :rtype: dict
-        """
-        return self._data
-
-    @property
-    def element_kind(self):
-        """
-        Element kind (webapps, python-formats,...)
-        :return: the element kind
-        :rtype: str
-        """
-        return self._data["elementKind"]
-
-    @property
-    def element_type(self):
-        """
-        Element type
-        :return: the element type
-        :rtype: str
-        """
-        return self._data["elementType"]
-
-    @property
-    def object_id(self):
-        """
-        :return: Id of the object using the plugin element
-        :rtype: str or none
-        """
-        return self._data.get("objectId", None)
-
-    @property
-    def object_type(self):
-        """
-        :return: Type of the object using the plugin element
-        :rtype: str or none
-        """
-        return self._data.get("objectType", None)
-
-    @property
-    def project_key(self):
-        """
-        :return: Project key of the object using the plugin element
-        :rtype: str or none
-        """
-        return self._data.get("projectKey", None)
+        self.element_kind = data["elementKind"]
+        self.element_type = data["elementType"]
+        self.object_id = data.get("objectId", None)
+        self.object_type = data.get("objectType", None)
+        self.project_key = data.get("projectKey", None)
 
 
 class DSSMissingType(object):
     """
     Information on a type not found while analyzing usages of a plugin.
+
+    Has the following properties:
+    - missing type: the missing type
+    - object_id: id of the object depending on the missing type. Can be None.
+    - object_type: type of the object depending on the missing type. Can be None.
+    - project_key: project key of the object depending on the missing type. Can be None.
+
     """
     def __init__(self, data):
         """
         Instantiate a DSSMissingType from the dict of its properties
         :param dict data: dictionary of properties
         """
-        self._data = data
-
-    def get_raw(self):
-        """
-        Get missing type as a dictionary
-        :rtype: dict
-        """
-        return self._data
-
-    @property
-    def missing_type(self):
-        """
-        :return: the missing type
-        :rtype: str
-        """
-        return self._data["missingType"]
-
-    @property
-    def object_id(self):
-        """
-        :return: Id of the object depending on the missing type
-        :rtype: str or none
-        """
-        return self._data.get("objectId", None)
-
-    @property
-    def object_type(self):
-        """
-        :return: Type of the object depending on the missing type
-        :rtype: str or none
-        """
-        return self._data.get("objectType", None)
-
-    @property
-    def project_key(self):
-        """
-        :return: Project key of the object depending on the missing type
-        :rtype: str or none
-        """
-        return self._data.get("projectKey", None)
+        self.missing_type = data["missingType"]
+        self.object_id = data.get("objectId", None)
+        self.object_type = data.get("objectType", None)
+        self.project_key = data.get("projectKey", None)
 
 
 class DSSPluginUsages(object):
     """
     Information on the usages of a plugin.
 
-    Contains both usages (a list of :class:`DSSPluginUsage`) and analysis errors, if any
-    (a list of :class:`DSSMissingType`).
+    Has the following properties:
+    - usages (list of :class:`DSSPluginUsage`)
+    - missing_types (a list of :class:`DSSMissingType`).
 
     Some custom types may not be found during usage analysis, typically when a plugin was removed
     but is still used. This prevents some detailed analysis and may hide some uses.
-    This information is provided in missingTypes.
+    This information is provided in missing_types.
     """
     def __init__(self, data):
         """
         Initialize a DSSPluginUsages from a dict of its properties
 
         :param dict data: the usages as json dict
-        :param list(:class:`DSSPluginUsage`) usages: plugin usages
-        :param list(:class:`DSSMissingType`) missing_types:
         """
         self._data = data
-        self._usages = []
-        self._missing_types = []
+        self.usages = []
+        self.missing_types = []
         for json_usage in data.get("usages", []):
-            self._usages.append(DSSPluginUsage(json_usage))
+            self.usages.append(DSSPluginUsage(json_usage))
         for json_missing_type in data.get("missingTypes"):
-            self._missing_types.append(DSSMissingType(json_missing_type))
+            self.missing_types.append(DSSMissingType(json_missing_type))
 
     def get_raw(self):
         """
@@ -326,28 +258,10 @@ class DSSPluginUsages(object):
         """
         return self._data
 
-    def needs_force_delete(self):
+    def maybe_used(self):
         """
-        Returns true the deletion of the plugin should be forced, as usages of the plugin were found, or errors
-        encoutered during analysis.
+        Returns true if the plugin maybe in use, as usages of the plugin were found, or errors
+        encountered during analysis.
         :return:
         """
-        return not (not self._usages and not self._missing_types)
-
-    @property
-    def usages(self):
-        """
-        List of plugin usages
-        :return: plugin usages
-        :rtype: list(:class:`DSSPluginUsage`)
-        """
-        return self._usages
-
-    @property
-    def missing_types(self):
-        """
-        List of missing types
-        :return: missing types
-        :rtype: list(:class:`DSSMissingType` )
-        """
-        return self._missing_types
+        return not (not self.usages and not self.missing_types)
