@@ -212,7 +212,6 @@ class DSSMissingType(object):
     - object_id: id of the object depending on the missing type. Can be None.
     - object_type: type of the object depending on the missing type. Can be None.
     - project_key: project key of the object depending on the missing type. Can be None.
-
     """
     def __init__(self, data):
         """
