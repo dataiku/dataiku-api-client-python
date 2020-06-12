@@ -1,3 +1,6 @@
+from dataikuapi.utils import DataikuException
+
+
 class DSSPluginSettings(object):
     """
     The settings of a plugin.
@@ -142,7 +145,7 @@ class DSSPlugin(object):
         ret = self.client._perform_json("POST", "/plugins/{pluginId}/actions/delete".format(pluginId=self.plugin_id),
                                         body=params)
         if "projectCount" in ret:
-            raise Exception("Plugin has usages or analysis errors.")
+            raise DataikuException("Plugin has usages or analysis errors.")
         return self.client.get_future(ret.get("jobId", None))
 
     ########################################################
