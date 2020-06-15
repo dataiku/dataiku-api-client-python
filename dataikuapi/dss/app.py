@@ -1,4 +1,5 @@
 import sys
+import re
 import os.path as osp
 from .future import DSSFuture
 from dataikuapi.utils import DataikuException
@@ -40,7 +41,8 @@ class DSSApp(object):
             return future
 
     def make_random_project_key(self):
-        return "%s_tmp_%s" % (self.app_id, random_string(10))
+        slugified_app_id = re.sub(r'[^A-Za-z_0-9]+', '_', self.app_id)
+        return "%s_tmp_%s" % (slugified_app_id, random_string(10))
 
     def create_temporary_instance(self):
         """
