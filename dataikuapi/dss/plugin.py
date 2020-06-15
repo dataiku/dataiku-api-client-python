@@ -144,7 +144,9 @@ class DSSPlugin(object):
         }
         ret = self.client._perform_json("POST", "/plugins/{pluginId}/actions/delete".format(pluginId=self.plugin_id),
                                         body=params)
-        if "state" not in ret:
+        # we check for the presence of a field of the aggregated usage statistics structure returned
+        # when the plugin exist and has usages
+        if "projectCount" in ret:
             raise DataikuException("Plugin has usages or analysis errors. See list_usages() for more info.")
         return self.client.get_future(ret.get("jobId", None))
 
