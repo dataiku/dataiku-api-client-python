@@ -135,7 +135,7 @@ class TemporaryDSSAppInstance(DSSAppInstance):
 
 
     def close(self):
-        self.get_as_project().delete()
+        self.get_as_project().delete(drop_data=True)
 
     def __enter__(self,):
         return self
