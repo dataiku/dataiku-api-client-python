@@ -1,7 +1,7 @@
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
+import json, warnings
 import time
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
@@ -10,9 +10,20 @@ from .future import DSSFuture
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
 
+    SPLIT_PARAMS_KEY = 'splitParams'
+
     def __init__(self, mltask_settings):
         """Do not call directly, use :meth:`DSSMLTaskSettings.get_split_params`"""
         self.mltask_settings = mltask_settings
+
+    def get_raw(self):
+        """Gets the raw settings of the prediction split configuration. This returns a reference to the raw settings, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        :rtype: dict
+        """
+        return self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+
 
     def set_split_random(self, train_ratio = 0.8, selection = None, dataset_name=None):
         """
@@ -22,7 +33,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -36,6 +47,8 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
+        return self
+
     def set_split_kfold(self, n_folds = 5, selection = None, dataset_name=None):
         """
         Sets the train/test split to k-fold splitting of an extract of a single dataset
@@ -44,7 +57,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -58,6 +71,8 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
+        return self
+
     def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
         Sets the train/test split to explicit extract of one or two dataset(s)
@@ -69,7 +84,7 @@ class PredictionSplitParamsHandler(object):
         :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
         :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
             raise Exception("For explicit splitting a dataset_name is mandatory")
         if test_dataset_name is None or test_dataset_name == dataset_name:
@@ -108,6 +123,47 @@ class PredictionSplitParamsHandler(object):
             else:
                 test_split["filter"] = test_filter
 
+        return self
+
+    def set_time_ordering(self, feature_name, ascending=True):
+        """
+        Uses a variable to sort the data for train/test split and hyperparameter optimization by time
+        :param str feature_name: Name of the variable to use
+        :param bool ascending: True iff the test set is expected to have larger time values than the train set
+        """
+        self.unset_time_ordering()
+        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
+        self.mltask_settings['time']['enabled'] = True
+        self.mltask_settings['time']['timeVariable'] = feature_name
+        self.mltask_settings['time']['ascending'] = ascending
+        self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
+            self.mltask_settings['splitParams']['ssdColumn'] = feature_name
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
+
+        return self
+
+    def unset_time_ordering(self):
+        """
+        Remove time-based ordering for train/test split and hyperparameter optimization
+        """
+        self.mltask_settings['time']['enabled'] = False
+        self.mltask_settings['time']['timeVariable'] = None
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "RANDOM"
+            self.mltask_settings['splitParams']['ssdColumn'] = None
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
+
+        return self
+
 
 class DSSMLTaskSettings(object):
     """
@@ -130,49 +186,6 @@ class DSSMLTaskSettings(object):
         :rtype: dict
         """
         return self.mltask_settings
-
-    def get_split_params(self):
-        """
-        Gets an object to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        return PredictionSplitParamsHandler(self.mltask_settings)
-
-    def split_ordered_by(self, feature_name, ascending=True):
-        """
-        Uses a variable to sort the data for train/test split and hyperparameter optimization
-        :param str feature_name: Name of the variable to use
-        :param bool ascending: True iff the test set is expected to have larger time values than the train set
-        """
-        self.remove_ordered_split()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
-        self.mltask_settings['time']['enabled'] = True
-        self.mltask_settings['time']['timeVariable'] = feature_name
-        self.mltask_settings['time']['ascending'] = ascending
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
-        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
-            self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
-            self.mltask_settings['splitParams']['ssdColumn'] = feature_name
-        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "KFOLD":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_KFOLD"
-        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
-
-    def remove_ordered_split(self):
-        """
-        Remove time-based ordering.
-        """
-        self.mltask_settings['time']['enabled'] = False
-        self.mltask_settings['time']['timeVariable'] = None
-        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
-            self.mltask_settings['splitParams']['ssdSplitMode'] = "RANDOM"
-            self.mltask_settings['splitParams']['ssdColumn'] = None
-        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_KFOLD":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
-        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
-            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
 
     def get_feature_preprocessing(self, feature_name):
         """
@@ -213,27 +226,6 @@ class DSSMLTaskSettings(object):
         :param str feature_name: Name of the feature to reject
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
-
-    def use_sample_weighting(self, feature_name):
-        """
-        Uses a feature as sample weight
-        :param str feature_name: Name of the feature to use
-        """
-        self.remove_sample_weighting()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
-        self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
-        self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
-
-    def remove_sample_weighting(self):
-        """
-        Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
-        """
-        self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
-        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
-                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
 
     def get_algorithm_settings(self, algorithm_name):
         """
@@ -360,6 +352,118 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "KERAS_CODE" : "keras"
         }
 
+    class PredictionTypes:
+        BINARY = "BINARY_CLASSIFICATION"
+        REGRESSION = "REGRESSION"
+        MULTICLASS = "MULTICLASS"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        DSSMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        if self.get_prediction_type() not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
+            raise ValueError("Unknown prediction type: {}".format(self.prediction_type))
+
+        self.classification_prediction_types = [self.PredictionTypes.BINARY, self.PredictionTypes.MULTICLASS]
+
+    def get_prediction_type(self):
+        return self.mltask_settings['predictionType']
+
+    @property
+    def split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return self.get_split_params()
+
+    def get_split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+        
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return PredictionSplitParamsHandler(self.mltask_settings)
+
+    def split_ordered_by(self, feature_name, ascending=True):
+        """
+        Deprecated. Use split_params.set_time_ordering()
+        """
+        warnings.warn("split_ordered_by() is deprecated, please use split_params.set_time_ordering() instead", DeprecationWarning)
+        self.split_params.set_time_ordering(feature_name, ascending=ascending)
+
+        return self
+
+    def remove_ordered_split(self):
+        """
+        Deprecated. Use split_params.unset_time_ordering()
+        """
+        warnings.warn("remove_ordered_split() is deprecated, please use split_params.unset_time_ordering() instead", DeprecationWarning)
+        self.split_params.unset_time_ordering()
+
+        return self
+
+    def use_sample_weighting(self, feature_name):
+        """
+        Deprecated. use set_weighting()
+        """
+        warnings.warn("use_sample_weighting() is deprecated, please use set_weighting() instead", DeprecationWarning)
+        return self.set_weighting(method='SAMPLE_WEIGHT', feature_name=feature_name, )
+
+    def set_weighting(self, method, feature_name=None):
+        """
+        Sets the method to weight samples. 
+
+        If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
+
+        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
+                        CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
+        :param str feature_name: Name of the feature to use as sample weight
+        """
+
+        # First, if there was a WEIGHT feature, restore it as INPUT
+        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
+                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
+
+        if method == "NO_WEIGHTING":
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "SAMPLE_WEIGHT":
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        elif method == "CLASS_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "CLASS_AND_SAMPLE_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+            
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        else:
+            raise ValueError("Unknown weighting method: {}".format(method))
+
+        return self
+
+    def remove_sample_weighting(self):
+        """
+        Deprecated. Use unset_weighting() instead
+        """
+        warnings.warn("remove_sample_weighting() is deprecated, please use set_weigthing(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
+        return self.unset_weighting()
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
