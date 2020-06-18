@@ -1,10 +1,12 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipe
 from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
+from .continuousactivity import DSSContinuousActivity
 from .scenario import DSSScenario
 from .apiservice import DSSAPIService
 from .future import DSSFuture
@@ -345,6 +347,106 @@ class DSSProject(object):
         return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
+    # Streaming endpoints
+    ########################################################
+
+    def list_streaming_endpoints(self, as_type="listitems"):
+        """
+        List the streaming endpoints in this project.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the streaming endpoints. If "as_type" is "listitems", each one as a :class:`streaming_endpoint.DSSStreamingEndpointListItem`.
+                  If "as_type" is "objects", each one as a :class:`streaming_endpoint.DSSStreamingEndpoint`
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/streamingendpoints/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSStreamingEndpointListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSStreamingEndpoint(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_streaming_endpoint(self, streaming_endpoint_name):
+        """
+        Get a handle to interact with a specific streaming endpoint
+       
+        :param string streaming_endpoint_name: the name of the desired streaming endpoint
+        
+        :returns: A :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint` streaming endpoint handle
+        """
+        return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
+
+    def create_streaming_endpoint(self, streaming_endpoint_name, type, params=None):
+        """
+        Create a new streaming endpoint in the project, and return a handle to interact with it.
+
+        The precise structure of ``params`` depends on the specific streaming endpoint 
+        type. To know which fields exist for a given streaming endpoint type,
+        create a streaming endpoint from the UI, and use :meth:`get_streaming_endpoint` to retrieve the configuration
+        of the streaming endpoint and inspect it. Then reproduce a similar structure in the :meth:`create_streaming_endpoint` call.
+
+        Not all settings of a streaming endpoint can be set at creation time (for example partitioning). After creation,
+        you'll have the ability to modify the streaming endpoint
+        
+        :param string streaming_endpoint_name: the name for the new streaming endpoint
+        :param string type: the type of the streaming endpoint
+        :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
+        
+        Returns:
+            A :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint` streaming endpoint handle
+        """
+        if params is None:
+            params = {}
+        obj = {
+            "id" : streaming_endpoint_name,
+            "projectKey" : self.project_key,
+            "type" : type,
+            "params" : params
+        }
+        self.client._perform_json("POST", "/projects/%s/streamingendpoints/" % self.project_key,
+                       body = obj)
+        return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
+
+    def create_kafka_streaming_endpoint(self, streaming_endpoint_name, connection=None, topic=None):
+        obj = {
+            "id" : streaming_endpoint_name,
+            "projectKey" : self.project_key,
+            "type" : "kafka",
+            "params" : {}
+        }
+        if connection is not None:
+            obj["params"]["connection"] = connection
+        if topic is not None:
+            obj["params"]["topic"] = topic
+        self.client._perform_json("POST", "/projects/%s/streamingendpoints/" % self.project_key,
+                       body = obj)
+        return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
+
+    def create_httpsse_streaming_endpoint(self, streaming_endpoint_name, url=None):
+        obj = {
+            "id" : streaming_endpoint_name,
+            "projectKey" : self.project_key,
+            "type" : "httpsse",
+            "params" : {}
+        }
+        if url is not None:
+            obj["params"]["url"] = url
+        self.client._perform_json("POST", "/projects/%s/streamingendpoints/" % self.project_key,
+                       body = obj)
+        return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
+
+    def new_managed_streaming_endpoint_creation_helper(self, streaming_endpoint_name, streaming_endpoint_type=None):
+        """
+        Creates a helper class to create a managed streaming endpoint in the project
+
+        :param string streaming_endpoint_name: Name of the new streaming endpoint - must be unique in the project
+        :param string streaming_endpoint_type: Type of the new streaming endpoint (optional if it can be inferred from a connection type)
+        :return: A :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper` object to create the streaming endpoint
+        """
+        return DSSManagedStreamingEndpointCreationHelper(self, streaming_endpoint_name, streaming_endpoint_type)
+
+    ########################################################
     # Lab and ML
     # Don't forget to synchronize with DSSDataset.*
     ########################################################
@@ -625,6 +727,32 @@ class DSSProject(object):
         """Deprecated. Please use :meth:`new_job`"""
         warnings.warn("new_job_definition_builder is deprecated, please use new_job", DeprecationWarning)
         return JobDefinitionBuilder(self, job_type)
+
+    ########################################################
+    # Continuous activities
+    ########################################################
+
+    def list_continuous_activities(self, as_objects=True):
+        """
+        List the continuous activities in this project
+        
+        Returns:
+            a list of the continuous activities, each one as a JSON object, containing both the definition and the state
+        """
+        list = self.client._perform_json("GET", "/projects/%s/continuous-activities/" % self.project_key)
+        if as_objects:
+            return [DSSContinuousActivity(self.client, a['projectKey'], a['recipeId']) for a in list]
+        else:
+            return list
+
+    def get_continuous_activity(self, recipe_id):
+        """
+        Get a handler to interact with a specific continuous activities
+        
+        Returns:
+            A :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` job handle
+        """
+        return DSSContinuousActivity(self.client, self.project_key, recipe_id)
 
     ########################################################
     # Variables
