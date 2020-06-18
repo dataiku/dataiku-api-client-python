@@ -190,6 +190,12 @@ class DSSRecipe(object):
         """
         return DSSObjectDiscussions(self.client, self.project_key, "RECIPE", self.recipe_name)
 
+    def get_continuous_activity(self):
+        """
+        Return a handle on the associated recipe
+        """
+        from .continuousactivity import DSSContinuousActivity
+        return DSSContinuousActivity(self.client, self.project_key, self.recipe_name)
 
 class DSSRecipeStatus(object):
     """Status of a recipce. 

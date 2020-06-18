@@ -6,6 +6,7 @@ from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
+from .continuousactivity import DSSContinuousActivity
 from .scenario import DSSScenario
 from .apiservice import DSSAPIService
 from .future import DSSFuture
@@ -726,6 +727,32 @@ class DSSProject(object):
         """Deprecated. Please use :meth:`new_job`"""
         warnings.warn("new_job_definition_builder is deprecated, please use new_job", DeprecationWarning)
         return JobDefinitionBuilder(self, job_type)
+
+    ########################################################
+    # Continuous activities
+    ########################################################
+
+    def list_continuous_activities(self, as_objects=True):
+        """
+        List the continuous activities in this project
+        
+        Returns:
+            a list of the continuous activities, each one as a JSON object, containing both the definition and the state
+        """
+        list = self.client._perform_json("GET", "/projects/%s/continuous-activities/" % self.project_key)
+        if as_objects:
+            return [DSSContinuousActivity(self.client, a['projectKey'], a['recipeId']) for a in list]
+        else:
+            return list
+
+    def get_continuous_activity(self, recipe_id):
+        """
+        Get a handler to interact with a specific continuous activities
+        
+        Returns:
+            A :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` job handle
+        """
+        return DSSContinuousActivity(self.client, self.project_key, recipe_id)
 
     ########################################################
     # Variables
