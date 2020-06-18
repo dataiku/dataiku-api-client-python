@@ -47,7 +47,13 @@ class DSSComputedColumn(object):
     def formula(name, formula, type="double"):
         return {"expr": formula, "mode": "GREL", "name": name, "type": type}
 
-from enum import Enum
+import sys
+if sys.version_info > (3,4):
+    from enum import Enum
+else:
+    class Enum(object):
+        pass
+
 class DSSFilterOperator(Enum):
     EMPTY_ARRAY = "empty array"
     NOT_EMPTY_ARRAY = "not empty array"
@@ -218,3 +224,43 @@ class DSSTaggableObjectListItem(dict):
     @property
     def tags(self):
         return self._data["tags"]
+
+class DSSTaggableObjectSettings(object):
+    def __init__(self, taggable_object_data):
+        self._tod = taggable_object_data
+
+    @property
+    def tags(self):
+        """The tags of the object, as a list of strings"""
+        return self._tod["tags"]
+
+    @tags.setter
+    def tags(self, tags):
+        self._tod["tags"] = tags
+
+    @property
+    def description(self):
+        """The description of the object as a string"""
+        return self._tod.get("description", None)
+
+    @description.setter
+    def description(self, description):
+        self._tod["description"] = description
+
+    @property
+    def short_description(self):
+        """The short description of the object as a string"""
+        return self._tod.get("shortDesc", None)
+
+    @short_description.setter
+    def short_description(self, short_description):
+        self._tod["shortDesc"] = short_description
+
+    @property
+    def custom_fields(self):
+        """The custom fields of the object as a dict. Returns None if there are no custom fields"""
+        return self._tod.get("customFields", None)
+
+    @custom_fields.setter
+    def custom_fields(self, custom_fields):
+        self._tod["customFields"] = custom_fields

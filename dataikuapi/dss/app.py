@@ -1,4 +1,5 @@
 import sys
+import re
 import os.path as osp
 from .future import DSSFuture
 from dataikuapi.utils import DataikuException
@@ -40,7 +41,8 @@ class DSSApp(object):
             return future
 
     def make_random_project_key(self):
-        return "%s_tmp_%s" % (self.app_id, random_string(10))
+        slugified_app_id = re.sub(r'[^A-Za-z_0-9]+', '_', self.app_id)
+        return "%s_tmp_%s" % (slugified_app_id, random_string(10))
 
     def create_temporary_instance(self):
         """
@@ -77,15 +79,17 @@ class DSSApp(object):
 
     def get_manifest(self):
         raw_data = self.client._perform_json("GET", "/apps/%s/" % self.app_id)
-        return DSSAppManifest(self.client, raw_data)
+        project_key = self.app_id[8:] if self.app_id.startswith('PROJECT_') else None
+        return DSSAppManifest(self.client, raw_data, project_key)
 
 
 class DSSAppManifest(object):
 
-    def __init__(self, client, raw_data):
+    def __init__(self, client, raw_data, project_key=None):
         """The manifest for an app. Do not create this class directly"""
         self.client = client
         self.raw_data = raw_data
+        self.project_key = project_key
 
     def get_raw(self):
         return self.raw_data
@@ -96,6 +100,13 @@ class DSSAppManifest(object):
     def get_runnable_scenarios(self):
         """Return the scenario identifiers that are declared as actions for this app"""
         return [x["scenarioId"] for x in self.get_all_actions() if x["type"] == "SCENARIO_RUN"]
+
+    def save(self):
+        """Saves the changes to this manifest object back to the template project"""
+        if self.project_key is None:
+            raise Exception("This manifest object wasn't created from a project, cannot be saved back")
+        self.client._perform_empty("PUT", "/projects/%s/app-manifest" % self.project_key, body=self.raw_data)
+
 
 class DSSAppInstance(object):
 
@@ -124,7 +135,7 @@ class TemporaryDSSAppInstance(DSSAppInstance):
 
 
     def close(self):
-        self.get_as_project().delete()
+        self.get_as_project().delete(drop_data=True)
 
     def __enter__(self,):
         return self

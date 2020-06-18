@@ -1,4 +1,5 @@
 from ..utils import DataikuException
+from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
 
@@ -15,6 +16,11 @@ class DSSRecipe(object):
         self.client = client
         self.project_key = project_key
         self.recipe_name = recipe_name
+
+    @property
+    def name(self):
+        """The name of the recipe"""
+        return self.recipe_name
 
     def compute_schema_updates(self):
         """
@@ -136,6 +142,7 @@ class DSSRecipe(object):
         Deprecated. Use :meth:`get_settings` and :meth:`DSSRecipeSettings.save`
         """
         warnings.warn("Recipe.set_definition_and_payload is deprecated, please use get_settings", DeprecationWarning)
+        definition._payload_to_str()
         return self.client._perform_json(
                 "PUT", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name),
                 body=definition.data)
@@ -237,11 +244,12 @@ class DSSRecipeStatus(object):
         return self.data["allMessagesForFrontend"]["messages"]
 
 
-class DSSRecipeSettings(object):
+class DSSRecipeSettings(DSSTaggableObjectSettings):
     """
     Settings of a recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
     """
     def __init__(self, recipe, data):
+        super(DSSRecipeSettings, self).__init__(data["recipe"])
         self.recipe = recipe
         self.data = data
         self.recipe_settings = self.data["recipe"]
@@ -276,6 +284,11 @@ class DSSRecipeSettings(object):
         """The raw "payload" of the recipe, as a dict"""
         self._payload_to_obj()
         return self._obj_payload
+
+    @property
+    def raw_params(self):
+        """The raw 'params' field of the recipe settings, as a dict"""
+        return self.recipe_settings["params"]
 
     def _payload_to_str(self):
         if self._obj_payload is not None:
