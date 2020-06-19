@@ -1,3 +1,4 @@
+from dataikuapi.dss.utils import extract_info_from_full_model_id
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
@@ -523,6 +524,23 @@ class DSSTrainedModelDetails(object):
             self.saved_model.client._perform_empty(
                 "PUT", "/projects/%s/savedmodels/%s/versions/%s/user-meta" % (self.saved_model.project_key,
                     self.saved_model.sm_id, self.saved_model_version), body = um)
+
+    def get_origin_analysis_trained_model(self):
+        """
+        Fetch details about the model in an analysis, this model has been exported from
+
+        :rtype: DSSTrainedModelDetails
+        """
+        if self.saved_model is None:
+            return self
+        else:
+            if "smOrigin" not in self.get_raw():
+                raise DataikuException("Unknow ")
+            fmi = self.get_raw()["smOrigin"]["fullModelId"]
+            _, analysis_id, mltask_id = extract_info_from_full_model_id(fmi)
+
+            origin_ml_task = DSSMLTask(self.saved_model.client, self.saved_model.project_key, analysis_id, mltask_id)
+            return origin_ml_task.get_trained_model_details(fmi)
 
 class DSSTreeNode(object):
     def __init__(self, tree, i):

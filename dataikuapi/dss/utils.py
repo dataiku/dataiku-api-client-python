@@ -1,3 +1,6 @@
+import re
+
+
 class DSSDatasetSelectionBuilder(object):
     """Builder for a "dataset selection". In DSS, a dataset selection is used to select a part of a dataset for processing.
 
@@ -258,3 +261,8 @@ class DSSTaggableObjectSettings(object):
     @custom_fields.setter
     def custom_fields(self, custom_fields):
         self._tod["customFields"] = custom_fields
+
+
+def extract_info_from_full_model_id(full_model_id):
+    match = re.search(u'([\w]+)-([\w]+)-([\w]+)-s\w+-pp\w+-m\w+', full_model_id)
+    return match.group(1), match.group(2), match.group(3)
