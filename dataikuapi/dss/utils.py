@@ -1,6 +1,3 @@
-import re
-
-
 class DSSDatasetSelectionBuilder(object):
     """Builder for a "dataset selection". In DSS, a dataset selection is used to select a part of a dataset for processing.
 
