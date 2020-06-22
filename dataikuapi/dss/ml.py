@@ -1,4 +1,5 @@
-from dataikuapi.dss.utils import extract_info_from_full_model_id
+import re
+
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
@@ -537,9 +538,8 @@ class DSSTrainedModelDetails(object):
             if "smOrigin" not in self.get_raw():
                 raise DataikuException("Unknow ")
             fmi = self.get_raw()["smOrigin"]["fullModelId"]
-            _, analysis_id, mltask_id = extract_info_from_full_model_id(fmi)
-
-            origin_ml_task = DSSMLTask(self.saved_model.client, self.saved_model.project_key, analysis_id, mltask_id)
+            origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
+                                                          project_key=self.saved_model.project_key)
             return origin_ml_task.get_trained_model_details(fmi)
 
 class DSSTreeNode(object):
@@ -1443,6 +1443,14 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
 
 
 class DSSMLTask(object):
+
+    @staticmethod
+    def from_full_model_id(client, fmi, project_key=None):
+        match = re.match(u'A-([\w]+)-([\w]+)-([\w]+)-s\w+-pp\w+-m\w+', fmi)
+        if project_key is None:
+            project_key = match.group(1)
+        return DSSMLTask(client, project_key, match.group(2), match.group(3))
+
     """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
         self.client = client

@@ -1,5 +1,4 @@
 from dataikuapi.dss.ml import DSSMLTask
-from dataikuapi.dss.utils import extract_info_from_full_model_id
 from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
 from .metrics import ComputedMetrics
 from .ml import DSSTrainedClusteringModelDetails
@@ -100,8 +99,9 @@ class DSSSavedModel(object):
         """
         definition = self.get_definition()
         fmi = definition["lastExportedFrom"]
-        _, analysis_id, ml_task_id = extract_info_from_full_model_id(fmi)
-        return DSSMLTask(self.client, self.project_key, analysis_id, ml_task_id)
+
+        origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
+        return origin_ml_task.get_trained_model_details(fmi)
 
     ########################################################
     # Metrics
