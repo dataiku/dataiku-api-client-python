@@ -12,6 +12,7 @@ class DSSSavedModel(object):
     """
     def __init__(self, client, project_key, sm_id):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.sm_id = sm_id
   
@@ -105,8 +106,16 @@ class DSSSavedModel(object):
 
                 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this saved model
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
 
     def get_usages(self):
         """
@@ -117,10 +126,6 @@ class DSSSavedModel(object):
         """
         return self.client._perform_json("GET", "/projects/%s/savedmodels/%s/usages" % (self.project_key, self.sm_id))
 
-
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the saved model

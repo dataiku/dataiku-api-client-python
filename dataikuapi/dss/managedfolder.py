@@ -12,6 +12,7 @@ class DSSManagedFolder(object):
     """
     def __init__(self, client, project_key, odb_id):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.odb_id = odb_id
 
@@ -155,8 +156,17 @@ class DSSManagedFolder(object):
 
                 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this managed folder
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
+
 
     def get_usages(self):
         """
@@ -167,9 +177,6 @@ class DSSManagedFolder(object):
         """
         return self.client._perform_json("GET", "/projects/%s/managedfolders/%s/usages" % (self.project_key, self.odb_id))
 
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the managed folder

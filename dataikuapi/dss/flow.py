@@ -260,6 +260,7 @@ class DSSFlowZone(object):
         data = self.client._perform_json("GET", "/projects/%s/flow/zones/%s/graph" % (self.flow.project.project_key, self.id))
         return DSSProjectFlowGraph(self.flow, data)
 
+
 class DSSFlowZoneSettings(object):
     """The settings of a flow zone. Do not create this directly, use :meth:`DSSFlowZone.get_settings`"""
     def __init__(self, zone):
