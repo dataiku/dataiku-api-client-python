@@ -14,8 +14,11 @@ class DSSSavedModel(object):
         self.client = client
         self.project_key = project_key
         self.sm_id = sm_id
+  
+    @property
+    def id(self):
+        return self.sm_id
 
-        
     ########################################################
     # Versions
     ########################################################

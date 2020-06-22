@@ -60,6 +60,10 @@ class DSSDataset(object):
         self.dataset_name = dataset_name
 
     @property
+    def id(self):
+        return self.dataset_name
+
+    @property
     def name(self):
         return self.dataset_name
     

@@ -1,5 +1,7 @@
 from .utils import AnyLoc
 from .dataset import DSSDataset
+from .managedfolder import DSSManagedFolder
+from .savedmodel import DSSSavedModel
 from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
 import logging, json
@@ -12,6 +14,49 @@ class DSSProjectFlow(object):
     def get_graph(self):
         data = self.client._perform_json("GET", "/projects/%s/flow/graph/" % (self.project.project_key))
         return DSSProjectFlowGraph(self, data)
+
+    def get_zone(self, id):
+        """
+        Gets a single Flow zone by id
+        :rtype: :class:`DSSFlowZone`
+        """
+        data = self.client._perform_json("GET", "/projects/%s/flow/zones/%s" % (self.project.project_key, id))
+        return DSSFlowZone(self, data)
+
+    def get_default_zone(self):
+        """
+        Returns the default zone of the Flow
+        :rtype: :class:`DSSFlowZone`
+        """
+        return self.get_zone("default")
+
+    def list_zones(self):
+        """
+        Lists all zones in the Flow
+        :rtype: list of :class:`DSSFlowZone`
+        """
+        data = self.client._perform_json("GET", "/projects/%s/flow/zones" % (self.project.project_key))
+        return [DSSFlowZone(self, z) for z in data]
+
+    def get_zone_of_object(self, obj):
+        """
+        Finds the zone to which this object belongs.
+
+        If the object is not found in any specific zone, it belongs to the default zone, and the default 
+        zone is returned
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to search
+
+        :rtype: :class:`DSSFlowZone`
+        """
+        sr = self._to_smart_ref(obj)
+
+        for zone in self.list_zones():
+            for item in zone._raw["items"]:
+                if json.dumps(sr) == json.dumps(item):
+                    return zone
+        return self.get_default_zone()
 
     def replace_input_computable(self, current_ref, new_ref, type="DATASET"):
         """
@@ -85,6 +130,163 @@ class DSSProjectFlow(object):
         update_future = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, dataset_name), params={'rebuild':rebuild}, body=data)
         return DSSFuture(self.client,update_future.get('jobId', None), update_future)
 
+
+    def _to_smart_ref(self, obj):
+        if isinstance(obj, DSSDataset):
+            ot = "DATASET"
+        elif isinstance(obj, DSSManagedFolder):
+            ot = "MANAGED_FOLDER"
+        elif isinstance(obj, DSSSavedModel):
+            ot = "SAVED_MODEL"
+        elif isinstance(obj, DSSRecipe):
+            ot = "RECIPE"
+        else:
+            raise ValueError("Cannot transform to DSS object ref: %s" % obj)
+
+        if obj.project_key == self.project.project_key:
+            return {
+                "objectId" : obj.id,
+                "objectType": ot
+            }
+        else:
+            return {
+                "projectKey" : obj.project_key,
+                "objectId" : obj.id,
+                "objectType": ot
+            }
+
+class DSSFlowZone(object):
+    """
+    A zone in the Flow. Do not create this object manually, use :meth:`DSSProjectFlow.get_zone`
+    or :meth:`DSSProjectFlow.list_zones`
+    """
+    def __init__(self, flow, data):
+        self.flow = flow
+        self.client = flow.client
+        self._raw = data
+
+    @property
+    def id(self):
+        return self._raw["id"]
+
+    @property
+    def name(self):
+        return self._raw["name"]
+
+    def __repr__(self):
+        return "<dataikuapi.dss.flow.DSSFlowZone (id=%s, name=%s)>" % (self.id, self.name)
+
+    def get_settings(self):
+        """Gets the settings of this zone in order to modify them
+
+        :rtype: :class:`DSSFlowZoneSettings`
+        """
+        return DSSFlowZoneSettings(self)
+
+    def _to_native_obj(self, zone_item):
+        if not "projectKey" in zone_item or zone_item["projectKey"] == self.flow.project.project_key:
+            p = self.flow.project
+        else:
+            p = self.client.get_project(zone_item["projectKey"])
+        
+        if zone_item["objectType"] == "DATASET":
+           return p.get_dataset(zone_item["objectId"])
+        elif zone_item["objectType"] == "MANAGED_FOLDER":
+           return p.get_managed_folder(zone_item["objectId"])
+        elif zone_item["objectType"] == "SAVED_MODEL":
+           return p.get_saved_model(zone_item["objectId"])
+        elif zone_item["objectType"] == "RECIPE":
+            return p.get_recipe(zone_item["objectId"])
+        else:
+            raise ValueError("Cannot transform to DSS object: %s" % zone_item)
+
+    def add_item(self, obj):
+        """
+        Adds an item to this zone.
+
+        The item will automatically be moved from its existing zone. Additional items may be moved to this zone
+        as a result of the operation (notably the recipe generating `obj`).
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
+        """
+        self.client._perform_empty("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
+                                  body=self.flow._to_smart_ref(obj))
+
+    #. TBD: if we make "add to default" work propertly, then we don't need thjis
+    #def remove_item(self, obj):
+    #    """
+    #    Removes an item to this zone.#
+    #
+    #    :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+    #                       or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
+    #    """
+    #    sr = self._to_smart_ref(obj)
+    # 
+    #    self.client._perform_empty("DELETE", "/projects/%s/flow/zones/%s/items/%s/%s" % (self.flow.project.project_key,
+    #                            self.id, sr["objectType"], sr["objectId"]))
+
+    @property
+    def items(self):
+        """
+        The list of items explicitly belonging to this zone.
+
+        This list is read-only, to modify it, use :meth:`add_item` and :meth:`remove_item`.
+
+        Note that the "default" zone never has any items, as it contains all items that are not
+        explicitly in a zone. To get the full list of items in a zone, including in the "default" zone, use
+        the :meth:`get_graph` method.
+
+        @rtype list of zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`, 
+            :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
+        """
+        return [self._to_native_obj(i) for i in self._raw["items"]]
+
+    @property
+    def shared(self):
+        """
+        The list of items that have been explicitly pre-shared to this zone.
+
+        This list is read-only, to modify it, use :meth:`add_shared` and :meth:`remove_shared`
+
+        @rtype list of shared zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`, 
+            :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
+        """
+        return [self._to_native_obj(i) for i in self._raw["shared"]]
+
+    def get_graph(self):
+        data = self.client._perform_json("GET", "/projects/%s/flow/zones/%s/graph" % (self.flow.project.project_key, self.id))
+        return DSSProjectFlowGraph(self.flow, data)
+
+class DSSFlowZoneSettings(object):
+    """The settings of a flow zone. Do not create this directly, use :meth:`DSSFlowZone.get_settings`"""
+    def __init__(self, zone):
+        self._zone = zone
+        self._raw = zone._raw
+
+    def get_raw(self):
+        """
+        Gets the raw settings of the zone.
+
+        You cannot modify the `items` and `shared` elements through this class. Instead, use :meth:`DSSFlowZone.add_item` and 
+        others
+        """
+        return self._raw
+
+    @property
+    def name(self):
+        return self._raw["name"]
+
+    @name.setter
+    def name(self, new_name):
+        self._raw["name"] = new_name
+
+    def save(self):
+        """Saves the settings of the zone"""
+        self._zone.client._perform_empty("PUT", "/projects/%s/flow/zones/%s" % (self._zone.flow.project.project_key, self._zone.id),
+                                        body=self._raw)        
 
 class DSSProjectFlowGraph(object):
 
