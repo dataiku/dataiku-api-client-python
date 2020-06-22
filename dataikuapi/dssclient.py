@@ -918,6 +918,24 @@ class DSSClient(object):
                 params={"label": label})
 
     ########################################################
+    # Container execution
+    ########################################################
+
+    def push_base_images(self):
+        """
+        Push base images for Kubernetes container-execution and Spark-on-Kubernetes
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/push-base-images")
+        return DSSFuture.from_resp(self, resp)
+
+    def apply_kubernetes_namespaces_policies(self):
+        """
+        Apply Kubernetes namespaces policies defined in the general settings
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
+        return DSSFuture.from_resp(self, resp)
+
+    ########################################################
     # Licensing
     ########################################################
 
