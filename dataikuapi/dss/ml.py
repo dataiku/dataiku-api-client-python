@@ -1686,14 +1686,18 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
 
-    def guess(self, prediction_type=None):
+    def guess(self, prediction_type=None, reguess_level=None):
         """
         Guess the feature handling and the algorithms.
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
+        :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
         """
         obj = {}
         if prediction_type is not None:
             obj["predictionType"] = prediction_type
+
+        if reguess_level is not None:
+            obj["reguessLevel"] = reguess_level
 
         self.client._perform_empty(
             "PUT",
