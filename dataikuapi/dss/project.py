@@ -1,13 +1,12 @@
-import time
-from .dataset import DSSDataset, DSSManagedDatasetCreationHelper
+import time, warnings, sys, os.path as osp
+from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .recipe import DSSRecipe
+from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario
 from .apiservice import DSSAPIService
-import sys
-import os.path as osp
 from .future import DSSFuture
 from .notebook import DSSNotebook
 from .macro import DSSMacro
@@ -15,6 +14,8 @@ from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
 from .ml import DSSMLTask
 from .analysis import DSSAnalysis
+from .flow import DSSProjectFlow
+from .app import DSSAppManifest
 from dataikuapi.utils import DataikuException
 
 
@@ -207,15 +208,22 @@ class DSSProject(object):
     # Datasets
     ########################################################
 
-    def list_datasets(self):
+    def list_datasets(self, as_type="listitems"):
         """
-        List the datasets in this project
-        
-        :returns: The list of the datasets, each one as a dictionary. Each dataset dict contains at least a `name` field which is the name of the dataset
-        :rtype: list of dicts
+        List the datasets in this project.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the datasets. If "as_type" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataset.DSSDataset`
+        :rtype: list
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/datasets/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/datasets/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSDatasetListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSDataset(self.client, self.project_key, item["name"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_dataset(self, dataset_name):
         """
@@ -265,6 +273,68 @@ class DSSProject(object):
                        body = obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
+    def create_upload_dataset(self, dataset_name, connection=None):
+        obj = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : "UploadedFiles",
+            "params" : {}
+        }
+        if connection is not None:
+            obj["params"]["uploadConnection"] = connection
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                       body = obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def create_filesystem_dataset(self, dataset_name, connection, path_in_connection):
+        return self.create_fslike_dataset(dataset_name, "Filesystem", connection, path_in_connection)
+
+    def create_s3_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
+        """
+        Creates a new external S3 dataset in the project and returns a :class:`~dataikuapi.dss.dataset.DSSDataset` to interact with it.
+
+        The created dataset doesn not have its format and schema initialized, it is recommend to use 
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param dataset_name: Name of the dataset to create. Must not already exist
+        :rtype: `~dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if bucket is not None:
+            extra_params["bucket"] = bucket
+        return self.create_fslike_dataset(dataset_name, "S3", connection, path_in_connection, extra_params)
+
+    def create_fslike_dataset(self, dataset_name, dataset_type, connection, path_in_connection, extra_params=None):
+        body = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : dataset_type,
+            "params" : {
+                "connection" : connection,
+                "path": path_in_connection
+            }
+        }
+        if extra_params is not None:
+            body["params"].update(extra_params)
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key, body = body)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
+        obj = {
+            "name" : dataset_name,
+            "projectKey" : self.project_key,
+            "type" : type,
+            "params" : {
+                "connection" : connection,
+                "mode": "table",
+                "table" : table,
+                "schema" : schema
+            }
+        }
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                       body = obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
     def new_managed_dataset_creation_helper(self, dataset_name):
         """
         Creates a helper class to create a managed dataset in the project
@@ -275,7 +345,8 @@ class DSSProject(object):
         return DSSManagedDatasetCreationHelper(self, dataset_name)
 
     ########################################################
-    # ML
+    # Lab and ML
+    # Don't forget to synchronize with DSSDataset.*
     ########################################################
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
@@ -520,7 +591,7 @@ class DSSProject(object):
 
     def start_job_and_wait(self, definition, no_fail=False):
         """
-        Create a new job. Wait the end of the job to complete.
+        Starts a new job and waits for it to complete.
         
         Args:
             definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
@@ -533,8 +604,27 @@ class DSSProject(object):
         waiter = DSSJobWaiter(job)
         return waiter.wait(no_fail)
 
+    def new_job(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
+        """
+        Create a job to be run
+
+        You need to add outputs to the job (i.e. what you want to build) before running it.
+
+        .. code-block:: python
+
+            job_builder = project.new_job()
+            job_builder.with_output("mydataset")
+            complete_job = job_builder.start_and_wait()
+            print("Job %s done" % complete_job.id)
+
+        :rtype: :class:`JobDefinitionBuilder`
+        """
+        return JobDefinitionBuilder(self, job_type)
+
     def new_job_definition_builder(self, job_type='NON_RECURSIVE_FORCED_BUILD'):
-        return JobDefinitionBuilder(self.project_key, job_type)
+        """Deprecated. Please use :meth:`new_job`"""
+        warnings.warn("new_job_definition_builder is deprecated, please use new_job", DeprecationWarning)
+        return JobDefinitionBuilder(self, job_type)
 
     ########################################################
     # Variables
@@ -748,13 +838,9 @@ class DSSProject(object):
 
     def get_recipe(self, recipe_name):
         """
-        Get a handle to interact with a specific recipe
-       
-        Args:
-            recipe_name: the name of the desired recipe
-        
-        Returns:
-            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        Gets a :class:`dataikuapi.dss.recipe.DSSRecipe` handle to interact with a recipe
+        :param str recipe_name: The name of the recipe
+        :rtype :class:`dataikuapi.dss.recipe.DSSRecipe`
         """
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
@@ -780,6 +866,75 @@ class DSSProject(object):
         recipe_name = self.client._perform_json("POST", "/projects/%s/recipes/" % self.project_key,
                        body = definition)['name']
         return DSSRecipe(self.client, self.project_key, recipe_name)
+
+    def new_recipe(self, type, name=None):
+        """
+        Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
+        or one of its subclasses to complete the creation of the recipe.
+
+        Usage example:
+
+        .. code-block:: python
+
+            grouping_recipe_builder = project.new_recipe("grouping")
+            grouping_recipe_builder.with_input("dataset_to_group_on")
+            # Create a new managed dataset for the output in the "filesystem_managed" connection
+            grouping_recipe_builder.with_new_output("grouped_dataset", "filesystem_managed")                                    
+            grouping_recipe_builder.with_group_key("column")
+            recipe = grouping_recipe_builder.build()
+
+            # After the recipe is created, you can edit its settings
+            recipe_settings = recipe.get_settings()
+            recipe_settings.set_column_aggregations("value", sum=True)
+            recipe_settings.save()
+
+            # And you may need to apply new schemas to the outputs
+            recipe.compute_schema_updates().apply()
+
+        :param str type: Type of the recipe
+        :param str name: Optional, base name for the new recipe.
+        :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
+        """
+
+        if type == "grouping":
+            return recipe.GroupingRecipeCreator(name, self)
+        elif type == "window":
+            return recipe.WindowRecipeCreator(name, self)
+        elif type == "sync":
+            return recipe.SyncRecipeCreator(name, self)
+        elif type == "sort":
+            return recipe.SortRecipeCreator(name, self)
+        elif type == "topn":
+            return recipe.TopNRecipeCreator(name, self)
+        elif type == "distinct":
+            return recipe.DistinctRecipeCreator(name, self)
+        elif type == "join":
+            return recipe.JoinRecipeCreator(name, self)
+        elif type == "vstack":
+            return recipe.StackRecipeCreator(name, self)
+        elif type == "sampling":
+            return recipe.SamplingRecipeCreator(name, self)
+        elif type == "split":
+            return recipe.SplitRecipeCreator(name, self)
+        elif type == "prepare" or type == "shaker":
+            return recipe.PrepareRecipeCreator(name, self)
+        elif type == "prediction_scoring":
+            return recipe.PredictionScoringRecipeCreator(name, self)
+        elif type == "clustering_scoring":
+            return recipe.ClusteringScoringRecipeCreator(name, self)
+        elif type == "download":
+            return recipe.DownloadRecipeCreator(name, self)
+        elif type == "sql_query":
+            return recipe.SQLQueryRecipeCreator(name, self)
+        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+            return recipe.CodeRecipeCreator(name, type, self)
+
+    ########################################################
+    # Flow
+    ########################################################
+
+    def get_flow(self):
+        return DSSProjectFlow(self.client, self)
 
     ########################################################
     # Security
@@ -950,6 +1105,15 @@ class DSSProject(object):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
         return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
+    ########################################################
+    # App designer
+    ########################################################
+
+    def get_app_manifest(self):
+        raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
+        return DSSAppManifest(self.client, raw_data, self.project_key)
+
+
 class TablesImportDefinition(object):
     """
     Temporary structure holding the list of tables to import
@@ -1030,6 +1194,53 @@ class DSSProjectSettings(object):
         """
         return self.settings
 
+    def set_python_code_env(self, code_env_name):
+        """Sets the default Python code env used by this project
+
+        :param str code_env_name: Identifier of the code env to use. If None, sets the project to use the builtin Python env
+        """
+        if code_env_name is None:
+            self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = True
+        else:
+            self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = False
+            self.settings["settings"]["codeEnvs"]["python"]["envName"] = code_env_name
+
+    def set_r_code_env(self, code_env_name):
+        """Sets the default R code env used by this project
+
+        :param str code_env_name: Identifier of the code env to use. If None, sets the project to use the builtin R env
+        """
+        if code_env_name is None:
+            self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = True
+        else:
+            self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = False
+            self.settings["settings"]["codeEnvs"]["r"]["envName"] = code_env_name
+
+    def set_container_exec_config(self, config_name):
+        """Sets the default containerized execution config used by this project
+
+        :param str config_name: Identifier of the containerized execution config to use. If None, sets the project to use local execution
+        """
+        if config_name is None:
+            self.settings["settings"]["container"]["containerMode"] = "NONE"
+        else:
+            self.settings["settings"]["container"]["containerMode"] = "EXPLICIT_CONTAINER"
+            self.settings["settings"]["container"]["containerConf"] = config_name
+
+    def set_k8s_cluster(self, cluster, fallback_cluster=None):
+        """Sets the Kubernetes cluster used by this project
+
+        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project 
+                            to use the globally-defined cluster
+        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
+        """
+        if cluster is None:
+            self.settings["settings"]["k8sCluster"]["clusterMode"] = "INHERIT"
+        else:
+            self.settings["settings"]["k8sCluster"]["clusterMode"] = "EXPLICIT_CLUSTER"
+            self.settings["settings"]["k8sCluster"]["clusterId"] = cluster
+            self.settings["settings"]["k8sCluster"]["defaultClusterId"] = fallback_cluster
+
     def set_cluster(self, cluster, fallback_cluster=None):
         """Sets the Hadoop/Spark cluster used by this project
 
@@ -1044,6 +1255,31 @@ class DSSProjectSettings(object):
             self.settings["settings"]["cluster"]["clusterId"] = cluster
             self.settings["settings"]["cluster"]["defaultClusterId"] = fallback_cluster
 
+    def add_exposed_object(self, object_type, object_id, target_project):
+        """
+        Exposes an object from this project to another project.
+        Does nothing if the object was already exposed to the target project
+        """
+        found_eo = None
+        for eo in self.settings["exposedObjects"]["objects"]:
+            if eo["type"] == object_type and eo["localName"] == object_id:
+                found_eo = eo
+                break
+
+        if found_eo is None:
+            found_eo = {"type" : object_type, "localName" : object_id, "rules" : []}
+            self.settings["exposedObjects"]["objects"].append(found_eo)
+
+        already_exists = False
+        for rule in found_eo["rules"]:
+            if rule["targetProject"] == target_project:
+                already_exists = True
+                break
+
+        if not already_exists:
+            found_eo["rules"].append({"targetProject": target_project})
+
+
     def save(self):
         """Saves back the settings to the project"""
 
@@ -1051,16 +1287,11 @@ class DSSProjectSettings(object):
                 body = self.settings)
 
 class JobDefinitionBuilder(object):
-    def __init__(self, project_key, job_type="NON_RECURSIVE_FORCED_BUILD"):
-        """
-        Create a helper to build a job definition
-
-        :param project_key: the project in which the job is launched
-        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
-                            RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
-
-        """
-        self.project_key = project_key
+    """
+    Helper to run a job. Do not create this class directly, use :meth:`DSSProject.new_job`
+    """
+    def __init__(self, project, job_type="NON_RECURSIVE_FORCED_BUILD"):
+        self.project = project
         self.definition = {'type':job_type, 'refreshHiveMetastore':False, 'outputs':[]}
 
     def with_type(self, job_type):
@@ -1083,10 +1314,39 @@ class JobDefinitionBuilder(object):
 
     def with_output(self, name, object_type=None, object_project_key=None, partition=None):
         """
-        Adds an item to build in the definition
+        Adds an item to build in this job
         """
         self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
         return self
 
     def get_definition(self):
+        """Gets the internal definition for this job"""
         return self.definition
+
+    def start(self):
+        """
+        Starts the job, and return a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it.
+
+        You need to wait for the returned job to complete
+        
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+        job_def = self.project.client._perform_json("POST", 
+                            "/projects/%s/jobs/" % self.project.project_key, body = self.definition)
+        return DSSJob(self.project.client, self.project.project_key, job_def['id'])
+
+    def start_and_wait(self, no_fail=False):
+        """
+        Starts the job, waits for it to complete and returns a a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it
+
+        Raises if the job failed.
+
+        :param no_fail: if True, does not raise if the job failed.
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+        """
+        job = self.start()
+        waiter = DSSJobWaiter(job)
+        waiter.wait(no_fail)
+        return job

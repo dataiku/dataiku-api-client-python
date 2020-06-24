@@ -1,10 +1,8 @@
-from ..utils import DataikuException
-from ..utils import DataikuUTF8CSVReader
-from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
 from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
 from .metrics import ComputedMetrics
-from .discussion import DSSObjectDiscussions
+from .ml import DSSTrainedClusteringModelDetails
+from .ml import DSSTrainedPredictionModelDetails
+
 
 class DSSSavedModel(object):
     """
@@ -69,6 +67,25 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
 
+    def delete_versions(self, versions, remove_intermediate=True):
+        """
+        Delete version(s) of the saved model
+
+        :param versions: list of versions to delete
+        :type versions: list[str]
+        :param remove_intermediate: also remove intermediate versions (default: True). In the case of a partitioned
+        model, an intermediate version is created every time a partition has finished training.
+        :type remove_intermediate: bool
+        """
+        if not isinstance(versions, list):
+            versions = [versions]
+        body = {
+            "versions": versions,
+            "removeIntermediate": remove_intermediate
+        }
+        self.client._perform_empty(
+            "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
+            body=body)
     ########################################################
     # Metrics
     ########################################################
