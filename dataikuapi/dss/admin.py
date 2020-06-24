@@ -52,7 +52,7 @@ class DSSConnection(object):
     A connection on the DSS instance.
     """
     def __init__(self, client, name):
-    	"""Do not call this directly, use :meth:`dataikuapi.DSSClient.get_connection`"""
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_connection`"""
         self.client = client
         self.name = name
 
