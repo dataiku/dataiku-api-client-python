@@ -529,7 +529,7 @@ class DSSTrainedModelDetails(object):
     def get_origin_analysis_trained_model(self):
         """
         Fetch details about the model in an analysis, this model has been exported from. Returns None if the
-        deployed trained model does not have a origin analysis trained model.
+        deployed trained model does not have an origin analysis trained model.
 
         :rtype: DSSTrainedModelDetails | None
         """
