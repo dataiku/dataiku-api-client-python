@@ -15,6 +15,19 @@ class DSSProjectFlow(object):
         data = self.client._perform_json("GET", "/projects/%s/flow/graph/" % (self.project.project_key))
         return DSSProjectFlowGraph(self, data)
 
+    def create_zone(self, name, color="#2ab1ac"):
+        """
+        Creates a new flow zone
+
+        :returns the newly created zone
+        :rtype: :class:`DSSFlowZone`
+        """
+        data = self.client._perform_json("POST", "/projects/%s/flow/zones" % (self.project.project_key), body={
+            "name": name,
+            "color":color
+        })
+        return DSSFlowZone(self, data)
+
     def get_zone(self, id):
         """
         Gets a single Flow zone by id

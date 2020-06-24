@@ -167,6 +167,15 @@ class DSSManagedFolder(object):
         """
         return self.project.get_flow().get_zone_of_object(self)
 
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.project.get_flow().get_zone(zone)
+        zone.add_item(self)
 
     def get_usages(self):
         """
