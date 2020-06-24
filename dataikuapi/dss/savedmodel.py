@@ -93,15 +93,16 @@ class DSSSavedModel(object):
 
     def get_origin_ml_task(self):
         """
-        Fetch the last ML task that has been exported to this saved model
+        Fetch the last ML task that has been exported to this saved model. Returns None if the saved model
+        does not have an origin ml task.
 
-        :rtype: DSSMLTask
+        :rtype: DSSMLTask | None
         """
-        definition = self.get_definition()
-        fmi = definition["lastExportedFrom"]
+        fmi = self.get_definition().get("lastExportedFrom")
+        if fmi is not None:
+            origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
+            return origin_ml_task.get_trained_model_details(fmi)
 
-        origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
-        return origin_ml_task.get_trained_model_details(fmi)
 
     ########################################################
     # Metrics
