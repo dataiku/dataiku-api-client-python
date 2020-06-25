@@ -1,3 +1,5 @@
+import re
+
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
@@ -523,6 +525,22 @@ class DSSTrainedModelDetails(object):
             self.saved_model.client._perform_empty(
                 "PUT", "/projects/%s/savedmodels/%s/versions/%s/user-meta" % (self.saved_model.project_key,
                     self.saved_model.sm_id, self.saved_model_version), body = um)
+
+    def get_origin_analysis_trained_model(self):
+        """
+        Fetch details about the model in an analysis, this model has been exported from. Returns None if the
+        deployed trained model does not have an origin analysis trained model.
+
+        :rtype: DSSTrainedModelDetails | None
+        """
+        if self.saved_model is None:
+            return self
+        else:
+            fmi = self.get_raw().get("smOrigin", {}).get("fullModelId")
+            if fmi is not None:
+                origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
+                                                              project_key=self.saved_model.project_key)
+                return origin_ml_task.get_trained_model_details(fmi)
 
 class DSSTreeNode(object):
     def __init__(self, tree, i):
@@ -1425,6 +1443,17 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
 
 
 class DSSMLTask(object):
+
+    @staticmethod
+    def from_full_model_id(client, fmi, project_key=None):
+        match = re.match("^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
+        if match is None:
+            return DataikuException("Invalid model id: {}".format(fmi))
+        else:
+            if project_key is None:
+                project_key = match.group(1)
+            return DSSMLTask(client, project_key, match.group(2), match.group(3))
+
     """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
         self.client = client
