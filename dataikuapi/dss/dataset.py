@@ -11,7 +11,7 @@ from .statistics import DSSStatisticsWorksheet
 from . import recipe
 
 class DSSDatasetListItem(DSSTaggableObjectListItem):
-    """An item in a list of datasets. Do not instantiate this class"""
+    """An item in a list of datasets. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_datasets`"""
     def __init__(self, client, data):
         super(DSSDatasetListItem, self).__init__(data)
         self.client = client
@@ -51,7 +51,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
 
 class DSSDataset(object):
     """
-    A dataset on the DSS instance
+    A dataset on the DSS instance. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.get_dataset`
     """
     def __init__(self, client, project_key, dataset_name):
         self.client = client
@@ -105,9 +105,9 @@ class DSSDataset(object):
         """
         data = self.client._perform_json("GET", "/projects/%s/datasets/%s" % (self.project_key, self.dataset_name))
 
-        if data["type"] in self.__class__.FS_TYPES:
+        if data["type"] in self.__class__._FS_TYPES:
             return FSLikeDatasetSettings(self, data)
-        elif data["type"] in self.__class__.SQL_TYPES:
+        elif data["type"] in self.__class__._SQL_TYPES:
             return SQLDatasetSettings(self, data)
         else:
             return DSSDatasetSettings(self, data)
@@ -539,33 +539,41 @@ class DSSDataset(object):
     # Test / Autofill
     ########################################################
 
-    FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
+    _FS_TYPES = ["Filesystem", "UploadedFiles", "FilesInFolder",
                 "HDFS", "S3", "Azure", "GCS", "FTP", "SCP", "SFTP"]
     # HTTP is FSLike but not FS                
 
-    SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
+    _SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
                 "BigQuery", "Athena", "hiveserver2"]
 
     def test_and_detect(self, infer_storage_types=False):
+        """Used internally by autodetect_settings. It is not usually required to call this method"""
         settings = self.get_settings()
 
-        if settings.type in self.__class__.FS_TYPES:
+        if settings.type in self.__class__._FS_TYPES:
             future_resp = self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
                 body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
 
             return DSSFuture(self.client, future_resp.get('jobId', None), future_resp)
-        elif settings.type in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__._SQL_TYPES:
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
         else:
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def autodetect_settings(self, infer_storage_types=False):
+        """
+        Detects appropriate settings for this dataset using Dataiku detection engine
+
+        Returns new suggested settings that you can :meth:`DSSDatasetSettings.save`
+
+        :rtype: :class:`DSSDatasetSettings` or a subclass
+        """
         settings = self.get_settings()
 
-        if settings.type in self.__class__.FS_TYPES:
+        if settings.type in self.__class__._FS_TYPES:
             future = self.test_and_detect(infer_storage_types)
             result = future.wait_for_result()
 
@@ -578,7 +586,7 @@ class DSSDataset(object):
 
             return settings
 
-        elif settings.type in self.__class__.SQL_TYPES:
+        elif settings.type in self.__class__._SQL_TYPES:
             result = self.test_and_detect()
 
             if not "schemaDetection" in result:
@@ -591,6 +599,7 @@ class DSSDataset(object):
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def get_as_core_dataset(self):
+        """Returns the :class:`dataiku.Dataset` object corresponding to this dataset"""
         import dataiku
         return dataiku.Dataset("%s.%s" % (self.project_key, self.dataset_name))
 
@@ -626,6 +635,13 @@ class DSSDataset(object):
         return builder
 
 class DSSDatasetSettings(DSSTaggableObjectSettings):
+    """
+    Base settings class for a DSS dataset.
+    Do not instantiate this class directly, use :meth:`DSSDataset.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
     def __init__(self, dataset, settings):
         super(DSSDatasetSettings, self).__init__(settings)
         self.dataset = dataset
@@ -642,6 +658,10 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
     @property
     def type(self):
         return self.settings["type"]
+
+    @property
+    def schema_columns(self):
+        return self.settings["schema"]["columns"]
 
     def remove_partitioning(self):
         self.settings["partitioning"] = {"dimensions" : []}
@@ -661,6 +681,13 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
                 body=self.settings)
 
 class FSLikeDatasetSettings(DSSDatasetSettings):
+    """
+    Settings for a files-based dataset. This class inherits from :class:`DSSDatasetSettings`.
+    Do not instantiate this class directly, use :meth:`DSSDataset.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
     def __init__(self, dataset, settings):
         super(FSLikeDatasetSettings, self).__init__(dataset, settings)
 
@@ -692,6 +719,12 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
         self.settings["partitioning"]["filePathPattern"] = pattern
 
 class SQLDatasetSettings(DSSDatasetSettings):
+    """
+    Settings for a SQL dataset. This class inherits from :class:`DSSDatasetSettings`.
+    Do not instantiate this class directly, use :meth:`DSSDataset.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
     def __init__(self, dataset, settings):
         super(SQLDatasetSettings, self).__init__(dataset, settings)
 
