@@ -1,5 +1,4 @@
 from dataikuapi.dss.ml import DSSMLTask
-from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
 from .metrics import ComputedMetrics
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
