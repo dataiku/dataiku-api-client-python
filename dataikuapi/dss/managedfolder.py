@@ -90,18 +90,17 @@ class DSSManagedFolder(object):
         return self.client._perform_empty(
                 "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
 
-    def put_file(self, name, f):
+    def put_file(self, path, f):
         """
-        Upload the file to the managed folder
+        Upload a file to the managed folder
         
         Args:
             f: the file contents, as a stream
-            name: the name of the file
+            path: the path of the file
         """
-
         return self.client._perform_json_upload(
-                "POST", "/projects/%s/managedfolders/%s/contents/" % (self.project_key, self.odb_id),
-                name, f)
+                "POST", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path),
+                path, f)
 
     ########################################################
     # Managed folder actions
