@@ -101,7 +101,7 @@ class DSSManagedFolder(object):
         """
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)),
-                path, f)
+                "", f)
 
     ########################################################
     # Managed folder actions
