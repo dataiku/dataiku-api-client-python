@@ -463,7 +463,8 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         Deprecated. Use unset_weighting() instead
         """
         warnings.warn("remove_sample_weighting() is deprecated, please use set_weigthing(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
-        return self.unset_weighting()
+        return self.set_weigthing(method="NO_WEIGHTING")
+
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
