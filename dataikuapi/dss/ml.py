@@ -422,9 +422,9 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
 
         # First, if there was a WEIGHT feature, restore it as INPUT
-        for other_feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] == 'WEIGHT':
-                self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] = 'INPUT'
+        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
+                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
 
         if method == "NO_WEIGHTING":
             self.mltask_settings['weight']['weightMethod'] = method
