@@ -4,6 +4,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
+from .streaming_endpoint import DSSStreamingEndpoint
 import logging, json
 
 class DSSProjectFlow(object):
@@ -153,6 +154,8 @@ class DSSProjectFlow(object):
             ot = "SAVED_MODEL"
         elif isinstance(obj, DSSRecipe):
             ot = "RECIPE"
+        elif isinstance(obj, DSSStreamingEndpoint):
+            ot = "STREAMING_ENDPOINT"
         else:
             raise ValueError("Cannot transform to DSS object ref: %s" % obj)
 
@@ -210,6 +213,8 @@ class DSSFlowZone(object):
            return p.get_saved_model(zone_item["objectId"])
         elif zone_item["objectType"] == "RECIPE":
             return p.get_recipe(zone_item["objectId"])
+        elif zone_item["objectType"] == "STREAMING_ENDPOINT":
+            return p.get_streaming_endpoint(zone_item["objectId"])
         else:
             raise ValueError("Cannot transform to DSS object: %s" % zone_item)
 
@@ -296,6 +301,14 @@ class DSSFlowZoneSettings(object):
     @name.setter
     def name(self, new_name):
         self._raw["name"] = new_name
+
+    @property
+    def color(self):
+        return self._raw["color"]
+
+    @color.setter
+    def color(self, new_color):
+        self._raw["color"] = new_color
 
     def save(self):
         """Saves the settings of the zone"""
