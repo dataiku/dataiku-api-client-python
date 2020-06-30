@@ -1,5 +1,5 @@
 from .future import DSSFuture
-import json
+import json, warnings
 
 class DSSConnectionInfo(dict):
     """A class holding read-only information about a connection.
@@ -10,7 +10,6 @@ class DSSConnectionInfo(dict):
 
     Depending on the connection kind, the credential may be available using :meth:`get_basic_credential` 
     or :meth:`get_aws_credential`
-
     """
     def __init__(self, data):
         """Do not call this directly, use :meth:`DSSConnection.get_info`"""
@@ -48,14 +47,12 @@ class DSSConnectionInfo(dict):
         return self["resolvedAWSCredential"]
 
 
-
-
-
 class DSSConnection(object):
     """
-    A connection on the DSS instance
+    A connection on the DSS instance.
     """
     def __init__(self, client, name):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_connection`"""
         self.client = client
         self.name = name
 
@@ -65,16 +62,14 @@ class DSSConnection(object):
 
     def get_location_info(self):
         """Deprecated, use get_info"""
+        warnings.warn("DSSConnection.get_location_info is deprecated, please use get_info", DeprecationWarning)
         return self.get_info()
 
     def get_info(self):
         """
         Gets information about this connection.
 
-        Note: this call requires either an admin API key or
-        a personal API key that corresponds to a user who 
-        belongs to a group who has the rights to read connection
-        details
+        Note: this call requires permissions to read connection details
 
         :returns: a :class:`DSSConnectionInfo` containing connection information
         """
@@ -88,21 +83,13 @@ class DSSConnection(object):
     def delete(self):
         """
         Delete the connection
-
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/connections/%s" % self.name)
-    
-        
-    ########################################################
-    # User description
-    ########################################################
-    
+
     def get_definition(self):
         """
         Get the connection's definition (type, name, params, usage restrictions)
-        Note: this call requires an API key with admin rights
         
         :returns: The connection definition, as a dict.
 
@@ -116,7 +103,6 @@ class DSSConnection(object):
     def set_definition(self, description):
         """
         Set the connection's definition.
-        Note: this call requires an API key with admin rights
         
         You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
         not create a new dict.
@@ -134,10 +120,9 @@ class DSSConnection(object):
     def sync_root_acls(self):
         """
         Resync root permissions on this connection path. This is only useful for HDFS connections
-        when DSS is in multi-user-security mode.
-        Note: this call requires an API key with admin rights
-        
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
+        when DSS has User Isolation activated with "DSS-managed HDFS ACL"
+
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
@@ -147,54 +132,60 @@ class DSSConnection(object):
     def sync_datasets_acls(self):
         """
         Resync permissions on datasets in this connection path. This is only useful for HDFS connections
-        when DSS is in multi-user-security mode.
-        Note: this call requires an API key with admin rights
+        when DSS has User Isolation activated with "DSS-managed HDFS ACL"
         
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
-    
-        
+
+
 class DSSUser(object):
     """
     A handle for a user on the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_user`
     """
     def __init__(self, client, login):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_user`"""
         self.client = client
         self.login = login
-
-    ########################################################
-    # User deletion
-    ########################################################
 
     def delete(self):
         """
         Deletes the user
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/users/%s" % self.login)
 
+    def get_settings(self):
+        """
+        Gets the settings of the user
+        :rtype: :class:`DSSUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
+        return DSSUserSettings(self.client, self.login, raw)
+
     ########################################################
-    # User description
+    # Legacy
     ########################################################
 
     def get_definition(self):
         """
+        Deprecated, use get_settings instead
+
         Get the user's definition (login, type, display name, permissions, ...)
-        Note: this call requires an API key with admin rights
 
         :return: the user's definition, as a dict
         """
-        return self.client._perform_json(
-            "GET", "/admin/users/%s" % self.login)
+        warnings.warn("DSSUser.get_definition is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json("GET", "/admin/users/%s" % self.login)
 
     def set_definition(self, definition):
         """
+        Deprecated, use get_settings instead
+
         Set the user's definition.
         Note: this call requires an API key with admin rights
 
@@ -211,16 +202,174 @@ class DSSUser(object):
 
         :param dict definition: the definition for the user, as a dict
         """
-        return self.client._perform_json(
-            "PUT", "/admin/users/%s" % self.login,
-            body = definition)
-            
+        warnings.warn("DSSUser.set_definition is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = definition)
+
+    def get_client_as(self):
+        """
+        Gets a :class:`dataikuapi.DSSClient` that has the permissions of this user.
+
+        This allows administrators to impersonate actions on behalf of other users, in order to perform
+        actions on their behalf
+        """
+        from dataikuapi.dssclient import DSSClient
+
+        if self.client.api_key is not None:
+            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})
+        elif self.client.internal_ticket is not None:
+            return DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
+                                         extra_headers={"X-DKU-ProxyUser":  self.login})
+        else:
+            raise ValueError("Don't know how to proxy this client")
+
+class DSSOwnUser(object):
+    """
+    A handle to interact with your own user
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_own_user`
+    """
+    def __init__(self, client):
+        self.client = client
+
+    def get_settings(self):
+        """
+        Get your own settings
+
+        :rtype: :class:`DSSOwnUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/current-user")
+        return DSSOwnUserSettings(self.client, raw)
+
+
+class DSSUserSettingsBase(object):
+    """Settings for a DSS user"""
+    def __init__(self, settings):
+        """Do not call this directly, use :meth:`DSSUser.get_settings` or :meth:`DSSOwnUser.get_settings` """
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
+        are reflected when saving
+        :rtype: dict
+        """
+        return self.settings
+
+    def add_secret(self, name, value):
+        """
+        Adds a user secret.
+        If there was already a secret with the same name, it is replaced
+        """
+        self.remove_secret(name)
+        return self.settings["secrets"].append({"name": name, "value": value, "secret": True})
+
+    def remove_secret(self, name):
+        """Removes a user secret based on its name"""
+        self.settings["secrets"] = [x for x in self.settings["secrets"] if x["name"] != name]
+
+    @property
+    def user_properties(self):
+        """
+        The user properties (editable by the user) for this user. Do not set this property, modify the dict in place
+
+        :rtype dict
+        """
+        return self.settings["userProperties"]
+
+    def set_basic_connection_credential(self, connection, user, password):
+        """Sets per-user-credentials for a connection that takes a user/password pair"""
+        self.settings["credentials"][connection] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def remove_connection_credential(self,connection):
+        """Removes per-user-credentials for a connection"""
+        if connection in self.settings["credentials"]:
+            del self.settings["credentials"][connection]
+
+    def set_basic_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, user, password):
+        """Sets per-user-credentials for a plugin preset that takes a user/password pair"""
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def set_oauth2_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, refresh_token):
+        """Sets per-user-credentials for a plugin preset that takes a OAuth refresh token"""
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "OAUTH_REFRESH_TOKEN",
+            "refreshToken": refresh_token
+        }
+
+    def remove_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name):
+        """Removes per-user-credentials for a plugin preset"""
+        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+
+        if name in self.settings["credentials"]:
+            del self.settings["credentials"][name]
+
+
+class DSSUserSettings(DSSUserSettingsBase):
+    """Settings for a DSS user"""
+
+    def __init__(self, client, login, settings):
+        """Do not call this directly, use :meth:`DSSUser.get_settings`"""
+        super(DSSUserSettings, self).__init__(settings)
+        self.client = client
+        self.login = login
+
+    @property
+    def admin_properties(self):
+        """
+        The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
+
+        :rtype dict
+        """
+        return self.settings["adminProperties"]
+
+    @property
+    def enabled(self):
+        """
+        Whether this user is enabled
+        :rtype boolean
+        """
+        return self.settings["enabled"]
+
+    @enabled.setter
+    def enabled(self, new_value):
+        self.settings["enabled"] = new_value
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
+
+
+class DSSOwnUserSettings(DSSUserSettingsBase):
+    """Settings for the current DSS user"""
+
+    def __init__(self, client, settings):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_own_user`"""
+        super(DSSOwnUserSettings, self).__init__(settings)
+        self.client = client
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
 class DSSGroup(object):
     """
     A group on the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_group`
     """
     def __init__(self, client, name):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_group`"""
         self.client = client
         self.name = name
     
@@ -231,20 +380,14 @@ class DSSGroup(object):
     def delete(self):
         """
         Deletes the group
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/groups/%s" % self.name)
     
-        
-    ########################################################
-    # User description
-    ########################################################
-    
+
     def get_definition(self):
         """
         Get the group's definition (name, description, admin abilities, type, ldap name mapping)
-        Note: this call requires an API key with admin rights
         
         :return: the group's definition, as a dict
         """
@@ -254,7 +397,6 @@ class DSSGroup(object):
     def set_definition(self, definition):
         """
         Set the group's definition.
-        Note: this call requires an API key with admin rights
 
         You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
         not create a new dict.
@@ -266,12 +408,14 @@ class DSSGroup(object):
             "PUT", "/admin/groups/%s" % self.name,
             body = definition)
 
+
 class DSSGeneralSettings(object):
     """
     The general settings of the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`
     """
     def __init__(self, client):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`"""
         self.client = client
         self.settings = self.client._perform_json("GET", "/admin/general-settings")
     
@@ -285,8 +429,7 @@ class DSSGeneralSettings(object):
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty("PUT", "/admin/general-settings", body = self.settings)
-    
-    
+
     ########################################################
     # Value accessors
     ########################################################
@@ -659,7 +802,7 @@ class DSSCluster(object):
     A handle to interact with a cluster on the DSS instance
     """
     def __init__(self, client, cluster_id):
-        """Do not call that directly, use :meth:`dataikuapi.dss.DSSClient.get_cluster`"""
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_cluster`"""
         self.client = client
         self.cluster_id = cluster_id
     

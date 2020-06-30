@@ -1,4 +1,4 @@
-from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
+from dataikuapi.dss.ml import DSSMLTask
 from .metrics import ComputedMetrics
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
@@ -20,6 +20,10 @@ class DSSSavedModel(object):
     def id(self):
         return self.sm_id
 
+    def get_definition(self):
+        return self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
+        
     ########################################################
     # Versions
     ########################################################
@@ -90,6 +94,20 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
             body=body)
+
+    def get_origin_ml_task(self):
+        """
+        Fetch the last ML task that has been exported to this saved model. Returns None if the saved model
+        does not have an origin ml task.
+
+        :rtype: DSSMLTask | None
+        """
+        fmi = self.get_definition().get("lastExportedFrom")
+        if fmi is not None:
+            origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
+            return origin_ml_task.get_trained_model_details(fmi)
+
+
     ########################################################
     # Metrics
     ########################################################
