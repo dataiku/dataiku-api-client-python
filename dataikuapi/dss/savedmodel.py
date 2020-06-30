@@ -145,6 +145,26 @@ class DSSSavedModel(object):
            zone = self.project.get_flow().get_zone(zone)
         zone.add_item(self)
 
+    def share_to_zone(self, zone):
+        """
+        Share this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to share the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.add_shared(self)
+
+    def unshare_from_zone(self, zone):
+        """
+        Unshare this object from a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` from where to unshare the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.remove_shared(self)
+
     def get_usages(self):
         """
         Get the recipes referencing this model

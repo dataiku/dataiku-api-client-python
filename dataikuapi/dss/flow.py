@@ -189,6 +189,10 @@ class DSSFlowZone(object):
     def name(self):
         return self._raw["name"]
 
+    @property
+    def color(self):
+        return self._raw["color"]
+
     def __repr__(self):
         return "<dataikuapi.dss.flow.DSSFlowZone (id=%s, name=%s)>" % (self.id, self.name)
 
@@ -247,6 +251,28 @@ class DSSFlowZone(object):
             or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
         """
         return [self._to_native_obj(i) for i in self._raw["items"]]
+
+    def add_shared(self, obj):
+        """
+        Share an item to this zone.
+
+        The item will not be automatically unshared from its existing zone.
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        """
+        self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/shared" % (self.flow.project.project_key, self.id),
+                                          body=self.flow._to_smart_ref(obj))
+
+    def remove_shared(self, obj):
+        """
+        Remove a shared item from this zone.
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        """
+        smartRef = self.flow._to_smart_ref(obj)
+        self._raw = self.client._perform_json("DELETE", "/projects/%s/flow/zones/%s/shared/%s/%s" % (self.flow.project.project_key, self.id, smartRef['objectType'], smartRef['objectId']))
 
     @property
     def shared(self):
