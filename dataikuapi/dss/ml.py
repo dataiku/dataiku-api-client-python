@@ -424,9 +424,9 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
 
         # First, if there was a WEIGHT feature, restore it as INPUT
-        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
-                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
+        for other_feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] == 'WEIGHT':
+                self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] = 'INPUT'
 
         if method == "NO_WEIGHTING":
             self.mltask_settings['weight']['weightMethod'] = method
@@ -462,10 +462,11 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def remove_sample_weighting(self):
         """
-        Deprecated. Use unset_weighting() instead
+        Deprecated. Use set_weighting(method=\"NO_WEIGHTING\") instead
         """
-        warnings.warn("remove_sample_weighting() is deprecated, please use set_weigthing(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
-        return self.unset_weighting()
+        warnings.warn("remove_sample_weighting() is deprecated, please use set_weighting(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
+        return self.set_weighting(method="NO_WEIGHTING")
+
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
