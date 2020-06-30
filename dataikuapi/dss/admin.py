@@ -333,6 +333,18 @@ class DSSUserSettings(DSSUserSettingsBase):
         """
         return self.settings["adminProperties"]
 
+    @property
+    def enabled(self):
+        """
+        Whether this user is enabled
+        :rtype boolean
+        """
+        return self.settings["enabled"]
+
+    @enabled.setter
+    def enabled(self, new_value):
+        self.settings["enabled"] = new_value
+
     def save(self):
         """Saves the settings"""
         self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
