@@ -8,7 +8,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
@@ -20,7 +20,7 @@ from .utils import DataikuException
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket = None):
+    def __init__(self, host, api_key=None, internal_ticket = None, extra_headers = None):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -39,8 +39,10 @@ class DSSClient(object):
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
         else:
             raise ValueError("API Key is required")
-            
-            
+
+        if extra_headers is not None:
+            self._session.headers.update(extra_headers)
+
     ########################################################
     # Futures
     ########################################################
@@ -348,6 +350,9 @@ class DSSClient(object):
                    "userProfile" : profile
                })
         return DSSUser(self, login)
+
+    def get_own_user(self):
+        return DSSOwnUser(self)
 
     ########################################################
     # Groups
@@ -916,6 +921,24 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/personal-api-keys",
                 params={"label": label})
+
+    ########################################################
+    # Container execution
+    ########################################################
+
+    def push_base_images(self):
+        """
+        Push base images for Kubernetes container-execution and Spark-on-Kubernetes
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/push-base-images")
+        return DSSFuture.from_resp(self, resp)
+
+    def apply_kubernetes_namespaces_policies(self):
+        """
+        Apply Kubernetes namespaces policies defined in the general settings
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
+        return DSSFuture.from_resp(self, resp)
 
     ########################################################
     # Licensing

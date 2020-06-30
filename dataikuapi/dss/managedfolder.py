@@ -2,6 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+from requests import utils
 from .metrics import ComputedMetrics
 from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
@@ -15,6 +16,10 @@ class DSSManagedFolder(object):
         self.project_key = project_key
         self.odb_id = odb_id
 
+    @property
+    def id(self):
+        return self.odb_id
+    
     ########################################################
     # Managed folder deletion
     ########################################################
@@ -77,27 +82,26 @@ class DSSManagedFolder(object):
             the file's content, as a stream
         """
         return self.client._perform_raw(
-                "GET", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
+                "GET", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)))
 
     def delete_file(self, path):
         """
         Delete a file from the managed folder
         """
         return self.client._perform_empty(
-                "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
+                "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)))
 
-    def put_file(self, name, f):
+    def put_file(self, path, f):
         """
         Upload the file to the managed folder
         
         Args:
             f: the file contents, as a stream
-            name: the name of the file
+            path: the path of the file
         """
-
         return self.client._perform_json_upload(
-                "POST", "/projects/%s/managedfolders/%s/contents/" % (self.project_key, self.odb_id),
-                name, f)
+                "POST", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)),
+                "", f)
 
     ########################################################
     # Managed folder actions

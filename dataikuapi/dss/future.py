@@ -11,6 +11,11 @@ class DSSFuture(object):
        self.state_is_peek = True
        self.result_wrapper = result_wrapper
 
+    @staticmethod
+    def from_resp(client, resp,result_wrapper=lambda result: result):
+        """Creates a DSSFuture from a parsed JSON response"""
+        return DSSFuture(client, resp.get('jobId', None), state=resp, result_wrapper=result_wrapper)
+
     @classmethod
     def get_result_wait_if_needed(cls, client, ret):
         if 'jobId' in ret:

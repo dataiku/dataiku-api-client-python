@@ -41,7 +41,8 @@ class DSSProjectFlow(object):
             settings.save()
 
         for recipe in self.project.list_recipes():
-            fake_rap = DSSRecipeDefinitionAndPayload({"recipe" : recipe})
+            recipe_handle = self.project.get_recipe(recipe["name"])
+            fake_rap = DSSRecipeDefinitionAndPayload(recipe_handle, {"recipe" : recipe})
             if fake_rap.has_input(current_ref):
                 logging.info("Recipe %s has %s as input, performing the replacement by %s"% \
                     (recipe["name"], current_ref, new_ref))
@@ -129,13 +130,14 @@ class DSSProjectFlowGraph(object):
         """
         return [self._get_object_from_graph_node(x) for x in self.get_source_computables() if x["type"] == "COMPUTABLE_DATASET"]
 
-    def get_successor_recipes(self, node, as_type="name"):
+    def get_successor_recipes(self, node, as_type="dict"):
         """
         Returns a list of recipes that are a successor of a graph node
 
         :param node: Either a name or :class:`dataikuapi.dss.dataset.DSSDataset` object
-        :return if as_type="name", list of strings, recipe names
-                    else list of :class:`dataikuapi.dss.recipe.DSSRecipe`
+        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
         """
         if isinstance(node, DSSDataset):
             node = node.dataset_name
@@ -150,7 +152,10 @@ class DSSProjectFlowGraph(object):
     def get_successor_computables(self, node, as_type="dict"):
         """
         Returns a list of computables that are a successor of a given graph node
-        Each computable is returned as a dict containing at least "ref" and "type"
+        
+        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
         """
         if isinstance(node, DSSRecipe):
             node = node.recipe_name
@@ -162,7 +167,7 @@ class DSSProjectFlowGraph(object):
         return self._convert_nodes_list(computables, as_type)
 
     def _convert_nodes_list(self, nodes, as_type):
-        if as_type == "object":
+        if as_type == "object" or as_type == "objects":
             return [self._get_object_from_graph_node(node) for node in nodes]
         else:
             return nodes
