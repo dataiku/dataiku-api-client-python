@@ -182,6 +182,11 @@ class DSSSavedModel(object):
 
 
 class DSSSavedModelSettings:
+    """
+    A handle on the settings of a saved model
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSSavedModel.get_settings`
+    """
 
     def __init__(self, saved_model, settings):
         self.saved_model = saved_model
