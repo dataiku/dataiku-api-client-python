@@ -60,6 +60,10 @@ class DSSDataset(object):
         self.dataset_name = dataset_name
 
     @property
+    def id(self):
+        return self.dataset_name
+
+    @property
     def name(self):
         return self.dataset_name
     
@@ -511,8 +515,26 @@ class DSSDataset(object):
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this dataset
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.project.get_flow().get_zone(zone)
+        zone.add_item(self)
 
     def get_usages(self):
         """
@@ -523,9 +545,6 @@ class DSSDataset(object):
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/usages" % (self.project_key, self.dataset_name))
 
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the dataset
