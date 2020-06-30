@@ -228,7 +228,7 @@ class DSSFlowZone(object):
         :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
                            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
         """
-        self.client._perform_empty("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
+        self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
                                   body=self.flow._to_smart_ref(obj))
 
     #. TBD: if we make "add to default" work propertly, then we don't need thjis
