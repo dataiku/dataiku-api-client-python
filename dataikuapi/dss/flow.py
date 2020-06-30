@@ -231,19 +231,6 @@ class DSSFlowZone(object):
         self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
                                   body=self.flow._to_smart_ref(obj))
 
-    #. TBD: if we make "add to default" work propertly, then we don't need thjis
-    #def remove_item(self, obj):
-    #    """
-    #    Removes an item to this zone.#
-    #
-    #    :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-    #                       or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
-    #    """
-    #    sr = self._to_smart_ref(obj)
-    # 
-    #    self.client._perform_empty("DELETE", "/projects/%s/flow/zones/%s/items/%s/%s" % (self.flow.project.project_key,
-    #                            self.id, sr["objectType"], sr["objectId"]))
-
     @property
     def items(self):
         """
