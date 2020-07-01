@@ -31,6 +31,38 @@ class DSSProject(object):
        self.client = client
        self.project_key = project_key
 
+
+    def get_project_folder(self):
+        """
+        Returns the :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` containing this project
+        :rtype: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
+        """
+        root = self.client.get_root_project_folder()
+
+        def rec(pf):
+            if self.project_key in pf.list_project_keys():
+                return pf
+            else:
+                for spf in pf.list_child_folders():
+                    found_in_child = rec(spf)
+                    if found_in_child:
+                        return found_in_child
+            return None
+
+        found_in = rec(root)
+        if found_in:
+            return found_in
+        else:
+            return root
+
+    def move_to_folder(self, folder):
+        """
+        Moves this project to a project folder
+        :param folder :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
+        """
+        current_folder = self.get_project_folder()
+        current_folder.move_project_to(self.project_key, folder)
+
     ########################################################
     # Project deletion
     ########################################################

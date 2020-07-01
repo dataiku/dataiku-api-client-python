@@ -114,8 +114,7 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
         """
-        project_folder_id = self._perform_json("GET", "/project-folders/")["id"]
-        return DSSProjectFolder(self, project_folder_id)
+        return self.get_project_folder("ROOT")
 
     def get_project_folder(self, project_folder_id):
         """
@@ -124,7 +123,8 @@ class DSSClient(object):
         :param str project_folder_id: the project folder ID of the desired project folder
         :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
         """
-        return DSSProjectFolder(self, project_folder_id)
+        data = self._perform_json("GET", "/project-folders/%s" % project_folder_id)
+        return DSSProjectFolder(self, data)
 
     ########################################################
     # Projects
