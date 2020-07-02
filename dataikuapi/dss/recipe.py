@@ -2,10 +2,27 @@ from ..utils import DataikuException
 from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 
-#####################################################
-# Base classes
-#####################################################
+class DSSRecipeListItem(DSSTaggableObjectListItem):
+    """An item in a list of recipes. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_recipes`"""
+    def __init__(self, client, data):
+        super(DSSRecipeListItem, self).__init__(data)
+        self.client = client
+
+    def to_recipe(self):
+        """Gets the :class:`DSSRecipe` corresponding to this dataset"""
+        return  DSSRecipe(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["name"]
+    @property
+    def type(self):
+        return self._data["type"]
 
 class DSSRecipe(object):
     """

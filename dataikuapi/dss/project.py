@@ -1,7 +1,7 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
-from .recipe import DSSRecipe
+from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
@@ -990,15 +990,23 @@ class DSSProject(object):
     # Recipes
     ########################################################
 
-    def list_recipes(self):
+    def list_recipes(self, as_type="listitems"):
         """
         List the recipes in this project
-        
-        Returns:
-            the list of the recipes, each one as a JSON object
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the recipes. If "as_type" is "listitems", each one as a :class:`recipe.DSSRecipeListItem`.
+                  If "as_type" is "objects", each one as a :class:`recipe.DSSRecipe`
+        :rtype: list
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/recipes/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/recipes/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSRecipeListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSRecipe(self.client, self.project_key, item["name"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
 
     def get_recipe(self, recipe_name):
         """
