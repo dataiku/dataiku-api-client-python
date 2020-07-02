@@ -125,23 +125,15 @@ class DSSProjectFlow(object):
         tool_id = self.client._perform_text("POST", "/projects/%s/flow/tools/" % self.project.project_key, params={'type':type}, body=data)
         return DSSFlowTool(self.client, self.project.project_key, tool_id)
 
-    def propagate_schema(self, dataset_name, rebuild=False, recipe_update_options={}, excluded_recipes=[], mark_as_ok_recipes=[], partition_by_dim={}, partition_by_computable={}):
+    def new_schema_propagation(self, dataset_name):
         """
-        Start an automatic schema propagate from a dataset
+        Start an automatic schema propagation from a dataset
 
         :param dataset_name str: name of a dataset to start propagating from
-        :param rebuild bool: whether to automatically rebuild datasets if needed
-        :param recipe_update_options str: pre-recipe or per-recipe-type update options to apply on recipes
-        :param excluded_recipes list: list of recipes where propagation is to stop
-        :param mark_as_ok_recipes list: list of recipes to consider as ok
-        :param partition_by_dim dict: partition value to use for each dimension
-        :param partition_by_computable dict: partition spec to use for a given dataset or recipe (overrides partition_by_dim)
-    
-        :returns: dict of the messages collected during the update
+
+        :returns a :class:`DSSSchemaPropagationRunBuilder` to set options and start the propagation
         """
-        data = {'recipeUpdateOptions':recipe_update_options, 'partitionByDim':partition_by_dim, 'partitionByComputable':partition_by_computable, 'excludedRecipes':excluded_recipes, 'markAsOkRecipes':mark_as_ok_recipes}
-        update_future = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, dataset_name), params={'rebuild':rebuild}, body=data)
-        return DSSFuture(self.client,update_future.get('jobId', None), update_future)
+        return DSSSchemaPropagationRunBuilder(self.project, self.client, dataset_name)
 
 
     def _to_smart_ref(self, obj):
@@ -167,6 +159,114 @@ class DSSProjectFlow(object):
                 "objectId" : obj.id,
                 "objectType": ot
             }
+
+class DSSSchemaPropagationRunBuilder(object):
+    """Do not create this directly, use :meth:`DSSProjectFlow.new_schema_propagation`"""
+    def __init__(self, project, client, dataset_name):
+        self.project = project
+        self.client = client
+        self.dataset_name = dataset_name
+        self.settings = {
+            'recipeUpdateOptions': {
+                "byType": {},
+                "byName":  {}
+            },
+            'defaultPartitionValuesByDimension': {},
+            'partitionsByComputable':{},
+            'excludedRecipes': [],
+            'markAsOkRecipes': [],
+            'autoRebuild' : True
+        }
+
+    def set_auto_rebuild(self, auto_rebuild):
+        """
+        Sets whether to automatically rebuild datasets if needed while propagating (default true)
+        """
+        self.settings["autoRebuild"] = auto_rebuild
+
+    def set_default_partitioning_value(self, dimension, value):
+        """
+        In the case of partitioned flows, sets the default partition value to use when rebuilding, for a specific dimension name
+
+        :param str dimension: a partitioning dimension name
+        :param str value: a partitioning dimension value
+        """
+        self.settings["defaultPartitionValuesByDimension"][dimension] = value
+
+    def set_partition_for_computable(self, full_id, partition):
+        """
+        In the case of partitioned flows, sets the partition id to use when building a particular computable. Overrides
+        the default partitioning value per dimension
+
+        :param str full_id: Full name of the computable, in the form PROJECTKEY.id
+        :param str partition: a full partition id (all dimensions)
+        """
+        self.settings["partitionsByComputable"][full_id] = partition
+
+    def stop_at(self, recipe_name):
+        """Marks a recipe as a recipe where propagation stops"""
+        self.settings["excludedRecipes"].append(recipe_name)
+
+    def mark_recipe_as_ok(self, name):
+        """Marks a recipe as always considered as OK during propagation"""
+        self.settings["markAsOkRecipes"].append(name)
+
+    def set_grouping_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_keys=True, 
+                                    new_aggregates={}):
+        """
+        Sets update options for grouping recipes
+        :param str recipe: if None, applies to all grouping recipes. Else, applies only to this name
+        """
+        data = {
+            "removeMissingAggregates": remove_missing_aggregates,
+            "removeMissingKeys" : remove_missing_keys,
+            "newAggregates": new_aggregates
+        }
+        if recipe is None:
+            self.settings["recipeUpdateOptions"]["byType"]["grouping"] = data
+        else:
+            self.settings["recipeUpdateOptions"]["byName"][recipe] = data
+
+    def set_window_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_in_window=True, 
+                                    new_aggregates={}):
+        """
+        Sets update options for window recipes
+        :param str recipe: if None, applies to all window recipes. Else, applies only to this name
+        """
+        data = {
+            "removeMissingAggregates": remove_missing_aggregates,
+            "removeMissingInWindow" : remove_missing_in_window,
+            "newAggregates": new_aggregates
+        }
+        if recipe is None:
+            self.settings["recipeUpdateOptions"]["byType"]["window"] = data
+        else:
+            self.settings["recipeUpdateOptions"]["byName"][recipe] = data
+
+    def set_join_update_options(self, recipe=None, remove_missing_join_conditions=True, remove_missing_join_values=True, 
+                                new_selected_columns={}):
+        """
+        Sets update options for join recipes
+        :param str recipe: if None, applies to all join recipes. Else, applies only to this name
+        """
+        data = {
+            "removeMissingJoinConditions": remove_missing_join_conditions,
+            "removeMissingJoinValues" : remove_missing_join_values,
+            "newSelectedColumns": new_selected_columns
+        }
+        if recipe is None:
+            self.settings["recipeUpdateOptions"]["byType"]["join"] = data
+        else:
+            self.settings["recipeUpdateOptions"]["byName"][recipe] = data
+
+    def start(self):
+        """
+        Starts the actual propagation. Returns a future to wait for completion
+
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, self.dataset_name), body=self.settings)
+        return DSSFuture.from_resp(self.client, future_resp)
 
 class DSSFlowZone(object):
     """
