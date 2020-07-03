@@ -4,6 +4,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
+from .streaming_endpoint import DSSStreamingEndpoint
 import logging, json
 
 class DSSProjectFlow(object):
@@ -145,6 +146,8 @@ class DSSProjectFlow(object):
             ot = "SAVED_MODEL"
         elif isinstance(obj, DSSRecipe):
             ot = "RECIPE"
+        elif isinstance(obj, DSSStreamingEndpoint):
+            ot = "STREAMING_ENDPOINT"
         else:
             raise ValueError("Cannot transform to DSS object ref: %s" % obj)
 
@@ -286,6 +289,10 @@ class DSSFlowZone(object):
     def name(self):
         return self._raw["name"]
 
+    @property
+    def color(self):
+        return self._raw["color"]
+
     def __repr__(self):
         return "<dataikuapi.dss.flow.DSSFlowZone (id=%s, name=%s)>" % (self.id, self.name)
 
@@ -310,6 +317,8 @@ class DSSFlowZone(object):
            return p.get_saved_model(zone_item["objectId"])
         elif zone_item["objectType"] == "RECIPE":
             return p.get_recipe(zone_item["objectId"])
+        elif zone_item["objectType"] == "STREAMING_ENDPOINT":
+            return p.get_streaming_endpoint(zone_item["objectId"])
         else:
             raise ValueError("Cannot transform to DSS object: %s" % zone_item)
 
@@ -323,21 +332,8 @@ class DSSFlowZone(object):
         :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
                            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
         """
-        self.client._perform_empty("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
+        self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
                                   body=self.flow._to_smart_ref(obj))
-
-    #. TBD: if we make "add to default" work propertly, then we don't need thjis
-    #def remove_item(self, obj):
-    #    """
-    #    Removes an item to this zone.#
-    #
-    #    :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-    #                       or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
-    #    """
-    #    sr = self._to_smart_ref(obj)
-    # 
-    #    self.client._perform_empty("DELETE", "/projects/%s/flow/zones/%s/items/%s/%s" % (self.flow.project.project_key,
-    #                            self.id, sr["objectType"], sr["objectId"]))
 
     @property
     def items(self):
@@ -355,6 +351,28 @@ class DSSFlowZone(object):
             or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
         """
         return [self._to_native_obj(i) for i in self._raw["items"]]
+
+    def add_shared(self, obj):
+        """
+        Share an item to this zone.
+
+        The item will not be automatically unshared from its existing zone.
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        """
+        self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/shared" % (self.flow.project.project_key, self.id),
+                                          body=self.flow._to_smart_ref(obj))
+
+    def remove_shared(self, obj):
+        """
+        Remove a shared item from this zone.
+
+        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        """
+        smartRef = self.flow._to_smart_ref(obj)
+        self._raw = self.client._perform_json("DELETE", "/projects/%s/flow/zones/%s/shared/%s/%s" % (self.flow.project.project_key, self.id, smartRef['objectType'], smartRef['objectId']))
 
     @property
     def shared(self):
@@ -396,6 +414,14 @@ class DSSFlowZoneSettings(object):
     @name.setter
     def name(self, new_name):
         self._raw["name"] = new_name
+
+    @property
+    def color(self):
+        return self._raw["color"]
+
+    @color.setter
+    def color(self, new_color):
+        self._raw["color"] = new_color
 
     def save(self):
         """Saves the settings of the zone"""
