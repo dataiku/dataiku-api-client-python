@@ -1,4 +1,5 @@
 from .project import DSSProject
+import warnings
 
 class DSSProjectFolder(object):
     """
@@ -21,6 +22,14 @@ class DSSProjectFolder(object):
         :returns str: the id of this project folder
         """
         return self._data["id"]
+
+    @property
+    def project_folder_id(self):
+        """
+        deprecated, use id instead
+        """
+        warnings.warn("DSSProjectFolder.project_folder_id is deprecated, please use id", DeprecationWarning)
+        return self.id
 
     @property
     def name(self):
