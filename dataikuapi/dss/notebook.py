@@ -1,3 +1,5 @@
+from .discussion import DSSObjectDiscussions
+
 class DSSNotebook(object):
     """
     A Python/R/Scala notebook on the DSS instance
@@ -45,3 +47,15 @@ class DSSNotebook(object):
         if state.get('activeSessions', None) is None:
             raise Exception("Notebook isn't running")
         return state['activeSessions']
+
+    ########################################################
+    # Discussions
+    ########################################################
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the notebook
+
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "JUPYTER_NOTEBOOK", self.notebook_name)

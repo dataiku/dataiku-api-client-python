@@ -1,9 +1,8 @@
-from ..utils import DataikuException
-from ..utils import DataikuUTF8CSVReader
-from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
-from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
+from dataikuapi.dss.ml import DSSMLTask
 from .metrics import ComputedMetrics
+from .ml import DSSTrainedClusteringModelDetails
+from .ml import DSSTrainedPredictionModelDetails
+
 
 class DSSSavedModel(object):
     """
@@ -13,9 +12,17 @@ class DSSSavedModel(object):
     """
     def __init__(self, client, project_key, sm_id):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.sm_id = sm_id
+  
+    @property
+    def id(self):
+        return self.sm_id
 
+    def get_definition(self):
+        return self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
         
     ########################################################
     # Versions
@@ -68,6 +75,39 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
 
+    def delete_versions(self, versions, remove_intermediate=True):
+        """
+        Delete version(s) of the saved model
+
+        :param versions: list of versions to delete
+        :type versions: list[str]
+        :param remove_intermediate: also remove intermediate versions (default: True). In the case of a partitioned
+        model, an intermediate version is created every time a partition has finished training.
+        :type remove_intermediate: bool
+        """
+        if not isinstance(versions, list):
+            versions = [versions]
+        body = {
+            "versions": versions,
+            "removeIntermediate": remove_intermediate
+        }
+        self.client._perform_empty(
+            "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
+            body=body)
+
+    def get_origin_ml_task(self):
+        """
+        Fetch the last ML task that has been exported to this saved model. Returns None if the saved model
+        does not have an origin ml task.
+
+        :rtype: DSSMLTask | None
+        """
+        fmi = self.get_definition().get("lastExportedFrom")
+        if fmi is not None:
+            origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
+            return origin_ml_task.get_trained_model_details(fmi)
+
+
     ########################################################
     # Metrics
     ########################################################
@@ -84,8 +124,46 @@ class DSSSavedModel(object):
 
                 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this saved model
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.project.get_flow().get_zone(zone)
+        zone.add_item(self)
+
+    def share_to_zone(self, zone):
+        """
+        Share this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to share the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.add_shared(self)
+
+    def unshare_from_zone(self, zone):
+        """
+        Unshare this object from a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` from where to unshare the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.remove_shared(self)
 
     def get_usages(self):
         """
@@ -96,4 +174,22 @@ class DSSSavedModel(object):
         """
         return self.client._perform_json("GET", "/projects/%s/savedmodels/%s/usages" % (self.project_key, self.sm_id))
 
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the saved model
 
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "SAVED_MODEL", self.sm_id)
+
+    ########################################################
+    # Deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the saved model
+
+        """
+        return self.client._perform_empty("DELETE", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))

@@ -4,11 +4,26 @@ class DSSFuture(object):
     """
     A future on the DSS instance
     """
-    def __init__(self, client, job_id, state=None):
+    def __init__(self, client, job_id, state=None, result_wrapper=lambda result: result):
        self.client = client
        self.job_id = job_id
        self.state = state
        self.state_is_peek = True
+       self.result_wrapper = result_wrapper
+
+    @staticmethod
+    def from_resp(client, resp,result_wrapper=lambda result: result):
+        """Creates a DSSFuture from a parsed JSON response"""
+        return DSSFuture(client, resp.get('jobId', None), state=resp, result_wrapper=result_wrapper)
+
+    @classmethod
+    def get_result_wait_if_needed(cls, client, ret):
+        if 'jobId' in ret:
+            future = DSSFuture(client, ret["jobId"], ret)
+            future.wait_for_result()
+            return future.get_result()
+        else:
+            return ret['result']
 
     def abort(self):
         """
@@ -41,7 +56,7 @@ class DSSFuture(object):
         if self.state is None or not self.state.get('hasResult', False) or self.state_is_peek:
             self.get_state()
         if self.state.get('hasResult', False):
-            return self.state.get('result', None)
+            return self.result_wrapper(self.state.get('result', None))
         else:
             raise Exception("Result not ready")
             
@@ -63,7 +78,7 @@ class DSSFuture(object):
             time.sleep(5)
             self.get_state()
         if self.state.get('hasResult', False):
-            return self.state.get('result', None)
+            return self.result_wrapper(self.state.get('result', None))
         else:
             raise Exception("No result")
 

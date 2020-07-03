@@ -1,17 +1,31 @@
+import re
+
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
+import json, warnings
 import time
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
+from .future import DSSFuture
 
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
 
+    SPLIT_PARAMS_KEY = 'splitParams'
+
     def __init__(self, mltask_settings):
         """Do not call directly, use :meth:`DSSMLTaskSettings.get_split_params`"""
         self.mltask_settings = mltask_settings
+
+    def get_raw(self):
+        """Gets the raw settings of the prediction split configuration. This returns a reference to the raw settings, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        :rtype: dict
+        """
+        return self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
+
 
     def set_split_random(self, train_ratio = 0.8, selection = None, dataset_name=None):
         """
@@ -21,7 +35,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -35,6 +49,8 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
+        return self
+
     def set_split_kfold(self, n_folds = 5, selection = None, dataset_name=None):
         """
         Sets the train/test split to k-fold splitting of an extract of a single dataset
@@ -43,7 +59,7 @@ class PredictionSplitParamsHandler(object):
         :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
         :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
         if selection is not None:
             if isinstance(selection, DSSDatasetSelectionBuilder):
@@ -57,6 +73,8 @@ class PredictionSplitParamsHandler(object):
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
 
+        return self
+
     def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
         Sets the train/test split to explicit extract of one or two dataset(s)
@@ -68,7 +86,7 @@ class PredictionSplitParamsHandler(object):
         :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
         :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
-        sp = self.mltask_settings["splitParams"]
+        sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
             raise Exception("For explicit splitting a dataset_name is mandatory")
         if test_dataset_name is None or test_dataset_name == dataset_name:
@@ -78,7 +96,7 @@ class PredictionSplitParamsHandler(object):
             sp['efsdDatasetSmartName'] = dataset_name
             sp['efsdTrain'] = train_split
             sp['efsdTest'] = test_split
-        else:            
+        else:
             sp["ttPolicy"] = "EXPLICIT_FILTERING_TWO_DATASETS"
             train_split ={'datasetSmartName' : dataset_name}
             test_split = {'datasetSmartName' : test_dataset_name}
@@ -107,6 +125,47 @@ class PredictionSplitParamsHandler(object):
             else:
                 test_split["filter"] = test_filter
 
+        return self
+
+    def set_time_ordering(self, feature_name, ascending=True):
+        """
+        Uses a variable to sort the data for train/test split and hyperparameter optimization by time
+        :param str feature_name: Name of the variable to use
+        :param bool ascending: True iff the test set is expected to have larger time values than the train set
+        """
+        self.unset_time_ordering()
+        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
+        self.mltask_settings['time']['enabled'] = True
+        self.mltask_settings['time']['timeVariable'] = feature_name
+        self.mltask_settings['time']['ascending'] = ascending
+        self.mltask_settings['preprocessing']['per_feature'][feature_name]['missing_handling'] = "DROP_ROW"
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "SORTED"
+            self.mltask_settings['splitParams']['ssdColumn'] = feature_name
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "SHUFFLE":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "TIME_SERIES_SINGLE_SPLIT"
+
+        return self
+
+    def unset_time_ordering(self):
+        """
+        Remove time-based ordering for train/test split and hyperparameter optimization
+        """
+        self.mltask_settings['time']['enabled'] = False
+        self.mltask_settings['time']['timeVariable'] = None
+        if self.mltask_settings['splitParams']['ttPolicy'] == "SPLIT_SINGLE_DATASET":
+            self.mltask_settings['splitParams']['ssdSplitMode'] = "RANDOM"
+            self.mltask_settings['splitParams']['ssdColumn'] = None
+        if self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_KFOLD":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "KFOLD"
+        elif self.mltask_settings['modeling']['gridSearchParams']['mode'] == "TIME_SERIES_SINGLE_SPLIT":
+            self.mltask_settings['modeling']['gridSearchParams']['mode'] = "SHUFFLE"
+
+        return self
+
 
 class DSSMLTaskSettings(object):
     """
@@ -129,15 +188,6 @@ class DSSMLTaskSettings(object):
         :rtype: dict
         """
         return self.mltask_settings
-
-    def get_split_params(self):
-        """
-        Gets an object to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        return PredictionSplitParamsHandler(self.mltask_settings)
-
 
     def get_feature_preprocessing(self, feature_name):
         """
@@ -179,28 +229,6 @@ class DSSMLTaskSettings(object):
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
 
-    def use_sample_weighting(self, feature_name):
-        """
-        Uses a feature as sample weight
-        :param str feature_name: Name of the feature to use
-        """
-        self.remove_sample_weighting()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
-            raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
-        self.mltask_settings['weight']['weightMethod'] = 'SAMPLE_WEIGHT'
-        self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
-        self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
-
-
-    def remove_sample_weighting(self):
-        """
-        Remove sample weighting. If a feature was used as weight, it's set back to being an input feature
-        """
-        self.mltask_settings['weight']['weightMethod'] = 'NO_WEIGHTING'
-        for feature_name in self.mltask_settings['preprocessing']['per_feature']:
-            if self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] == 'WEIGHT':
-                 self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'INPUT'
-
     def get_algorithm_settings(self, algorithm_name):
         """
         Gets the training settings for a particular algorithm. This returns a reference to the
@@ -235,6 +263,35 @@ class DSSMLTaskSettings(object):
         """
         self.get_algorithm_settings(algorithm_name)["enabled"] = enabled
 
+    def disable_all_algorithms(self):
+        """Disables all algorithms"""
+
+        for algorithm_name in self.__class__.algorithm_remap.keys():
+            key = self.__class__.algorithm_remap[algorithm_name]
+            if key in self.mltask_settings["modeling"]:
+                self.mltask_settings["modeling"][key]["enabled"] = False
+
+        for custom_mllib in self.mltask_settings["modeling"]["custom_mllib"]:
+            custom_mllib["enabled"] = False
+        for custom_python in self.mltask_settings["modeling"]["custom_python"]:
+            custom_python["enabled"] = False
+        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+            plugin["enabled"] = False
+
+    def get_all_possible_algorithm_names():
+        """
+        Returns the list of possible algorithm names, i.e. the list of valid
+        identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
+
+        This does not include Custom Python models, Custom MLLib models, plugin models.
+        This includes all possible algorithms, regardless of the prediction kind (regression/classification)
+        or engine, so some algorithms may be irrelevant
+
+        :returns: the list of algorithm names as a list of strings
+        :rtype: list of string
+        """
+        return self.__class__.algorithm_remap.keys()
+
     def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
         """
         Sets the score metric to optimize for a prediction ML Task
@@ -261,19 +318,155 @@ class DSSMLTaskSettings(object):
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
+            "RANDOM_FOREST_CLASSIFICATION": "random_forest_classification",
+            "RANDOM_FOREST_REGRESSION" : "random_forest_regression",
+            "EXTRA_TREES": "extra_trees",
+            "GBT_CLASSIFICATION" : "gbt_classification",
+            "GBT_REGRESSION" : "gbt_regression",
+            "DECISION_TREE_CLASSIFICATION" : "decision_tree_classification",
+            "DECISION_TREE_REGRESSION" : "decision_tree_regression",
+            "RIDGE_REGRESSION": "ridge_regression",
+            "LASSO_REGRESSION" : "lasso_regression",
+            "LEASTSQUARE_REGRESSION": "leastsquare_regression",
+            "SGD_REGRESSION" : "sgd_regression",
+            "KNN": "knn",
+            "LOGISTIC_REGRESSION" : "logistic_regression",
+            "NEURAL_NETWORK" :"neural_network",
             "SVC_CLASSIFICATION" : "svc_classifier",
+            "SVM_REGRESSION" : "svm_regression",
             "SGD_CLASSIFICATION" : "sgd_classifier",
+            "LARS" : "lars_params",
+            "XGBOOST_CLASSIFICATION" : "xgboost",
+            "XGBOOST_REGRESSION" : "xgboost",
             "SPARKLING_DEEP_LEARNING" : "deep_learning_sparkling",
             "SPARKLING_GBM" : "gbm_sparkling",
             "SPARKLING_RF" : "rf_sparkling",
             "SPARKLING_GLM" : "glm_sparkling",
             "SPARKLING_NB" : "nb_sparkling",
-            "XGBOOST_CLASSIFICATION" : "xgboost",
-            "XGBOOST_REGRESSION" : "xgboost",
             "MLLIB_LOGISTIC_REGRESSION" : "mllib_logit",
+            "MLLIB_NAIVE_BAYES" : "mllib_naive_bayes",
             "MLLIB_LINEAR_REGRESSION" : "mllib_linreg",
-            "MLLIB_RANDOM_FOREST" : "mllib_rf"
+            "MLLIB_RANDOM_FOREST" : "mllib_rf",
+            "MLLIB_GBT": "mllib_gbt",
+            "MLLIB_DECISION_TREE" : "mllib_dt",
+            "VERTICA_LINEAR_REGRESSION" : "vertica_linear_regression",
+            "VERTICA_LOGISTIC_REGRESSION" : "vertica_logistic_regression",
+            "KERAS_CODE" : "keras"
         }
+
+    class PredictionTypes:
+        BINARY = "BINARY_CLASSIFICATION"
+        REGRESSION = "REGRESSION"
+        MULTICLASS = "MULTICLASS"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        DSSMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        if self.get_prediction_type() not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
+            raise ValueError("Unknown prediction type: {}".format(self.prediction_type))
+
+        self.classification_prediction_types = [self.PredictionTypes.BINARY, self.PredictionTypes.MULTICLASS]
+
+    def get_prediction_type(self):
+        return self.mltask_settings['predictionType']
+
+    @property
+    def split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return self.get_split_params()
+
+    def get_split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+        
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return PredictionSplitParamsHandler(self.mltask_settings)
+
+    def split_ordered_by(self, feature_name, ascending=True):
+        """
+        Deprecated. Use split_params.set_time_ordering()
+        """
+        warnings.warn("split_ordered_by() is deprecated, please use split_params.set_time_ordering() instead", DeprecationWarning)
+        self.split_params.set_time_ordering(feature_name, ascending=ascending)
+
+        return self
+
+    def remove_ordered_split(self):
+        """
+        Deprecated. Use split_params.unset_time_ordering()
+        """
+        warnings.warn("remove_ordered_split() is deprecated, please use split_params.unset_time_ordering() instead", DeprecationWarning)
+        self.split_params.unset_time_ordering()
+
+        return self
+
+    def use_sample_weighting(self, feature_name):
+        """
+        Deprecated. use set_weighting()
+        """
+        warnings.warn("use_sample_weighting() is deprecated, please use set_weighting() instead", DeprecationWarning)
+        return self.set_weighting(method='SAMPLE_WEIGHT', feature_name=feature_name, )
+
+    def set_weighting(self, method, feature_name=None):
+        """
+        Sets the method to weight samples. 
+
+        If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
+
+        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
+                        CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
+        :param str feature_name: Name of the feature to use as sample weight
+        """
+
+        # First, if there was a WEIGHT feature, restore it as INPUT
+        for other_feature_name in self.mltask_settings['preprocessing']['per_feature']:
+            if self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] == 'WEIGHT':
+                self.mltask_settings['preprocessing']['per_feature'][other_feature_name]['role'] = 'INPUT'
+
+        if method == "NO_WEIGHTING":
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "SAMPLE_WEIGHT":
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        elif method == "CLASS_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+
+            self.mltask_settings['weight']['weightMethod'] = method
+
+        elif method == "CLASS_AND_SAMPLE_WEIGHT":
+            if self.get_prediction_type() not in self.classification_prediction_types:
+                raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
+            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+                raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
+            
+            self.mltask_settings['weight']['weightMethod'] = method
+            self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
+            self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
+
+        else:
+            raise ValueError("Unknown weighting method: {}".format(method))
+
+        return self
+
+    def remove_sample_weighting(self):
+        """
+        Deprecated. Use set_weighting(method=\"NO_WEIGHTING\") instead
+        """
+        warnings.warn("remove_sample_weighting() is deprecated, please use set_weighting(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
+        return self.set_weighting(method="NO_WEIGHTING")
+
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
@@ -334,6 +527,22 @@ class DSSTrainedModelDetails(object):
                 "PUT", "/projects/%s/savedmodels/%s/versions/%s/user-meta" % (self.saved_model.project_key,
                     self.saved_model.sm_id, self.saved_model_version), body = um)
 
+    def get_origin_analysis_trained_model(self):
+        """
+        Fetch details about the model in an analysis, this model has been exported from. Returns None if the
+        deployed trained model does not have an origin analysis trained model.
+
+        :rtype: DSSTrainedModelDetails | None
+        """
+        if self.saved_model is None:
+            return self
+        else:
+            fmi = self.get_raw().get("smOrigin", {}).get("fullModelId")
+            if fmi is not None:
+                origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
+                                                              project_key=self.saved_model.project_key)
+                return origin_ml_task.get_trained_model_details(fmi)
+
 class DSSTreeNode(object):
     def __init__(self, tree, i):
         self.tree = tree
@@ -373,7 +582,7 @@ class DSSTreeNode(object):
         info['nSamples'] = nSamples[self.i] if nSamples is not None else None
         info['threshold'] = thresholds[self.i] if thresholds is not None else None
         return info
- 
+
 class DSSTree(object):
     def __init__(self, tree, feature_names):
         self.tree = tree
@@ -493,6 +702,22 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         return clean_snippet
 
 
+    def get_hyperparameter_search_points(self):
+        """
+        Gets the list of points in the hyperparameter search space that have been tested.
+
+        Returns a list of dict. Each entry in the list represents a point.
+
+        For each point, the dict contains at least:
+            - "score": the average value of the optimization metric over all the folds at this point
+            - "params": a dict of the parameters at this point. This dict has the same structure 
+               as the params of the best parameters
+        """
+
+        if not "gridCells" in self.details["iperf"]:
+            raise ValueError("No hyperparameter search result, maybe this model did not perform hyperparameter optimization")
+        return self.details["iperf"]["gridCells"]
+
     def get_preprocessing_settings(self):
         """
         Gets the preprocessing settings that were used to train this model
@@ -547,6 +772,561 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         if data is None:
             raise ValueError("This model has no coefficient paths")
         return DSSCoefficientPaths(data)
+
+    ## Model export
+
+    def get_scoring_jar_stream(self, model_class="model.Model", include_libs=False):
+        """
+        Get a scoring jar for this trained model,
+        provided that you have the license to do so and that the model is compatible with optimized scoring.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :param str  model_class: fully-qualified class name, e.g. "com.company.project.Model"
+        :param bool include_libs: if True, also packs the required dependencies;
+                if False, runtime will require the scoring libs given by :func:`DSSClient.scoring_libs`
+        :returns: a jar file, as a stream
+        :rtype: file-like
+        """
+        include_libs = "true" if include_libs else "false"
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-jar?fullClassName=%s&includeLibs=%s" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id,
+                model_class, include_libs))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-jar?fullClassName=%s&includeLibs=%s" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version,
+                model_class, include_libs))
+
+    def get_scoring_pmml_stream(self):
+        """
+        Get a scoring PMML for this trained model,
+        provided that you have the license to do so and that the model is compatible with PMML scoring
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: a PMML file, as a stream
+        :rtype: file-like
+        """
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-pmml" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-pmml" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+
+    ## Post-train computations
+
+    def compute_subpopulation_analyses(self, split_by, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
+        """
+        Launch computation of Subpopulation analyses for this trained model.
+
+        :param list|str split_by: column(s) on which subpopulation analyses are to be computed (one analysis per column)
+        :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
+        :param int sample_size: number of records of the dataset to use for the computation 
+        :param int random_state: random state to use to build sample, for reproducibility
+        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param bool debug_mode: if True, output all logs (slower)
+
+        :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses` or :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        body = {
+            "features": split_by if isinstance(split_by, list) else [split_by],
+            "computationParams": {
+                "sample_size": sample_size,
+                "random_state": random_state,
+                "n_jobs": n_jobs,
+                "debug_mode": debug_mode,
+            }}
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                body=body
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                body=body
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+            return DSSSubpopulationAnalyses(future.wait_for_result(), prediction_type)
+        else:
+            return future
+
+
+    def get_subpopulation_analyses(self):
+        """
+        Retrieve all subpopulation analyses computed for this trained model
+        
+        :returns: the subpopulation analyses
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses`
+        """
+        
+        if self.mltask is not None:
+            data = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            data = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/subpopulation-analyses" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+        prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+        return DSSSubpopulationAnalyses(data, prediction_type)
+
+    def compute_partial_dependencies(self, features, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
+        """
+        Launch computation of Partial dependencies for this trained model.
+
+        :param list|str features: feature(s) on which partial dependencies are to be computed
+        :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
+        :param int sample_size: number of records of the dataset to use for the computation 
+        :param int random_state: random state to use to build sample, for reproducibility
+        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param bool debug_mode: if True, output all logs (slower)
+
+        :returns: if wait is True, an object containing the Partial dependencies, else a future to wait on the result
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies` or :class:`dataikuapi.dss.future.DSSFuture`
+        """
+
+        body = {
+            "features": features if isinstance(features, list) else [features],
+            "computationParams": {
+                "sample_size": sample_size,
+                "random_state": random_state,
+                "n_jobs": n_jobs,
+                "debug_mode": debug_mode,
+            }}
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                body=body
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                body=body
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            return DSSPartialDependencies(future.wait_for_result()) 
+        else:
+            return future
+
+    def get_partial_dependencies(self):
+        """
+        Retrieve all partial dependencies computed for this trained model
+
+        :returns: the partial dependencies
+        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies`
+        """
+
+        if self.mltask is not None:
+            data = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/partial-dependencies" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            data = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/partial-dependencies" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+        return DSSPartialDependencies(data)
+
+
+class DSSSubpopulationGlobal(object):
+    """
+    Object to read details of performance on global population used for subpopulation analyses.
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
+    """
+
+    def __init__(self, data, prediction_type):
+        self._internal_dict = data
+        self.prediction_type = prediction_type
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the global subpopulation performance
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return "{cls}(prediction_type={type})".format(cls=self.__class__.__name__, type=self.prediction_type)
+
+    def get_performance_metrics(self):
+        """
+        Gets the performance results of the global population used for the subpopulation analysis
+        """
+        return self._internal_dict["performanceMetrics"]
+
+    def get_prediction_info(self):
+        """
+        Gets the prediction info of the global population used for the subpopulation analysis
+        """
+        global_metrics = self._internal_dict["perf"]["globalMetrics"]
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
+
+
+class DSSSubpopulationModality(object):
+    """
+    Object to read details of a subpopulation analysis modality
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
+    """
+
+    def __init__(self, feature_name, computed_as_type, data, prediction_type):
+        self._internal_dict = data
+        self.prediction_type = prediction_type
+        if computed_as_type == "CATEGORY":
+            self.definition = DSSSubpopulationCategoryModalityDefinition(feature_name, data)
+        elif computed_as_type == "NUMERIC":
+            self.definition = DSSSubpopulationNumericModalityDefinition(feature_name, data)
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis modality
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        computed_as_type = "CATEGORY" if isinstance(self.definition, DSSSubpopulationCategoryModalityDefinition) else 'NUMERIC'
+        return "{cls}(prediction_type={type}, feature={feature}, computed_as={computed_as_type})".format(
+            cls=self.__class__.__name__,
+            type=self.prediction_type,
+            feature=self.definition.feature_name,
+            computed_as_type=computed_as_type)
+
+    def get_definition(self):
+        """
+        Gets the definition of the subpopulation analysis modality
+
+        :returns: definition
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+        """
+        return self.definition
+    
+    def is_excluded(self):
+        """
+        Whether modality has been excluded from analysis (e.g. too few rows in the subpopulation)
+        """
+        return self._internal_dict.get("excluded", False)
+
+    def get_performance_metrics(self):
+        """
+        Gets the performance results of the modality
+        """
+        if self.is_excluded():
+            raise ValueError("Excluded modalities do not have performance metrics")
+        return self._internal_dict["performanceMetrics"]
+
+    def get_prediction_info(self):
+        """
+        Gets the prediction info of the modality
+        """
+        if self.is_excluded():
+            raise ValueError("Excluded modalities do not have prediction info")
+        global_metrics = self._internal_dict["perf"]["globalMetrics"]
+        if self.prediction_type == "BINARY_CLASSIFICATION":
+            return {
+                "predictedPositiveRatio": global_metrics["predictionAvg"][0],
+                "actualPositiveRatio": global_metrics["targetAvg"][0],
+                "testWeight": global_metrics["testWeight"]
+            }
+        elif self.prediction_type == "REGRESSION":
+            return {
+                "predictedAvg":global_metrics["predictionAvg"][0],
+                "predictedStd":global_metrics["predictionStd"][0],
+                "actualAvg":global_metrics["targetAvg"][0],
+                "actualStd":global_metrics["targetStd"][0],
+                "testWeight":global_metrics["testWeight"]
+            }
+
+
+class DSSSubpopulationModalityDefinition(object):
+
+    MISSING_VALUES = "__DSSSubpopulationModalidityDefinition__MISSINGVALUES"
+
+    def __init__(self, feature_name, data):
+        self.missing_values = data.get("missing_values", False)
+        self.index = data.get("index")
+        self.feature_name = feature_name
+    
+    def is_missing_values(self):
+        return self.missing_values
+
+
+class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefinition):
+    
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationNumericModalityDefinition, self).__init__(feature_name, data)
+        self.lte = data.get("lte", None)
+        self.gt = data.get("gt", None)
+        self.gte = data.get("gte", None)
+    
+    def contains(self, value):
+        lte = self.lte if self.lte is not None else float("inf")
+        gt = self.gt if self.gt is not None else float("-inf")
+        gte = self.gte if self.gte is not None else float("-inf")
+        return not self.missing_values and gt < value and gte <= value and lte >= value
+    
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationNumericModalityDefinition(missing_values)"
+        else:
+            if self.gt is not None:
+                repr_gt = "%s<" % self.gt
+            elif self.gte is not None:
+                repr_gt = "%s<=" % self.gte
+            else:
+                repr_gt = ""
+
+            if self.lte is not None:
+                repr_lt = "<=%s" % self.lte
+            else:
+                repr_lt = ""
+
+            return "DSSSubpopulationNumericModalityDefinition(%s%s%s)" % (repr_gt, self.feature_name, repr_lt)
+
+class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
+
+    def __init__(self, feature_name, data):
+        super(DSSSubpopulationCategoryModalityDefinition, self).__init__(feature_name, data)
+        self.value = data.get("value", None)
+    
+    def contains(self, value):
+        return value == self.value
+
+    def __repr__(self):
+        if self.missing_values:
+            return "DSSSubpopulationCategoryModalityDefinition(missing_values)"
+        else:
+            return "DSSSubpopulationCategoryModalityDefinition(%s='%s')" % (self.feature_name, self.value)
+
+
+class DSSSubpopulationAnalysis(object):
+    """
+    Object to read details of a subpopulation analysis of a trained model
+
+    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
+    """
+
+    def __init__(self, analysis, prediction_type):
+        self._internal_dict = analysis
+        self.computed_as_type = analysis["computed_as_type"]
+        self.modalities = [DSSSubpopulationModality(analysis["feature"], self.computed_as_type, m, prediction_type) for m in analysis.get("modalities", [])]
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the subpopulation analysis
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return "{cls}(computed_as_type={type}, feature={feature}, modalities_count={modalities_count})".format(
+            cls=self.__class__.__name__,
+            type=self.computed_as_type,
+            feature=self._internal_dict["feature"],
+            modalities_count=len(self.modalities))
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        return {
+            "nbRecords":  self._internal_dict["nbRecords"],
+            "randomState":  self._internal_dict["randomState"],
+            "onSample":  self._internal_dict["onSample"]
+        }
+    
+    def list_modalities(self):
+        """
+        List definitions of modalities
+        """
+        return [m.definition for m in self.modalities]
+
+    def get_modality_data(self, definition):
+        """
+        Retrieves modality from definition
+
+        :param definition: definition of modality to retrieve. Can be:
+                   * :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
+                   * `dataikuapi.dss.ml.DSSSubpopulationModalityDefinition.MISSING_VALUES` 
+                      to retrieve modality corresponding to missing values
+                   * for category modality, can be a str corresponding to the value of the modality
+                   * for numeric modality, can be a number inside the modality
+
+        :returns: the modality
+        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModality`
+        """
+
+        if definition == DSSSubpopulationModalityDefinition.MISSING_VALUES:
+            for m in self.modalities:
+                if m.definition.missing_values:
+                    return m
+            raise ValueError("No 'missing values' modality found")
+
+        if isinstance(definition, DSSSubpopulationModalityDefinition):
+            modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
+            if len(modality_candidates) == 0:
+                raise ValueError("Modality with index '%s' not found" % definition.index)
+            return modality_candidates[0]
+        
+        for m in self.modalities:
+            if m.definition.contains(definition):
+                return m
+        raise ValueError("Modality not found: %s" % definition)
+
+
+class DSSSubpopulationAnalyses(object):
+    """
+    Object to read details of subpopulation analyses of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
+    """
+
+    def __init__(self, data, prediction_type):
+        self._internal_dict = data
+        self.prediction_type = prediction_type
+        self.analyses = []
+        for analysis in data.get("subpopulationAnalyses", []):
+            self.analyses.append(DSSSubpopulationAnalysis(analysis, prediction_type))
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of subpopulation analyses
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return "{cls}(prediction_type={type}, analyses={analyses})".format(cls=self.__class__.__name__,
+                                                                           type=self.prediction_type,
+                                                                           analyses=self.list_analyses())
+    def get_global(self):
+        """
+        Retrieves information and performance on the full dataset used to compute the subpopulation analyses
+        """
+        return DSSSubpopulationGlobal(self._internal_dict["global"], self.prediction_type)
+
+    def list_analyses(self):
+        """
+        Lists all features on which subpopulation analyses have been computed
+        """
+        return [analysis.get_raw()["feature"] for analysis in self.analyses]
+    
+    def get_analysis(self, feature):
+        """
+        Retrieves the subpopulation analysis for a particular feature
+        """
+        try:
+            return next(analysis for analysis in self.analyses if analysis.get_raw()["feature"] == feature)
+        except StopIteration:
+            raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
+
+
+class DSSPartialDependence(object):
+    """
+    Object to read details of partial dependence of a trained model
+
+    Do not create this object directly, use :meth:`DSSPartialDependencies.get_partial_dependence(feature)` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the partial dependence
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return "{cls}(feature={feature})".format(cls=self.__class__.__name__, feature=self._internal_dict["feature"])
+
+    def get_computation_params(self):
+        """
+        Gets computation params
+        """
+        return {
+            "nbRecords":  self._internal_dict["nbRecords"],
+            "randomState":  self._internal_dict["randomState"],
+            "onSample":  self._internal_dict["onSample"]
+        }
+
+
+class DSSPartialDependencies(object):
+    """
+    Object to read details of partial dependencies of a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_partial_dependencies()` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+        self.partial_dependencies = []
+        for pd in data.get("partialDependencies", []):
+            self.partial_dependencies.append(DSSPartialDependence(pd))
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of partial dependencies
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def __repr__(self):
+        return "{cls}(features={features})".format(cls=self.__class__.__name__, features=self.list_features())
+
+    def list_features(self):
+        """
+        Lists all features on which partial dependencies have been computed
+        """
+        return [partial_dep.get_raw()["feature"] for partial_dep in self.partial_dependencies]
+
+    def get_partial_dependence(self, feature):
+        """
+        Retrieves the partial dependencies for a particular feature
+        """
+        try:
+            return next(pd for pd in self.partial_dependencies if pd.get_raw()["feature"] == feature)
+        except StopIteration:
+            raise ValueError("Partial dependence for feature '%s' cannot be found" % feature)
 
 
 class DSSClustersFacts(object):
@@ -664,6 +1444,17 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
 
 
 class DSSMLTask(object):
+
+    @staticmethod
+    def from_full_model_id(client, fmi, project_key=None):
+        match = re.match("^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
+        if match is None:
+            return DataikuException("Invalid model id: {}".format(fmi))
+        else:
+            if project_key is None:
+                project_key = match.group(1)
+            return DSSMLTask(client, project_key, match.group(2), match.group(3))
+
     """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
         self.client = client
@@ -677,7 +1468,7 @@ class DSSMLTask(object):
         """
         return self.client._perform_json(
                 "DELETE", "/projects/%s/models/lab/%s/%s/" % (self.project_key, self.analysis_id, self.mltask_id))
-                
+
 
     def wait_guess_complete(self):
         """
@@ -700,7 +1491,7 @@ class DSSMLTask(object):
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/status" % (self.project_key, self.analysis_id, self.mltask_id))
-                
+
 
     def get_settings(self):
         """
@@ -739,11 +1530,11 @@ class DSSMLTask(object):
         self.wait_train_complete()
         return self.get_trained_models_ids(session_id = train_ret["sessionId"])
 
-    def ensemble(self, model_ids=[], method=None):
+    def ensemble(self, model_ids=None, method=None):
         """
         Create an ensemble model of a set of models
         
-        :param list model_ids: A list of model identifiers
+        :param list model_ids: A list of model identifiers (defaults to `[]`)
         :param str method: the ensembling method. One of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
 
         This method waits for the ensemble train to complete. If you want to train asynchronously, use :meth:`start_ensembling` and :meth:`wait_train_complete`
@@ -757,6 +1548,8 @@ class DSSMLTask(object):
         :return: A model identifier
         :rtype: string
         """
+        if model_ids is None:
+            model_ids = []
         train_ret = self.start_ensembling(model_ids, method)
         self.wait_train_complete()
         return train_ret
@@ -780,11 +1573,11 @@ class DSSMLTask(object):
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
 
-    def start_ensembling(self, model_ids=[], method=None):
+    def start_ensembling(self, model_ids=None, method=None):
         """
         Creates asynchronously a new ensemble models of a set of models.
 
-        :param list model_ids: A list of model identifiers
+        :param list model_ids: A list of model identifiers (defaults to `[]`)
         :param str method: the ensembling method (AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL)
 
         This returns immediately, before train is complete. To wait for train to complete, use :meth:`wait_train_complete`
@@ -792,6 +1585,8 @@ class DSSMLTask(object):
         :return: the model identifier of the ensemble
         :rtype: string
         """
+        if model_ids is None:
+            model_ids = []
         ensembling_request = {
                             "method" : method,
                             "modelsIds" : model_ids
@@ -877,7 +1672,7 @@ class DSSMLTask(object):
         else:
             return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
 
-    def delete_model(self, model_id):
+    def delete_trained_model(self, model_id):
         """
         Deletes a trained model
 
@@ -930,8 +1725,7 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body = obj)
 
-
-    def remove_all_splits(self):
+    def remove_unused_splits(self):
         """
         Deletes all stored splits data that are not anymore in use for this ML Task.
 
@@ -939,8 +1733,6 @@ class DSSMLTask(object):
         """
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeUnusedSplits" % (self.project_key, self.analysis_id, self.mltask_id))
-
-
 
     def remove_all_splits(self):
         """
@@ -952,8 +1744,24 @@ class DSSMLTask(object):
         * Resume training of models for which optimization had been previously interrupted
         
         Training new models remains possible
-
         """
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
+    def guess(self, prediction_type=None, reguess_level=None):
+        """
+        Guess the feature handling and the algorithms.
+        :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
+        :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
+        """
+        obj = {}
+        if prediction_type is not None:
+            obj["predictionType"] = prediction_type
+
+        if reguess_level is not None:
+            obj["reguessLevel"] = reguess_level
+
+        self.client._perform_empty(
+            "PUT",
+            "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
+            params = obj)

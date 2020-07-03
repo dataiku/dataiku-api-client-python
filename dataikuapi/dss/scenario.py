@@ -1,11 +1,13 @@
 from datetime import datetime
-import time
+import time, warnings
 from dataikuapi.utils import DataikuException
-
+from .discussion import DSSObjectDiscussions
+from .utils import DSSTaggableObjectListItem
 
 class DSSScenario(object):
     """
-    A handle to interact with a scenario on the DSS instance
+    A handle to interact with a scenario on the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_scenario`
     """
     def __init__(self, client, project_key, id):
         self.client = client
@@ -14,56 +16,43 @@ class DSSScenario(object):
 
     def abort(self):
         """
-        Aborts the scenario if it currently running
+        Aborts the scenario if it currently running. Does nothing if the scenario is not currently running
         """
         return self.client._perform_json(
             "POST", "/projects/%s/scenarios/%s/abort" % (self.project_key, self.id))
 
-    def run(self, params={}):
-        """
-        Requests a run of the scenario, which will start after a few seconds.
-
-        :params dict params: additional parameters that will be passed to the scenario through trigger params
-        """
-        trigger_fire = self.client._perform_json(
-            "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
-        return DSSTriggerFire(self, trigger_fire)
-
-    def get_trigger_fire(self, trigger_id, trigger_run_id):
-        """
-        Requests a trigger of the run of a scenario
-
-        Args:
-            trigger_id:  Id of trigger
-            trigger_run_id: Id of the run of the trigger
-
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSTriggerFire` trigger handle
-        """
-        trigger_fire = self.client._perform_json(
-            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.id, trigger_id), params={
-                'triggerRunId' : trigger_run_id
-            })
-        return DSSTriggerFire(self, trigger_fire)
-
-    def run_and_wait(self, params={}, no_fail=False):
+    def run_and_wait(self, params=None, no_fail=False):
         """
         Requests a run of the scenario, which will start after a few seconds. Wait the end of the run to complete.
 
-        Args:
-            params: additional parameters that will be passed to the scenario through trigger params
+        :param dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
 
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
+        :return: A :class:`dataikuapi.dss.admin.DSSScenarioRun` run handle
         """
+        if params is None:
+            params = {}
         trigger_fire = self.run(params)
         scenario_run = trigger_fire.wait_for_scenario_run(no_fail)
         waiter = DSSScenarioRunWaiter(scenario_run, trigger_fire)
         return waiter.wait(no_fail)
 
+    def run(self, params=None):
+        """
+        Requests a run of the scenario, which will start after a few seconds.
+
+        :params dict params: additional parameters that will be passed to the scenario through trigger params (defaults to `{}`)
+        :return the trigger fire object. Note that this is NOT a Scenario run object. The trigger fire may ultimately result in a run or not.
+        :rtype :class:`DSSTriggerFire`
+        """
+        if params is None:
+            params = {}
+        trigger_fire = self.client._perform_json(
+            "POST", "/projects/%s/scenarios/%s/run" % (self.project_key, self.id), body=params)
+        return DSSTriggerFire(self, trigger_fire)
+
     def get_last_runs(self, limit=10, only_finished_runs=False):
         """
-        Get the list of the last runs of the scenario.
+        Get the list of the last runs of the scenario
 
         :return: A list of :class:`dataikuapi.dss.scenario.DSSScenarioRun`
         """
@@ -73,6 +62,26 @@ class DSSScenario(object):
                 'onlyFinishedRuns' : only_finished_runs
             })
         return [DSSScenarioRun(self.client, run) for run in runs]
+
+    def get_last_finished_run(self):
+        """
+        Gets the last run that completed (successfully or not)
+        :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
+        """
+        lr = [sr for sr in self.get_last_runs() if not sr.running]
+        if len(lr) == 0:
+            raise ValueError("No scenario run completed")
+        return lr[0]
+
+    def get_last_successful_run(self):
+        """
+        Gets the last run that completed successfully
+        :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
+        """
+        lr = self.get_last_runs(only_finished_runs=True)
+        if len(lr) == 0:
+            raise ValueError("No scenario run completed successfully")
+        return lr[0]
 
     def get_current_run(self):
         """
@@ -91,55 +100,35 @@ class DSSScenario(object):
 
     def get_run(self, run_id):
         """
-        Get a handle to a run of the scenario
+        Get a handle to a run of the scenario based on a scenario run id
 
         :return: A :class:`dataikuapi.dss.scenario.DSSScenarioRun`
         """
-        return DSSScenarioRun(self.client, {'scenario' : {'projectKey':self.project_key, 'id':self.id}, 'runId' : run_id})
+        run_details = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/%s/" % (self.project_key, self.id, run_id))
+        return DSSScenarioRun(self.client, run_details["scenarioRun"])
 
-    def get_definition(self, with_status=True):
+    def get_status(self):
         """
-        Returns the definition of the scenario
-
-        Args:
-            with_status: if True, the definition contains the run status of the scenario but not its
-                              actions' definition. If False, the definition doesn't contain the run status
-                              but has the scenario's actions definition
+        Returns the status of this scenario
+        :rtype :class:`DSSScenarioStatus`
         """
-        suffix = '/light' if with_status else ''
-        return self.client._perform_json(
-            "GET", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix))
+        data = self.client._perform_json("GET", "/projects/%s/scenarios/%s/light" % (self.project_key, self.id))
+        return DSSScenarioStatus(self, data)
 
-    def set_definition(self, definition, with_status=True):
+    def get_settings(self):
         """
-        Updates the definition of this scenario
-
-        Args:
-            with_status: should be the same as the value passed to get_definition(). If True, the params, 
-                         triggers and reporters fields of the scenario are ignored,
+        Returns the settings of this scenario
+        :rtype :class:`StepBasedDSSScenarioSettings` or :class:`PythonScriptBasedScenarioSettings`
         """
-        suffix = '/light' if with_status else ''
-        return self.client._perform_json(
-            "PUT", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix), body = definition)
+        data = self.client._perform_json("GET", "/projects/%s/scenarios/%s" % (self.project_key, self.id))
 
-    def get_payload(self, extension='py'):
-        """
-        Returns the payload of the scenario
-
-        :param str extension: the type of script. Default is 'py' for python
-        """
-        return self.client._perform_json(
-            "GET", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id)).get('script', '')
-
-    def set_payload(self, script, with_status=True):
-        """
-        Updates the payload of this scenario
-
-        :param str extension: the type of script. Default is 'py' for python
-        """
-        return self.client._perform_json(
-            "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
-
+        if data["type"] == "step_based":
+            return StepBasedScenarioSettings(self.client, self, data)
+        else:
+            payload = self.client._perform_json(
+                "GET", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id)).get('script', '')
+            return PythonScriptBasedScenarioSettings(self.client, self, data, payload)
 
     def get_average_duration(self, limit=3):
         """
@@ -155,6 +144,235 @@ class DSSScenario(object):
             return None
         return sum([run.get_duration() for run in last_runs]) / len(last_runs)
 
+    def delete(self):
+        """
+        Deletes this scenario
+        """
+        return self.client._perform_json(
+            "DELETE", "/projects/%s/scenarios/%s" % (self.project_key, self.id))
+
+    def get_object_discussions(self):
+        """
+        Get a handle to manage discussions on the scenario
+
+        :returns: the handle to manage discussions
+        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        """
+        return DSSObjectDiscussions(self.client, self.project_key, "SCENARIO", self.id)
+
+    ########################################################
+    # Advanced
+    ########################################################
+
+    def get_trigger_fire(self, trigger_id, trigger_run_id):
+        """
+        Gets the trigger fire object corresponding to a previous trigger fire id. Advanced usages only
+        """
+        trigger_fire = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.id, trigger_id), params={
+                'triggerRunId' : trigger_run_id
+            })
+        return DSSTriggerFire(self, trigger_fire)
+
+    ########################################################
+    # Deprecated
+    ########################################################
+
+    def get_definition(self, with_status=True):
+        """
+        Deprecated, use :meth:`get_settings` and :meth:`get_summary`
+
+        Returns the definition of the scenario
+        :param bool status: if True, the definition contains the run status of the scenario but not its
+                              actions' definition. If False, the definition doesn't contain the run status
+                              but has the scenario's actions definition
+        """
+        warnings.warn("DSSScenario.get_definition is deprecated, please use get_settings", DeprecationWarning)
+        suffix = '/light' if with_status else ''
+        return self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix))
+
+    def set_definition(self, definition, with_status=True):
+        """
+        Deprecated, use :meth:`get_settings` and :meth:`DSSScenarioSettings.save`
+
+        Updates the definition of this scenario
+        :param bool status: should be the same as the value passed to get_definition(). If True, the params, 
+                         triggers and reporters fields of the scenario are ignored,
+        """
+        warnings.warn("DSSScenario.set_definition is deprecated, please use get_settings", DeprecationWarning)
+        suffix = '/light' if with_status else ''
+        return self.client._perform_json(
+            "PUT", "/projects/%s/scenarios/%s%s" % (self.project_key, self.id, suffix), body = definition)
+
+    def get_payload(self, extension='py'):
+        """
+        Deprecated, use :meth:`get_settings` and :meth:`DSSScenarioSettings.save`
+        
+        Returns the payload of the scenario
+        :param str extension: the type of script. Default is 'py' for python
+        """
+        warnings.warn("DSSScenario.get_payload is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id)).get('script', '')
+
+    def set_payload(self, script, with_status=True):
+        """
+        Deprecated, use :meth:`get_settings` and :meth:`DSSScenarioSettings.save`
+        
+        Updates the payload of this scenario
+        :param str extension: the type of script. Default is 'py' for python
+        """
+        warnings.warn("DSSScenario.set_payload is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json(
+            "PUT", "/projects/%s/scenarios/%s/payload" % (self.project_key, self.id), body = {'script' : script})
+
+class DSSScenarioStatus(object):
+    """Status of a scenario. Do not instantiate this class, use :meth:`DSSScenario.get_status`"""
+
+    def __init__(self, scenario, data):
+        self.scenario = scenario
+        self.data = data
+
+    def get_raw(self):
+        return self.data
+
+    @property
+    def running(self):
+        return self.data["running"]
+
+    @property
+    def next_run(self):
+        """
+        Time at which the scenario is expected to next run based on its triggers.
+
+        May be None if there are no temporal triggers
+
+        This is an approximate indication as scenario run may be delayed, especially in the case of 
+        multiple triggers or high load
+        """
+        if not "nextRun" in self.data or self.data["nextRun"] == 0:
+            return None
+        return datetime.fromtimestamp(self.data["nextRun"] / 1000)
+
+
+class DSSScenarioSettings(object):
+    """Settings of a scenario. Do not instantiate this class, use :meth:`DSSScenario.get_settings`"""
+    def __init__(self, client, scenario, data):
+        self.client = client
+        self.scenario = scenario
+        self.data = data
+
+    def get_raw(self):
+        return self.data
+
+    @property 
+    def active(self):
+        """
+        Whether this scenario is currently active, i.e. its auto-triggers are executing
+        """
+        return self.data["active"]
+    @active.setter
+    def active(self, active):
+        self.data["active"] = active
+
+    @property 
+    def run_as(self):
+        """
+        The configured 'run as' of the scenario. None means that the scenario runs as its last modifier.
+        Only administrators may set a non-None value
+        """
+        return self.data.get("runAsUser", None)
+    @run_as.setter
+    def run_as(self, run_as):
+        self.data["runAsUser"] = run_as
+
+    @property
+    def effective_run_as(self):
+        """
+        The effective 'run as' of the scenario. If a run_as has been configured by an administrator, 
+        this will be used. Else, this will be the last modifier of the scenario.
+
+        If this method returns None, it means that it was not possible to identify who this
+        scenario runs as. This scenario is probably not currently functioning.
+        """
+        # Note: this logic must match the one in ScenarioBaseService
+        if "runAsUser" in self.data:
+            return self.data["runAsUser"]
+        elif "versionTag" in self.data:
+            return self.data["versionTag"]["lastModifiedBy"]["login"]
+        elif "creationTag" in self.data:
+            return self.data["creationTag"]["lastModifiedBy"]["login"]
+        else:
+            return Non
+
+    @property
+    def raw_triggers(self):
+        return self.data["triggers"]
+
+    @property
+    def raw_reporters(self):
+        return self.data["reporters"]
+
+    def add_periodic_trigger(self, every_minutes=5):
+        """Adds a trigger that runs the scenario every X minutes"""
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Minutely", "count": every_minutes}}
+        self.raw_triggers.append(trigger)
+
+    def add_hourly_trigger(self, minute_of_hour=0):
+        """Adds a trigger that runs the scenario each hour on a predefined minute"""
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Hourly", "minute":  minute_of_hour}}
+        self.raw_triggers.append(trigger)
+
+    def add_daily_trigger(self, hour=2, minute=0, days=None):
+        """
+        Adds a trigger that runs the scenario each day on a predefined time.
+
+        :param day list: if not None, only runs on given days. Day must be given as english names with capitals
+        """
+        if days is None:
+            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Daily", "hour": hour, "minute":  minute}}
+        else:
+            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Weekly", "hour": hour, "minute":  minute,
+                            "daysOfWeek": days}}
+        self.raw_triggers.append(trigger)
+
+    def add_monthly_trigger(self, day=1, hour=2, minute=0):
+        """Adds a trigger that runs the scenario once per month"""
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Monthly", "dayOfMonth": day, "hour": hour, "minute": minute}}
+        self.raw_triggers.append(trigger)
+
+    def save(self):
+        """Saves the settings to the scenario"""
+        self.client._perform_json("PUT",
+            "/projects/%s/scenarios/%s" % (self.scenario.project_key, self.scenario.id), body = self.data)
+
+
+class StepBasedScenarioSettings(DSSScenarioSettings):
+    @property
+    def raw_steps(self):
+        """Returns raw definition of steps"""
+        return self.data["params"]["steps"]
+
+
+class PythonScriptBasedScenarioSettings(DSSScenarioSettings):
+    def __init__(self, client, scenario, data, script):
+        super(PythonScriptBasedScenarioSettings, self).__init__(client, scenario, data)
+        self.script = script
+
+    @property
+    def code(self):
+        return self.script
+
+    @code.setter
+    def code(self, script):
+        self.script = script
+    
+    def save(self):
+        """Saves the settings to the scenario"""
+        super(PythonScriptBasedScenarioSettings, self).save()
+        self.client._perform_json("PUT",
+            "/projects/%s/scenarios/%s/payload" % (self.scenario.project_key, self.scenario.id), body = {'script' : self.script})
 
 class DSSScenarioRun(object):
     """
@@ -167,26 +385,94 @@ class DSSScenarioRun(object):
         self.client = client
         self.run = run
 
+    @property
+    def id(self):
+        """The run id of this run"""
+        return self.run["runId"]
+
+    def refresh(self):
+        """Refreshes the details (outcome, running, info, ...) from the scenario"""
+        updated_run_details = self.client._perform_json("GET", "/projects/%s/scenarios/%s/%s/" % \
+                 (self.run["scenario"]["projectKey"], self.run["scenario"]["id"], self.run["runId"]))
+        self.run = updated_run_details["scenarioRun"]
+
+    def wait_for_completion(self, no_fail=False):
+        """
+        If the scenario run is not complete, wait for it to complete
+        :param boolean no_fail: if no_fail=False, raises an exception if scenario fails
+        """
+        while self.running:
+            self.refresh()
+            time.sleep(5)
+
+        if self.outcome != 'SUCCESS' and no_fail == False:
+            raise DataikuException("Scenario run returned status %s" % outcome)
+
+    @property
+    def running(self):
+        """Returns whether this run is running"""
+        return not "result" in self.run
+
+    @property
+    def outcome(self):
+        """
+        The outcome of this scenario run, if available
+        :return one of  SUCCESS, WARNING, FAILED, or ABORTED
+        :rtype str
+        """
+        if not "result" in self.run:
+            raise ValueError("outcome not available for this scenario run. Maybe still running?")
+        return self.run["result"]["outcome"]
+
+    @property
+    def trigger(self):
+        """
+        The raw details of the trigger that triggered this scenario run
+        :rtype dict
+        """
+        return self.run["trigger"]["trigger"]
+
     def get_info(self):
         """
-        Get the basic information of the scenario run
+        Get the raw basic information of the scenario run
+        :rtype dict
         """
         return self.run
 
     def get_details(self):
         """
         Get the full details of the scenario run, including its step runs.
+        Note: this performs another API call
 
-        Note: this perform another API call
+        :rtype dict
         """
-        return self.client._perform_json(
+        raw_data = self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/%s/" % (self.run['scenario']['projectKey'], self.run['scenario']['id'], self.run['runId']))
+
+        details = DSSScenarioRunDetails(raw_data)
+        if "stepRuns" in details:
+            structured_steps = []
+            for step in details["stepRuns"]:
+                structured_steps.append(DSSStepRunDetails(step))
+            details["stepRuns"] = structured_steps
+        return details
 
     def get_start_time(self):
         """
         Get the start time of the scenario run
         """
         return datetime.fromtimestamp(self.run['start'] / 1000)
+    start_time = property(get_start_time)
+
+    def get_end_time(self):
+        """
+        Get the end time of the scenario run, if it completed. Else raises
+        """
+        if "end" in self.run and self.run["end"] > 0:
+            return datetime.fromtimestamp(self.run['end'] / 1000)
+        else:
+            raise ValueError("Scenario run has not completed")
+    end_time = property(get_end_time)
 
     def get_duration(self):
         """
@@ -199,10 +485,65 @@ class DSSScenarioRun(object):
             end_time = datetime.fromtimestamp(self.run['end'] / 1000)
         duration = (end_time - self.get_start_time()).total_seconds()
         return duration
+    duration = property(get_duration)
+
+class DSSScenarioRunDetails(dict):
+    def __init__(self, data):
+        super(DSSScenarioRunDetails, self).__init__(data)
+
+    @property
+    def steps(self):
+        return self["stepRuns"]
+
+    @property
+    def last_step(self):
+        return self["stepRuns"][len(self["stepRuns"]) - 1]
+
+    @property
+    def first_error_details(self):
+        """
+        Try to get the details of the first error if this run failed. This will not always be able
+        to find the error details (it returns None in that case)
+        """
+        for step in self.steps:
+            step_error = step.first_error_details
+            if step_error is not None:
+                return step_error
+
+
+class DSSStepRunDetails(dict):
+    def __init__(self, data):
+        super(DSSStepRunDetails, self).__init__(data)
+
+    @property
+    def outcome(self):
+        return self["result"]["outcome"]
+
+    @property
+    def job_ids(self):
+        """The list of DSS job ids that were ran as part of this step"""
+        return [ri["jobId"] for ri in self["additionalReportItems"] if ri["type"] == "JOB_EXECUTED"]
+
+    @property
+    def first_error_details(self):
+        """
+        Try to get the details of the first error if this step failed. This will not always be able
+        to find the error details (it returns None in that case)
+        """
+        if self.outcome == 'FAILED':
+            step_thrown = self.get('result').get('thrown', None)
+            if step_thrown is not None:
+                return step_thrown
+
+        for item in self['additionalReportItems']:
+            if item.get("outcome", None) == 'FAILED':
+                item_thrown = item.get('thrown', None)
+                if item_thrown is not None:
+                    return item_thrown
 
 class DSSScenarioRunWaiter(object):
     """
-    Helper to wait for a job's completion
+    Helper to wait for a scenario to run to complete
     """    
     def __init__(self, scenario_run, trigger_fire):
         self.trigger_fire = trigger_fire
@@ -220,9 +561,9 @@ class DSSScenarioRunWaiter(object):
 
 class DSSTriggerFire(object):
     """
-    The activation of a trigger on the DSS instance
+    A handle representing the firing of a trigger on a scenario. Do not create this class directly, use
+    :meth:`DSSScenario.run`
     """
-
     def __init__(self, scenario, trigger_fire):
         self.client = scenario.client
         self.project_key = scenario.project_key
@@ -231,34 +572,15 @@ class DSSTriggerFire(object):
         self.run_id = trigger_fire['runId']
         self.trigger_fire = trigger_fire
 
-    def get_scenario_run(self):
-        """
-        Get the run of the scenario that this trigger activation launched
-        """
-        run = self.client._perform_json(
-            "GET", "/projects/%s/scenarios/%s/get-run-for-trigger" % (self.project_key, self.scenario_id), params= {
-               'triggerId' : self.trigger_id,
-               'triggerRunId' : self.run_id
-            })
-        if 'scenarioRun' not in run:
-            return None
-        else:
-            return DSSScenarioRun(self.client, run['scenarioRun'])
-
-    def is_cancelled(self, refresh=False):
-        """
-        Whether the trigger has been cancelled
-
-        :param refresh: get the state of the trigger from the backend
-        """
-        if refresh == True:
-            self.trigger_fire = self.client._perform_json(
-            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.scenario_id, self.trigger_id), params={
-                'triggerRunId' : self.run_id
-            })
-        return self.trigger_fire["cancelled"]
-
     def wait_for_scenario_run(self, no_fail=False):
+        """
+        Polls, waiting for the run of the sceanrio that this trigger activation launched to be available, or 
+        for the trigger fire to be cancelled (possibly cancelled by another firing)
+
+        :param no_fail: If no_fail=True, will return None if the trigger fire is cancelled, else will raise
+        :returns a scenario run object, or None
+        :rtype :class:`DSSScenarioRun`
+        """
         scenario_run = None
         refresh_trigger_counter = 0
         while scenario_run is None:
@@ -273,3 +595,46 @@ class DSSTriggerFire(object):
             scenario_run = self.get_scenario_run()
             time.sleep(5)
         return scenario_run
+
+    def get_scenario_run(self):
+        """
+        Get the run of the scenario that this trigger activation launched. May return None if the scenario run started
+        from this trigger has not yet been created
+        """
+        run = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/get-run-for-trigger" % (self.project_key, self.scenario_id), params= {
+               'triggerId' : self.trigger_id,
+               'triggerRunId' : self.run_id
+            })
+        if 'scenarioRun' not in run:
+            return None
+        else:
+            return DSSScenarioRun(self.client, run['scenarioRun'])
+
+    def is_cancelled(self, refresh=False):
+        """
+        Whether the trigger fire has been cancelled
+
+        :param refresh: get the state of the trigger from the backend
+        """
+        if refresh == True:
+            self.trigger_fire = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/trigger/%s/%s" % (self.project_key, self.scenario_id, self.trigger_id), params={
+                'triggerRunId' : self.run_id
+            })
+        return self.trigger_fire["cancelled"]
+
+
+class DSSScenarioListItem(DSSTaggableObjectListItem):
+    """An item in a list of scenarios. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_scenarios"""
+    def __init__(self, client, data):
+        super(DSSScenarioListItem, self).__init__(data)
+        self.client = client
+
+    def to_scenario(self):
+        """Gets the :class:`DSSScenario` corresponding to this scenario"""
+        return DSSScenario(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def id(self):
+        return self._data["name"]
