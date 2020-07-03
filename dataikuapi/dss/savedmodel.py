@@ -20,9 +20,16 @@ class DSSSavedModel(object):
     def id(self):
         return self.sm_id
 
-    def get_definition(self):
-        return self.client._perform_json(
+    def get_settings(self):
+        """
+        Returns the settings of this saved model.
+
+        :rtype: DSSSavedModelSettings
+        """
+        data = self.client._perform_json(
             "GET", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
+        return DSSSavedModelSettings(self, data)
+
         
     ########################################################
     # Versions
@@ -102,10 +109,9 @@ class DSSSavedModel(object):
 
         :rtype: DSSMLTask | None
         """
-        fmi = self.get_definition().get("lastExportedFrom")
+        fmi = self.get_settings().get_raw().get("lastExportedFrom")
         if fmi is not None:
-            origin_ml_task = DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
-            return origin_ml_task.get_trained_model_details(fmi)
+            return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
 
     ########################################################
@@ -193,3 +199,18 @@ class DSSSavedModel(object):
 
         """
         return self.client._perform_empty("DELETE", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
+
+
+class DSSSavedModelSettings:
+    """
+    A handle on the settings of a saved model
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSSavedModel.get_settings`
+    """
+
+    def __init__(self, saved_model, settings):
+        self.saved_model = saved_model
+        self.settings = settings
+
+    def get_raw(self):
+        return self.settings
