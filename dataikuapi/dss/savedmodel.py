@@ -3,6 +3,10 @@ from .metrics import ComputedMetrics
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 
+try:
+    basestring
+except NameError:
+    basestring = str
 
 class DSSSavedModel(object):
     """
