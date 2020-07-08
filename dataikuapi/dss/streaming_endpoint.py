@@ -6,6 +6,11 @@ from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
 from . import recipe
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 class DSSStreamingEndpointListItem(DSSTaggableObjectListItem):
     """An item in a list of streaming endpoints. Do not instantiate this class"""
     def __init__(self, client, data):

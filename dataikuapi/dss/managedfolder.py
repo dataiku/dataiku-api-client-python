@@ -7,6 +7,10 @@ from .metrics import ComputedMetrics
 from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
 
+try:
+    basestring
+except NameError:
+    basestring = str
 class DSSManagedFolder(object):
     """
     A managed folder on the DSS instance

@@ -9,6 +9,10 @@ from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
 from . import recipe
+try:
+    basestring
+except NameError:
+    basestring = str
 
 class DSSDatasetListItem(DSSTaggableObjectListItem):
     """An item in a list of datasets. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_datasets`"""
