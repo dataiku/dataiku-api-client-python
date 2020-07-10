@@ -67,15 +67,14 @@ class DSSApp(object):
         """
         List the existing instances of this app
         
-        :rtype: list of dicts
         :return a list of instances, each as a dict containing at least a "projectKey" field
+        :rtype: list of dicts
         """
         return self.client._perform_json(
             "GET", "/apps/%s/instances/" % self.app_id)
 
     def get_instance(self, instance_key):
         return DSSAppInstance(self.client, instance_key)
-
 
     def get_manifest(self):
         raw_data = self.client._perform_json("GET", "/apps/%s/" % self.app_id)
