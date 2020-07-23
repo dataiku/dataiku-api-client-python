@@ -275,10 +275,10 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
             plugin["enabled"] = False
 
-    def get_all_possible_algorithm_names():
+    def get_all_possible_algorithm_names(self):
         """
         Returns the list of possible algorithm names, i.e. the list of valid
         identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
