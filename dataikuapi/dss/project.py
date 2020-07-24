@@ -18,7 +18,7 @@ from .ml import DSSMLTask
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 
 
 class DSSProject(object):

@@ -1,6 +1,6 @@
 from datetime import datetime
 import time, warnings
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
 

@@ -1,5 +1,5 @@
 from .discussion import DSSObjectDiscussions
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 import json
 import sys
 import copy

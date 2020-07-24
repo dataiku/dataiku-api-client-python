@@ -166,6 +166,15 @@ class DSSAPIDeployerInfra(object):
 
         return DSSAPIDeployerInfraSettings(self.client, self.infra_id, settings)
 
+    def delete(self):
+        """
+        Deletes this infra
+        You may only delete an infra if it has no deployments on it anymore.
+        """
+        self.client._perform_empty(
+            "DELETE", "/api-deployer/infras/%s" % (self.infra_id))
+
+
 class DSSAPIDeployerInfraSettings(object):
     """The settings of an API Deployer Infra. 
 
@@ -190,6 +199,18 @@ class DSSAPIDeployerInfraSettings(object):
             "graphitePrefix" : graphite_prefix
         }
         self.settings["apiNodes"].append(new_node)
+
+    def remove_apinode(self, node_url):
+        """
+        Removes a node from the list of nodes of this infra.
+        Only applicable to STATIC infrastructures
+
+        :param str node_url: URL of the node to remove
+        """
+        api_nodes = list(self.settings["apiNodes"])
+        for node in api_nodes:
+            if node.get("url") == node_url:
+                self.settings["apiNodes"].remove(node)
 
     def get_raw(self):
         """
