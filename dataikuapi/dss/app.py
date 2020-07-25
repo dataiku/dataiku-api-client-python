@@ -2,7 +2,7 @@ import sys
 import re
 import os.path as osp
 from .future import DSSFuture
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 import random, string
 
 def random_string(length):
