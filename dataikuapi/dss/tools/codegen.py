@@ -14,7 +14,7 @@ class _IndentContext(object):
 
 
 def slugify(name):
-    return re.sub("[^A-Za-z0-9_]", "_", name)
+    return re.sub("r[^A-Za-z0-9_]", "_", name)
 
 class FlowCodeGenerator(object):
     def __init__(self):
