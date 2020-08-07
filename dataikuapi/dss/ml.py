@@ -246,12 +246,13 @@ class DSSMLTaskSettings(object):
 
         :param str algorithm_name: Name (in capitals) of the algorithm.
         :return: A dict of the settings for an algorithm
-        :rtype: dict 
+        :rtype: AlgorithmSettings
         """
         if algorithm_name in self.__class__.algorithm_remap:
             algorithm_name = self.__class__.algorithm_remap[algorithm_name]
 
-        return self.mltask_settings["modeling"][algorithm_name.lower()]
+        raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
+        return AlgorithmSettings(raw_algorithm_settings)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -314,6 +315,47 @@ class DSSMLTaskSettings(object):
         self.client._perform_empty(
                 "POST", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id),
                 body = self.mltask_settings)
+
+
+class AlgorithmSettings(object):
+
+    def __init__(self, ref_dict):
+        self.ref_dict = ref_dict
+
+    def __repr__(self):
+        clean_settings = dict()
+        for key in self.ref_dict.keys():
+            raw_hyperparam = self.ref_dict[key]
+            clean_hyperparam = dict()
+            clean_hyperparam["values"] = raw_hyperparam["values"]
+            if "range" in raw_hyperparam:
+                clean_hyperparam["range"] = raw_hyperparam["range"]
+            clean_settings[key] = clean_hyperparam
+        return str(clean_settings)
+
+    __str__ = __repr__
+
+    def set_hyperparameter(self, key, values=None, range_min=None, range_max=None):
+        if key not in self.ref_dict:
+            raise ValueError("Invalid hyperparameter key: " + str(key))
+
+        if values is not None:
+            self.ref_dict[key]["values"] = values
+
+        if range_min is not None:
+            self.ref_dict[key]["range_min"] = range_min
+
+        if range_max is not None:
+            self.ref_dict[key]["range_max"] = range_max
+
+    def set_multiple_hyperparameters(self, kv_dict):
+        for key in kv_dict.keys():
+            dimension = kv_dict[key]
+            values = dimension.get("values", None)
+            range_min = dimension.get("range_min", None)
+            range_max = dimension.get("range_max", None)
+            self.set_hyperparameter(key, values=values, range_min=range_min, range_max=range_max)
+
 
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
