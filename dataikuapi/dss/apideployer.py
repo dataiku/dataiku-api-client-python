@@ -414,16 +414,15 @@ class DSSAPIDeployerService(object):
         light = self.client._perform_json("GET", "/api-deployer/services/%s" % (self.service_id))
         return DSSAPIDeployerServiceStatus(self.client, self.service_id, light)
 
-    def import_version(self, version_id, fp):
+    def import_version(self, fp):
         """
         Imports a new version for an API service from a file-like object pointing 
         to a version package Zip file
 
-        :param string version_id: identifier of the new version
         :param string fp: A file-like object pointing to a version package Zip file
         """
         return self.client._perform_empty("POST",
-                "/api-deployer/services/%s/packages/%s" % (self.service_id, version_id), files={"file":fp})
+                "/api-deployer/services/%s/packages" % (self.service_id), files={"file":fp})
 
     def get_settings(self):
         """
