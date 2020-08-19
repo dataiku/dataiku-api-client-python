@@ -732,14 +732,15 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def update_packages(self):
+    def update_packages(self, force_rebuild_env=False):
         """
         Update the code env packages so that it matches its spec
         
         Note: this call requires an API key with admin rights
         """
         resp = self.client._perform_json(
-            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name))
+            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name),
+            params={"forceRebuildEnv": force_rebuild_env})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
