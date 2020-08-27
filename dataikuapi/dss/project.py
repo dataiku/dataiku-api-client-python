@@ -5,6 +5,7 @@ from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
+from .modelevaluationstore import DSSModelEvaluationStore
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario, DSSScenarioListItem
 from .continuousactivity import DSSContinuousActivity
@@ -683,6 +684,52 @@ class DSSProject(object):
         odb_id = res['id']
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
+
+    ########################################################
+    # Model evaluation stores
+    ########################################################
+
+    def list_model_evaluation_stores(self, as_type=None):
+        """
+        List the model evaluation stores in this project.
+
+        :returns: The list of the model evaluation stores
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
+        if as_type == "objects" or as_type == "object":
+            return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            return items
+
+    def get_model_evaluation_store(self, mes_id):
+        """
+        Get a handle to interact with a specific model evaluation store
+       
+        :param string mes_id: the id of the desired model evaluation store
+        
+        :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
+        """
+        return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
+
+    def create_model_evaluation_store(self, name, mes_id=None):
+        """
+        Create a new model evaluation store in the project, and return a handle to interact with it.
+        
+        :param string name: the name for the new model evaluation store
+        :param string mes_id optional: the id for the new model evaluation store
+        
+        :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
+        """
+        obj = {
+            "id" : mes_id,
+            "projectKey" : self.project_key,
+            "name" : name
+        }
+        res = self.client._perform_json("POST", "/projects/%s/modelevaluationstores/" % self.project_key,
+                       body = obj)
+        mes_id = res['id']
+        return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
     ########################################################
     # Jobs
