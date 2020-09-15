@@ -335,18 +335,77 @@ class AlgorithmSettings(object):
 
     __str__ = __repr__
 
-    def set_hyperparameter(self, key, values=None, range_min=None, range_max=None):
-        if key not in self.ref_dict:
-            raise ValueError("Invalid hyperparameter key: " + str(key))
+    def enable(self):
+        self.ref_dict["enabled"] = True
 
-        if values is not None:
-            self.ref_dict[key]["values"] = values
+    def disable(self):
+        self.ref_dict["enabled"] = False
 
-        if range_min is not None:
-            self.ref_dict[key]["range_min"] = range_min
+    def set_single_valued_hyperparameter(self, dimension_name, value):
 
-        if range_max is not None:
-            self.ref_dict[key]["range_max"] = range_max
+        self._check_dimension_name(dimension_name)
+        self.ref_dict[dimension_name] = value
+        # TODO: check values validity (requires specific dimension prior data)
+
+    def set_searchable_numerical_hyperparameter(self, dimension_name, values=None, range_min=None, range_max=None):
+
+        self._check_dimension_name(dimension_name)
+
+        if values is None and range_min is None and range_max is None:
+            warnings.warn("Numerical hyperparameter dimension \"{dimension_name}\" not modified".format(dimension_name=dimension_name))
+        else:
+            if values is not None:
+                error_message = "Invalid values input type for dimension " \
+                "\"{dimension_name}\": ".format(dimension_name=dimension_name) + \
+                " must be a list of numbers"
+                assert isinstance(values, list), error_message
+                for val in values:
+                    assert isinstance(val, int) or isinstance(val, float), error_message
+
+                self.ref_dict[dimension_name]["values"] = values
+
+            if range_min is not None:
+                self._check_range_bound(dimension_name, range_min)
+                if self.ref_dict[dimension_name]["limit"]["min"] is not None:
+                    assert range_min >= self.ref_dict[dimension_name]["limit"]["min"]
+                self.ref_dict[dimension_name]["range"]["min"] = range_min
+
+            if range_max is not None:
+                self._check_range_bound(dimension_name, range_max)
+                if self.ref_dict[dimension_name]["limit"]["max"] is not None:
+                    assert range_max <= self.ref_dict[dimension_name]["limit"]["max"]
+                self.ref_dict[dimension_name]["range"]["max"] = range_max
+
+    def set_searchable_categorical_hyperparameter(self, dimension_name, values=None):
+
+        self._check_dimension_name(dimension_name)
+
+        if values is None:
+            warnings.warn("Categorical hyperparameter dimension \"{dimension_name}\" not modified".format(dimension_name=dimension_name))
+        else:
+            error_message = "Invalid values input type for dimension " \
+                            "\"{dimension_name}\": ".format(dimension_name=dimension_name) + \
+                            " must be a dict"
+            assert isinstance(values, dict), error_message
+            # TODO: check keys validity (requires specific dimension prior data)
+            for val in values.values():
+                assert isinstance(val, dict) \
+                       and val.keys() == ["enabled"] \
+                       and (val.values() == [True] or val.values() == [False]), \
+                    error_message
+            self.ref_dict[dimension_name]["values"] = values
+
+    def _check_dimension_name(self, dimension_name):
+        assert isinstance(dimension_name, str), "Invalid type for dimension name: must be a string"
+        if dimension_name not in self.ref_dict:
+            raise ValueError("Unknown hyperparameter dimension name: \"" + dimension_name + "\"")
+
+    def _check_range_bound(self, dimension_name, range_bound):
+        assert "range" in self.ref_dict[dimension_name], "Cannot update range of non-numerical hyperparameter dimension " \
+                                                         "\"{dimension_name}\"".format(dimension_name=dimension_name)
+        assert isinstance(range_bound, int) or isinstance(range_bound, float), \
+            "Invalid input type for hyperparameter dimension \"{dimension_name}\": ".format(dimension_name=dimension_name) + \
+            "range bounds must be numbers"
 
     def set_multiple_hyperparameters(self, kv_dict):
         for key in kv_dict.keys():
