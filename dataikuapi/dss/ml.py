@@ -325,13 +325,16 @@ class AlgorithmSettings(object):
     def __repr__(self):
         clean_settings = dict()
         for key in self.ref_dict.keys():
-            raw_hyperparam = self.ref_dict[key]
-            clean_hyperparam = dict()
-            clean_hyperparam["values"] = raw_hyperparam["values"]
-            if "range" in raw_hyperparam:
-                clean_hyperparam["range"] = raw_hyperparam["range"]
-            clean_settings[key] = clean_hyperparam
-        return str(clean_settings)
+            if isinstance(self.ref_dict[key], dict):
+                raw_hyperparam = self.ref_dict[key]
+                clean_hyperparam = dict()
+                clean_hyperparam["values"] = raw_hyperparam["values"]
+                if "range" in raw_hyperparam:
+                    clean_hyperparam["range"] = raw_hyperparam["range"]
+                clean_settings[key] = clean_hyperparam
+            else:
+                clean_settings[key] = self.ref_dict[key]
+        return json.dumps(clean_settings, indent=4)
 
     __str__ = __repr__
 
