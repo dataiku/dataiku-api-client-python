@@ -362,12 +362,14 @@ class AlgorithmSettings(object):
     def set_dimension_mode_as_range(self, dimension_name):
         self._check_dimension_name(dimension_name)
         self._check_dimension_searchable(dimension_name)
+        self._check_searchable_dimension_numerical(dimension_name)
         self.raw_settings[dimension_name]["gridMode"] = "RANGE"
         self.raw_settings[dimension_name]["randomMode"] = "RANGE"
 
     def set_dimension_mode_as_explicit(self, dimension_name):
         self._check_dimension_name(dimension_name)
         self._check_dimension_searchable(dimension_name)
+        self._check_searchable_dimension_numerical(dimension_name)
         self.raw_settings[dimension_name]["gridMode"] = "EXPLICIT"
         self.raw_settings[dimension_name]["randomMode"] = "EXPLICIT"
 
@@ -379,7 +381,14 @@ class AlgorithmSettings(object):
         assert values is not None and isinstance(values, list) and len(values) > 0, error_message
         for val in values:
             assert isinstance(val, int) or isinstance(val, float), error_message
-
+        limit_min = self.raw_settings[dimension_name]["limit"].get("min")
+        if limit_min is not None:
+            assert all(limit_min <= val for val in values), "Value(s) below hyperparameter dimension \"{}\" limit {}".format(dimension_name, limit_min)
+        limit_max = self.raw_settings[dimension_name]["limit"].get("max")
+        if limit_max is not None:
+            assert all(val <= limit_max for val in values), "Value(s) above hyperparameter dimension \"{}\" limit {}".format(dimension_name, limit_max)
+        if len(set(values)) < len(values):
+                warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
         self.raw_settings[dimension_name]["values"] = values
 
         if mode_as_explicit:
@@ -393,14 +402,16 @@ class AlgorithmSettings(object):
         else:
             if range_min is not None:
                 self._check_range_bound(dimension_name, range_min)
-                if self.raw_settings[dimension_name]["limit"]["min"] is not None:
-                    assert range_min >= self.raw_settings[dimension_name]["limit"]["min"]
+                limit_min = self.raw_settings[dimension_name]["limit"].get("min")
+                if limit_min is not None:
+                    assert limit_min <= range_min, "Range min {} below hyperparameter dimension \"{}\" limit {}".format(range_min, dimension_name, limit_min)
                 self.raw_settings[dimension_name]["range"]["min"] = range_min
 
             if range_max is not None:
                 self._check_range_bound(dimension_name, range_max)
-                if self.raw_settings[dimension_name]["limit"]["max"] is not None:
-                    assert range_max <= self.raw_settings[dimension_name]["limit"]["max"]
+                limit_max = self.raw_settings[dimension_name]["limit"].get("max")
+                if limit_max is not None:
+                    assert range_max <= limit_max, "Range max {} above hyperparameter dimension \"{}\" limit {}".format(range_max, dimension_name, limit_max)
                 self.raw_settings[dimension_name]["range"]["max"] = range_max
 
         if mode_as_range:
@@ -432,7 +443,7 @@ class AlgorithmSettings(object):
         if dimension_name not in hyperparameter_dimensions:
             message = "Unknown hyperparameter dimension name: \"" + dimension_name + "\"\n"
             message += "Expected a member of " + str(hyperparameter_dimensions)
-            raise ValueError("Unknown hyperparameter dimension name: \"" + dimension_name + "\"\n")
+            raise ValueError(message)
 
     def _check_dimension_searchable(self, dimension_name):
         assert isinstance(self.raw_settings[dimension_name], dict), "Hyperparameter dimension \"{dimension_name}\" cannot be searched".format(dimension_name=dimension_name)
