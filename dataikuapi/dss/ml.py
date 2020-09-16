@@ -319,14 +319,14 @@ class DSSMLTaskSettings(object):
 
 class AlgorithmSettings(object):
 
-    def __init__(self, ref_dict):
-        self.ref_dict = ref_dict
+    def __init__(self, raw_settings):
+        self.raw_settings = raw_settings
 
     def __repr__(self):
         clean_settings = dict()
-        for key in self.ref_dict.keys():
-            if isinstance(self.ref_dict[key], dict):
-                raw_hyperparam = self.ref_dict[key]
+        for key in self.raw_settings.keys():
+            if isinstance(self.raw_settings[key], dict):
+                raw_hyperparam = self.raw_settings[key]
                 clean_hyperparam = dict()
                 clean_hyperparam["values"] = raw_hyperparam["values"]
                 if "range" in raw_hyperparam:
@@ -335,41 +335,41 @@ class AlgorithmSettings(object):
                     clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
                 clean_settings[key] = clean_hyperparam
             else:
-                clean_settings[key] = self.ref_dict[key]
+                clean_settings[key] = self.raw_settings[key]
         return json.dumps(clean_settings, indent=4)
 
     __str__ = __repr__
 
     def get_hyperparameter_dimensions(self):
-        return [key for key in self.ref_dict.keys() if key != "enabled"]
+        return [key for key in self.raw_settings.keys() if key != "enabled"]
 
     def enable(self):
-        self.ref_dict["enabled"] = True
+        self.raw_settings["enabled"] = True
 
     def disable(self):
-        self.ref_dict["enabled"] = False
+        self.raw_settings["enabled"] = False
 
     def set_single_valued_hyperparameter(self, dimension_name, value):
         self._check_dimension_name(dimension_name)
-        if isinstance(self.ref_dict[dimension_name], str):
+        if isinstance(self.raw_settings[dimension_name], str):
             assert isinstance(value, str), "Invalid input type for hyperparameter \"{}\": expected a string".format(dimension_name)
-        elif isinstance(self.ref_dict[dimension_name], int) or isinstance(self.ref_dict[dimension_name], float):
+        elif isinstance(self.raw_settings[dimension_name], int) or isinstance(self.raw_settings[dimension_name], float):
             assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(dimension_name)
         else:
             raise ValueError("Hyperparameter dimension \"{dimension_name}\" is not single valued".format(dimension_name=dimension_name))
-        self.ref_dict[dimension_name] = value
+        self.raw_settings[dimension_name] = value
 
     def set_dimension_mode_as_range(self, dimension_name):
         self._check_dimension_name(dimension_name)
         self._check_dimension_searchable(dimension_name)
-        self.ref_dict[dimension_name]["gridMode"] = "RANGE"
-        self.ref_dict[dimension_name]["randomMode"] = "RANGE"
+        self.raw_settings[dimension_name]["gridMode"] = "RANGE"
+        self.raw_settings[dimension_name]["randomMode"] = "RANGE"
 
     def set_dimension_mode_as_explicit(self, dimension_name):
         self._check_dimension_name(dimension_name)
         self._check_dimension_searchable(dimension_name)
-        self.ref_dict[dimension_name]["gridMode"] = "EXPLICIT"
-        self.ref_dict[dimension_name]["randomMode"] = "EXPLICIT"
+        self.raw_settings[dimension_name]["gridMode"] = "EXPLICIT"
+        self.raw_settings[dimension_name]["randomMode"] = "EXPLICIT"
 
     def set_numerical_hyperparameter_values(self, dimension_name, values, mode_as_explicit=True):
         self._check_dimension_name(dimension_name)
@@ -380,7 +380,7 @@ class AlgorithmSettings(object):
         for val in values:
             assert isinstance(val, int) or isinstance(val, float), error_message
 
-        self.ref_dict[dimension_name]["values"] = values
+        self.raw_settings[dimension_name]["values"] = values
 
         if mode_as_explicit:
             self.set_dimension_mode_as_explicit(dimension_name)
@@ -393,15 +393,15 @@ class AlgorithmSettings(object):
         else:
             if range_min is not None:
                 self._check_range_bound(dimension_name, range_min)
-                if self.ref_dict[dimension_name]["limit"]["min"] is not None:
-                    assert range_min >= self.ref_dict[dimension_name]["limit"]["min"]
-                self.ref_dict[dimension_name]["range"]["min"] = range_min
+                if self.raw_settings[dimension_name]["limit"]["min"] is not None:
+                    assert range_min >= self.raw_settings[dimension_name]["limit"]["min"]
+                self.raw_settings[dimension_name]["range"]["min"] = range_min
 
             if range_max is not None:
                 self._check_range_bound(dimension_name, range_max)
-                if self.ref_dict[dimension_name]["limit"]["max"] is not None:
-                    assert range_max <= self.ref_dict[dimension_name]["limit"]["max"]
-                self.ref_dict[dimension_name]["range"]["max"] = range_max
+                if self.raw_settings[dimension_name]["limit"]["max"] is not None:
+                    assert range_max <= self.raw_settings[dimension_name]["limit"]["max"]
+                self.raw_settings[dimension_name]["range"]["max"] = range_max
 
         if mode_as_range:
             self.set_dimension_mode_as_range(dimension_name)
@@ -417,14 +417,14 @@ class AlgorithmSettings(object):
                             "\"{dimension_name}\": ".format(dimension_name=dimension_name) + \
                             " must be a dict"
             assert isinstance(values, dict), error_message
-            admissible_values = list(self.ref_dict[dimension_name]["values"].keys())
+            admissible_values = list(self.raw_settings[dimension_name]["values"].keys())
             for val in values.values():
                 assert isinstance(val, dict) \
                        and val.keys() == ["enabled"] \
                        and (val.values() == [True] or val.values() == [False]),\
                     error_message
                 assert val in admissible_values, "Unknown categorical value \"" + val + "\"\nExpected a member of " + str(admissible_values)
-            self.ref_dict[dimension_name]["values"] = values
+            self.raw_settings[dimension_name]["values"] = values
 
     def _check_dimension_name(self, dimension_name):
         assert isinstance(dimension_name, str), "Invalid type for dimension name: expecting a string"
@@ -435,13 +435,13 @@ class AlgorithmSettings(object):
             raise ValueError("Unknown hyperparameter dimension name: \"" + dimension_name + "\"\n")
 
     def _check_dimension_searchable(self, dimension_name):
-        assert isinstance(self.ref_dict[dimension_name], dict), "Hyperparameter dimension \"{dimension_name}\" cannot be searched".format(dimension_name=dimension_name)
+        assert isinstance(self.raw_settings[dimension_name], dict), "Hyperparameter dimension \"{dimension_name}\" cannot be searched".format(dimension_name=dimension_name)
 
     def _check_searchable_dimension_numerical(self, dimension_name):
-        assert "range" in self.ref_dict[dimension_name], "Hyperparameter dimension \"{dimension_name}\" is not numerical".format(dimension_name=dimension_name)
+        assert "range" in self.raw_settings[dimension_name], "Hyperparameter dimension \"{dimension_name}\" is not numerical".format(dimension_name=dimension_name)
 
     def _check_range_bound(self, dimension_name, range_bound):
-        assert "range" in self.ref_dict[dimension_name], "Cannot update range of non-numerical hyperparameter dimension " \
+        assert "range" in self.raw_settings[dimension_name], "Cannot update range of non-numerical hyperparameter dimension " \
                                                          "\"{dimension_name}\"".format(dimension_name=dimension_name)
         assert isinstance(range_bound, int) or isinstance(range_bound, float), \
             "Invalid input type for hyperparameter dimension \"{dimension_name}\": ".format(dimension_name=dimension_name) + \
