@@ -404,44 +404,44 @@ class AlgorithmSettings(object):
                 self._check_range_bound(hyperparameter_name, range_min)
                 limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
                 if limit_min is not None:
-                    assert limit_min <= range_min, "Range min {} below hyperparameter \"{}\" limit {}".format(range_min, hyperparameter_name, limit_min)
+                    assert limit_min <= range_min, "Range min {} is below hyperparameter \"{}\" limit {}".format(range_min, hyperparameter_name, limit_min)
                 self.raw_settings[hyperparameter_name]["range"]["min"] = range_min
 
             if range_max is not None:
                 self._check_range_bound(hyperparameter_name, range_max)
                 limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
                 if limit_max is not None:
-                    assert range_max <= limit_max, "Range max {} above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
+                    assert range_max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
                 self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
 
         if mode_as_range:
             self.set_hyperparameter_mode_as_range(hyperparameter_name)
 
     def set_categorical_values(self, hyperparameter_name, values=None):
-
         self._check_hyperparameter_name(hyperparameter_name)
-
         if values is None:
             warnings.warn("Categorical hyperparameter \"{}\" not modified".format(hyperparameter_name))
         else:
-            error_message = "Invalid values input type for hyperparameter " \
-                            "\"{}\": ".format(hyperparameter_name) + \
-                            " must be a dictionary"
-            assert isinstance(values, dict), error_message
+            assert isinstance(values, dict), "Invalid values input type for hyperparameter " \
+                                             "\"{}\": ".format(hyperparameter_name) + \
+                                             "must be a dictionary"
             admissible_values = list(self.raw_settings[hyperparameter_name]["values"].keys())
-            for val in values.values():
-                assert isinstance(val, dict) \
-                       and val.keys() == ["enabled"] \
-                       and (val.values() == [True] or val.values() == [False]),\
-                    error_message
-                assert val in admissible_values, "Unknown categorical value \"" + val + "\"\nExpected a member of " + str(admissible_values)
-            self.raw_settings[hyperparameter_name]["values"] = values
+            for key in values.keys():
+                assert key in admissible_values, "Unknown categorical value \"" + key + ". Expected a member of " + str(admissible_values)
+                value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(hyperparameter_name, key)
+                value_error_message += "expected a {\"enabled\": bool} dictionary"
+                val = values[key]
+                assert isinstance(val, dict), value_error_message
+                assert list(val.keys()) == ["enabled"], value_error_message
+                assert list(type(v) for v in val.values()) == [bool], value_error_message
+            for key in values.keys():
+                self.raw_settings[hyperparameter_name]["values"][key] = values[key]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
         assert isinstance(hyperparameter_name, str), "Invalid type for hyperparameter name: expecting a string"
         hyperparameter_names = self.get_all_hyperparameter_names()
         if hyperparameter_name not in hyperparameter_names:
-            message = "Unknown hyperparameter name: \"" + hyperparameter_name + "\"\n"
+            message = "Unknown hyperparameter name: \"{}\". ".format(hyperparameter_name)
             message += "Expected a member of " + str(hyperparameter_names)
             raise ValueError(message)
 
