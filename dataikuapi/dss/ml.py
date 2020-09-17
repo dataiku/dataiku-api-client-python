@@ -309,6 +309,9 @@ class DSSMLTaskSettings(object):
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
 
+    def get_hyperparameter_search_settings(self):
+        return self.mltask_settings["modeling"]["gridSearchParams"]
+
     def save(self):
         """Saves back these settings to the ML Task"""
 
