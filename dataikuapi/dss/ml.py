@@ -397,10 +397,10 @@ class AlgorithmSettings(object):
         if mode_as_explicit:
             self.set_hyperparameter_mode_as_explicit(hyperparameter_name)
 
-    def set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, mode_as_range=True):
+    def set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, mode_as_range=True):
         self._check_hyperparameter_name(hyperparameter_name)
 
-        if range_min is None and range_max is None:
+        if range_min is None and range_max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(hyperparameter_name))
         else:
             if range_min is not None:
@@ -408,14 +408,21 @@ class AlgorithmSettings(object):
                 limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
                 if limit_min is not None:
                     assert limit_min <= range_min, "Range min {} is below hyperparameter \"{}\" limit {}".format(range_min, hyperparameter_name, limit_min)
-                self.raw_settings[hyperparameter_name]["range"]["min"] = range_min
-
             if range_max is not None:
                 self._check_range_bound(hyperparameter_name, range_max)
                 limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
                 if limit_max is not None:
                     assert range_max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
                 self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
+            if nb_values is not None:
+                assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(hyperparameter_name)
+
+            if range_min is not None:
+                self.raw_settings[hyperparameter_name]["range"]["min"] = range_min
+            if range_max is not None:
+                self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
+            if nb_values is not None:
+                self.raw_settings[hyperparameter_name]["range"]["nbValues"] = nb_values
 
         if mode_as_range:
             self.set_hyperparameter_mode_as_range(hyperparameter_name)
