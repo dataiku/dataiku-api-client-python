@@ -340,7 +340,7 @@ class AlgorithmSettings(object):
 
     __str__ = __repr__
 
-    def get_hyperparameter_dimensions(self):
+    def get_all_hyperparameter_names(self):
         return [key for key in self.raw_settings.keys() if key != "enabled"]
 
     def enable(self):
@@ -349,113 +349,113 @@ class AlgorithmSettings(object):
     def disable(self):
         self.raw_settings["enabled"] = False
 
-    def set_single_valued_hyperparameter(self, dimension_name, value):
-        self._check_dimension_name(dimension_name)
-        if isinstance(self.raw_settings[dimension_name], str):
-            assert isinstance(value, str), "Invalid input type for hyperparameter \"{}\": expected a string".format(dimension_name)
-        elif isinstance(self.raw_settings[dimension_name], int) or isinstance(self.raw_settings[dimension_name], float):
-            assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(dimension_name)
+    def set_single_valued_hyperparameter(self, hyperparameter_name, value):
+        self._check_hyperparameter_name(hyperparameter_name)
+        if isinstance(self.raw_settings[hyperparameter_name], str):
+            assert isinstance(value, str), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
+        elif isinstance(self.raw_settings[hyperparameter_name], int) or isinstance(self.raw_settings[hyperparameter_name], float):
+            assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(hyperparameter_name)
         else:
-            raise ValueError("Hyperparameter dimension \"{dimension_name}\" is not single valued".format(dimension_name=dimension_name))
-        self.raw_settings[dimension_name] = value
+            raise ValueError("Hyperparameter \"{}\" is not single valued".format(hyperparameter_name))
+        self.raw_settings[hyperparameter_name] = value
 
-    def set_dimension_mode_as_range(self, dimension_name):
-        self._check_dimension_name(dimension_name)
-        self._check_dimension_searchable(dimension_name)
-        self._check_searchable_dimension_numerical(dimension_name)
-        self.raw_settings[dimension_name]["gridMode"] = "RANGE"
-        self.raw_settings[dimension_name]["randomMode"] = "RANGE"
+    def set_hyperparameter_mode_as_range(self, hyperparameter_name):
+        self._check_hyperparameter_name(hyperparameter_name)
+        self._check_hyperparameter_searchable(hyperparameter_name)
+        self._check_hyperparameter_numerical(hyperparameter_name)
+        self.raw_settings[hyperparameter_name]["gridMode"] = "RANGE"
+        self.raw_settings[hyperparameter_name]["randomMode"] = "RANGE"
 
-    def set_dimension_mode_as_explicit(self, dimension_name):
-        self._check_dimension_name(dimension_name)
-        self._check_dimension_searchable(dimension_name)
-        self._check_searchable_dimension_numerical(dimension_name)
-        self.raw_settings[dimension_name]["gridMode"] = "EXPLICIT"
-        self.raw_settings[dimension_name]["randomMode"] = "EXPLICIT"
+    def set_hyperparameter_mode_as_explicit(self, hyperparameter_name):
+        self._check_hyperparameter_name(hyperparameter_name)
+        self._check_hyperparameter_searchable(hyperparameter_name)
+        self._check_hyperparameter_numerical(hyperparameter_name)
+        self.raw_settings[hyperparameter_name]["gridMode"] = "EXPLICIT"
+        self.raw_settings[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
-    def set_numerical_hyperparameter_values(self, dimension_name, values, mode_as_explicit=True):
-        self._check_dimension_name(dimension_name)
-        error_message = "Invalid values input type for dimension " \
-                        "\"{dimension_name}\": ".format(dimension_name=dimension_name) + \
+    def set_numerical_explicit_values(self, hyperparameter_name, values, mode_as_explicit=True):
+        self._check_hyperparameter_name(hyperparameter_name)
+        error_message = "Invalid values input type for hyperparameter " \
+                        "\"{}\": ".format(hyperparameter_name) + \
                         " expecting a non-empty list of numbers"
         assert values is not None and isinstance(values, list) and len(values) > 0, error_message
         for val in values:
             assert isinstance(val, int) or isinstance(val, float), error_message
-        limit_min = self.raw_settings[dimension_name]["limit"].get("min")
+        limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
         if limit_min is not None:
-            assert all(limit_min <= val for val in values), "Value(s) below hyperparameter dimension \"{}\" limit {}".format(dimension_name, limit_min)
-        limit_max = self.raw_settings[dimension_name]["limit"].get("max")
+            assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(hyperparameter_name, limit_min)
+        limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
         if limit_max is not None:
-            assert all(val <= limit_max for val in values), "Value(s) above hyperparameter dimension \"{}\" limit {}".format(dimension_name, limit_max)
+            assert all(val <= limit_max for val in values), "Value(s) above hyperparameter \"{}\" limit {}".format(hyperparameter_name, limit_max)
         if len(set(values)) < len(values):
                 warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
-        self.raw_settings[dimension_name]["values"] = values
+        self.raw_settings[hyperparameter_name]["values"] = values
 
         if mode_as_explicit:
-            self.set_dimension_mode_as_explicit(dimension_name)
+            self.set_hyperparameter_mode_as_explicit(hyperparameter_name)
 
-    def set_numerical_hyperparameter_range(self, dimension_name, range_min=None, range_max=None, mode_as_range=True):
-        self._check_dimension_name(dimension_name)
+    def set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, mode_as_range=True):
+        self._check_hyperparameter_name(hyperparameter_name)
 
         if range_min is None and range_max is None:
-            warnings.warn("Numerical range for hyperparameter dimension \"{dimension_name}\" not modified".format(dimension_name=dimension_name))
+            warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(hyperparameter_name))
         else:
             if range_min is not None:
-                self._check_range_bound(dimension_name, range_min)
-                limit_min = self.raw_settings[dimension_name]["limit"].get("min")
+                self._check_range_bound(hyperparameter_name, range_min)
+                limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
                 if limit_min is not None:
-                    assert limit_min <= range_min, "Range min {} below hyperparameter dimension \"{}\" limit {}".format(range_min, dimension_name, limit_min)
-                self.raw_settings[dimension_name]["range"]["min"] = range_min
+                    assert limit_min <= range_min, "Range min {} below hyperparameter \"{}\" limit {}".format(range_min, hyperparameter_name, limit_min)
+                self.raw_settings[hyperparameter_name]["range"]["min"] = range_min
 
             if range_max is not None:
-                self._check_range_bound(dimension_name, range_max)
-                limit_max = self.raw_settings[dimension_name]["limit"].get("max")
+                self._check_range_bound(hyperparameter_name, range_max)
+                limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
                 if limit_max is not None:
-                    assert range_max <= limit_max, "Range max {} above hyperparameter dimension \"{}\" limit {}".format(range_max, dimension_name, limit_max)
-                self.raw_settings[dimension_name]["range"]["max"] = range_max
+                    assert range_max <= limit_max, "Range max {} above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
+                self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
 
         if mode_as_range:
-            self.set_dimension_mode_as_range(dimension_name)
+            self.set_hyperparameter_mode_as_range(hyperparameter_name)
 
-    def set_categorical_hyperparameter(self, dimension_name, values=None):
+    def set_categorical_values(self, hyperparameter_name, values=None):
 
-        self._check_dimension_name(dimension_name)
+        self._check_hyperparameter_name(hyperparameter_name)
 
         if values is None:
-            warnings.warn("Categorical hyperparameter dimension \"{dimension_name}\" not modified".format(dimension_name=dimension_name))
+            warnings.warn("Categorical hyperparameter \"{}\" not modified".format(hyperparameter_name))
         else:
-            error_message = "Invalid values input type for dimension " \
-                            "\"{dimension_name}\": ".format(dimension_name=dimension_name) + \
-                            " must be a dict"
+            error_message = "Invalid values input type for hyperparameter " \
+                            "\"{}\": ".format(hyperparameter_name) + \
+                            " must be a dictionary"
             assert isinstance(values, dict), error_message
-            admissible_values = list(self.raw_settings[dimension_name]["values"].keys())
+            admissible_values = list(self.raw_settings[hyperparameter_name]["values"].keys())
             for val in values.values():
                 assert isinstance(val, dict) \
                        and val.keys() == ["enabled"] \
                        and (val.values() == [True] or val.values() == [False]),\
                     error_message
                 assert val in admissible_values, "Unknown categorical value \"" + val + "\"\nExpected a member of " + str(admissible_values)
-            self.raw_settings[dimension_name]["values"] = values
+            self.raw_settings[hyperparameter_name]["values"] = values
 
-    def _check_dimension_name(self, dimension_name):
-        assert isinstance(dimension_name, str), "Invalid type for dimension name: expecting a string"
-        hyperparameter_dimensions = self.get_hyperparameter_dimensions()
-        if dimension_name not in hyperparameter_dimensions:
-            message = "Unknown hyperparameter dimension name: \"" + dimension_name + "\"\n"
-            message += "Expected a member of " + str(hyperparameter_dimensions)
+    def _check_hyperparameter_name(self, hyperparameter_name):
+        assert isinstance(hyperparameter_name, str), "Invalid type for hyperparameter name: expecting a string"
+        hyperparameter_names = self.get_all_hyperparameter_names()
+        if hyperparameter_name not in hyperparameter_names:
+            message = "Unknown hyperparameter name: \"" + hyperparameter_name + "\"\n"
+            message += "Expected a member of " + str(hyperparameter_names)
             raise ValueError(message)
 
-    def _check_dimension_searchable(self, dimension_name):
-        assert isinstance(self.raw_settings[dimension_name], dict), "Hyperparameter dimension \"{dimension_name}\" cannot be searched".format(dimension_name=dimension_name)
+    def _check_hyperparameter_searchable(self, hyperparameter_name):
+        assert isinstance(self.raw_settings[hyperparameter_name], dict), "Hyperparameter \"{}\" cannot be searched".format(hyperparameter_name)
 
-    def _check_searchable_dimension_numerical(self, dimension_name):
-        assert "range" in self.raw_settings[dimension_name], "Hyperparameter dimension \"{dimension_name}\" is not numerical".format(dimension_name=dimension_name)
+    def _check_hyperparameter_numerical(self, hyperparameter_name):
+        assert "range" in self.raw_settings[hyperparameter_name], "Hyperparameter \"{}\" is not numerical or cannot be searched".format(hyperparameter_name)
 
-    def _check_range_bound(self, dimension_name, range_bound):
-        assert "range" in self.raw_settings[dimension_name], "Cannot update range of non-numerical hyperparameter dimension " \
-                                                         "\"{dimension_name}\"".format(dimension_name=dimension_name)
+    def _check_range_bound(self, hyperparameter_name, range_bound):
+        assert "range" in self.raw_settings[hyperparameter_name], "Cannot modify range of non-numerical hyperparameter " \
+                                                         "\"{}\"".format(hyperparameter_name)
         assert isinstance(range_bound, int) or isinstance(range_bound, float), \
-            "Invalid input type for hyperparameter dimension \"{dimension_name}\": ".format(dimension_name=dimension_name) + \
+            "Invalid input type for hyperparameter \"{}\": ".format(hyperparameter_name) + \
             "range bounds must be numbers"
 
 
