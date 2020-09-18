@@ -252,7 +252,8 @@ class DSSMLTaskSettings(object):
             algorithm_name = self.__class__.algorithm_remap[algorithm_name]
 
         raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-        return AlgorithmSettings(raw_algorithm_settings)
+        raw_hyperparameter_search_settings = self.mltask_settings["gridSearchParams"]
+        return AlgorithmSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -322,20 +323,32 @@ class DSSMLTaskSettings(object):
 
 class AlgorithmSettings(object):
 
-    def __init__(self, raw_settings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
         self.raw_settings = raw_settings
+        self.hyperparameter_search_params = hyperparameter_search_params
 
     def __repr__(self):
         clean_settings = dict()
         for key in self.raw_settings.keys():
             if isinstance(self.raw_settings[key], dict):
+                # Searchable hyperparameter
                 raw_hyperparam = self.raw_settings[key]
                 clean_hyperparam = dict()
-                clean_hyperparam["values"] = raw_hyperparam["values"]
                 if "range" in raw_hyperparam:
-                    clean_hyperparam["range"] = raw_hyperparam["range"]
-                    clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
-                    clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
+                    # Numerical hyperparameter
+                    mode = self._get_hyperparameter_mode(key)
+                    if mode is "EXPLICIT":
+                        clean_hyperparam["values"] = raw_hyperparam["values"]
+                    else:
+                        clean_hyperparam["range"] = raw_hyperparam["range"]
+                    strategy = self._get_strategy()
+                    if strategy == "GRID":
+                        clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
+                    else:
+                        clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
+                else:
+                    # Categorical hyperparameter
+                    clean_hyperparam["values"] = raw_hyperparam["values"]
                 clean_settings[key] = clean_hyperparam
             else:
                 clean_settings[key] = self.raw_settings[key]
@@ -446,6 +459,16 @@ class AlgorithmSettings(object):
                 assert list(type(v) for v in val.values()) == [bool], value_error_message
             for key in values.keys():
                 self.raw_settings[hyperparameter_name]["values"][key] = values[key]
+
+    def _get_strategy(self):
+        return self.hyperparameter_search_params["strategy"]
+
+    def _get_hyperparameter_mode(self, hyperparameter_name):
+        strategy = self._get_strategy()
+        if strategy == "GRID":
+            return self.raw_settings[hyperparameter_name]["gridMode"]
+        else:
+            return self.raw_settings[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
         assert isinstance(hyperparameter_name, str), "Invalid type for hyperparameter name: expecting a string"
