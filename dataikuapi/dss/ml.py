@@ -252,7 +252,7 @@ class DSSMLTaskSettings(object):
             algorithm_name = self.__class__.algorithm_remap[algorithm_name]
 
         raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-        raw_hyperparameter_search_settings = self.mltask_settings["gridSearchParams"]
+        raw_hyperparameter_search_settings = self.mltask_settings["modeling"]["gridSearchParams"]
         return AlgorithmSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
@@ -337,7 +337,7 @@ class AlgorithmSettings(object):
                 if "range" in raw_hyperparam:
                     # Numerical hyperparameter
                     mode = self._get_hyperparameter_mode(key)
-                    if mode is "EXPLICIT":
+                    if mode == "EXPLICIT":
                         clean_hyperparam["values"] = raw_hyperparam["values"]
                     else:
                         clean_hyperparam["range"] = raw_hyperparam["range"]
