@@ -921,17 +921,28 @@ class DSSProject(object):
                  params = { "archivePath" : osp.abspath(archive_path) })
 
     def import_bundle_from_stream(self, fp):
-        files = {'file': fp }
+        files = {'file': fp}
         return self.client._perform_empty("POST",
                 "/projects/%s/bundles/imported/actions/importFromStream" % (self.project_key),
                 files=files)
 
-    def activate_bundle(self, bundle_id):
-         return self.client._perform_json("POST",
-                "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id))
+    def activate_bundle(self, bundle_id, scenarios_to_enable=None):
+        """
+        Activates a bundle in this project.
+
+        :param str bundle_id: The ID of the bundle to activate
+        :param dict scenarios_to_enable: An optional dict of scenarios to enable or disable upon bundle activation. The
+               format of the dict should be scenario IDs as keys with values of True or False.
+        :returns: A report containing any error or warning messages that occurred during bundle activation
+        :rtype: dict
+        """
+        options = {"scenariosActiveOnActivation": scenarios_to_enable} if scenarios_to_enable else {}
+
+        return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id), body=options)
 
     def preload_bundle(self, bundle_id):
-         return self.client._perform_json("POST",
+        return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
 
