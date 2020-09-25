@@ -333,80 +333,80 @@ class HyperparameterSettings(object):
 
     def __init__(self, name, algo_settings):
         self.name = name
-        self.algo_settings = algo_settings
+        self._algo_settings = algo_settings
 
 
 class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        clean_dict = self.algo_settings._get_clean_numerical_hyperparam_dict(self.name)
+        clean_dict = self._algo_settings._get_clean_numerical_hyperparam_dict(self.name)
         return json.dumps({self.name: clean_dict}, indent=4)
 
     __str__ = __repr__
 
     def set_explicit_values(self, values, mode_as_explicit=True):
-        self.algo_settings._set_numerical_explicit_values(self.name, values, mode_as_explicit=mode_as_explicit)
+        self._algo_settings._set_numerical_explicit_values(self.name, values, mode_as_explicit=mode_as_explicit)
 
     def set_range(self, range_min=None, range_max=None, nb_values=None, mode_as_range=True):
-        self.algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values,
-                                                mode_as_range=mode_as_range)
+        self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values,
+                                                 mode_as_range=mode_as_range)
 
     def set_mode_as_explicit(self):
-        self.algo_settings._set_hyperparameter_mode_as_explicit(self.name)
+        self._algo_settings._set_hyperparameter_mode_as_explicit(self.name)
 
     def set_mode_as_range(self):
-        self.algo_settings._set_hyperparameter_mode_as_range(self.name)
+        self._algo_settings._set_hyperparameter_mode_as_range(self.name)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        return json.dumps({self.name: self.algo_settings.raw_settings[self.name]}, indent=4)
+        return json.dumps({self.name: self._algo_settings.raw_settings[self.name]}, indent=4)
 
     __str__ = __repr__
 
     def set_values(self, values=None):
-        self.algo_settings._set_categorical_values(self.name, values=values)
+        self._algo_settings._set_categorical_values(self.name, values=values)
 
 
 class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        return json.dumps({self.name: self.algo_settings.raw_settings[self.name]}, indent=4)
+        return json.dumps({self.name: self._algo_settings.raw_settings[self.name]}, indent=4)
 
     __str__ = __repr__
 
     def set_values(self, value):
-        self.algo_settings._set_single_valued_hyperparameter(self.name, value)
+        self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
 class AlgorithmSettings(object):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
-        self.raw_settings = raw_settings
-        self.hyperparameter_search_params = hyperparameter_search_params
+        self._raw_settings = raw_settings
+        self._hyperparameter_search_params = hyperparameter_search_params
 
     def __repr__(self):
         clean_settings = dict()
-        for key in self.raw_settings.keys():
-            if isinstance(self.raw_settings[key], dict):
+        for key in self._raw_settings.keys():
+            if isinstance(self._raw_settings[key], dict):
                 # Searchable hyperparameter
-                if "range" in self.raw_settings[key]:
+                if "range" in self._raw_settings[key]:
                     # Numerical hyperparameter
                     clean_hyperparam = self._get_clean_numerical_hyperparam_dict(key)
                 else:
                     # Categorical hyperparameter
-                    clean_hyperparam = self.raw_settings[key]
+                    clean_hyperparam = self._raw_settings[key]
                 clean_settings[key] = clean_hyperparam
             else:
-                clean_settings[key] = self.raw_settings[key]
+                clean_settings[key] = self._raw_settings[key]
         return json.dumps(clean_settings, indent=4)
 
     __str__ = __repr__
 
     def _get_clean_numerical_hyperparam_dict(self, hyperparameter_name):
         clean_hyperparam = dict()
-        raw_hyperparam = self.raw_settings[hyperparameter_name]
+        raw_hyperparam = self._raw_settings[hyperparameter_name]
         mode = self._get_hyperparameter_mode(hyperparameter_name)
         if mode == "EXPLICIT":
             clean_hyperparam["values"] = raw_hyperparam["values"]
@@ -420,37 +420,37 @@ class AlgorithmSettings(object):
         return clean_hyperparam
 
     def _get_all_hyperparameter_names(self):
-        return [key for key in self.raw_settings.keys() if key != "enabled"]
+        return [key for key in self._raw_settings.keys() if key != "enabled"]
 
     def enable(self):
-        self.raw_settings["enabled"] = True
+        self._raw_settings["enabled"] = True
 
     def disable(self):
-        self.raw_settings["enabled"] = False
+        self._raw_settings["enabled"] = False
 
     def _set_single_valued_hyperparameter(self, hyperparameter_name, value):
         self._check_hyperparameter_name(hyperparameter_name)
-        if isinstance(self.raw_settings[hyperparameter_name], str):
+        if isinstance(self._raw_settings[hyperparameter_name], str):
             assert isinstance(value, str), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
-        elif isinstance(self.raw_settings[hyperparameter_name], int) or isinstance(self.raw_settings[hyperparameter_name], float):
+        elif isinstance(self._raw_settings[hyperparameter_name], int) or isinstance(self._raw_settings[hyperparameter_name], float):
             assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(hyperparameter_name)
         else:
             raise ValueError("Hyperparameter \"{}\" is not single valued".format(hyperparameter_name))
-        self.raw_settings[hyperparameter_name] = value
+        self._raw_settings[hyperparameter_name] = value
 
     def _set_hyperparameter_mode_as_range(self, hyperparameter_name):
         self._check_hyperparameter_name(hyperparameter_name)
         self._check_hyperparameter_searchable(hyperparameter_name)
         self._check_hyperparameter_numerical(hyperparameter_name)
-        self.raw_settings[hyperparameter_name]["gridMode"] = "RANGE"
-        self.raw_settings[hyperparameter_name]["randomMode"] = "RANGE"
+        self._raw_settings[hyperparameter_name]["gridMode"] = "RANGE"
+        self._raw_settings[hyperparameter_name]["randomMode"] = "RANGE"
 
     def _set_hyperparameter_mode_as_explicit(self, hyperparameter_name):
         self._check_hyperparameter_name(hyperparameter_name)
         self._check_hyperparameter_searchable(hyperparameter_name)
         self._check_hyperparameter_numerical(hyperparameter_name)
-        self.raw_settings[hyperparameter_name]["gridMode"] = "EXPLICIT"
-        self.raw_settings[hyperparameter_name]["randomMode"] = "EXPLICIT"
+        self._raw_settings[hyperparameter_name]["gridMode"] = "EXPLICIT"
+        self._raw_settings[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
     def _set_numerical_explicit_values(self, hyperparameter_name, values, mode_as_explicit=True):
         self._check_hyperparameter_name(hyperparameter_name)
@@ -460,15 +460,15 @@ class AlgorithmSettings(object):
         assert values is not None and isinstance(values, list) and len(values) > 0, error_message
         for val in values:
             assert isinstance(val, int) or isinstance(val, float), error_message
-        limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
+        limit_min = self._raw_settings[hyperparameter_name]["limit"].get("min")
         if limit_min is not None:
             assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(hyperparameter_name, limit_min)
-        limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
+        limit_max = self._raw_settings[hyperparameter_name]["limit"].get("max")
         if limit_max is not None:
             assert all(val <= limit_max for val in values), "Value(s) above hyperparameter \"{}\" limit {}".format(hyperparameter_name, limit_max)
         if len(set(values)) < len(values):
                 warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
-        self.raw_settings[hyperparameter_name]["values"] = values
+        self._raw_settings[hyperparameter_name]["values"] = values
 
         if mode_as_explicit:
             self._set_hyperparameter_mode_as_explicit(hyperparameter_name)
@@ -481,24 +481,24 @@ class AlgorithmSettings(object):
         else:
             if range_min is not None:
                 self._check_range_bound(hyperparameter_name, range_min)
-                limit_min = self.raw_settings[hyperparameter_name]["limit"].get("min")
+                limit_min = self._raw_settings[hyperparameter_name]["limit"].get("min")
                 if limit_min is not None:
                     assert limit_min <= range_min, "Range min {} is below hyperparameter \"{}\" limit {}".format(range_min, hyperparameter_name, limit_min)
             if range_max is not None:
                 self._check_range_bound(hyperparameter_name, range_max)
-                limit_max = self.raw_settings[hyperparameter_name]["limit"].get("max")
+                limit_max = self._raw_settings[hyperparameter_name]["limit"].get("max")
                 if limit_max is not None:
                     assert range_max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
-                self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
+                self._raw_settings[hyperparameter_name]["range"]["max"] = range_max
             if nb_values is not None:
                 assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(hyperparameter_name)
 
             if range_min is not None:
-                self.raw_settings[hyperparameter_name]["range"]["min"] = range_min
+                self._raw_settings[hyperparameter_name]["range"]["min"] = range_min
             if range_max is not None:
-                self.raw_settings[hyperparameter_name]["range"]["max"] = range_max
+                self._raw_settings[hyperparameter_name]["range"]["max"] = range_max
             if nb_values is not None:
-                self.raw_settings[hyperparameter_name]["range"]["nbValues"] = nb_values
+                self._raw_settings[hyperparameter_name]["range"]["nbValues"] = nb_values
 
         if mode_as_range:
             self._set_hyperparameter_mode_as_range(hyperparameter_name)
@@ -511,7 +511,7 @@ class AlgorithmSettings(object):
             assert isinstance(values, dict), "Invalid values input type for hyperparameter " \
                                              "\"{}\": ".format(hyperparameter_name) + \
                                              "must be a dictionary"
-            admissible_values = list(self.raw_settings[hyperparameter_name]["values"].keys())
+            admissible_values = list(self._raw_settings[hyperparameter_name]["values"].keys())
             for key in values.keys():
                 assert key in admissible_values, "Unknown categorical value \"" + key + ". Expected a member of " + str(admissible_values)
                 value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(hyperparameter_name, key)
@@ -521,17 +521,17 @@ class AlgorithmSettings(object):
                 assert list(val.keys()) == ["enabled"], value_error_message
                 assert list(type(v) for v in val.values()) == [bool], value_error_message
             for key in values.keys():
-                self.raw_settings[hyperparameter_name]["values"][key] = values[key]
+                self._raw_settings[hyperparameter_name]["values"][key] = values[key]
 
     def _get_strategy(self):
-        return self.hyperparameter_search_params["strategy"]
+        return self._hyperparameter_search_params["strategy"]
 
     def _get_hyperparameter_mode(self, hyperparameter_name):
         strategy = self._get_strategy()
         if strategy == "GRID":
-            return self.raw_settings[hyperparameter_name]["gridMode"]
+            return self._raw_settings[hyperparameter_name]["gridMode"]
         else:
-            return self.raw_settings[hyperparameter_name]["randomMode"]
+            return self._raw_settings[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
         assert isinstance(hyperparameter_name, str), "Invalid type for hyperparameter name: expecting a string"
@@ -542,13 +542,13 @@ class AlgorithmSettings(object):
             raise ValueError(message)
 
     def _check_hyperparameter_searchable(self, hyperparameter_name):
-        assert isinstance(self.raw_settings[hyperparameter_name], dict), "Hyperparameter \"{}\" cannot be searched".format(hyperparameter_name)
+        assert isinstance(self._raw_settings[hyperparameter_name], dict), "Hyperparameter \"{}\" cannot be searched".format(hyperparameter_name)
 
     def _check_hyperparameter_numerical(self, hyperparameter_name):
-        assert "range" in self.raw_settings[hyperparameter_name], "Hyperparameter \"{}\" is not numerical or cannot be searched".format(hyperparameter_name)
+        assert "range" in self._raw_settings[hyperparameter_name], "Hyperparameter \"{}\" is not numerical or cannot be searched".format(hyperparameter_name)
 
     def _check_range_bound(self, hyperparameter_name, range_bound):
-        assert "range" in self.raw_settings[hyperparameter_name], "Cannot modify range of non-numerical hyperparameter " \
+        assert "range" in self._raw_settings[hyperparameter_name], "Cannot modify range of non-numerical hyperparameter " \
                                                          "\"{}\"".format(hyperparameter_name)
         assert isinstance(range_bound, int) or isinstance(range_bound, float), \
             "Invalid input type for hyperparameter \"{}\": ".format(hyperparameter_name) + \
