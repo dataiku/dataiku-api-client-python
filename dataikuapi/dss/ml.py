@@ -253,7 +253,15 @@ class DSSMLTaskSettings(object):
 
         raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
         raw_hyperparameter_search_settings = self.mltask_settings["modeling"]["gridSearchParams"]
-        return AlgorithmSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
+
+        if algorithm_name in {"random_forest_classification", "random_forest_regression", "extra_trees"}:
+            return RandomForestSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
+        elif algorithm_name == "xgboost":
+            return XGBoostSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
+        elif algorithm_name == "logistic_regression":
+            return LogitSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
+        else:
+            return AlgorithmSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -545,6 +553,59 @@ class AlgorithmSettings(object):
         assert isinstance(range_bound, int) or isinstance(range_bound, float), \
             "Invalid input type for hyperparameter \"{}\": ".format(hyperparameter_name) + \
             "range bounds must be numbers"
+
+
+class RandomForestSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = NumericalHyperparameterSettings("n_estimators", self)
+        self.min_samples_leaf = NumericalHyperparameterSettings("n_estimators", self)
+        self.max_tree_depth = NumericalHyperparameterSettings("max_tree_depth", self)
+        self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
+        self.max_features = NumericalHyperparameterSettings("max_features", self)
+        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
+        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self)
+
+
+class XGBoostSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
+        self.learning_rate = NumericalHyperparameterSettings("learning_rate", self)
+        self.gamma = NumericalHyperparameterSettings("gamma", self)
+        self.min_child_weight = NumericalHyperparameterSettings("min_child_weight", self)
+        self.max_delta_step = NumericalHyperparameterSettings("max_delta_step", self)
+        self.subsample = NumericalHyperparameterSettings("subsample", self)
+        self.colsample_bytree = NumericalHyperparameterSettings("colsample_bytree", self)
+        self.colsample_bylevel = NumericalHyperparameterSettings("colsample_bylevel", self)
+        self.alpha = NumericalHyperparameterSettings("alpha", self)
+        self.lambda_ = NumericalHyperparameterSettings("lambda", self)
+        self.booster = CategoricalHyperparameterSettings("booster", self)
+        self.objective = CategoricalHyperparameterSettings("objective", self)
+        self.n_estimators = SingleValuedHyperparameterSettings("n_estimators", self)
+        self.nthread = SingleValuedHyperparameterSettings("nthread", self)
+        self.scale_pos_weight = SingleValuedHyperparameterSettings("scale_pos_weight", self)
+        self.base_score = SingleValuedHyperparameterSettings("base_score", self)
+        self.impute_missing = SingleValuedHyperparameterSettings("impute_missing", self)
+        self.missing = SingleValuedHyperparameterSettings("missing", self)
+        self.cpu_tree_method = SingleValuedHyperparameterSettings("cpu_tree_method", self)
+        self.gpu_tree_method = SingleValuedHyperparameterSettings("gpu_tree_method", self)
+        self.enable_cuda = SingleValuedHyperparameterSettings("enable_cuda", self)
+        self.seed = SingleValuedHyperparameterSettings("seed", self)
+        self.enable_early_stopping = SingleValuedHyperparameterSettings("enable_early_stopping", self)
+        self.early_stopping_rounds = SingleValuedHyperparameterSettings("early_stopping_rounds", self)
+
+
+class LogitSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.C = NumericalHyperparameterSettings("C", self)
+        self.penalty = CategoricalHyperparameterSettings("penalty", self)
+        self.multi_class = SingleValuedHyperparameterSettings("multi_class", self)
+        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
 
 
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
