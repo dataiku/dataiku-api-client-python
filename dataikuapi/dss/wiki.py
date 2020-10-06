@@ -247,6 +247,31 @@ class DSSWikiArticle(object):
         """
         return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
 
+    def get_export_stream(self, paperSize="A4", exportChildren=False):
+        """
+        Download an article in PDF format as a binary stream.
+        Warning: this stream will monopolize the DSSClient until closed.
+        """
+        body = {
+            "paperSize": paperSize,
+            "exportChildren": exportChildren
+        }
+        return self.client._perform_raw("POST", "/projects/%s/wiki/%s/actions/export" % (self.project_key, self.article_id), body=body)
+
+    def export_to_file(self, path, paperSize="A4", exportChildren=False):
+        """
+        Download an article in PDF format into the given output file.
+        """
+        stream = self.export(paperSize=paperSize, exportChildren=exportChildren)
+
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        stream.close()
+    
+
     def delete(self):
         """
         Delete the article
