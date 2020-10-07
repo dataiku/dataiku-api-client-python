@@ -285,7 +285,7 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
             plugin["enabled"] = False
 
     def get_all_possible_algorithm_names(self):
@@ -1740,7 +1740,7 @@ class DSSMLTask(object):
 
     @staticmethod
     def from_full_model_id(client, fmi, project_key=None):
-        match = re.match("^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
+        match = re.match(r"^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
         if match is None:
             return DataikuException("Invalid model id: {}".format(fmi))
         else:
