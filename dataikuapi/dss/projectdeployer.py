@@ -377,7 +377,7 @@ class DSSProjectDeployerProject(object):
                 "url": design_node_url
             }
         return self.client._perform_empty("POST",
-                "/project-deployer/projects/%s/packages" % (self.project_key), params=params, files={"file":fp})
+                "/project-deployer/projects/%s/bundles" % (self.project_key), params=params, files={"file":fp})
 
     def get_settings(self):
         """
