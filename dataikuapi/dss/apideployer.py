@@ -1,6 +1,7 @@
 import json
 from .future import DSSFuture
 
+
 class DSSAPIDeployer(object):
     """
     Handle to interact with the API Deployer.
@@ -10,7 +11,7 @@ class DSSAPIDeployer(object):
     def __init__(self, client):
         self.client = client
 
-    def list_deployments(self, as_objects = True):
+    def list_deployments(self, as_objects=True):
         """
         Lists deployments on the API Deployer
 
@@ -97,7 +98,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerInfra(self.client, infra_id)
 
-    def list_services(self, as_objects = True):
+    def list_services(self, as_objects=True):
         """
         Lists API services on the API Deployer
 

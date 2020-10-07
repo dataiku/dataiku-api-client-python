@@ -1,5 +1,6 @@
 from .future import DSSFuture
 
+
 class DSSProjectDeployer(object):
     """
     Handle to interact with the Project Deployer.
@@ -9,7 +10,7 @@ class DSSProjectDeployer(object):
     def __init__(self, client):
         self.client = client
 
-    def list_deployments(self, as_objects = True):
+    def list_deployments(self, as_objects=True):
         """
         Lists deployments on the Project Deployer
 
@@ -94,7 +95,7 @@ class DSSProjectDeployer(object):
         """
         return DSSProjectDeployerInfra(self.client, infra_id)
 
-    def list_projects(self, as_objects = True):
+    def list_projects(self, as_objects=True):
         """
         Lists published projects on the Project Deployer
 
