@@ -262,7 +262,7 @@ class DSSWikiArticle(object):
         """
         Download an article in PDF format into the given output file.
         """
-        stream = self.export(paperSize=paperSize, exportChildren=exportChildren)
+        stream = self.get_export_stream(paperSize=paperSize, exportChildren=exportChildren)
 
         with open(path, 'wb') as f:
             for chunk in stream.iter_content(chunk_size=10000):
