@@ -1373,9 +1373,11 @@ class DSSProjectSettings(object):
         """
         if code_env_name is None:
             self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = True
+            self.settings["settings"]["codeEnvs"]["python"]["mode"] = "USE_BUILTIN_MODE"
         else:
             self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = False
             self.settings["settings"]["codeEnvs"]["python"]["envName"] = code_env_name
+            self.settings["settings"]["codeEnvs"]["python"]["mode"] = "EXPLICIT_ENV"
 
     def set_r_code_env(self, code_env_name):
         """Sets the default R code env used by this project
@@ -1384,9 +1386,11 @@ class DSSProjectSettings(object):
         """
         if code_env_name is None:
             self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = True
+            self.settings["settings"]["codeEnvs"]["r"]["mode"] = "USE_BUILTIN_MODE"
         else:
             self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = False
             self.settings["settings"]["codeEnvs"]["r"]["envName"] = code_env_name
+            self.settings["settings"]["codeEnvs"]["r"]["mode"] = "EXPLICIT_ENV"
 
     def set_container_exec_config(self, config_name):
         """Sets the default containerized execution config used by this project
