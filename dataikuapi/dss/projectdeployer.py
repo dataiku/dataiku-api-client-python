@@ -55,6 +55,15 @@ class DSSProjectDeployer(object):
         self.client._perform_json("POST", "/project-deployer/deployments", body=settings)
         return self.get_deployment(deployment_id)
 
+    def list_stages(self):
+        """
+        Lists infrastructure stages of the Project Deployer
+
+        :rtype: a list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/project-deployer/stages")
+
     def list_infras(self, as_objects=True):
         """
         Lists deployment infrastructures on the Project Deployer
@@ -393,6 +402,14 @@ class DSSProjectDeployerProject(object):
 
         return DSSProjectDeployerProjectSettings(self.client, self.project_key, settings)
 
+    def delete(self):
+        """
+        Deletes this project
+
+        You may only delete a project if it has no deployments on it anymore.
+        """
+        return self.client._perform_empty(
+            "DELETE", "/project-deployer/projects/%s" % (self.project_key))
 
 class DSSProjectDeployerProjectSettings(object):
     """The settings of a published project.
