@@ -381,8 +381,8 @@ class DSSProjectDeployerProject(object):
             params = None
         else:
             params = {
-                "nodeId": design_node_id,
-                "nodeUrl": design_node_url
+                "designNodeId": design_node_id,
+                "designNodeUrl": design_node_url
             }
         return self.client._perform_empty("POST",
                 "/project-deployer/projects/%s/bundles" % (self.project_key), params=params, files={"file":fp})
