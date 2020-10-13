@@ -56,7 +56,7 @@ class DSSAPIDeployer(object):
         self.client._perform_json("POST", "/api-deployer/deployments", body=settings)
         return self.get_deployment(deployment_id)
 
-    def list_infras(self, as_objects = True):
+    def list_infras(self, as_objects=True):
         """
         Lists deployment infrastructures on the API Deployer
 

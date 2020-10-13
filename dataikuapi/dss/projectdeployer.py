@@ -360,22 +360,20 @@ class DSSProjectDeployerProject(object):
         light = self.client._perform_json("GET", "/project-deployer/projects/%s" % (self.project_key))
         return DSSProjectDeployerProjectStatus(self.client, self.project_key, light)
 
-    def import_bundle(self, fp, origin_project_key=None, design_node_url=None, design_node_id=None):
+    def import_bundle(self, fp, design_node_url=None, design_node_id=None):
         """
         Imports a new version for a project from a file-like object pointing
         to a bundle Zip file.
         :param string fp: A file-like object pointing to a bundle Zip file
-        :param string origin_project_key: The identifier of the Design node project where the bundle was created
         :param string design_node_url: The URL of the Design node where the bundle was created
         :param design_node_id: The identifier of the Design node where the bundle was created
         """
-        if origin_project_key is None and design_node_url is None and design_node_id is None:
+        if design_node_url is None and design_node_id is None:
             params = None
         else:
             params = {
-                "projectKey": origin_project_key,
                 "nodeId": design_node_id,
-                "url": design_node_url
+                "nodeUrl": design_node_url
             }
         return self.client._perform_empty("POST",
                 "/project-deployer/projects/%s/bundles" % (self.project_key), params=params, files={"file":fp})
