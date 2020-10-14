@@ -543,6 +543,62 @@ class DSSTrainedModelDetails(object):
                                                               project_key=self.saved_model.project_key)
                 return origin_ml_task.get_trained_model_details(fmi)
 
+    def get_hints(self):
+        """
+        Retrieve hints computed for this trained model
+
+        :returns: list of hints
+        :rtype: list of type `dataikuapi.dss.ml.DSSMLHint`
+        """
+        hints = self.details.get("trainHints", {})
+        return [DSSMLHint(d) for d in hints.get("hints", [])]
+
+
+class DSSMLHint(object):
+    """
+    Object that represents a computed Hint on a trained models
+
+    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_hints()` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the hint
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_type(self):
+        """
+        Return the base Hint type
+        :rtype: str
+        """
+        return self._internal_dict["type"]
+
+    def get_type_pretty(self):
+        """
+        Return the Hint type as displayed in the UI
+        :rtype: str
+        """
+        return self._internal_dict["displayableType"]
+
+    def get_message(self):
+        """
+        Return the message as displayed in the UI
+        :rtype: str
+        """
+        return self._internal_dict["message"]
+
+    def __repr__(self):
+        return "{cls}(type={type}, message={msg})".format(cls=self.__class__.__name__,
+                                                          type=self._internal_dict["type"],
+                                                          msg=self._internal_dict["message"])
+
+
 class DSSTreeNode(object):
     def __init__(self, tree, i):
         self.tree = tree
