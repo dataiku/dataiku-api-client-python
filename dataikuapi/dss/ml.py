@@ -335,7 +335,7 @@ class HyperparameterSettings(object):
 class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        clean_dict = self._algo_settings._get_clean_numerical_hyperparam_dict(self.name)
+        clean_dict = self._algo_settings._get_active_numerical_hyperparam_dict(self.name)
         return json.dumps({self.name: clean_dict}, indent=4)
 
     __str__ = __repr__
@@ -378,6 +378,8 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
 class AlgorithmSettings(dict):
 
+    excluded_keys = {"enabled"}
+
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(AlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
@@ -389,7 +391,7 @@ class AlgorithmSettings(dict):
                 # Searchable hyperparameter
                 if "range" in self[key]:
                     # Numerical hyperparameter
-                    clean_hyperparam = self._get_clean_numerical_hyperparam_dict(key)
+                    clean_hyperparam = self._get_active_numerical_hyperparam_dict(key)
                 else:
                     # Categorical hyperparameter
                     clean_hyperparam = self[key]
@@ -400,7 +402,7 @@ class AlgorithmSettings(dict):
 
     __str__ = __repr__
 
-    def _get_clean_numerical_hyperparam_dict(self, hyperparameter_name):
+    def _get_active_numerical_hyperparam_dict(self, hyperparameter_name):
         clean_hyperparam = dict()
         raw_hyperparam = self[hyperparameter_name]
         mode = self._get_hyperparameter_mode(hyperparameter_name)
@@ -416,7 +418,7 @@ class AlgorithmSettings(dict):
         return clean_hyperparam
 
     def _get_all_hyperparameter_names(self):
-        return [key for key in self.keys() if key != "enabled"]
+        return [key for key in self.keys() if key not in self.excluded_keys]
 
     def enable(self):
         self["enabled"] = True
