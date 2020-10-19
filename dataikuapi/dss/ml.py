@@ -364,6 +364,14 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def set_values(self, values=None):
         self._algo_settings._set_categorical_values(self.name, values=values)
 
+    def enable_values(self, values_list):
+        for value in values_list:
+            self.set_values({value: {"enabled": True}})
+
+    def disable_values(self, values_list):
+        for value in values_list:
+            self.set_values({value: {"enabled": False}})
+
 
 class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
