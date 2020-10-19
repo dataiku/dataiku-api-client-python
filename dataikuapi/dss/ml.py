@@ -376,6 +376,13 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
+def is_str_or_unicode(val):
+    import sys
+    if sys.version_info < (3, 0):
+        return isinstance(val, str) or isinstance(val, unicode)
+    else:
+        return isinstance(val, str)
+
 class AlgorithmSettings(dict):
 
     excluded_keys = {"enabled"}
@@ -428,8 +435,8 @@ class AlgorithmSettings(dict):
 
     def _set_single_valued_hyperparameter(self, hyperparameter_name, value):
         self._check_hyperparameter_name(hyperparameter_name)
-        if isinstance(self[hyperparameter_name], str):
-            assert isinstance(value, str), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
+        if is_str_or_unicode(self[hyperparameter_name]):
+            assert is_str_or_unicode(value), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
         elif isinstance(self[hyperparameter_name], int) or isinstance(self[hyperparameter_name], float):
             assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(hyperparameter_name)
         else:
@@ -532,7 +539,7 @@ class AlgorithmSettings(dict):
             return self[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
-        assert isinstance(hyperparameter_name, str), "Invalid type for hyperparameter name: expecting a string"
+        assert is_str_or_unicode(hyperparameter_name), "Invalid type for hyperparameter name: expecting a string"
         hyperparameter_names = self._get_all_hyperparameter_names()
         if hyperparameter_name not in hyperparameter_names:
             message = "Unknown hyperparameter name: \"{}\". ".format(hyperparameter_name)
