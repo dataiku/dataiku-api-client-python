@@ -248,20 +248,16 @@ class DSSMLTaskSettings(object):
         :return: A dict of the settings for an algorithm
         :rtype: AlgorithmSettings
         """
+        algorithm_settings_class = AlgorithmSettings
         if algorithm_name in self.__class__.algorithm_remap:
-            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
+            named_algorithm_settings = self.__class__.algorithm_remap[algorithm_name]
+            algorithm_name = named_algorithm_settings.algorithm_name
+            algorithm_settings_class = named_algorithm_settings.algorithm_settings_class
 
         raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
         raw_hyperparameter_search_settings = self.mltask_settings["modeling"]["gridSearchParams"]
 
-        if algorithm_name in {"random_forest_classification", "random_forest_regression", "extra_trees"}:
-            return RandomForestSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
-        elif algorithm_name == "xgboost":
-            return XGBoostSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
-        elif algorithm_name == "logistic_regression":
-            return LogitSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
-        else:
-            return AlgorithmSettings(raw_algorithm_settings, raw_hyperparameter_search_settings)
+        return algorithm_settings_class(raw_algorithm_settings, raw_hyperparameter_search_settings)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -608,43 +604,49 @@ class LogitSettings(AlgorithmSettings):
         self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
 
 
+class NamedAlgorithm:
+    def __init__(self, algorithm_name, algorithm_settings_class=AlgorithmSettings):
+        self.algorithm_name = algorithm_name
+        self.algorithm_settings_class = algorithm_settings_class
+
+
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
-            "RANDOM_FOREST_CLASSIFICATION": "random_forest_classification",
-            "RANDOM_FOREST_REGRESSION" : "random_forest_regression",
-            "EXTRA_TREES": "extra_trees",
-            "GBT_CLASSIFICATION" : "gbt_classification",
-            "GBT_REGRESSION" : "gbt_regression",
-            "DECISION_TREE_CLASSIFICATION" : "decision_tree_classification",
-            "DECISION_TREE_REGRESSION" : "decision_tree_regression",
-            "RIDGE_REGRESSION": "ridge_regression",
-            "LASSO_REGRESSION" : "lasso_regression",
-            "LEASTSQUARE_REGRESSION": "leastsquare_regression",
-            "SGD_REGRESSION" : "sgd_regression",
-            "KNN": "knn",
-            "LOGISTIC_REGRESSION" : "logistic_regression",
-            "NEURAL_NETWORK" :"neural_network",
-            "SVC_CLASSIFICATION" : "svc_classifier",
-            "SVM_REGRESSION" : "svm_regression",
-            "SGD_CLASSIFICATION" : "sgd_classifier",
-            "LARS" : "lars_params",
-            "XGBOOST_CLASSIFICATION" : "xgboost",
-            "XGBOOST_REGRESSION" : "xgboost",
-            "SPARKLING_DEEP_LEARNING" : "deep_learning_sparkling",
-            "SPARKLING_GBM" : "gbm_sparkling",
-            "SPARKLING_RF" : "rf_sparkling",
-            "SPARKLING_GLM" : "glm_sparkling",
-            "SPARKLING_NB" : "nb_sparkling",
-            "MLLIB_LOGISTIC_REGRESSION" : "mllib_logit",
-            "MLLIB_NAIVE_BAYES" : "mllib_naive_bayes",
-            "MLLIB_LINEAR_REGRESSION" : "mllib_linreg",
-            "MLLIB_RANDOM_FOREST" : "mllib_rf",
-            "MLLIB_GBT": "mllib_gbt",
-            "MLLIB_DECISION_TREE" : "mllib_dt",
-            "VERTICA_LINEAR_REGRESSION" : "vertica_linear_regression",
-            "VERTICA_LOGISTIC_REGRESSION" : "vertica_logistic_regression",
-            "KERAS_CODE" : "keras"
+            "RANDOM_FOREST_CLASSIFICATION": NamedAlgorithm("random_forest_classification", RandomForestSettings),
+            "RANDOM_FOREST_REGRESSION": NamedAlgorithm("random_forest_regression", RandomForestSettings),
+            "EXTRA_TREES": NamedAlgorithm("extra_trees", RandomForestSettings),
+            "GBT_CLASSIFICATION": NamedAlgorithm("gbt_classification"),
+            "GBT_REGRESSION": NamedAlgorithm("gbt_regression"),
+            "DECISION_TREE_CLASSIFICATION": NamedAlgorithm("decision_tree_classification"),
+            "DECISION_TREE_REGRESSION" : NamedAlgorithm("decision_tree_regression"),
+            "RIDGE_REGRESSION": NamedAlgorithm("ridge_regression"),
+            "LASSO_REGRESSION": NamedAlgorithm("lasso_regression"),
+            "LEASTSQUARE_REGRESSION": NamedAlgorithm("leastsquare_regression"),
+            "SGD_REGRESSION": NamedAlgorithm("sgd_regression"),
+            "KNN": NamedAlgorithm("knn"),
+            "LOGISTIC_REGRESSION": NamedAlgorithm("logistic_regression", LogitSettings),
+            "NEURAL_NETWORK": NamedAlgorithm("neural_network"),
+            "SVC_CLASSIFICATION": NamedAlgorithm("svc_classifier"),
+            "SVM_REGRESSION": NamedAlgorithm("svm_regression"),
+            "SGD_CLASSIFICATION": NamedAlgorithm("sgd_classifier"),
+            "LARS": NamedAlgorithm("lars_params"),
+            "XGBOOST_CLASSIFICATION": NamedAlgorithm("xgboost", XGBoostSettings),
+            "XGBOOST_REGRESSION": NamedAlgorithm("xgboost", XGBoostSettings),
+            "SPARKLING_DEEP_LEARNING": NamedAlgorithm("deep_learning_sparkling"),
+            "SPARKLING_GBM": NamedAlgorithm("gbm_sparkling"),
+            "SPARKLING_RF": NamedAlgorithm("rf_sparkling"),
+            "SPARKLING_GLM": NamedAlgorithm("glm_sparkling"),
+            "SPARKLING_NB": NamedAlgorithm("nb_sparkling"),
+            "MLLIB_LOGISTIC_REGRESSION": NamedAlgorithm("mllib_logit"),
+            "MLLIB_NAIVE_BAYES": NamedAlgorithm("mllib_naive_bayes"),
+            "MLLIB_LINEAR_REGRESSION": NamedAlgorithm("mllib_linreg"),
+            "MLLIB_RANDOM_FOREST": NamedAlgorithm("mllib_rf"),
+            "MLLIB_GBT": NamedAlgorithm("mllib_gbt"),
+            "MLLIB_DECISION_TREE": NamedAlgorithm("mllib_dt"),
+            "VERTICA_LINEAR_REGRESSION": NamedAlgorithm("vertica_linear_regression"),
+            "VERTICA_LOGISTIC_REGRESSION": NamedAlgorithm("vertica_logistic_regression"),
+            "KERAS_CODE": NamedAlgorithm("keras")
         }
 
     class PredictionTypes:
