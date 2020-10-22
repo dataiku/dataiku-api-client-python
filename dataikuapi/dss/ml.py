@@ -545,7 +545,7 @@ class DSSTrainedModelDetails(object):
 
     def get_hints(self):
         """
-        Retrieve hints computed for this trained model
+        Retrieves hints computed for this trained model
 
         :returns: list of hints
         :rtype: list of type `dataikuapi.dss.ml.DSSMLHint`
@@ -556,7 +556,7 @@ class DSSTrainedModelDetails(object):
 
 class DSSMLHint(object):
     """
-    Object that represents a computed Hint on a trained models
+    Object that represents a computed Hint on a trained model
 
     Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_hints()` instead
     """
@@ -574,21 +574,21 @@ class DSSMLHint(object):
 
     def get_type(self):
         """
-        Return the base Hint type
+        Returns the base Hint type
         :rtype: str
         """
         return self._internal_dict["type"]
 
     def get_type_pretty(self):
         """
-        Return the Hint type as displayed in the UI
+        Returns the Hint type as displayed in the UI
         :rtype: str
         """
         return self._internal_dict["displayableType"]
 
     def get_message(self):
         """
-        Return the message as displayed in the UI
+        Returns the message as displayed in the UI
         :rtype: str
         """
         return self._internal_dict["message"]
