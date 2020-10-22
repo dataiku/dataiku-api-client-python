@@ -1,21 +1,22 @@
-import sys
+import random
 import re
-import os.path as osp
+import string
+
 from .future import DSSFuture
-from ..utils import DataikuException
-import random, string
+
 
 def random_string(length):
     return ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
+
 class DSSApp(object):
     """
-    A handle to interact with a app on the DSS instance.
-    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_app``
+    A handle to interact with an application on the DSS instance.
+    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_app`
     """
     def __init__(self, client, app_id):
-       self.client = client
-       self.app_id = app_id
+        self.client = client
+        self.app_id = app_id
 
     ########################################################
     # Instances
@@ -23,19 +24,19 @@ class DSSApp(object):
 
     def create_instance(self, instance_key, instance_name, wait=True):
         """
-        Creates a new instance of this app. Each instance. must have a globally unique
+        Creates a new instance of this application. Each instance. must have a globally unique
         instance key, separate from any project key across the whole DSS instance
 
         :return: 
         """
         future_resp = self.client._perform_json(
             "POST", "/apps/%s/instances" % self.app_id, body={
-            "targetProjectKey" : instance_key,
-            "targetProjectName" : instance_name
-        })
+                "targetProjectKey": instance_key,
+                "targetProjectName": instance_name
+            })
         future = DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
         if wait:
-            result = future.wait_for_result()
+            future.wait_for_result()
             return DSSAppInstance(self.client, instance_key)
         else:
             return future
@@ -46,13 +47,13 @@ class DSSApp(object):
 
     def create_temporary_instance(self):
         """
-        Creates a new temporary instance of this app.
+        Creates a new temporary instance of this application.
         The return value should be used as a Python context manager. Upon exit, the temporary app
         instance is deleted
         :return a :class:`TemporaryDSSAppInstance`
         """
         key = self.make_random_project_key()
-        instance = self.create_instance(key, key, True)
+        self.create_instance(key, key, True)
         return TemporaryDSSAppInstance(self.client, key)
 
     def list_instance_keys(self):
@@ -85,7 +86,7 @@ class DSSApp(object):
 class DSSAppManifest(object):
 
     def __init__(self, client, raw_data, project_key=None):
-        """The manifest for an app. Do not create this class directly"""
+        """The manifest for an application. Do not create this class directly"""
         self.client = client
         self.raw_data = raw_data
         self.project_key = project_key
@@ -110,28 +111,28 @@ class DSSAppManifest(object):
 class DSSAppInstance(object):
 
     def __init__(self, client, project_key):
-       self.client = client
-       self.project_key = project_key
+        self.client = client
+        self.project_key = project_key
 
     def get_as_project(self):
         """
-        Get the :class:`dataikuapi.dss.project DSSProject` corresponding to this app instance
+        Get the :class:`dataikuapi.dss.project DSSProject` corresponding to this application instance
         """
         return self.client.get_project(self.project_key)
 
     def get_manifest(self):
         """
-        Get the app manifest for this instance, as a :class:`DSSAppManifest`
+        Get the application manifest for this instance, as a :class:`DSSAppManifest`
         """
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data)
+
 
 class TemporaryDSSAppInstance(DSSAppInstance):
     """internal class"""
 
     def __init__(self, client, project_key):
         DSSAppInstance.__init__(self, client,project_key)
-
 
     def close(self):
         self.get_as_project().delete(drop_data=True)
