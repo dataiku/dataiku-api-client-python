@@ -619,6 +619,30 @@ class XGBoostSettings(AlgorithmSettings):
         self.early_stopping_rounds = SingleValuedHyperparameterSettings("early_stopping_rounds", self)
 
 
+class GradientBoostedTreesSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = NumericalHyperparameterSettings("n_estimator", self)
+        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
+        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
+        self.max_features = NumericalHyperparameterSettings("max_features", self)
+        self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
+        self.learning_rate = NumericalHyperparameterSettings("learning_rate", self)
+        self.loss = CategoricalHyperparameterSettings("loss", self)
+        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self, ["auto", "sqrt", "log2", "number","prop"])
+
+
+class DecisionTreeSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(DecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
+        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
+        self.criterion = CategoricalHyperparameterSettings("criterion", self)
+        self.splitter = CategoricalHyperparameterSettings("splitter", self)
+
+
 class LogitSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -627,6 +651,99 @@ class LogitSettings(AlgorithmSettings):
         self.penalty = CategoricalHyperparameterSettings("penalty", self)
         self.multi_class = SingleValuedHyperparameterSettings("multi_class", self, ["multinomial", "ovr"])
         self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
+
+
+class RidgeRegressionSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = NumericalHyperparameterSettings("alpha", self)
+        self.alpha_mode = SingleValuedHyperparameterSettings("alphaMode", self, ["MANUAL", "AUTO"])
+
+
+class LassoRegressionSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = NumericalHyperparameterSettings("alpha", self)
+        self.alpha_mode = SingleValuedHyperparameterSettings("alphaMode", self, ["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
+
+
+class OLSSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
+
+
+class LARSSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LARSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_features = SingleValuedHyperparameterSettings("max_features", self)
+        self.K = SingleValuedHyperparameterSettings("K", self)
+
+
+class SGDSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SGDSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = NumericalHyperparameterSettings("alpha", self)
+        self.loss = CategoricalHyperparameterSettings("loss", self)
+        self.penalty = CategoricalHyperparameterSettings("penalty", self)
+        self.l1_ratio = SingleValuedHyperparameterSettings("l1_ratio", self)
+        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self)
+        self.tol = SingleValuedHyperparameterSettings("tol", self)
+        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
+
+
+class KNNSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.k = NumericalHyperparameterSettings("k", self)
+        self.algorithm = CategoricalHyperparameterSettings("algorithm", self)
+        self.distance_weighting = SingleValuedHyperparameterSettings("distance_weighting", self, [True, False])
+        self.p = SingleValuedHyperparameterSettings("p", self)
+        self.leaf_size = SingleValuedHyperparameterSettings("leaf_size", self)
+
+
+class SVMSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.custom_gamma = NumericalHyperparameterSettings("custom_gamma", self)
+        self.gamma = CategoricalHyperparameterSettings("gamma", self)
+        self.kernel = CategoricalHyperparameterSettings("kernel", self)
+        self.coef0 = SingleValuedHyperparameterSettings("coef0", self)
+        self.tol = SingleValuedHyperparameterSettings("tol", self)
+        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self)
+
+
+class MLPSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.layer_sizes = NumericalHyperparameterSettings("layer_sizes", self)
+        self.activation = SingleValuedHyperparameterSettings("activation", self, ["relu", "identity", "logistic", "tanh"])
+        self.solver = SingleValuedHyperparameterSettings("solver", self, ["adam", "sgd"])
+        self.alpha = SingleValuedHyperparameterSettings("alpha", self)
+        self.batch_size = SingleValuedHyperparameterSettings("batch_size", self)
+        self.auto_batch = SingleValuedHyperparameterSettings("auto_batch", self, [True, False])
+        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self)
+        self.seed = SingleValuedHyperparameterSettings("seed", self)
+        self.tol = SingleValuedHyperparameterSettings("tol", self)
+        self.early_stopping = SingleValuedHyperparameterSettings("early_stopping", self, [True, False])
+        self.validation_fraction = SingleValuedHyperparameterSettings("validation_fraction", self)
+        self.beta_1 = SingleValuedHyperparameterSettings("beta_1", self)
+        self.beta_2 = SingleValuedHyperparameterSettings("beta_2", self)
+        self.epsilon = SingleValuedHyperparameterSettings("epsilon", self)
+        self.learning_rate = SingleValuedHyperparameterSettings("learning_rate", self, ["constant", "invscaling", "adaptive"])
+        self.power_t = SingleValuedHyperparameterSettings("power_t", self)
+        self.momentum = SingleValuedHyperparameterSettings("momentum", self)
+        self.nesterovs_momentum = SingleValuedHyperparameterSettings("nesterovs_momentum", self, [True, False])
+        self.shuffle = SingleValuedHyperparameterSettings("shuffle", self, [True, False])
+        self.learning_rate_init = SingleValuedHyperparameterSettings("learning_rate_init", self)
 
 
 class NamedAlgorithm:
@@ -641,21 +758,21 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "RANDOM_FOREST_CLASSIFICATION": NamedAlgorithm("random_forest_classification", RandomForestSettings),
             "RANDOM_FOREST_REGRESSION": NamedAlgorithm("random_forest_regression", RandomForestSettings),
             "EXTRA_TREES": NamedAlgorithm("extra_trees", RandomForestSettings),
-            "GBT_CLASSIFICATION": NamedAlgorithm("gbt_classification"),
-            "GBT_REGRESSION": NamedAlgorithm("gbt_regression"),
-            "DECISION_TREE_CLASSIFICATION": NamedAlgorithm("decision_tree_classification"),
-            "DECISION_TREE_REGRESSION" : NamedAlgorithm("decision_tree_regression"),
-            "RIDGE_REGRESSION": NamedAlgorithm("ridge_regression"),
-            "LASSO_REGRESSION": NamedAlgorithm("lasso_regression"),
-            "LEASTSQUARE_REGRESSION": NamedAlgorithm("leastsquare_regression"),
-            "SGD_REGRESSION": NamedAlgorithm("sgd_regression"),
-            "KNN": NamedAlgorithm("knn"),
+            "GBT_CLASSIFICATION": NamedAlgorithm("gbt_classification", GradientBoostedTreesSettings),
+            "GBT_REGRESSION": NamedAlgorithm("gbt_regression", GradientBoostedTreesSettings),
+            "DECISION_TREE_CLASSIFICATION": NamedAlgorithm("decision_tree_classification", DecisionTreeSettings),
+            "DECISION_TREE_REGRESSION": NamedAlgorithm("decision_tree_regression", DecisionTreeSettings),
+            "RIDGE_REGRESSION": NamedAlgorithm("ridge_regression", RidgeRegressionSettings),
+            "LASSO_REGRESSION": NamedAlgorithm("lasso_regression", LassoRegressionSettings),
+            "LEASTSQUARE_REGRESSION": NamedAlgorithm("leastsquare_regression", OLSSettings),
+            "SGD_REGRESSION": NamedAlgorithm("sgd_regression", SGDSettings),
+            "KNN": NamedAlgorithm("knn", KNNSettings),
             "LOGISTIC_REGRESSION": NamedAlgorithm("logistic_regression", LogitSettings),
-            "NEURAL_NETWORK": NamedAlgorithm("neural_network"),
-            "SVC_CLASSIFICATION": NamedAlgorithm("svc_classifier"),
-            "SVM_REGRESSION": NamedAlgorithm("svm_regression"),
-            "SGD_CLASSIFICATION": NamedAlgorithm("sgd_classifier"),
-            "LARS": NamedAlgorithm("lars_params"),
+            "NEURAL_NETWORK": NamedAlgorithm("neural_network", MLPSettings),
+            "SVC_CLASSIFICATION": NamedAlgorithm("svc_classifier", SVMSettings),
+            "SVM_REGRESSION": NamedAlgorithm("svm_regression", SVMSettings),
+            "SGD_CLASSIFICATION": NamedAlgorithm("sgd_classifier", SGDSettings),
+            "LARS": NamedAlgorithm("lars_params", LARSSettings),
             "XGBOOST_CLASSIFICATION": NamedAlgorithm("xgboost", XGBoostSettings),
             "XGBOOST_REGRESSION": NamedAlgorithm("xgboost", XGBoostSettings),
             "SPARKLING_DEEP_LEARNING": NamedAlgorithm("deep_learning_sparkling"),
