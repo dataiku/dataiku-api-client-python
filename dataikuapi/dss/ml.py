@@ -253,6 +253,50 @@ class DSSMLTaskSettings(object):
 
         return self.mltask_settings["modeling"][algorithm_name.lower()]
 
+    def get_hints_settings(self):
+        """
+        Gets the hints settings for a mltask. This returns a reference to the
+        hints' settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns a dictionary of the settings with:
+        - 'enabled': indicates if the hints are enabled globally, if False, all hints will be disabled
+        - 'settings': a dict comprised of:
+          - 'type': the hint type
+          - 'enabled': indicates if the hint type is enabled, if False, all hints of that type will be disabled
+
+        Please refer to the documentation for details on available hints.
+
+        :return: A dict of hints settings
+        :rtype: dict
+        """
+        return self.mltask_settings["hintSettings"]
+
+    def set_hints_enabled(self, enabled):
+        """
+        Globally enables or disables all hints.
+
+        :param bool enabled: if the hints should be enabled or not
+        """
+        settings = self.get_hints_settings()
+        settings["enabled"] = enabled
+
+    def set_hint_type_enabled(self, hint_type, enabled):
+        """
+        Enables or disables a hint based on its type.
+
+        Please refer to the documentation for details on available hints.
+
+        :param str hint_type: Name (in capitals) of the hint type.
+        :param bool enabled: if the hint should be enabled or not
+        """
+        settings = self.get_hints_settings()["settings"]
+        hint = [h for h in settings if h["type"] == hint_type]
+        if len(hint) == 0:
+            raise ValueError("hint type {} not found in settings".format(hint_type))
+        if len(hint) > 1:
+            raise ValueError("should not happen: multiple hint types {} not found in settings".format(hint_type))
+        hint[0]["enabled"] = enabled
+
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
         Enables or disables an algorithm based on its name.
