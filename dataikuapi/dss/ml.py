@@ -364,12 +364,14 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def set_values(self, values=None):
         self._algo_settings._set_categorical_values(self.name, values=values)
 
-    def enable_values(self, values_list):
-        for value in values_list:
+    def enable_values(self, values):
+        for value in values:
+            assert is_str_or_unicode(value)
             self.set_values({value: {"enabled": True}})
 
-    def disable_values(self, values_list):
-        for value in values_list:
+    def disable_values(self, values):
+        for value in values:
+            assert is_str_or_unicode(value)
             self.set_values({value: {"enabled": False}})
 
 
@@ -387,7 +389,7 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
 def is_str_or_unicode(val):
     import sys
     if sys.version_info < (3, 0):
-        return isinstance(val, str) or isinstance(val, unicode)
+        return isinstance(val, basestring)
     else:
         return isinstance(val, str)
 
