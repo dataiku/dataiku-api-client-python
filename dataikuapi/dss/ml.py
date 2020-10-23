@@ -377,12 +377,18 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
 
 class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
+    def __init__(self, name, algo_settings, accepted_values=None):
+        super(SingleValuedHyperparameterSettings, self).__init__(name, algo_settings)
+        self.accepted_values = accepted_values
+
     def __repr__(self):
         return json.dumps({self.name: self._algo_settings[self.name]}, indent=4)
 
     __str__ = __repr__
 
-    def set_values(self, value):
+    def set_value(self, value):
+        if self.accepted_values is not None:
+            assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, str(self.accepted_values))
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
@@ -580,7 +586,7 @@ class RandomForestSettings(AlgorithmSettings):
         self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
         self.max_features = NumericalHyperparameterSettings("max_features", self)
         self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
-        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self)
+        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self, ["auto", "sqrt", "log2", "number","prop"])
 
 
 class XGBoostSettings(AlgorithmSettings):
@@ -603,13 +609,13 @@ class XGBoostSettings(AlgorithmSettings):
         self.nthread = SingleValuedHyperparameterSettings("nthread", self)
         self.scale_pos_weight = SingleValuedHyperparameterSettings("scale_pos_weight", self)
         self.base_score = SingleValuedHyperparameterSettings("base_score", self)
-        self.impute_missing = SingleValuedHyperparameterSettings("impute_missing", self)
+        self.impute_missing = SingleValuedHyperparameterSettings("impute_missing", self, [True, False])
         self.missing = SingleValuedHyperparameterSettings("missing", self)
         self.cpu_tree_method = SingleValuedHyperparameterSettings("cpu_tree_method", self)
         self.gpu_tree_method = SingleValuedHyperparameterSettings("gpu_tree_method", self)
-        self.enable_cuda = SingleValuedHyperparameterSettings("enable_cuda", self)
+        self.enable_cuda = SingleValuedHyperparameterSettings("enable_cuda", self, [True, False])
         self.seed = SingleValuedHyperparameterSettings("seed", self)
-        self.enable_early_stopping = SingleValuedHyperparameterSettings("enable_early_stopping", self)
+        self.enable_early_stopping = SingleValuedHyperparameterSettings("enable_early_stopping", self, [True, False])
         self.early_stopping_rounds = SingleValuedHyperparameterSettings("early_stopping_rounds", self)
 
 
@@ -619,7 +625,7 @@ class LogitSettings(AlgorithmSettings):
         super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.C = NumericalHyperparameterSettings("C", self)
         self.penalty = CategoricalHyperparameterSettings("penalty", self)
-        self.multi_class = SingleValuedHyperparameterSettings("multi_class", self)
+        self.multi_class = SingleValuedHyperparameterSettings("multi_class", self, ["multinomial", "ovr"])
         self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self)
 
 
