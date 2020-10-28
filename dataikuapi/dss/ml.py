@@ -746,6 +746,78 @@ class MLPSettings(AlgorithmSettings):
         self.learning_rate_init = SingleValuedHyperparameterSettings("learning_rate_init", self)
 
 
+class MLLibLogitSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibLogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.reg_param = NumericalHyperparameterSettings("reg_param", self)
+        self.enet_param = NumericalHyperparameterSettings("enet_param", self)
+        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self)
+
+
+class MLLibNaiveBayesSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.lambda_ = NumericalHyperparameterSettings("lambda", self)
+
+
+class MLLibLinearRegressionSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibLinearRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.reg_param = NumericalHyperparameterSettings("reg_param", self)
+        self.enet_param = NumericalHyperparameterSettings("enet_param", self)
+        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self)
+
+
+class MLLibDecisionTreeSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
+        self.cache_node_ids = SingleValuedHyperparameterSettings("cache_node_ids", self, [True, False])
+        self.checkpoint_interval = SingleValuedHyperparameterSettings("checkpoint_interval", self)
+        self.max_bins = SingleValuedHyperparameterSettings("max_bins", self)
+        self.max_memory_mb = SingleValuedHyperparameterSettings("max_memory_mb", self)
+        self.min_info_gain = SingleValuedHyperparameterSettings("min_info_gain", self)
+        self.min_instance_per_node = SingleValuedHyperparameterSettings("min_instance_per_node", self)
+
+
+class _MLLibTreeEnsembleSettings(AlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(_MLLibTreeEnsembleSettings, self).__init__(raw_settings, hyperparameter_search_params)
+
+        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
+        self.num_trees = NumericalHyperparameterSettings("num_trees", self)
+
+        self.cache_node_ids = SingleValuedHyperparameterSettings("cache_node_ids", self, [True, False])
+        self.checkpoint_interval = SingleValuedHyperparameterSettings("checkpoint_interval", self)
+        self.impurity = SingleValuedHyperparameterSettings("impurity", self, ["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
+        self.max_bins = SingleValuedHyperparameterSettings("max_bins", self)
+        self.max_memory_mb = SingleValuedHyperparameterSettings("max_memory_mb", self)
+        self.min_info_gain = SingleValuedHyperparameterSettings("min_info_gain", self)
+        self.min_instance_per_node = SingleValuedHyperparameterSettings("min_instance_per_node", self)
+        self.seed = SingleValuedHyperparameterSettings("seed", self)
+        self.subsampling_rate = SingleValuedHyperparameterSettings("subsampling_rate", self)
+
+
+class MLLibRandomForestSettings(_MLLibTreeEnsembleSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibRandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.impurity = SingleValuedHyperparameterSettings("impurity", self, ["gini", "entropy", "variance"])
+        self.subset_strategy = SingleValuedHyperparameterSettings("subset_strategy", self, ["auto", "all", "onethird", "sqrt", "log2"])
+
+
+class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibGBTSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.step_size = NumericalHyperparameterSettings("step_size", self)
+
+
 class NamedAlgorithm:
     def __init__(self, algorithm_name, algorithm_settings_class=AlgorithmSettings):
         self.algorithm_name = algorithm_name
@@ -780,12 +852,12 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "SPARKLING_RF": NamedAlgorithm("rf_sparkling"),
             "SPARKLING_GLM": NamedAlgorithm("glm_sparkling"),
             "SPARKLING_NB": NamedAlgorithm("nb_sparkling"),
-            "MLLIB_LOGISTIC_REGRESSION": NamedAlgorithm("mllib_logit"),
-            "MLLIB_NAIVE_BAYES": NamedAlgorithm("mllib_naive_bayes"),
-            "MLLIB_LINEAR_REGRESSION": NamedAlgorithm("mllib_linreg"),
-            "MLLIB_RANDOM_FOREST": NamedAlgorithm("mllib_rf"),
-            "MLLIB_GBT": NamedAlgorithm("mllib_gbt"),
-            "MLLIB_DECISION_TREE": NamedAlgorithm("mllib_dt"),
+            "MLLIB_LOGISTIC_REGRESSION": NamedAlgorithm("mllib_logit", MLLibLogitSettings),
+            "MLLIB_NAIVE_BAYES": NamedAlgorithm("mllib_naive_bayes", MLLibNaiveBayesSettings),
+            "MLLIB_LINEAR_REGRESSION": NamedAlgorithm("mllib_linreg", MLLibLinearRegressionSettings),
+            "MLLIB_RANDOM_FOREST": NamedAlgorithm("mllib_rf", MLLibRandomForestSettings),
+            "MLLIB_GBT": NamedAlgorithm("mllib_gbt", MLLibGBTSettings),
+            "MLLIB_DECISION_TREE": NamedAlgorithm("mllib_dt", MLLibDecisionTreeSettings),
             "VERTICA_LINEAR_REGRESSION": NamedAlgorithm("vertica_linear_regression"),
             "VERTICA_LOGISTIC_REGRESSION": NamedAlgorithm("vertica_logistic_regression"),
             "KERAS_CODE": NamedAlgorithm("keras")
