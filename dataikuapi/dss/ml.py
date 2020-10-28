@@ -298,6 +298,23 @@ class DSSMLTaskSettings(object):
         """
         return self.__class__.algorithm_remap.keys()
 
+
+    def get_enabled_algorithm_names(self):
+        """
+        :returns: the list of enabled algorithm names as a list of strings
+        :rtype: list of string
+        """
+        return [key for key in self.__class__.algorithm_remap.keys() if self.get_algorithm_settings(key)["enabled"]]
+
+
+    def get_enabled_algorithm_settings(self):
+        """
+        :returns: the map of enabled algorithm names with their settings
+        :rtype: dict
+        """
+        return {key: self.get_algorithm_settings(key) for key in self.get_enabled_algorithm_names()}
+
+
     def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
         """
         Sets the score metric to optimize for a prediction ML Task
