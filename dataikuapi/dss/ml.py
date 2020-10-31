@@ -260,7 +260,7 @@ class DSSMLTaskSettings(object):
 
         This method returns a dictionary of the settings with:
         - 'enabled': indicates if the hints are enabled globally, if False, all hints will be disabled
-        - 'settings': a dict comprised of:
+        - 'settings': a list of dict comprised of:
           - 'type': the hint type
           - 'enabled': indicates if the hint type is enabled, if False, all hints of that type will be disabled
 
