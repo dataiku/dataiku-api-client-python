@@ -292,9 +292,9 @@ class DSSMLTaskSettings(object):
         settings = self.get_hints_settings()["settings"]
         hint = [h for h in settings if h["type"] == hint_type]
         if len(hint) == 0:
-            raise ValueError("hint type {} not found in settings".format(hint_type))
+            raise ValueError("Hint type '{}' not found in settings".format(hint_type))
         if len(hint) > 1:
-            raise ValueError("should not happen: multiple hint types {} not found in settings".format(hint_type))
+            raise ValueError("Should not happen: multiple hint types '{}' found in settings".format(hint_type))
         hint[0]["enabled"] = enabled
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
