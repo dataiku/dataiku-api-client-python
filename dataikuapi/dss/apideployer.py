@@ -1,6 +1,7 @@
 import json
 from .future import DSSFuture
 
+
 class DSSAPIDeployer(object):
     """
     Handle to interact with the API Deployer.
@@ -10,7 +11,7 @@ class DSSAPIDeployer(object):
     def __init__(self, client):
         self.client = client
 
-    def list_deployments(self, as_objects = True):
+    def list_deployments(self, as_objects=True):
         """
         Lists deployments on the API Deployer
 
@@ -55,7 +56,16 @@ class DSSAPIDeployer(object):
         self.client._perform_json("POST", "/api-deployer/deployments", body=settings)
         return self.get_deployment(deployment_id)
 
-    def list_infras(self, as_objects = True):
+    def list_stages(self):
+        """
+        Lists infrastructure stages of the API Deployer
+
+        :rtype: a list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/api-deployer/stages")
+
+    def list_infras(self, as_objects=True):
         """
         Lists deployment infrastructures on the API Deployer
 
@@ -97,7 +107,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerInfra(self.client, infra_id)
 
-    def list_services(self, as_objects = True):
+    def list_services(self, as_objects=True):
         """
         Lists API services on the API Deployer
 
@@ -331,6 +341,7 @@ class DSSAPIDeployerDeploymentSettings(object):
                 "PUT", "/api-deployer/deployments/%s/settings" % (self.deployment_id),
                 body = self.settings)
 
+
 class DSSAPIDeployerDeploymentStatus(object):
     """The status of an API Deployer deployment. 
 
@@ -386,7 +397,6 @@ class DSSAPIDeployerDeploymentStatus(object):
         return self.heavy_status["healthMessages"]
 
 
-
 ###############################################
 # Published Service
 ###############################################
@@ -439,6 +449,15 @@ class DSSAPIDeployerService(object):
 
         return DSSAPIDeployerServiceSettings(self.client, self.service_id, settings)
 
+    def delete(self):
+        """
+        Deletes this service
+
+        You may only delete a service if it has no deployments on it anymore.
+        """
+        return self.client._perform_empty(
+            "DELETE", "/api-deployer/services/%s" % (self.service_id))
+
 
 class DSSAPIDeployerServiceSettings(object):
     """The settings of an API Deployer Service. 
@@ -464,6 +483,7 @@ class DSSAPIDeployerServiceSettings(object):
         self.client._perform_empty(
                 "PUT", "/api-deployer/services/%s/settings" % (self.service_id),
                 body = self.settings)
+
 
 class DSSAPIDeployerServiceStatus(object):
     """The status of an API Deployer Service. 

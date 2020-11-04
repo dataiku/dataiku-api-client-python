@@ -14,6 +14,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
+from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
 from .utils import DataikuException
 
@@ -819,6 +820,17 @@ class DSSClient(object):
         :rtype: :class:`~dataikuapi.dss.apideployer.DSSAPIDeployer`
         """
         return DSSAPIDeployer(self)
+
+    ########################################################
+    # Project Deployer
+    ########################################################
+
+    def get_projectdeployer(self):
+        """Gets a handle to work with the Project Deployer
+
+        :rtype: :class:`~dataikuapi.dss.projectdeployer.DSSProjectDeployer`
+        """
+        return DSSProjectDeployer(self)
 
     ########################################################
     # Data Catalog
