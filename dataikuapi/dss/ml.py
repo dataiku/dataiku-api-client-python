@@ -416,6 +416,7 @@ def is_str_or_unicode(val):
     else:
         return isinstance(val, str)
 
+
 class AlgorithmSettings(dict):
 
     excluded_keys = {"enabled"}
@@ -551,7 +552,7 @@ class AlgorithmSettings(dict):
                                              "must be a dictionary"
             admissible_values = list(self[hyperparameter_name]["values"].keys())
             for key in values.keys():
-                assert key in admissible_values, "Unknown categorical value \"" + key + ". Expected a member of " + str(admissible_values)
+                assert key in admissible_values, "Unknown categorical value \"" + key + "\". Expected a member of " + str(admissible_values)
                 value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(hyperparameter_name, key)
                 value_error_message += "expected a {\"enabled\": bool} dictionary"
                 val = values[key]
