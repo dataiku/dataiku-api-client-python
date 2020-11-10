@@ -7,7 +7,7 @@ class DSSSQLQuery(object):
     """
     A connection to a database or database-like on which queries can be run through DSS
     """
-    def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, projectKey):
+    def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key):
         self.client = client
 
         self.streaming_session = self.client._perform_json(
@@ -19,7 +19,7 @@ class DSSSQLQuery(object):
                     "connection" : connection,
                     "database" : database,
                     "datasetFullName" : dataset_full_name,
-                    "projectKey" : projectKey,
+                    "projectKey" : project_key,
                     "type" : type,
                     "extraConf" : extra_conf,
                     "scriptSteps" : script_steps,

@@ -157,6 +157,13 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
+    def get_default_project_key(self):
+        """
+        Get the current default projectKey, if available
+        """
+        import dataiku
+        return dataiku.default_project_key()
+
     def get_default_project(self):
         """
         Get a handle to the current default project, if available (i.e. if dataiku.default_project_key() is valid)
@@ -301,7 +308,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, projectKey=None):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, project_key=None):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
@@ -321,7 +328,9 @@ class DSSClient(object):
         """
         if extra_conf is None:
             extra_conf = {}
-        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, projectKey)
+        if project_key is None:
+            project_key = self.get_default_project_key()
+        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key)
 
     ########################################################
     # Users
