@@ -332,7 +332,7 @@ class DSSMLTaskSettings(object):
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
 
     def get_hyperparameter_search_settings(self):
-        return self.mltask_settings["modeling"]["gridSearchParams"]
+        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
 
     def save(self):
         """Saves back these settings to the ML Task"""
@@ -340,6 +340,116 @@ class DSSMLTaskSettings(object):
         self.client._perform_empty(
                 "POST", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id),
                 body = self.mltask_settings)
+
+
+class HyperparameterSearchSettings(object):
+
+    def __init__(self, raw_settings):
+        self._raw_settings = raw_settings
+
+
+    def _key_repr(self, key):
+        return "    \'{}\': {}\n".format(key, self._raw_settings[key])
+
+    def __repr__(self):
+
+        res = "Search Strategy:\n"
+        res += self._key_repr("strategy")
+        if self._raw_settings["strategy"] == "BAYESIAN":
+            res += self._key_repr("bayesianOptimizer")
+
+        res += "\nSearch Validation:\n"
+        res += self._key_repr("mode")
+        if self._raw_settings["mode"] in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
+            res += self._key_repr("splitRatio")
+            if self._raw_settings["mode"] == "SHUFFLE":
+                res += self._key_repr("shuffleIterations")
+        elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
+            res += self._key_repr("nFolds")
+
+        res += self._key_repr("stratified")
+        # TODO: pointers to ssdSeed and time variable ?
+
+        res += "\nExecution Settings:\n"
+        if self._raw_settings.get("timeout", 0) > 0:
+            res += self._key_repr("timeout")
+        if self._raw_settings["strategy"] == "GRID":
+            res += self._key_repr("nIter")
+            res += self._key_repr("randomized")
+            if self._raw_settings.get("randomized", False):
+                res += self._key_repr("seed")
+        else:
+            res += self._key_repr("nIterRandom")
+            res += self._key_repr("seed")
+
+        res += "\nParallelism Settings:\n"
+        res += self._key_repr("nJobs")
+        res += self._key_repr("distributed")
+        if self._raw_settings.get("distributed", False):
+            res += self._key_repr("nContainers")
+
+        return res
+
+    def set_strategy(self, strategy):
+        assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
+        self._raw_settings["strategy"] = strategy
+
+    def set_validation_mode(self, mode):
+        assert mode in {"SHUFFLE", "KFOLD", "TIME_SERIES_SINGLE_SPLIT", "TIME_SERIES_KFOLD", "CUSTOM"}
+        self._raw_settings["mode"] = mode
+
+    def set_validation_stratified(self, stratified):
+        assert isinstance(stratified, bool)
+        self._raw_settings["stratified"] = stratified
+
+    def set_validation_n_folds(self, n_folds):
+        assert isinstance(n_folds, int)
+        if self._raw_settings["mode"] not in {"KFOLD", "TIME_SERIES_KFOLD"}:
+            warnings.warn("\'nFolds\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+        self._raw_settings["nFolds"] = n_folds
+
+    def set_validation_split_ratio(self, split_ratio):
+        assert isinstance(split_ratio, float)
+        if self._raw_settings["mode"] not in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
+            warnings.warn("\'splitRatio\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+        self._raw_settings["splitRatio"] = split_ratio
+
+    def set_validation_n_shuffle_iter(self, n_shuffle_iter):
+        assert isinstance(n_shuffle_iter, int)
+        if self._raw_settings["mode"] != "SHUFFLE":
+            warnings.warn("\'shuffleIterations\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+        self._raw_settings["shuffleIterations"] = n_shuffle_iter
+
+    def set_execution_timeout(self, timeout):
+        assert isinstance(timeout, int)
+        self._raw_settings["timeout"] = timeout
+
+    def set_execution_n_iter(self, n_iter):
+        assert isinstance(n_iter, int)
+        if self._raw_settings["strategy"] == "GRID":
+            self._raw_settings["nIter"] = n_iter
+        else:
+            self._raw_settings["nIterRandom"] = n_iter
+
+    def set_grid_search_shuffling(self, shuffled, seed=None):
+        assert isinstance(shuffled, bool)
+        if seed is not None:
+            assert isinstance(seed, int)
+            self._raw_settings["seed"] = seed
+        self._raw_settings["randomized"] = shuffled
+        if self._raw_settings["strategy"] != "GRID":
+            warnings.warn("\'randomized\' and \'seed\' parameters will be ignored in {} strategy".format(self._raw_settings["strategy"]))
+
+    def set_search_distribution(self, distributed, n_containers):
+        assert isinstance(distributed, bool)
+        if n_containers is not None:
+            assert isinstance(n_containers, int)
+            self._raw_settings["nContainers"] = n_containers
+        self._raw_settings["distributed"] = distributed
+
+    def set_n_jobs(self, n_jobs):
+        assert isinstance(n_jobs, int) and n_jobs > 0
+        self._raw_settings["nJobs"] = n_jobs
 
 
 class HyperparameterSettings(object):
