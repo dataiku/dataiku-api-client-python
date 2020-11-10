@@ -301,7 +301,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, projectKey=None):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
@@ -315,12 +315,13 @@ class DSSClient(object):
         :param list pre_queries: (optional) array of queries to run before the query
         :param list post_queries: (optional) array of queries to run after the query
         :param str type: the type of query : either 'sql', 'hive' or 'impala'
-        
+        :param str projectKey: The projectKey on which the query should be run (especially useful for user isolation/impersonation scenario )
+
         :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
         if extra_conf is None:
             extra_conf = {}
-        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string)
+        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, projectKey)
 
     ########################################################
     # Users
