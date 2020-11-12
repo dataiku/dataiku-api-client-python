@@ -348,18 +348,21 @@ class HyperparameterSearchSettings(object):
     def __init__(self, raw_settings):
         self._raw_settings = raw_settings
 
-
     def _key_repr(self, key):
-        return "    \'{}\': {}\n".format(key, self._raw_settings[key])
+        if is_basestring(self._raw_settings[key]):
+            return "    \"{}\"=\"{}\"\n".format(key, self._raw_settings[key])
+        else:
+            return "    \"{}\"={}\n".format(key, self._raw_settings[key])
 
     def __repr__(self):
 
-        res = "Search Strategy:\n"
+        res = self.__class__.__name__ + "(\n"
+        res += "Search Strategy:\n"
         res += self._key_repr("strategy")
         if self._raw_settings["strategy"] == "BAYESIAN":
             res += self._key_repr("bayesianOptimizer")
 
-        res += "\nSearch Validation:\n"
+        res += "Search Validation:\n"
         res += self._key_repr("mode")
         if self._raw_settings["mode"] in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
             res += self._key_repr("splitRatio")
@@ -371,7 +374,7 @@ class HyperparameterSearchSettings(object):
         res += self._key_repr("stratified")
         # TODO: pointers to ssdSeed and time variable ?
 
-        res += "\nExecution Settings:\n"
+        res += "Execution Settings:\n"
         if self._raw_settings.get("timeout", 0) > 0:
             res += self._key_repr("timeout")
         if self._raw_settings["strategy"] == "GRID":
@@ -383,13 +386,15 @@ class HyperparameterSearchSettings(object):
             res += self._key_repr("nIterRandom")
             res += self._key_repr("seed")
 
-        res += "\nParallelism Settings:\n"
+        res += "Parallelism Settings:\n"
         res += self._key_repr("nJobs")
         res += self._key_repr("distributed")
         if self._raw_settings.get("distributed", False):
             res += self._key_repr("nContainers")
-
+        res += ")"
         return res
+    
+    __str__ = __repr__
 
     def set_strategy(self, strategy):
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
