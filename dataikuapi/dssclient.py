@@ -159,7 +159,7 @@ class DSSClient(object):
 
     def get_default_project_key(self):
         """
-        Get the current default projectKey, if available
+        Get the current default project_key, if available
         """
         import dataiku
         return dataiku.default_project_key()
@@ -322,7 +322,7 @@ class DSSClient(object):
         :param list pre_queries: (optional) array of queries to run before the query
         :param list post_queries: (optional) array of queries to run after the query
         :param str type: the type of query : either 'sql', 'hive' or 'impala'
-        :param str projectKey: The projectKey on which the query should be run (especially useful for user isolation/impersonation scenario )
+        :param str project_key: The project_key on which the query should be run (especially useful for user isolation/impersonation scenario)
 
         :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
