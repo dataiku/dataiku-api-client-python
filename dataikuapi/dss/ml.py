@@ -3,7 +3,7 @@ import re
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from ..utils import is_basestring
+from .utils import is_basestring
 import json, warnings
 import time
 from .metrics import ComputedMetrics
