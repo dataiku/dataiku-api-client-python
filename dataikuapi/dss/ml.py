@@ -524,11 +524,16 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
         if self.accepted_values is not None:
-            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={}, accepted_values={})".format(self.name,
-                                                                                                            json.dumps(self._algo_settings[self.name], indent=4),
-                                                                                                            json.dumps(self.accepted_values, indent=4))
+            if is_basestring(self._algo_settings[self.name]):
+                return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\", accepted_values={})".format(self.name,
+                                                                                                                    self._algo_settings[self.name],
+                                                                                                                    json.dumps(self.accepted_values))
+            else:
+                return self.__class__.__name__ + "(hyperparameter=\"{}\", value={}, accepted_values={})".format(self.name,
+                                                                                                                    self._algo_settings[self.name],
+                                                                                                                    str(self.accepted_values))
         else:
-            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, self._algo_settings[self.name])
 
     __str__ = __repr__
 
