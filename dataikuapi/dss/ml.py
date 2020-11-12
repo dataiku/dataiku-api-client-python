@@ -3,6 +3,7 @@ import re
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+from ..utils import is_basestring
 import json, warnings
 import time
 from .metrics import ComputedMetrics
@@ -493,12 +494,12 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
 
     def enable_values(self, values):
         for value in values:
-            assert is_str_or_unicode(value)
+            assert is_basestring(value)
             self.set_values({value: {"enabled": True}})
 
     def disable_values(self, values):
         for value in values:
-            assert is_str_or_unicode(value)
+            assert is_basestring(value)
             self.set_values({value: {"enabled": False}})
 
 
@@ -517,14 +518,6 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, str(self.accepted_values))
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
-
-
-def is_str_or_unicode(val):
-    import sys
-    if sys.version_info < (3, 0):
-        return isinstance(val, basestring)
-    else:
-        return isinstance(val, str)
 
 
 class AlgorithmSettings(dict):
@@ -579,8 +572,8 @@ class AlgorithmSettings(dict):
 
     def _set_single_valued_hyperparameter(self, hyperparameter_name, value):
         self._check_hyperparameter_name(hyperparameter_name)
-        if is_str_or_unicode(self[hyperparameter_name]):
-            assert is_str_or_unicode(value), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
+        if is_basestring(self[hyperparameter_name]):
+            assert is_basestring(value), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
         elif isinstance(self[hyperparameter_name], int) or isinstance(self[hyperparameter_name], float):
             assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(hyperparameter_name)
         else:
@@ -683,7 +676,7 @@ class AlgorithmSettings(dict):
             return self[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
-        assert is_str_or_unicode(hyperparameter_name), "Invalid type for hyperparameter name: expecting a string"
+        assert is_basestring(hyperparameter_name), "Invalid type for hyperparameter name: expecting a string"
         hyperparameter_names = self._get_all_hyperparameter_names()
         if hyperparameter_name not in hyperparameter_names:
             message = "Unknown hyperparameter name: \"{}\". ".format(hyperparameter_name)

@@ -264,3 +264,10 @@ class DSSTaggableObjectSettings(object):
     @custom_fields.setter
     def custom_fields(self, custom_fields):
         self._tod["customFields"] = custom_fields
+
+
+def is_basestring(val):
+    if sys.version_info < (3, 0):
+        return isinstance(val, basestring)
+    else:
+        return isinstance(val, str)
