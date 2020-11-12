@@ -464,7 +464,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
         clean_dict = self._algo_settings._get_active_numerical_hyperparam_dict(self.name)
-        return self.__class__.__name__ + "\nhyperparameter: \"{}\"".format(self.name) + "\nsettings: " + json.dumps(clean_dict, indent=4)
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(clean_dict, indent=4))
 
     __str__ = __repr__
 
@@ -485,7 +485,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 class CategoricalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        return self.__class__.__name__ + "\nhyperparameter: \"{}\"".format(self.name) + "\nsettings: " + json.dumps(self._algo_settings[self.name], indent=4)
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
 
     __str__ = __repr__
 
@@ -510,7 +510,7 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         self.accepted_values = accepted_values
 
     def __repr__(self):
-        return self.__class__.__name__ + "\nhyperparameter: \"{}\"".format(self.name) + "\nvalue: " + json.dumps(self._algo_settings[self.name], indent=4)
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
 
     __str__ = __repr__
 
@@ -542,7 +542,7 @@ class AlgorithmSettings(dict):
                 clean_settings[key] = clean_hyperparam
             else:
                 clean_settings[key] = self[key]
-        return json.dumps(clean_settings, indent=4)
+        return self.__class__.__name__ + "(values={})".format(json.dumps(clean_settings, indent=4))
 
     __str__ = __repr__
 
