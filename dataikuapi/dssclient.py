@@ -157,13 +157,6 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
-    def get_default_project_key(self):
-        """
-        Get the current default project_key, if available
-        """
-        import dataiku
-        return dataiku.default_project_key()
-
     def get_default_project(self):
         """
         Get a handle to the current default project, if available (i.e. if dataiku.default_project_key() is valid)
@@ -328,8 +321,6 @@ class DSSClient(object):
         """
         if extra_conf is None:
             extra_conf = {}
-        if project_key is None:
-            project_key = self.get_default_project_key()
         return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key)
 
     ########################################################
