@@ -6,8 +6,9 @@ from requests.auth import HTTPBasicAuth
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
+from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.notebook import DSSNotebook
@@ -19,7 +20,7 @@ from .utils import DataikuException
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket = None):
+    def __init__(self, host, api_key=None, internal_ticket = None, extra_headers = None):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -38,8 +39,10 @@ class DSSClient(object):
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
         else:
             raise ValueError("API Key is required")
-            
-            
+
+        if extra_headers is not None:
+            self._session.headers.update(extra_headers)
+
     ########################################################
     # Futures
     ########################################################
@@ -111,8 +114,7 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
         """
-        project_folder_id = self._perform_json("GET", "/project-folders/")["id"]
-        return DSSProjectFolder(self, project_folder_id)
+        return self.get_project_folder("ROOT")
 
     def get_project_folder(self, project_folder_id):
         """
@@ -121,7 +123,8 @@ class DSSClient(object):
         :param str project_folder_id: the project folder ID of the desired project folder
         :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
         """
-        return DSSProjectFolder(self, project_folder_id)
+        data = self._perform_json("GET", "/project-folders/%s" % project_folder_id)
+        return DSSProjectFolder(self, data)
 
     ########################################################
     # Projects
@@ -154,6 +157,13 @@ class DSSClient(object):
         """
         return DSSProject(self, project_key)
 
+    def get_default_project(self):
+        """
+        Get a handle to the current default project, if available (i.e. if dataiku.default_project_key() is valid)
+        """
+        import dataiku
+        return DSSProject(self, dataiku.default_project_key())
+
     def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
         """
         Creates a new project, and return a project handle to interact with it.
@@ -183,6 +193,28 @@ class DSSClient(object):
         return DSSProject(self, project_key)
 
     ########################################################
+    # Apps
+    ########################################################
+
+    def list_apps(self):
+        """
+        List the apps
+
+        :returns: a list of apps, each as a dict. Each dict contains at least a 'appId' field
+        :rtype: list of dicts
+        """
+        return self._perform_json("GET", "/apps/")
+
+    def get_app(self, app_id):
+        """
+        Get a handle to interact with a specific app.
+
+        :param str app_id: the id of the desired app
+        :returns: A :class:`dataikuapi.dss.app.DSSApp` to interact with this project
+        """
+        return DSSApp(self, app_id)
+
+    ########################################################
     # Plugins
     ########################################################
 
@@ -193,6 +225,31 @@ class DSSClient(object):
         :returns: list of dict. Each dict contains at least a 'id' field
         """
         return self._perform_json("GET", "/plugins/")
+
+    def download_plugin_stream(self, plugin_id):
+        """
+        Download a development plugin, as a binary stream
+        :param str plugin_id: identifier of the plugin to download
+
+        :param plugin_id:
+        :return: the binary stream
+        """
+        return self._perform_raw("GET", "/plugins/%s/download" % plugin_id)
+
+    def download_plugin_to_file(self, plugin_id, path):
+        """
+        Download a development plugin to a file
+
+        :param str plugin_id: identifier of the plugin to download
+        :param str path: the path where to download the plugin
+        :return: None
+        """
+        stream = self.download_plugin_stream(plugin_id)
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
 
     def install_plugin_from_archive(self, fp):
         """
@@ -213,7 +270,6 @@ class DSSClient(object):
         f = self._perform_json("POST", "/plugins/actions/installFromStore", body={
             "pluginId": plugin_id
         })
-        print(f)
         return DSSFuture(self, f["jobId"])
 
     def install_plugin_from_git(self, repository_url, checkout = "master", subpath=None):
@@ -245,7 +301,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf={}, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
@@ -262,6 +318,8 @@ class DSSClient(object):
         
         :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
         """
+        if extra_conf is None:
+            extra_conf = {}
         return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string)
 
     ########################################################
@@ -290,7 +348,7 @@ class DSSClient(object):
         """
         return DSSUser(self, login)
 
-    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=[], profile='DATA_SCIENTIST'):
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST'):
         """
         Create a user, and return a handle to interact with it
 
@@ -300,11 +358,13 @@ class DSSClient(object):
         :param str password: the password of the new user
         :param str display_name: the displayed name for the new user
         :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
-        :param list groups: the names of the groups the new user belongs to
+        :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user, can be one of READER, DATA_ANALYST or DATA_SCIENTIST
 
         :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
         """
+        if groups is None:
+            groups = []
         resp = self._perform_text(
                "POST", "/admin/users/", body={
                    "login" : login,
@@ -315,6 +375,9 @@ class DSSClient(object):
                    "userProfile" : profile
                })
         return DSSUser(self, login)
+
+    def get_own_user(self):
+        return DSSOwnUser(self)
 
     ########################################################
     # Groups
@@ -386,7 +449,7 @@ class DSSClient(object):
         """
         return DSSConnection(self, name)
 
-    def create_connection(self, name, type, params={}, usable_by='ALL', allowed_groups=[]):
+    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None):
         """
         Create a connection, and return a handle to interact with it
 
@@ -394,14 +457,18 @@ class DSSClient(object):
 
         :param name: the name of the new connection
         :param type: the type of the new connection
-        :param params: the parameters of the new connection, as a JSON object
+        :param dict params: the parameters of the new connection, as a JSON object (defaults to `{}`)
         :param usable_by: the type of access control for the connection. Either 'ALL' (=no access control)
             or 'ALLOWED' (=access restricted to users of a list of groups)
-        :param allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list 
-            of names of the groups whose users are allowed to use the new connection
+        :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
+            of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
         
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
+        if params is None:
+            params = {}
+        if allowed_groups is None:
+            allowed_groups = []
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
                    "name" : name,
@@ -659,13 +726,15 @@ class DSSClient(object):
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
 
-    def log_custom_audit(self, custom_type, custom_params={}):
+    def log_custom_audit(self, custom_type, custom_params=None):
         """
         Log a custom entry to the audit trail
         
-        :param str custom_type value for customMsgType in audit trail item
-        :param dict custom_params value for customMsgParams in audit trail item
+        :param str custom_type: value for customMsgType in audit trail item
+        :param dict custom_params: value for customMsgParams in audit trail item (defaults to `{}`)
         """
+        if custom_params is None:
+            custom_params = {}
         return self._perform_empty("POST",
             "/admin/audit/custom/%s" % custom_type,
             body = custom_params)
@@ -780,10 +849,15 @@ class DSSClient(object):
     # Data Catalog
     ########################################################
 
-    def catalog_index_connections(self, connection_names=[], all_connections=False, indexing_mode="FULL"):
+    def catalog_index_connections(self, connection_names=None, all_connections=False, indexing_mode="FULL"):
         """
         Triggers an indexing of multiple connections in the data catalog
+
+        :param list connection_names: list of connections to index, ignored if `all_connections=True` (defaults to `[]`)
+        :param bool all_connections: index all connections (defaults to `False`)
         """
+        if connection_names is None:
+            connection_names = []
         return self._perform_json("POST", "/catalog/index", body={
             "connectionNames": connection_names,
             "indexAllConnections": all_connections,
@@ -844,6 +918,21 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
+        
+    def get_ticket_from_browser_headers(self, headers_dict):
+         """
+         Returns a ticket for the DSS user authenticated by the dictionary of
+         HTTP headers provided in headers_dict.
+
+         This is only used in webapp backends
+
+         This method returns a ticket to use as a X-DKU-APITicket header
+
+         :param: headers_dict dict: Dictionary of HTTP headers
+         :returns: a string
+         :rtype: string
+         """
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
 
     def create_personal_api_key(self, label):
         """
@@ -857,6 +946,24 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/personal-api-keys",
                 params={"label": label})
+
+    ########################################################
+    # Container execution
+    ########################################################
+
+    def push_base_images(self):
+        """
+        Push base images for Kubernetes container-execution and Spark-on-Kubernetes
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/push-base-images")
+        return DSSFuture.from_resp(self, resp)
+
+    def apply_kubernetes_namespaces_policies(self):
+        """
+        Apply Kubernetes namespaces policies defined in the general settings
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
+        return DSSFuture.from_resp(self, resp)
 
     ########################################################
     # Licensing
@@ -933,17 +1040,16 @@ class DSSClient(object):
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
 
-
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client
         self.import_id = import_id
 
-    def execute(self, settings = {}):
+    def execute(self, settings=None):
         """
         Executes the import with provided settings.
 
-        :param dict settings: Dict of import settings. The following settings are available:
+        :param dict settings: Dict of import settings (defaults to `{}`). The following settings are available:
 
             * targetProjectKey (string): Key to import under. Defaults to the original project key
             * remapping (dict): Dictionary of connection and code env remapping settings.
@@ -966,6 +1072,8 @@ class TemporaryImportHandle(object):
         @warning: You must check the 'success' flag
         """
         # Empty JSON dicts can't be parsed properly
+        if settings is None:
+            settings = {}
         if settings == {}:
             settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),

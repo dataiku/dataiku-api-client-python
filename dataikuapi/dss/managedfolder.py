@@ -2,18 +2,29 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+from requests import utils
 from .metrics import ComputedMetrics
+from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
 
+try:
+    basestring
+except NameError:
+    basestring = str
 class DSSManagedFolder(object):
     """
     A managed folder on the DSS instance
     """
     def __init__(self, client, project_key, odb_id):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.odb_id = odb_id
 
+    @property
+    def id(self):
+        return self.odb_id
+    
     ########################################################
     # Managed folder deletion
     ########################################################
@@ -76,27 +87,26 @@ class DSSManagedFolder(object):
             the file's content, as a stream
         """
         return self.client._perform_raw(
-                "GET", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
+                "GET", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)))
 
     def delete_file(self, path):
         """
         Delete a file from the managed folder
         """
         return self.client._perform_empty(
-                "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, path))
+                "DELETE", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)))
 
-    def put_file(self, name, f):
+    def put_file(self, path, f):
         """
         Upload the file to the managed folder
         
         Args:
             f: the file contents, as a stream
-            name: the name of the file
+            path: the path of the file
         """
-
         return self.client._perform_json_upload(
-                "POST", "/projects/%s/managedfolders/%s/contents/" % (self.project_key, self.odb_id),
-                name, f)
+                "POST", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)),
+                "", f)
 
     ########################################################
     # Managed folder actions
@@ -150,8 +160,46 @@ class DSSManagedFolder(object):
 
                 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this managed folder
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.project.get_flow().get_zone(zone)
+        zone.add_item(self)
+
+    def share_to_zone(self, zone):
+        """
+        Share this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to share the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.add_shared(self)
+
+    def unshare_from_zone(self, zone):
+        """
+        Unshare this object from a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` from where to unshare the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.remove_shared(self)
 
     def get_usages(self):
         """
@@ -162,9 +210,6 @@ class DSSManagedFolder(object):
         """
         return self.client._perform_json("GET", "/projects/%s/managedfolders/%s/usages" % (self.project_key, self.odb_id))
 
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the managed folder
@@ -173,3 +218,22 @@ class DSSManagedFolder(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "MANAGED_FOLDER", self.odb_id)
+
+    ########################################################
+    # utilities
+    ########################################################
+    def copy_to(self, target, write_mode="OVERWRITE"):
+        """
+        Copies the data of this folder to another folder
+
+        :param target Folder: a :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` representing the target of this copy
+        :returns: a DSSFuture representing the operation
+        """
+        dqr = {
+             "targetProjectKey" : target.project_key,
+             "targetFolderId": target.odb_id,
+             "writeMode" : write_mode
+        }
+        future_resp = self.client._perform_json("POST", "/projects/%s/managedfolders/%s/actions/copyTo" % (self.project_key, self.odb_id), body=dqr)
+        return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
+
