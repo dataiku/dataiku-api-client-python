@@ -30,15 +30,15 @@ class DSSWiki(object):
         """
         return DSSWikiSettings(self.client, self.project_key, self.client._perform_json("GET", "/projects/%s/wiki/" % (self.project_key)))
 
-    def get_article(self, article_id):
+    def get_article(self, article_id_or_name):
         """
         Get a wiki article
 
-        :param str article_id: the article ID
+        :param str article_id_or_name: reference to the article, it can be its ID or its name
         :returns: a handle to manage the Article
         :rtype: :class:`dataikuapi.dss.wiki.DSSWikiArticle`
         """
-        return DSSWikiArticle(self.client, self.project_key, article_id)
+        return DSSWikiArticle(self.client, self.project_key, article_id_or_name)
 
     def __flatten_taxonomy__(self, taxonomy):
         """
@@ -206,11 +206,14 @@ class DSSWikiArticle(object):
     """
     A handle to manage an article
     """
-    def __init__(self, client, project_key, article_id):
+    def __init__(self, client, project_key, article_id_or_name):
         """Do not call directly, use :meth:`dataikuapi.dss.wiki.DSSWiki.get_article`"""
         self.client = client
         self.project_key = project_key
-        self.article_id = article_id
+
+        # Retrieve the real article id
+        article_data = self.client._perform_json("GET", "/projects/%s/wiki/%s" % (project_key, article_id_or_name))
+        self.article_id = article_data["article"]['id']
         # encode in UTF-8 if its python2 and unicode
         if sys.version_info < (3,0) and isinstance(self.article_id, unicode):
             self.article_id = self.article_id.encode('utf-8')
@@ -328,6 +331,5 @@ class DSSWikiArticleData(object):
     def save(self):
         """
         Save the current article data to the backend.
-        We are using the UUID of the page due to restriction on the REST API.
         """
-        self.article_data = self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, self.article_data["article"]['id']), body=self.article_data)
+        self.article_data = self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, dku_quote_fn(self.article_id)), body=self.article_data)
