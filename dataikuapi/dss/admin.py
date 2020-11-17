@@ -290,7 +290,7 @@ class DSSUserSettingsBase(object):
 
     def set_basic_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, user, password):
         """Sets per-user-credentials for a plugin preset that takes a user/password pair"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         self.settings["credentials"][name] = {
             "type": "BASIC",
@@ -300,7 +300,7 @@ class DSSUserSettingsBase(object):
 
     def set_oauth2_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, refresh_token):
         """Sets per-user-credentials for a plugin preset that takes a OAuth refresh token"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         self.settings["credentials"][name] = {
             "type": "OAUTH_REFRESH_TOKEN",
@@ -309,7 +309,7 @@ class DSSUserSettingsBase(object):
 
     def remove_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name):
         """Removes per-user-credentials for a plugin preset"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         if name in self.settings["credentials"]:
             del self.settings["credentials"][name]
