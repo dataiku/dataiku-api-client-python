@@ -117,6 +117,40 @@ class DSSPlugin(object):
         return self.client.get_future(ret["jobId"])
 
     ########################################################
+    # Plugin settings
+    ########################################################
+
+    def get_settings(self):
+        """
+        Get the plugin settings
+        """
+        return self.client._perform_json("GET", "/plugins/%s/settings" % (self.plugin_id))
+
+    def set_settings(self, plugin_settings):
+        """
+        Set the plugin settings
+
+        :param plugin_settings: the new plugin settings
+        """
+        return self.client._perform_json("POST", "/plugins/%s/settings" % (self.plugin_id), body=plugin_settings)
+
+    ########################################################
+    # Plugin code env
+    ########################################################
+
+    def create_code_env(self):
+        """
+        Create a new plugin code-env
+        """
+        return self.client._perform_json("POST", "/plugins/%s/code-env/actions/create" % (self.plugin_id))
+
+    def update_code_env(self):
+        """
+        Update the current plugin code-env
+        """
+        return self.client._perform_json("POST", "/plugins/%s/code-env/actions/update" % (self.plugin_id))
+
+    ########################################################
     # Managing the dev plugin's contents
     ########################################################
 
@@ -147,4 +181,90 @@ class DSSPlugin(object):
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)
 
+    def delete_file(self, path):
+        """
+        Get a file from the plugin folder
         
+        Args:
+            path: the name of the file, from the root of the plugin
+
+        Returns:
+            the file's content, as a stream
+        """
+        return self.client._perform_raw("DELETE", "/plugins/%s/contents/%s" % (self.plugin_id, path)).raw
+
+    ########################################################
+    # Dev plugin Git integration
+    ########################################################
+
+    def pull_rebase(self):
+        """
+        Pull the latest version from the current branch of the plugin. Aborts if merge fails.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/pullRebase" % (self.plugin_id))
+
+    def push(self):
+        """
+        Push from the current branch of the plugin.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/push" % (self.plugin_id))
+
+    def fetch(self):
+        """
+        Fetch new content from remote repository.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/fetch" % (self.plugin_id))
+
+    def reset_to_local_head_state(self):
+        """
+        Drop uncommitted changes and resets the current branch to local HEAD.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/resetToLocalHeadState" % (self.plugin_id))
+
+    def reset_to_remote_head_state(self):
+        """
+        Delete all of your non-pushed work on the current branch and resets it to the remote state.
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/resetToRemoteHeadState" % (self.plugin_id))
+
+    def get_remote(self):
+        """
+        Gets the URL of the Git remote origin for your local repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/gitRemote" % (self.plugin_id))
+
+    def set_remote(self, repository_URL):
+        """
+        Sets the URL of the Git remote origin for your local repository.
+
+        :param str repository_URL: the repository URL
+        """
+        return self.client._perform_json("POST", "/plugins/%s/gitRemote" % (self.plugin_id), body={'repositoryUrl': repository_URL})
+
+    def delete_remote(self):
+        """
+        Removes the URL of the Git remote origin for your local repository.
+        """
+        return self.client._perform_json("DELETE", "/plugins/%s/gitRemote" % (self.plugin_id))
+
+    def get_branches(self):
+        """
+        Retrieves the list of available branches on your repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/gitBranches" % (self.plugin_id))
+
+    def get_active_branch(self):
+        """
+        Gets the active branch on your local repository.
+        """
+        return self.client._perform_json("GET", "/plugins/%s/activeGitBranch")
+
+    def set_active_branch(self, branch, creation=False):
+        """
+        Sets the active branch on your local repository.
+
+        :param str branch: the branch name
+        :param bool creation: should it be created before checkout
+        """
+        return self.client._perform_json("POST", "/plugins/%s/activeGitBranch" % (self.plugin_id), body={'branch': branch, 'creation': creation})
+
