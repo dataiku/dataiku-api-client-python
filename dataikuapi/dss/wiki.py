@@ -98,7 +98,7 @@ class DSSWiki(object):
             "paperSize": paperSize,
             "exportAttachment": exportAttachment
         }
-        return self.client._perform_raw("POST", "/projects/%s/wiki/actions/export" % (self.project_key, self.article_id), body=body)
+        return self.client._perform_raw("POST", "/projects/%s/wiki/actions/export" % (self.project_key), body=body)
 
     def export_to_file(self, path, paperSize="A4", exportAttachment=False):
         """
