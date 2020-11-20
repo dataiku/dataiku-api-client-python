@@ -84,7 +84,10 @@ class DSSRecipe(object):
             raise Exception("recipe has no outputs, can't run it")
 
         jd = self.client.get_project(self.project_key).new_job(job_type)
-        jd.with_output(output_refs[0], partition=partitions)
+        if isinstance(settings, TrainingRecipeSettings):
+            jd.with_output(output_refs[0], object_type="SAVED_MODEL", partition=partitions)
+        else:
+            jd.with_output(output_refs[0], partition=partitions)
 
         if wait:
             return jd.start_and_wait()
@@ -133,6 +136,10 @@ class DSSRecipe(object):
             return SplitRecipeSettings(self, data)
         elif type == "prepare" or type == "shaker":
             return PrepareRecipeSettings(self, data)
+        elif type == "prediction_training":
+            return TrainingRecipeSettings(self, data)
+        elif type == "clustering_training":
+            return TrainingRecipeSettings(self, data)
         #elif type == "prediction_scoring":
         #elif type == "clustering_scoring":
         elif type == "download":
@@ -1071,6 +1078,13 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'download', name, project)
+
+
+class TrainingRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a prediction or clustering training recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
+    """
+    pass # TODO: Write helpers for training
 
 
 #####################################################
