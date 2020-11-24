@@ -682,17 +682,16 @@ class AlgorithmSettings(dict):
             assert isinstance(values, dict), "Invalid values input type for hyperparameter " \
                                              "\"{}\": ".format(hyperparameter_name) + \
                                              "must be a dictionary"
-            admissible_values = list(self[hyperparameter_name]["values"].keys())
-            for key in values.keys():
-                assert key in admissible_values, "Unknown categorical value \"" + key + "\". Expected a member of " + str(admissible_values)
-                value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(hyperparameter_name, key)
+            admissible_values = self[hyperparameter_name]["values"].keys()
+            for category, setting in values.items():
+                assert category in admissible_values, "Unknown categorical value \"" + category + "\". Expected a member of " + str(list(admissible_values))
+                value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(hyperparameter_name, category)
                 value_error_message += "expected a {\"enabled\": bool} dictionary"
-                val = values[key]
-                assert isinstance(val, dict), value_error_message
-                assert list(val.keys()) == ["enabled"], value_error_message
-                assert list(type(v) for v in val.values()) == [bool], value_error_message
-            for key in values.keys():
-                self[hyperparameter_name]["values"][key] = values[key]
+                assert isinstance(setting, dict), value_error_message
+                assert list(setting.keys()) == ["enabled"], value_error_message
+                assert list(type(v) for v in setting.values()) == [bool], value_error_message
+            for category, setting in values.items():
+                self[hyperparameter_name]["values"][category] = setting
 
     def _get_strategy(self):
         return self._hyperparameter_search_params["strategy"]
