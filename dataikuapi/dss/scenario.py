@@ -326,7 +326,7 @@ class DSSScenarioSettings(object):
         elif "creationTag" in self.data:
             return self.data["creationTag"]["lastModifiedBy"]["login"]
         else:
-            return Non
+            return None
 
     @property
     def raw_triggers(self):
