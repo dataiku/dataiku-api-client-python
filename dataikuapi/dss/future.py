@@ -72,7 +72,7 @@ class DSSFuture(object):
         """
         Wait and get the future result
         """
-        if self.state.get('hasResult', False) and 'result' in self.state:
+        if self.state.get('hasResult', False):
             return self.result_wrapper(self.state.get('result', None))
         if self.state is None or not self.state.get('hasResult', False) or self.state_is_peek:
             self.get_state()
