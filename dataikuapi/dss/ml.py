@@ -498,23 +498,29 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def set_values(self, values=None):
         self._algo_settings._set_categorical_values(self.name, values=values)
 
-    def enable_values(self, values, disable_others=False):
-        for value in values:
-            assert is_basestring(value)
-            self.set_values({value: {"enabled": True}})
+    def enable_categories(self, categories, disable_others=False):
+        accepted_categories = self._algo_settings[self.name]["values"].keys()
+        for category in categories:
+            assert is_basestring(category)
+            assert category in accepted_categories
+        self.set_values({category: {"enabled": True}
+                         for category in categories})
         if disable_others:
-            other_values = [key for key in self._algo_settings[self.name]["values"].keys() if key not in values]
-            for value in other_values:
-                self.set_values({value: {"enabled": False}})
+            self.set_values({category: {"enabled": False}
+                             for category in accepted_categories
+                             if category not in categories})
 
-    def disable_values(self, values, enable_others=False):
-        for value in values:
-            assert is_basestring(value)
-            self.set_values({value: {"enabled": False}})
+    def disable_categories(self, categories, enable_others=False):
+        accepted_categories = self._algo_settings[self.name]["values"].keys()
+        for category in categories:
+            assert is_basestring(category)
+            assert category in accepted_categories
+        self.set_values({category: {"enabled": False}
+                         for category in categories})
         if enable_others:
-            other_values = [key for key in self._algo_settings[self.name]["values"].keys() if key not in values]
-            for value in other_values:
-                self.set_values({value: {"enabled": True}})
+            self.set_values({category: {"enabled": True}
+                             for category in accepted_categories
+                             if category not in categories})
 
 
 class SingleValuedHyperparameterSettings(HyperparameterSettings):
