@@ -474,12 +474,12 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     __str__ = __repr__
 
-    def set_explicit_values(self, values, mode_becomes_explicit=True):
-        self._algo_settings._set_numerical_explicit_values(self.name, values, mode_becomes_explicit=mode_becomes_explicit)
+    def set_explicit_values(self, values, set_mode_to_explicit=True):
+        self._algo_settings._set_numerical_explicit_values(self.name, values, set_mode_to_explicit=set_mode_to_explicit)
 
-    def set_range(self, range_min=None, range_max=None, nb_values=None, mode_becomes_range=True):
+    def set_range(self, range_min=None, range_max=None, nb_values=None, set_mode_to_range=True):
         self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values,
-                                                 mode_becomes_range=mode_becomes_range)
+                                                 set_mode_to_range=set_mode_to_range)
 
     def set_mode_to_explicit(self):
         self._algo_settings._set_hyperparameter_mode_to_explicit(self.name)
@@ -624,7 +624,7 @@ class AlgorithmSettings(dict):
         self[hyperparameter_name]["gridMode"] = "EXPLICIT"
         self[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
-    def _set_numerical_explicit_values(self, hyperparameter_name, values, mode_becomes_explicit=True):
+    def _set_numerical_explicit_values(self, hyperparameter_name, values, set_mode_to_explicit=True):
         self._check_hyperparameter_name(hyperparameter_name)
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(hyperparameter_name) + \
@@ -642,10 +642,10 @@ class AlgorithmSettings(dict):
                 warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
         self[hyperparameter_name]["values"] = values
 
-        if mode_becomes_explicit:
+        if set_mode_to_explicit:
             self._set_hyperparameter_mode_to_explicit(hyperparameter_name)
 
-    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, mode_becomes_range=True):
+    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, set_mode_to_range=True):
         self._check_hyperparameter_name(hyperparameter_name)
 
         if range_min is None and range_max is None and nb_values is None:
@@ -671,7 +671,7 @@ class AlgorithmSettings(dict):
             if nb_values is not None:
                 self[hyperparameter_name]["range"]["nbValues"] = nb_values
 
-        if mode_becomes_range:
+        if set_mode_to_range:
             self._set_hyperparameter_mode_to_range(hyperparameter_name)
 
     def _set_categorical_values(self, hyperparameter_name, values=None):
@@ -1076,7 +1076,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
 
-        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
+        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name),
                         CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
         :param str feature_name: Name of the feature to use as sample weight
         """
