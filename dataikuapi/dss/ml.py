@@ -246,14 +246,14 @@ class DSSMLTaskSettings(object):
         Please refer to the documentation for details on available algorithms.
 
         :param str algorithm_name: Name (in capitals) of the algorithm.
-        :return: A dict of the settings for an algorithm
+        :return: An AlgortihmSettings (extended dict) for an algorithm.
         :rtype: AlgorithmSettings
         """
         algorithm_settings_class = AlgorithmSettings
         if algorithm_name in self.__class__.algorithm_remap:
-            named_algorithm_settings = self.__class__.algorithm_remap[algorithm_name]
-            algorithm_name = named_algorithm_settings.algorithm_name
-            algorithm_settings_class = named_algorithm_settings.algorithm_settings_class
+            algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
+            algorithm_name = algorithm_meta.algorithm_name
+            algorithm_settings_class = algorithm_meta.algorithm_settings_class
 
         raw_algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
         raw_hyperparameter_search_settings = self.mltask_settings["modeling"]["gridSearchParams"]
@@ -383,6 +383,7 @@ class HyperparameterSearchSettings(object):
             if self._raw_settings.get("randomized", False):
                 res += self._key_repr("seed")
         else:
+            # RANDOM and BAYESIAN search strategies
             res += self._key_repr("nIterRandom")
             res += self._key_repr("seed")
 
@@ -411,19 +412,19 @@ class HyperparameterSearchSettings(object):
     def set_validation_n_folds(self, n_folds):
         assert isinstance(n_folds, int)
         if self._raw_settings["mode"] not in {"KFOLD", "TIME_SERIES_KFOLD"}:
-            warnings.warn("\'nFolds\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+            warnings.warn("\"nFolds\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
         self._raw_settings["nFolds"] = n_folds
 
     def set_validation_split_ratio(self, split_ratio):
         assert isinstance(split_ratio, float)
         if self._raw_settings["mode"] not in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
-            warnings.warn("\'splitRatio\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+            warnings.warn("\"splitRatio\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
         self._raw_settings["splitRatio"] = split_ratio
 
     def set_validation_n_shuffle_iter(self, n_shuffle_iter):
         assert isinstance(n_shuffle_iter, int)
         if self._raw_settings["mode"] != "SHUFFLE":
-            warnings.warn("\'shuffleIterations\' parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
+            warnings.warn("\"shuffleIterations\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
         self._raw_settings["shuffleIterations"] = n_shuffle_iter
 
     def set_execution_timeout(self, timeout):
@@ -444,7 +445,7 @@ class HyperparameterSearchSettings(object):
             self._raw_settings["seed"] = seed
         self._raw_settings["randomized"] = shuffled
         if self._raw_settings["strategy"] != "GRID":
-            warnings.warn("\'randomized\' and \'seed\' parameters will be ignored in {} strategy".format(self._raw_settings["strategy"]))
+            warnings.warn("\"randomized\" and \"seed\" parameters will be ignored in {} strategy".format(self._raw_settings["strategy"]))
 
     def set_search_distribution(self, distributed, n_containers):
         assert isinstance(distributed, bool)
@@ -473,18 +474,18 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     __str__ = __repr__
 
-    def set_explicit_values(self, values, mode_as_explicit=True):
-        self._algo_settings._set_numerical_explicit_values(self.name, values, mode_as_explicit=mode_as_explicit)
+    def set_explicit_values(self, values, mode_becomes_explicit=True):
+        self._algo_settings._set_numerical_explicit_values(self.name, values, mode_becomes_explicit=mode_becomes_explicit)
 
-    def set_range(self, range_min=None, range_max=None, nb_values=None, mode_as_range=True):
+    def set_range(self, range_min=None, range_max=None, nb_values=None, mode_becomes_range=True):
         self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values,
-                                                 mode_as_range=mode_as_range)
+                                                 mode_becomes_range=mode_becomes_range)
 
-    def set_mode_as_explicit(self):
-        self._algo_settings._set_hyperparameter_mode_as_explicit(self.name)
+    def set_mode_to_explicit(self):
+        self._algo_settings._set_hyperparameter_mode_to_explicit(self.name)
 
-    def set_mode_as_range(self):
-        self._algo_settings._set_hyperparameter_mode_as_range(self.name)
+    def set_mode_to_range(self):
+        self._algo_settings._set_hyperparameter_mode_to_range(self.name)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
@@ -603,21 +604,21 @@ class AlgorithmSettings(dict):
             raise ValueError("Hyperparameter \"{}\" is not single valued".format(hyperparameter_name))
         self[hyperparameter_name] = value
 
-    def _set_hyperparameter_mode_as_range(self, hyperparameter_name):
+    def _set_hyperparameter_mode_to_range(self, hyperparameter_name):
         self._check_hyperparameter_name(hyperparameter_name)
         self._check_hyperparameter_searchable(hyperparameter_name)
         self._check_hyperparameter_numerical(hyperparameter_name)
         self[hyperparameter_name]["gridMode"] = "RANGE"
         self[hyperparameter_name]["randomMode"] = "RANGE"
 
-    def _set_hyperparameter_mode_as_explicit(self, hyperparameter_name):
+    def _set_hyperparameter_mode_to_explicit(self, hyperparameter_name):
         self._check_hyperparameter_name(hyperparameter_name)
         self._check_hyperparameter_searchable(hyperparameter_name)
         self._check_hyperparameter_numerical(hyperparameter_name)
         self[hyperparameter_name]["gridMode"] = "EXPLICIT"
         self[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
-    def _set_numerical_explicit_values(self, hyperparameter_name, values, mode_as_explicit=True):
+    def _set_numerical_explicit_values(self, hyperparameter_name, values, mode_becomes_explicit=True):
         self._check_hyperparameter_name(hyperparameter_name)
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(hyperparameter_name) + \
@@ -635,10 +636,10 @@ class AlgorithmSettings(dict):
                 warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
         self[hyperparameter_name]["values"] = values
 
-        if mode_as_explicit:
-            self._set_hyperparameter_mode_as_explicit(hyperparameter_name)
+        if mode_becomes_explicit:
+            self._set_hyperparameter_mode_to_explicit(hyperparameter_name)
 
-    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, mode_as_range=True):
+    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, mode_becomes_range=True):
         self._check_hyperparameter_name(hyperparameter_name)
 
         if range_min is None and range_max is None and nb_values is None:
@@ -654,7 +655,6 @@ class AlgorithmSettings(dict):
                 limit_max = self[hyperparameter_name]["limit"].get("max")
                 if limit_max is not None:
                     assert range_max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(range_max, hyperparameter_name, limit_max)
-                self[hyperparameter_name]["range"]["max"] = range_max
             if nb_values is not None:
                 assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(hyperparameter_name)
 
@@ -665,8 +665,8 @@ class AlgorithmSettings(dict):
             if nb_values is not None:
                 self[hyperparameter_name]["range"]["nbValues"] = nb_values
 
-        if mode_as_range:
-            self._set_hyperparameter_mode_as_range(hyperparameter_name)
+        if mode_becomes_range:
+            self._set_hyperparameter_mode_to_range(hyperparameter_name)
 
     def _set_categorical_values(self, hyperparameter_name, values=None):
         self._check_hyperparameter_name(hyperparameter_name)
@@ -710,7 +710,7 @@ class AlgorithmSettings(dict):
         assert isinstance(self[hyperparameter_name], dict), "Hyperparameter \"{}\" cannot be searched".format(hyperparameter_name)
 
     def _check_hyperparameter_numerical(self, hyperparameter_name):
-        assert "range" in self[hyperparameter_name], "Hyperparameter \"{}\" is not numerical or cannot be searched".format(hyperparameter_name)
+        assert "range" in self[hyperparameter_name], "Hyperparameter \"{}\" is not numerical".format(hyperparameter_name)
 
     def _check_range_bound(self, hyperparameter_name, range_bound):
         assert "range" in self[hyperparameter_name], "Cannot modify range of non-numerical hyperparameter " \
@@ -962,7 +962,7 @@ class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
         self.step_size = NumericalHyperparameterSettings("step_size", self)
 
 
-class NamedAlgorithm:
+class AlgorithmMeta:
     def __init__(self, algorithm_name, algorithm_settings_class=AlgorithmSettings):
         self.algorithm_name = algorithm_name
         self.algorithm_settings_class = algorithm_settings_class
@@ -971,40 +971,40 @@ class NamedAlgorithm:
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
-            "RANDOM_FOREST_CLASSIFICATION": NamedAlgorithm("random_forest_classification", RandomForestSettings),
-            "RANDOM_FOREST_REGRESSION": NamedAlgorithm("random_forest_regression", RandomForestSettings),
-            "EXTRA_TREES": NamedAlgorithm("extra_trees", RandomForestSettings),
-            "GBT_CLASSIFICATION": NamedAlgorithm("gbt_classification", GradientBoostedTreesSettings),
-            "GBT_REGRESSION": NamedAlgorithm("gbt_regression", GradientBoostedTreesSettings),
-            "DECISION_TREE_CLASSIFICATION": NamedAlgorithm("decision_tree_classification", DecisionTreeSettings),
-            "DECISION_TREE_REGRESSION": NamedAlgorithm("decision_tree_regression", DecisionTreeSettings),
-            "RIDGE_REGRESSION": NamedAlgorithm("ridge_regression", RidgeRegressionSettings),
-            "LASSO_REGRESSION": NamedAlgorithm("lasso_regression", LassoRegressionSettings),
-            "LEASTSQUARE_REGRESSION": NamedAlgorithm("leastsquare_regression", OLSSettings),
-            "SGD_REGRESSION": NamedAlgorithm("sgd_regression", SGDSettings),
-            "KNN": NamedAlgorithm("knn", KNNSettings),
-            "LOGISTIC_REGRESSION": NamedAlgorithm("logistic_regression", LogitSettings),
-            "NEURAL_NETWORK": NamedAlgorithm("neural_network", MLPSettings),
-            "SVC_CLASSIFICATION": NamedAlgorithm("svc_classifier", SVMSettings),
-            "SVM_REGRESSION": NamedAlgorithm("svm_regression", SVMSettings),
-            "SGD_CLASSIFICATION": NamedAlgorithm("sgd_classifier", SGDSettings),
-            "LARS": NamedAlgorithm("lars_params", LARSSettings),
-            "XGBOOST_CLASSIFICATION": NamedAlgorithm("xgboost", XGBoostSettings),
-            "XGBOOST_REGRESSION": NamedAlgorithm("xgboost", XGBoostSettings),
-            "SPARKLING_DEEP_LEARNING": NamedAlgorithm("deep_learning_sparkling"),
-            "SPARKLING_GBM": NamedAlgorithm("gbm_sparkling"),
-            "SPARKLING_RF": NamedAlgorithm("rf_sparkling"),
-            "SPARKLING_GLM": NamedAlgorithm("glm_sparkling"),
-            "SPARKLING_NB": NamedAlgorithm("nb_sparkling"),
-            "MLLIB_LOGISTIC_REGRESSION": NamedAlgorithm("mllib_logit", MLLibLogitSettings),
-            "MLLIB_NAIVE_BAYES": NamedAlgorithm("mllib_naive_bayes", MLLibNaiveBayesSettings),
-            "MLLIB_LINEAR_REGRESSION": NamedAlgorithm("mllib_linreg", MLLibLinearRegressionSettings),
-            "MLLIB_RANDOM_FOREST": NamedAlgorithm("mllib_rf", MLLibRandomForestSettings),
-            "MLLIB_GBT": NamedAlgorithm("mllib_gbt", MLLibGBTSettings),
-            "MLLIB_DECISION_TREE": NamedAlgorithm("mllib_dt", MLLibDecisionTreeSettings),
-            "VERTICA_LINEAR_REGRESSION": NamedAlgorithm("vertica_linear_regression"),
-            "VERTICA_LOGISTIC_REGRESSION": NamedAlgorithm("vertica_logistic_regression"),
-            "KERAS_CODE": NamedAlgorithm("keras")
+            "RANDOM_FOREST_CLASSIFICATION": AlgorithmMeta("random_forest_classification", RandomForestSettings),
+            "RANDOM_FOREST_REGRESSION": AlgorithmMeta("random_forest_regression", RandomForestSettings),
+            "EXTRA_TREES": AlgorithmMeta("extra_trees", RandomForestSettings),
+            "GBT_CLASSIFICATION": AlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
+            "GBT_REGRESSION": AlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
+            "DECISION_TREE_CLASSIFICATION": AlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
+            "DECISION_TREE_REGRESSION": AlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
+            "RIDGE_REGRESSION": AlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+            "LASSO_REGRESSION": AlgorithmMeta("lasso_regression", LassoRegressionSettings),
+            "LEASTSQUARE_REGRESSION": AlgorithmMeta("leastsquare_regression", OLSSettings),
+            "SGD_REGRESSION": AlgorithmMeta("sgd_regression", SGDSettings),
+            "KNN": AlgorithmMeta("knn", KNNSettings),
+            "LOGISTIC_REGRESSION": AlgorithmMeta("logistic_regression", LogitSettings),
+            "NEURAL_NETWORK": AlgorithmMeta("neural_network", MLPSettings),
+            "SVC_CLASSIFICATION": AlgorithmMeta("svc_classifier", SVMSettings),
+            "SVM_REGRESSION": AlgorithmMeta("svm_regression", SVMSettings),
+            "SGD_CLASSIFICATION": AlgorithmMeta("sgd_classifier", SGDSettings),
+            "LARS": AlgorithmMeta("lars_params", LARSSettings),
+            "XGBOOST_CLASSIFICATION": AlgorithmMeta("xgboost", XGBoostSettings),
+            "XGBOOST_REGRESSION": AlgorithmMeta("xgboost", XGBoostSettings),
+            "SPARKLING_DEEP_LEARNING": AlgorithmMeta("deep_learning_sparkling"),
+            "SPARKLING_GBM": AlgorithmMeta("gbm_sparkling"),
+            "SPARKLING_RF": AlgorithmMeta("rf_sparkling"),
+            "SPARKLING_GLM": AlgorithmMeta("glm_sparkling"),
+            "SPARKLING_NB": AlgorithmMeta("nb_sparkling"),
+            "MLLIB_LOGISTIC_REGRESSION": AlgorithmMeta("mllib_logit", MLLibLogitSettings),
+            "MLLIB_NAIVE_BAYES": AlgorithmMeta("mllib_naive_bayes", MLLibNaiveBayesSettings),
+            "MLLIB_LINEAR_REGRESSION": AlgorithmMeta("mllib_linreg", MLLibLinearRegressionSettings),
+            "MLLIB_RANDOM_FOREST": AlgorithmMeta("mllib_rf", MLLibRandomForestSettings),
+            "MLLIB_GBT": AlgorithmMeta("mllib_gbt", MLLibGBTSettings),
+            "MLLIB_DECISION_TREE": AlgorithmMeta("mllib_dt", MLLibDecisionTreeSettings),
+            "VERTICA_LINEAR_REGRESSION": AlgorithmMeta("vertica_linear_regression"),
+            "VERTICA_LOGISTIC_REGRESSION": AlgorithmMeta("vertica_logistic_regression"),
+            "KERAS_CODE": AlgorithmMeta("keras")
         }
 
     class PredictionTypes:
