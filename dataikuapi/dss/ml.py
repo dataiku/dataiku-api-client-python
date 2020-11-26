@@ -548,18 +548,11 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     __str__ = __repr__
 
-    def set_explicit_values(self, values, set_mode_to_explicit=True):
-        self._algo_settings._set_numerical_explicit_values(self.name, values, set_mode_to_explicit=set_mode_to_explicit)
+    def set_mode_to_explicit(self, values=None):
+        self._algo_settings._set_numerical_explicit_values(self.name, values)
 
-    def set_range(self, range_min=None, range_max=None, nb_values=None, set_mode_to_range=True):
-        self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values,
-                                                 set_mode_to_range=set_mode_to_range)
-
-    def set_mode_to_explicit(self):
-        self._algo_settings._set_hyperparameter_mode_to_explicit(self.name)
-
-    def set_mode_to_range(self):
-        self._algo_settings._set_hyperparameter_mode_to_range(self.name)
+    def set_mode_to_range(self, range_min=None, range_max=None, nb_values=None):
+        self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
@@ -708,7 +701,7 @@ class AlgorithmSettings(dict):
         self[hyperparameter_name]["gridMode"] = "EXPLICIT"
         self[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
-    def _set_numerical_explicit_values(self, hyperparameter_name, values, set_mode_to_explicit=True):
+    def _set_numerical_explicit_values(self, hyperparameter_name, values):
         self._check_hyperparameter_name(hyperparameter_name)
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(hyperparameter_name) + \
@@ -725,11 +718,9 @@ class AlgorithmSettings(dict):
         if len(set(values)) < len(values):
                 warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
         self[hyperparameter_name]["values"] = values
+        self._set_hyperparameter_mode_to_explicit(hyperparameter_name)
 
-        if set_mode_to_explicit:
-            self._set_hyperparameter_mode_to_explicit(hyperparameter_name)
-
-    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None, set_mode_to_range=True):
+    def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None):
         self._check_hyperparameter_name(hyperparameter_name)
 
         if range_min is None and range_max is None and nb_values is None:
@@ -755,8 +746,7 @@ class AlgorithmSettings(dict):
             if nb_values is not None:
                 self[hyperparameter_name]["range"]["nbValues"] = nb_values
 
-        if set_mode_to_range:
-            self._set_hyperparameter_mode_to_range(hyperparameter_name)
+        self._set_hyperparameter_mode_to_range(hyperparameter_name)
 
     def _set_categorical_values(self, hyperparameter_name, values=None):
         self._check_hyperparameter_name(hyperparameter_name)
