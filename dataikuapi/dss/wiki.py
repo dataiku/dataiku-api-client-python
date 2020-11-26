@@ -104,14 +104,12 @@ class DSSWiki(object):
         """
         Download the whole wiki of the project in PDF format into the given output file.
         """
-        stream = self.get_export_stream(paperSize=paperSize, exportAttachment=exportAttachment)
-
-        with open(path, 'wb') as f:
-            for chunk in stream.iter_content(chunk_size=10000):
-                if chunk:
-                    f.write(chunk)
-                    f.flush()
-        stream.close()
+        with self.get_export_stream(paperSize=paperSize, exportAttachment=exportAttachment) as stream:
+            with open(path, 'wb') as f:
+                for chunk in stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
 
 class DSSWikiSettings(object):
     """
@@ -287,14 +285,12 @@ class DSSWikiArticle(object):
         """
         Download an article in PDF format into the given output file.
         """
-        stream = self.get_export_stream(paperSize=paperSize, exportChildren=exportChildren, exportAttachment=exportAttachment)
-
-        with open(path, 'wb') as f:
-            for chunk in stream.iter_content(chunk_size=10000):
-                if chunk:
-                    f.write(chunk)
-                    f.flush()
-        stream.close()
+        with self.get_export_stream(paperSize=paperSize, exportChildren=exportChildren, exportAttachment=exportAttachment) as stream:
+            with open(path, 'wb') as f:
+                for chunk in stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
     
 
     def delete(self):
