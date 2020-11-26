@@ -89,22 +89,22 @@ class DSSWiki(object):
 
         return article
 
-    def get_export_stream(self, paperSize="A4", exportAttachment=False):
+    def get_export_stream(self, paper_size="A4", export_attachment=False):
         """
         Download the whole wiki of the project in PDF format as a binary stream.
         Warning: this stream will monopolize the DSSClient until closed.
         """
         body = {
-            "paperSize": paperSize,
-            "exportAttachment": exportAttachment
+            "paperSize": paper_size,
+            "exportAttachment": export_attachment
         }
         return self.client._perform_raw("POST", "/projects/%s/wiki/actions/export" % (self.project_key), body=body)
 
-    def export_to_file(self, path, paperSize="A4", exportAttachment=False):
+    def export_to_file(self, path, paper_size="A4", export_attachment=False):
         """
         Download the whole wiki of the project in PDF format into the given output file.
         """
-        with self.get_export_stream(paperSize=paperSize, exportAttachment=exportAttachment) as stream:
+        with self.get_export_stream(paper_size=paper_size, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
                 for chunk in stream.iter_content(chunk_size=10000):
                     if chunk:
@@ -269,23 +269,23 @@ class DSSWikiArticle(object):
         """
         return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
 
-    def get_export_stream(self, paperSize="A4", exportChildren=False, exportAttachment=False):
+    def get_export_stream(self, paper_size="A4", export_children=False, export_attachment=False):
         """
         Download an article in PDF format as a binary stream.
         Warning: this stream will monopolize the DSSClient until closed.
         """
         body = {
-            "paperSize": paperSize,
-            "exportChildren": exportChildren,
-            "exportAttachment": exportAttachment
+            "paperSize": paper_size,
+            "exportChildren": export_children,
+            "exportAttachment": export_attachment
         }
         return self.client._perform_raw("POST", "/projects/%s/wiki/%s/actions/export" % (self.project_key, self.article_id), body=body)
 
-    def export_to_file(self, path, paperSize="A4", exportChildren=False, exportAttachment=False):
+    def export_to_file(self, path, paper_size="A4", export_children=False, export_attachment=False):
         """
         Download an article in PDF format into the given output file.
         """
-        with self.get_export_stream(paperSize=paperSize, exportChildren=exportChildren, exportAttachment=exportAttachment) as stream:
+        with self.get_export_stream(paper_size=paper_size, export_children=export_children, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
                 for chunk in stream.iter_content(chunk_size=10000):
                     if chunk:
