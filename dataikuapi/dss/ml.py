@@ -469,9 +469,14 @@ class HyperparameterSettings(object):
 
 class NumericalHyperparameterSettings(HyperparameterSettings):
 
+    def _repr_html_(self):
+        active_dict = self._algo_settings._get_active_numerical_hyperparam_dict(self.name)
+        return "<pre>" + self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})</pre>".format(self.name, json.dumps(active_dict, indent=4)) + \
+               "\n<details><pre>{}</pre></details>".format(self.__repr__())
+
     def __repr__(self):
-        clean_dict = self._algo_settings._get_active_numerical_hyperparam_dict(self.name)
-        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(clean_dict, indent=4))
+        raw_dict = self._algo_settings[self.name]
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(raw_dict, indent=4))
 
     __str__ = __repr__
 
@@ -559,21 +564,25 @@ class AlgorithmSettings(dict):
         super(AlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
 
-    def __repr__(self):
-        clean_settings = dict()
+    def _repr_html_(self):
+        active_settings = dict()
         for key in self.keys():
             if isinstance(self[key], dict):
                 # Searchable hyperparameter
                 if "range" in self[key]:
                     # Numerical hyperparameter
-                    clean_hyperparam = self._get_active_numerical_hyperparam_dict(key)
+                    active_hyperparam = self._get_active_numerical_hyperparam_dict(key)
                 else:
                     # Categorical hyperparameter
-                    clean_hyperparam = self[key]
-                clean_settings[key] = clean_hyperparam
+                    active_hyperparam = self[key]
+                active_settings[key] = active_hyperparam
             else:
-                clean_settings[key] = self[key]
-        return self.__class__.__name__ + "(values={})".format(json.dumps(clean_settings, indent=4))
+                active_settings[key] = self[key]
+        return "<pre>" + self.__class__.__name__ + "(active_values={})</pre>".format(json.dumps(active_settings, indent=4)) + \
+               "\n<details><pre>{}</pre></details>".format(self.__repr__())
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(values={})".format(json.dumps(super(AlgorithmSettings, self).copy(), indent=4))
 
     __str__ = __repr__
 
