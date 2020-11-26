@@ -368,8 +368,6 @@ class HyperparameterSearchSettings(object):
         res += self._key_repr("mode")
         if self._raw_settings["mode"] in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
             res += self._key_repr("splitRatio")
-            if self._raw_settings["mode"] == "SHUFFLE":
-                res += self._key_repr("shuffleIterations")
         elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
             res += self._key_repr("nFolds")
 
@@ -403,35 +401,72 @@ class HyperparameterSearchSettings(object):
 
     __str__ = __repr__
 
-    def set_strategy(self, strategy):
-        assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
-        self._raw_settings["strategy"] = strategy
+    def _set_seed(self, seed):
+        if seed is not None:
+            if not isinstance(seed, int):
+                warnings.warn("HyperparameterSearchSettings ignoring invalid input: seed")
+                warnings.warn("seed must be an integer")
+            else:
+                self._raw_settings["seed"] = seed
 
-    def set_validation_mode(self, mode):
-        assert mode in {"SHUFFLE", "KFOLD", "TIME_SERIES_SINGLE_SPLIT", "TIME_SERIES_KFOLD", "CUSTOM"}
-        self._raw_settings["mode"] = mode
+    def set_strategy_to_grid_search(self, shuffle=None, seed=None):
+        self._raw_settings["strategy"] = "GRID"
+        if shuffle is not None:
+            if not isinstance(shuffle, bool):
+                warnings.warn()
+            else:
+                self._raw_settings["randomized"] = shuffle
+        self._set_seed(seed)
 
-    def set_validation_stratified(self, stratified):
-        assert isinstance(stratified, bool)
-        self._raw_settings["stratified"] = stratified
+    def set_strategy_to_random_search(self, seed=None):
+        self._raw_settings["strategy"] = "RANDOM"
+        self._set_seed(seed)
 
-    def set_validation_n_folds(self, n_folds):
-        assert isinstance(n_folds, int)
-        if self._raw_settings["mode"] not in {"KFOLD", "TIME_SERIES_KFOLD"}:
-            warnings.warn("\"nFolds\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
-        self._raw_settings["nFolds"] = n_folds
+    def set_strategy_to_bayesian_search(self, seed=None):
+        self._raw_settings["strategy"] = "BAYESIAN"
+        self._set_seed(seed)
 
-    def set_validation_split_ratio(self, split_ratio):
-        assert isinstance(split_ratio, float)
-        if self._raw_settings["mode"] not in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
-            warnings.warn("\"splitRatio\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
-        self._raw_settings["splitRatio"] = split_ratio
+    def set_validation_mode_to_kfold(self, n_folds=None, stratified=None):
+        if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
+            self._raw_settings["mode"] = "TIME_SERIES_KFOLD"
+        else:
+            self._raw_settings["mode"] = "KFOLD"
+        if n_folds is not None:
+            if not (isinstance(n_folds, int) and n_folds > 0):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_kfold ignoring invalid input: n_folds")
+                warnings.warn("n_folds must be a positive integer")
+                self._raw_settings["nFolds"] = n_folds
+        if stratified is not None:
+            if not isinstance(stratified, bool):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_kfold ignoring invalid input: stratified")
+                warnings.warn("stratified must be a boolean")
+            else:
+                self._raw_settings["stratified"] = stratified
 
-    def set_validation_n_shuffle_iter(self, n_shuffle_iter):
-        assert isinstance(n_shuffle_iter, int)
-        if self._raw_settings["mode"] != "SHUFFLE":
-            warnings.warn("\"shuffleIterations\" parameter will be ignored in {} mode".format(self._raw_settings["mode"]))
-        self._raw_settings["shuffleIterations"] = n_shuffle_iter
+    def set_validation_mode_to_single_split(self, split_ratio=None, stratified=None):
+        if self._raw_settings["mode"] == "TIME_SERIES_KFOLD":
+            self._raw_settings["mode"] = "TIME_SERIES_SINGLE_SPLIT"
+        else:
+            self._raw_settings["mode"] = "SHUFFLE"
+        if split_ratio is not None:
+            if not (isinstance(split_ratio, float) and split_ratio > 0 and split_ratio < 1):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_single_split ignoring invalid input: split_ratio")
+                warnings.warn(" split_ratio must be float between 0 and 1")
+            self._raw_settings["splitRatio"] = split_ratio
+        if stratified is not None:
+            if not isinstance(stratified, bool):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_single_split ignoring invalid input: stratified")
+                warnings.warn("stratified must be a boolean")
+            else:
+                self._raw_settings["stratified"] = stratified
+
+    def set_validation_mode_to_custom(self, code=None):
+        self._raw_settings["mode"] = "CUSTOM"
+        if code is not None:
+            if not is_basestring(code):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_custom ignoring invalid input: code")
+                warnings.warn("code must be a Python interpretable string")
+            self._raw_settings["code"] = code
 
     def set_execution_timeout(self, timeout):
         assert isinstance(timeout, int)
@@ -443,15 +478,6 @@ class HyperparameterSearchSettings(object):
             self._raw_settings["nIter"] = n_iter
         else:
             self._raw_settings["nIterRandom"] = n_iter
-
-    def set_grid_search_shuffling(self, shuffled, seed=None):
-        assert isinstance(shuffled, bool)
-        if seed is not None:
-            assert isinstance(seed, int)
-            self._raw_settings["seed"] = seed
-        self._raw_settings["randomized"] = shuffled
-        if self._raw_settings["strategy"] != "GRID":
-            warnings.warn("\"randomized\" and \"seed\" parameters will be ignored in {} strategy".format(self._raw_settings["strategy"]))
 
     def set_search_distribution(self, distributed, n_containers):
         assert isinstance(distributed, bool)
