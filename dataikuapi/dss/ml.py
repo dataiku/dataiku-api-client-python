@@ -409,6 +409,15 @@ class HyperparameterSearchSettings(object):
             else:
                 self._raw_settings["seed"] = seed
 
+    @property
+    def strategy(self):
+        return self._raw_settings["strategy"]
+
+    @strategy.setter
+    def strategy(self, strategy):
+        assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
+        self._raw_settings["strategy"] = strategy
+
     def set_strategy_to_grid_search(self, shuffle=None, seed=None):
         self._raw_settings["strategy"] = "GRID"
         if shuffle is not None:
@@ -425,6 +434,15 @@ class HyperparameterSearchSettings(object):
     def set_strategy_to_bayesian_search(self, seed=None):
         self._raw_settings["strategy"] = "BAYESIAN"
         self._set_seed(seed)
+
+    @property
+    def validation_mode(self):
+        return self._raw_settings["mode"]
+
+    @validation_mode.setter
+    def validation_mode(self, mode):
+        assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
+        self._raw_settings["mode"] = mode
 
     def set_validation_mode_to_kfold(self, n_folds=None, stratified=None):
         if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
@@ -468,26 +486,44 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("code must be a Python interpretable string")
             self._raw_settings["code"] = code
 
-    def set_execution_timeout(self, timeout):
-        assert isinstance(timeout, int)
-        self._raw_settings["timeout"] = timeout
-
-    def set_execution_n_iter(self, n_iter):
-        assert isinstance(n_iter, int)
-        if self._raw_settings["strategy"] == "GRID":
-            self._raw_settings["nIter"] = n_iter
-        else:
-            self._raw_settings["nIterRandom"] = n_iter
-
-    def set_search_distribution(self, distributed, n_containers):
+    def set_search_distribution(self, distributed, n_containers=None):
         assert isinstance(distributed, bool)
         if n_containers is not None:
             assert isinstance(n_containers, int)
             self._raw_settings["nContainers"] = n_containers
         self._raw_settings["distributed"] = distributed
 
-    def set_n_jobs(self, n_jobs):
-        assert isinstance(n_jobs, int) and n_jobs > 0
+    @property
+    def timeout(self):
+        return self._raw_settings["timeout"]
+
+    @timeout.setter
+    def timeout(self, timeout):
+        assert isinstance(timeout, int)
+        self._raw_settings["timeout"] = timeout
+
+    @property
+    def n_iter(self):
+        if self._raw_settings["strategy"] == "GRID":
+            return self._raw_settings["nIter"]
+        else:
+            # RANDOM and BAYESIAN search strategies
+            return self._raw_settings["nIterRandom"]
+
+    @n_iter.setter
+    def n_iter(self, n_iter):
+        assert isinstance(n_iter, int)
+        if self._raw_settings["strategy"] == "GRID":
+            self._raw_settings["nIter"] = n_iter
+        else:
+            self._raw_settings["nIterRandom"] = n_iter
+
+    @property
+    def parallelism(self):
+        return self._raw_settings["nJobs"]
+
+    @parallelism.setter
+    def parallelism(self, n_jobs):
         self._raw_settings["nJobs"] = n_jobs
 
 
