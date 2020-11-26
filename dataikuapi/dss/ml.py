@@ -249,8 +249,9 @@ class DSSMLTaskSettings(object):
         :return: An AlgortihmSettings (extended dict) for an algorithm.
         :rtype: AlgorithmSettings
         """
-        algorithm_settings_class = AlgorithmSettings
-        if algorithm_name in self.__class__.algorithm_remap:
+        if algorithm_name not in self.__class__.algorithm_remap:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+        else:
             algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
             algorithm_name = algorithm_meta.algorithm_name
             algorithm_settings_class = algorithm_meta.algorithm_settings_class
