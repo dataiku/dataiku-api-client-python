@@ -355,9 +355,10 @@ class HyperparameterSearchSettings(object):
         else:
             return "    \"{}\"={}\n".format(key, self._raw_settings[key])
 
-    def __repr__(self):
+    def _repr_html_(self):
 
-        res = self.__class__.__name__ + "(\n"
+        res = "<pre>"
+        res += self.__class__.__name__ + "(\n"
         res += "Search Strategy:\n"
         res += self._key_repr("strategy")
         if self._raw_settings["strategy"] == "BAYESIAN":
@@ -393,9 +394,13 @@ class HyperparameterSearchSettings(object):
         res += self._key_repr("distributed")
         if self._raw_settings.get("distributed", False):
             res += self._key_repr("nContainers")
-        res += ")"
+        res += ")</pre>"
+        res += "<details><pre>{}</pre></details>".format(self.__repr__())
         return res
-    
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(settings={})".format(json.dumps(self._raw_settings, indent=4))
+
     __str__ = __repr__
 
     def set_strategy(self, strategy):
