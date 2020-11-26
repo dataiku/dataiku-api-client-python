@@ -661,21 +661,24 @@ class AlgorithmSettings(dict):
             clean_hyperparam["values"] = raw_hyperparam["values"]
         else:
             clean_hyperparam["range"] = raw_hyperparam["range"]
-        strategy = self._get_strategy()
-        if strategy == "GRID":
+        if self.strategy == "GRID":
             clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
         else:
+            # RANDOM and BAYESIAN strategies
             clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
         return clean_hyperparam
 
     def _get_all_hyperparameter_names(self):
         return [key for key in self.keys() if key not in self.excluded_keys]
 
-    def enable(self):
-        self["enabled"] = True
+    @property
+    def enabled(self):
+        return self["enabled"]
 
-    def disable(self):
-        self["enabled"] = False
+    @enabled.setter
+    def enabled(self, enabled):
+        assert isinstance(enabled, bool), "enabled property must be a boolean"
+        self["enabled"] = enabled
 
     def _set_single_valued_hyperparameter(self, hyperparameter_name, value):
         self._check_hyperparameter_name(hyperparameter_name)
@@ -770,14 +773,15 @@ class AlgorithmSettings(dict):
             for category, setting in values.items():
                 self[hyperparameter_name]["values"][category] = setting
 
-    def _get_strategy(self):
+    @property
+    def strategy(self):
         return self._hyperparameter_search_params["strategy"]
 
     def _get_hyperparameter_mode(self, hyperparameter_name):
-        strategy = self._get_strategy()
-        if strategy == "GRID":
+        if self.strategy == "GRID":
             return self[hyperparameter_name]["gridMode"]
         else:
+            # RANDOM and BAYESIAN search strategies
             return self[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
