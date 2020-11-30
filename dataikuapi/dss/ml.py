@@ -253,49 +253,49 @@ class DSSMLTaskSettings(object):
 
         return self.mltask_settings["modeling"][algorithm_name.lower()]
 
-    def get_hints_settings(self):
+    def get_diagnostics_settings(self):
         """
-        Gets the hints settings for a mltask. This returns a reference to the
-        hints' settings, not a copy, so changes made to the returned object will be reflected when saving.
+        Gets the diagnostics settings for a mltask. This returns a reference to the
+        diagnostics' settings, not a copy, so changes made to the returned object will be reflected when saving.
 
         This method returns a dictionary of the settings with:
-        - 'enabled': indicates if the hints are enabled globally, if False, all hints will be disabled
+        - 'enabled': indicates if the diagnostics are enabled globally, if False, all diagnostics will be disabled
         - 'settings': a list of dict comprised of:
-          - 'type': the hint type
-          - 'enabled': indicates if the hint type is enabled, if False, all hints of that type will be disabled
+          - 'type': the diagnostic type
+          - 'enabled': indicates if the diagnostic type is enabled, if False, all diagnostics of that type will be disabled
 
-        Please refer to the documentation for details on available hints.
+        Please refer to the documentation for details on available diagnostics.
 
-        :return: A dict of hints settings
+        :return: A dict of diagnostics settings
         :rtype: dict
         """
-        return self.mltask_settings["hintSettings"]
+        return self.mltask_settings["diagnosticsSettings"]
 
-    def set_hints_enabled(self, enabled):
+    def set_diagnostics_enabled(self, enabled):
         """
-        Globally enables or disables all hints.
+        Globally enables or disables all diagnostics.
 
-        :param bool enabled: if the hints should be enabled or not
+        :param bool enabled: if the diagnostics should be enabled or not
         """
-        settings = self.get_hints_settings()
+        settings = self.get_diagnostics_settings()
         settings["enabled"] = enabled
 
-    def set_hint_type_enabled(self, hint_type, enabled):
+    def set_diagnostic_type_enabled(self, diagnostic_type, enabled):
         """
-        Enables or disables a hint based on its type.
+        Enables or disables a diagnostic based on its type.
 
-        Please refer to the documentation for details on available hints.
+        Please refer to the documentation for details on available diagnostics.
 
-        :param str hint_type: Name (in capitals) of the hint type.
-        :param bool enabled: if the hint should be enabled or not
+        :param str diagnostic_type: Name (in capitals) of the diagnostic type.
+        :param bool enabled: if the diagnostic should be enabled or not
         """
-        settings = self.get_hints_settings()["settings"]
-        hint = [h for h in settings if h["type"] == hint_type]
-        if len(hint) == 0:
-            raise ValueError("Hint type '{}' not found in settings".format(hint_type))
-        if len(hint) > 1:
-            raise ValueError("Should not happen: multiple hint types '{}' found in settings".format(hint_type))
-        hint[0]["enabled"] = enabled
+        settings = self.get_diagnostics_settings()["settings"]
+        diagnostic = [h for h in settings if h["type"] == diagnostic_type]
+        if len(diagnostic) == 0:
+            raise ValueError("Diagnostic type '{}' not found in settings".format(diagnostic_type))
+        if len(diagnostic) > 1:
+            raise ValueError("Should not happen: multiple diagnostic types '{}' found in settings".format(diagnostic_type))
+        diagnostic[0]["enabled"] = enabled
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -587,22 +587,22 @@ class DSSTrainedModelDetails(object):
                                                               project_key=self.saved_model.project_key)
                 return origin_ml_task.get_trained_model_details(fmi)
 
-    def get_hints(self):
+    def get_diagnostics(self):
         """
-        Retrieves hints computed for this trained model
+        Retrieves diagnostics computed for this trained model
 
-        :returns: list of hints
-        :rtype: list of type `dataikuapi.dss.ml.DSSMLHint`
+        :returns: list of diagnostics
+        :rtype: list of type `dataikuapi.dss.ml.DSSMLDiagnostic`
         """
-        hints = self.details.get("trainHints", {})
-        return [DSSMLHint(d) for d in hints.get("hints", [])]
+        diagnostics = self.details.get("trainDiagnostics", {})
+        return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
 
 
-class DSSMLHint(object):
+class DSSMLDiagnostic(object):
     """
-    Object that represents a computed Hint on a trained model
+    Object that represents a computed Diagnostic on a trained model
 
-    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_hints()` instead
+    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_diagnostics()` instead
     """
 
     def __init__(self, data):
@@ -610,7 +610,7 @@ class DSSMLHint(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the hint
+        Gets the raw dictionary of the diagnostic
 
         :rtype: dict
         """
@@ -618,14 +618,14 @@ class DSSMLHint(object):
 
     def get_type(self):
         """
-        Returns the base Hint type
+        Returns the base Diagnostic type
         :rtype: str
         """
         return self._internal_dict["type"]
 
     def get_type_pretty(self):
         """
-        Returns the Hint type as displayed in the UI
+        Returns the Diagnostic type as displayed in the UI
         :rtype: str
         """
         return self._internal_dict["displayableType"]
