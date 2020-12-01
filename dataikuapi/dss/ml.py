@@ -257,8 +257,8 @@ class DSSMLTaskSettings(object):
             algorithm_settings_class = algorithm_meta.algorithm_settings_class
 
         algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-        raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
         if not isinstance(algorithm_settings, AlgorithmSettings):
+            raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
             algorithm_params = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
             # Subsequent calls get the same object
             self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_params
@@ -631,7 +631,7 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
         if self.accepted_types is not None:
-            assert any(isinstance(value, type) for type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
+            assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
