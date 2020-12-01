@@ -820,7 +820,7 @@ class RandomForestSettings(AlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.n_estimators = NumericalHyperparameterSettings("n_estimators", self)
-        self.min_samples_leaf = NumericalHyperparameterSettings("n_estimators", self)
+        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
         self.max_tree_depth = NumericalHyperparameterSettings("max_tree_depth", self)
         self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
         self.max_features = NumericalHyperparameterSettings("max_features", self)
@@ -941,7 +941,7 @@ class KNNSettings(AlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.k = NumericalHyperparameterSettings("k", self)
-        self.algorithm = CategoricalHyperparameterSettings("algorithm", self)
+        self.algorithm = SingleValuedHyperparameterSettings("algorithm", self, accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
         self.distance_weighting = SingleValuedHyperparameterSettings("distance_weighting", self, accepted_types=[bool])
         self.p = SingleValuedHyperparameterSettings("p", self, accepted_types=[int])
         self.leaf_size = SingleValuedHyperparameterSettings("leaf_size", self, accepted_types=[int])
@@ -952,6 +952,7 @@ class SVMSettings(AlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.custom_gamma = NumericalHyperparameterSettings("custom_gamma", self)
+        self.C = NumericalHyperparameterSettings("C", self)
         self.gamma = CategoricalHyperparameterSettings("gamma", self)
         self.kernel = CategoricalHyperparameterSettings("kernel", self)
         self.coef0 = SingleValuedHyperparameterSettings("coef0", self, accepted_types=[int, float])
