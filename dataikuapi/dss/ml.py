@@ -1,11 +1,13 @@
 import re
+from six import string_types
 
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from .utils import is_basestring
+
 import json, warnings
 import time
+
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 from .future import DSSFuture
@@ -351,7 +353,7 @@ class HyperparameterSearchSettings(object):
         self._raw_settings = raw_settings
 
     def _key_repr(self, key):
-        if is_basestring(self._raw_settings[key]):
+        if isinstance(self._raw_settings[key], string_types):
             return "    \"{}\"=\"{}\"\n".format(key, self._raw_settings[key])
         else:
             return "    \"{}\"={}\n".format(key, self._raw_settings[key])
@@ -487,7 +489,7 @@ class HyperparameterSearchSettings(object):
     def set_custom_validation(self, code=None):
         self._raw_settings["mode"] = "CUSTOM"
         if code is not None:
-            if not is_basestring(code):
+            if not isinstance(code, string_types):
                 warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_custom ignoring invalid input: code")
                 warnings.warn("code must be a Python interpretable string")
             self._raw_settings["code"] = code
@@ -583,7 +585,7 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def enable_categories(self, categories, disable_others=False):
         accepted_categories = self._algo_settings[self.name]["values"].keys()
         for category in categories:
-            assert is_basestring(category)
+            assert isinstance(category, string_types)
             assert category in accepted_categories
         self.set_values({category: {"enabled": True}
                          for category in categories})
@@ -595,7 +597,7 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def disable_categories(self, categories, enable_others=False):
         accepted_categories = self._algo_settings[self.name]["values"].keys()
         for category in categories:
-            assert is_basestring(category)
+            assert isinstance(category, string_types)
             assert category in accepted_categories
         self.set_values({category: {"enabled": False}
                          for category in categories})
@@ -614,7 +616,7 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
         if self.accepted_values is not None:
-            if is_basestring(self._algo_settings[self.name]):
+            if isinstance(self._algo_settings[self.name], string_types):
                 return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\", accepted_values={})".format(self.name,
                                                                                                                     self._algo_settings[self.name],
                                                                                                                     json.dumps(self.accepted_values))
@@ -694,8 +696,8 @@ class AlgorithmSettings(dict):
 
     def _set_single_valued_hyperparameter(self, hyperparameter_name, value):
         self._check_hyperparameter_name(hyperparameter_name)
-        if is_basestring(self[hyperparameter_name]):
-            assert is_basestring(value), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
+        if isinstance(self[hyperparameter_name], string_types):
+            assert isinstance(value, string_types), "Invalid input type for hyperparameter \"{}\": expected a string".format(hyperparameter_name)
         elif isinstance(self[hyperparameter_name], int) or isinstance(self[hyperparameter_name], float):
             assert isinstance(value, int) or isinstance(value, float), "Invalid input type for hyperparameter \"{}\": expected a number".format(hyperparameter_name)
         else:
@@ -794,7 +796,7 @@ class AlgorithmSettings(dict):
             return self[hyperparameter_name]["randomMode"]
 
     def _check_hyperparameter_name(self, hyperparameter_name):
-        assert is_basestring(hyperparameter_name), "Invalid type for hyperparameter name: expecting a string"
+        assert isinstance(hyperparameter_name, string_types), "Invalid type for hyperparameter name: expecting a string"
         hyperparameter_names = self._get_all_hyperparameter_names()
         if hyperparameter_name not in hyperparameter_names:
             message = "Unknown hyperparameter name: \"{}\". ".format(hyperparameter_name)
