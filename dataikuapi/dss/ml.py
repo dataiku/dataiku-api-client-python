@@ -563,10 +563,10 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     __str__ = __repr__
 
-    def set_mode_to_explicit(self, values=None):
+    def set_explicit_values(self, values=None):
         self._algo_settings._set_numerical_explicit_values(self.name, values)
 
-    def set_mode_to_range(self, range_min=None, range_max=None, nb_values=None):
+    def set_range(self, range_min=None, range_max=None, nb_values=None):
         self._algo_settings._set_numerical_range(self.name, range_min=range_min, range_max=range_max, nb_values=nb_values)
 
 
