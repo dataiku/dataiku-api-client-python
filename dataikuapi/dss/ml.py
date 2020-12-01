@@ -705,21 +705,17 @@ class AlgorithmSettings(dict):
         self[hyperparameter_name] = value
 
     def _set_hyperparameter_mode_to_range(self, hyperparameter_name):
-        self._check_hyperparameter_name(hyperparameter_name)
-        self._check_hyperparameter_searchable(hyperparameter_name)
-        self._check_hyperparameter_numerical(hyperparameter_name)
         self[hyperparameter_name]["gridMode"] = "RANGE"
         self[hyperparameter_name]["randomMode"] = "RANGE"
 
     def _set_hyperparameter_mode_to_explicit(self, hyperparameter_name):
-        self._check_hyperparameter_name(hyperparameter_name)
-        self._check_hyperparameter_searchable(hyperparameter_name)
-        self._check_hyperparameter_numerical(hyperparameter_name)
         self[hyperparameter_name]["gridMode"] = "EXPLICIT"
         self[hyperparameter_name]["randomMode"] = "EXPLICIT"
 
     def _set_numerical_explicit_values(self, hyperparameter_name, values):
         self._check_hyperparameter_name(hyperparameter_name)
+        self._check_hyperparameter_searchable(hyperparameter_name)
+        self._check_hyperparameter_numerical(hyperparameter_name)
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(hyperparameter_name) + \
                         " expecting a non-empty list of numbers"
@@ -739,7 +735,8 @@ class AlgorithmSettings(dict):
 
     def _set_numerical_range(self, hyperparameter_name, range_min=None, range_max=None, nb_values=None):
         self._check_hyperparameter_name(hyperparameter_name)
-
+        self._check_hyperparameter_searchable(hyperparameter_name)
+        self._check_hyperparameter_numerical(hyperparameter_name)
         if range_min is None and range_max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(hyperparameter_name))
         else:
