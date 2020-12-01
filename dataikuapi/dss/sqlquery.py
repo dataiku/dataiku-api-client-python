@@ -3,9 +3,11 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
 
+
 class DSSSQLQuery(object):
     """
-    A connection to a database or database-like on which queries can be run through DSS
+    A connection to a database or database-like on which queries can be run through DSS.
+    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.sql_query`
     """
     def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key):
         self.client = client
