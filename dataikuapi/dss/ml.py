@@ -631,7 +631,7 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
         if self.accepted_types is not None:
-            assert any(isinstance(value, type) for type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of {}".format(self.name, self.accepted_types)
+            assert any(isinstance(value, type) for type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
