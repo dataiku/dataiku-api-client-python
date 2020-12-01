@@ -143,10 +143,6 @@ class DSSRecipe(object):
             return SplitRecipeSettings(self, data)
         elif type == "prepare" or type == "shaker":
             return PrepareRecipeSettings(self, data)
-        elif type == "prediction_training":
-            return TrainingRecipeSettings(self, data)
-        elif type == "clustering_training":
-            return TrainingRecipeSettings(self, data)
         #elif type == "prediction_scoring":
         #elif type == "clustering_scoring":
         elif type == "download":
@@ -1085,13 +1081,6 @@ class DownloadRecipeCreator(SingleOutputRecipeCreator):
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'download', name, project)
-
-
-class TrainingRecipeSettings(DSSRecipeSettings):
-    """
-    Settings of a prediction or clustering training recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
-    """
-    pass # TODO: Write helpers for training
 
 
 #####################################################
