@@ -419,7 +419,7 @@ class HyperparameterSearchSettings(object):
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
         self._raw_settings["strategy"] = strategy
 
-    def set_strategy_to_grid_search(self, shuffle=None, seed=None):
+    def set_grid_search(self, shuffle=True, seed=0):
         self._raw_settings["strategy"] = "GRID"
         if shuffle is not None:
             if not isinstance(shuffle, bool):
@@ -427,14 +427,17 @@ class HyperparameterSearchSettings(object):
             else:
                 self._raw_settings["randomized"] = shuffle
         self._set_seed(seed)
+        return self
 
-    def set_strategy_to_random_search(self, seed=None):
+    def set_random_search(self, seed=0):
         self._raw_settings["strategy"] = "RANDOM"
         self._set_seed(seed)
+        return self
 
-    def set_strategy_to_bayesian_search(self, seed=None):
+    def set_bayesian_search(self, seed=0):
         self._raw_settings["strategy"] = "BAYESIAN"
         self._set_seed(seed)
+        return self
 
     @property
     def validation_mode(self):
@@ -445,7 +448,7 @@ class HyperparameterSearchSettings(object):
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
 
-    def set_validation_mode_to_kfold(self, n_folds=None, stratified=None):
+    def set_kfold_validation(self, n_folds=5, stratified=True):
         if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
             self._raw_settings["mode"] = "TIME_SERIES_KFOLD"
         else:
@@ -461,8 +464,9 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        return self
 
-    def set_validation_mode_to_single_split(self, split_ratio=None, stratified=None):
+    def set_single_split_validation(self, split_ratio=0.8, stratified=True):
         if self._raw_settings["mode"] == "TIME_SERIES_KFOLD":
             self._raw_settings["mode"] = "TIME_SERIES_SINGLE_SPLIT"
         else:
@@ -478,20 +482,31 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        return self
 
-    def set_validation_mode_to_custom(self, code=None):
+    def set_custom_validation(self, code=None):
         self._raw_settings["mode"] = "CUSTOM"
         if code is not None:
             if not is_basestring(code):
                 warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_custom ignoring invalid input: code")
                 warnings.warn("code must be a Python interpretable string")
             self._raw_settings["code"] = code
+        return self
 
-    def set_search_distribution(self, distributed, n_containers=None):
+    def set_search_distribution(self, distributed=False, n_containers=4):
         assert isinstance(distributed, bool)
         if n_containers is not None:
             assert isinstance(n_containers, int)
             self._raw_settings["nContainers"] = n_containers
+        self._raw_settings["distributed"] = distributed
+
+    @property
+    def distributed(self):
+        return self._raw_settings["distributed"]
+
+    @distributed.setter
+    def distributed(self, distributed):
+        assert isinstance(distributed, bool)
         self._raw_settings["distributed"] = distributed
 
     @property
