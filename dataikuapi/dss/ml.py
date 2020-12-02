@@ -431,6 +431,23 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
 
+    @property
+    def assertions_params(self):
+        """
+        Retrieves the assertion params for this ml task
+
+        :rtype: :class:`DSSMLAssertionsParams`
+        """
+        return self.get_assertions_params()
+
+    def get_assertions_params(self):
+        """
+        Retrieves the assertion params for this ml task
+
+        :rtype: :class:`DSSMLAssertionsParams`
+        """
+        return DSSMLAssertionsParams(self.mltask_settings["assertionParams"])
+
     def split_ordered_by(self, feature_name, ascending=True):
         """
         Deprecated. Use split_params.set_time_ordering()
@@ -641,6 +658,238 @@ class DSSMLDiagnostic(object):
         return "{cls}(type={type}, message={msg})".format(cls=self.__class__.__name__,
                                                           type=self._internal_dict["type"],
                                                           msg=self._internal_dict["message"])
+
+
+class DSSMLAssertionsParams(object):
+    """
+    Object that represents parameters for all assertions of a ml task
+    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertion_params()` instead
+    """
+
+    @classmethod
+    def check_assertion_names_are_uniq(cls, assertion_params_list):
+        _ = {}
+        for assertion_dict in assertion_params_list:
+            if 'name' not in assertion_dict:
+                raise ValueError('No name provided for assertion')
+            if assertion_dict['name'] in _:
+                raise ValueError('Assertion names should be uniq. {} is multiple times in the data'.format(
+                    assertion_dict['name']))
+            _[assertion_dict['name']] = True
+
+    def __init__(self, data):
+        self._internal_dict = data
+        self.check_assertion_names_are_uniq(data["assertions"])
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertions params
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_assertion(self, assertion_name):
+        """
+        Gets a :class:`DSSMLAssertionParams` representing the params of the assertion with the provided name
+        (or None)
+        """
+        for assertion_dict in self._internal_dict["assertions"]:
+            if assertion_dict["name"] == assertion_name:
+                return DSSMLAssertionParams(assertion_dict)
+        return None
+
+    def add_assertion(self, assertion_params):
+        """
+        Adds a :class:`DSSMLAssertionParams` to the `DSSMLAssertionsParams` of the ml task. Raises a ValueError if an assertion
+        with the same name already exists
+        """
+        if not isinstance(assertion_params, DSSMLAssertionParams):
+            raise ValueError('Assertion params should be of type: {} not {}'.format(DSSMLAssertionParams.__name__, type(assertion_params)))
+        self.check_assertion_names_are_uniq(self._internal_dict["assertions"] + [assertion_params._internal_dict])
+        self._internal_dict["assertions"].append(assertion_params._internal_dict)
+
+    def delete_assertion(self, assertion_name):
+        """
+        Deletes the assertion params of the assertion with the provided name from the `DSSMLAssertionsParams`
+        Raises a ValueError if no assertion with the provided name was found
+        """
+        for idx, assertion_dict in enumerate(self._internal_dict["assertions"]):
+            if assertion_dict["name"] == assertion_name:
+                del self._internal_dict["assertions"][idx]
+                return
+        raise ValueError('No assertion name: {} was found'.format(assertion_name))
+
+
+class DSSMLAssertionParams(object):
+    """
+    Object that represents parameters for one assertion
+    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion(assertion_name)` or
+    `create_from_parts(name, a_filter, condition)` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    @staticmethod
+    def create_from_parts(name, a_filter, condition):
+        """
+        Creates a `DSSMLAssertionParams` from name, filter and condition
+
+        :param str name: Name of the assertion
+        :param ~dataikuapi.dss.utils.DSSFilter a_filter: Filter to select assertion population
+        :param DSSMLAssertionCondition condition: Condition for the assertion to be successful
+
+        :rtype: DSSMLAssertionParams
+        """
+        assertion_params = DSSMLAssertionParams({})
+        assertion_params.name = name
+        assertion_params.filter = a_filter
+        assertion_params.condition = condition
+        return assertion_params
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertion params
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def name(self):
+        """
+        Returns the assertion name
+        :rtype: str
+        """
+        return self._internal_dict["name"]
+
+    @name.setter
+    def name(self, name):
+        self._internal_dict["name"] = name
+
+    @property
+    def filter(self):
+        """
+        Returns the assertion filter
+        :rtype: ~dataikuapi.dss.utils.DSSFilter
+        """
+        return self._internal_dict["filter"]
+
+    @filter.setter
+    def filter(self, filter):
+        self._internal_dict["filter"] = filter
+
+    @property
+    def condition(self):
+        """
+        Returns the assertion condition
+        :rtype: DSSMLAssertionCondition
+        """
+
+        return DSSMLAssertionCondition(self._internal_dict["assertionCondition"])
+
+    @condition.setter
+    def condition(self, condition):
+        if not isinstance(condition, DSSMLAssertionCondition):
+            raise ValueError('Condition should be of type: {} not {}'.format(DSSMLAssertionCondition.__name__, type(condition)))
+        self._internal_dict["assertionCondition"] = condition._internal_dict
+
+
+class DSSMLAssertionCondition(object):
+    """
+      Object that represents an assertion condition
+      Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`, `create_from_expected_class(expected_valid_ratio, expected_class)`
+      or `create_from_expected_class(expected_valid_ratio, expected_class)` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    @staticmethod
+    def create_from_expected_class(expected_valid_ratio, expected_class):
+        """
+        Creates a `DSSMLAssertionCondition` from an expected valid ratio and  an expected class
+
+        :param float expected_valid_ratio: Ratio of valid rows needed for the assertion to pass
+        :param str expected_class: Class on which the `expected_valid_ratio` will be calculated
+
+        :rtype: DSSMLAssertionCondition
+        """
+        assertion_condition = DSSMLAssertionCondition({})
+        assertion_condition.expected_valid_ratio = expected_valid_ratio
+        assertion_condition.expected_class = expected_class
+        return assertion_condition
+
+    @staticmethod
+    def create_from_expected_range(expected_valid_ratio, expected_range):
+        """
+        Creates a `DSSMLAssertionCondition` from an expected valid ratio and an expected range
+
+        :param float expected_valid_ratio: Ratio of valid rows to exceed for the assertion to pass
+        :param tuple(float,float) expected_range: Range of values (min, max) where the prediction will be considered as
+        valid for the `expected_valid_ratio`
+
+        :rtype: DSSMLAssertionCondition
+        """
+        assertion_condition = DSSMLAssertionCondition({})
+        assertion_condition.expected_valid_ratio = expected_valid_ratio
+        assertion_condition.expected_range = expected_range
+        return assertion_condition
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the condition
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def expected_class(self):
+        """
+        Returns the expected class on which the valid ratio will be calculated
+        :rtype: str
+        """
+        if "expectedClass" in self._internal_dict:
+            return self._internal_dict["expectedClass"]
+        else:
+            return None
+
+    @expected_class.setter
+    def expected_class(self, expected_class):
+        if self.expected_range is not None:
+            raise ValueError("Expected class and expected range can't be both set")
+        self._internal_dict["expectedClass"] = expected_class
+
+    @property
+    def expected_valid_ratio(self):
+        """
+        Returns the ratio of valid rows to exceed for the assertion to pass
+        :rtype: str
+        """
+        return self._internal_dict["successRatio"]
+
+    @expected_valid_ratio.setter
+    def expected_valid_ratio(self, expected_valid_ratio):
+        self._internal_dict["successRatio"] = expected_valid_ratio
+
+    @property
+    def expected_range(self):
+        """
+        Returns the expected range on which the valid ratio will be calculated
+        :rtype: str
+        """
+        if "expectedMinValue" in self._internal_dict and "expectedMaxValue" in self._internal_dict:
+            return self._internal_dict["expectedMinValue"], self._internal_dict["expectedMaxValue"]
+        else:
+            return None
+
+    @expected_range.setter
+    def expected_range(self, expected_range):
+        if not isinstance(expected_range, tuple):
+            raise ValueError("Expected range needs to be a tuple")
+        if self.expected_class is not None:
+            raise ValueError("Expected class and expected range can't be both set")
+        if expected_range[0] > expected_range:
+            raise ValueError("Expected range needs to be sorted in ascending order. (min value, max value)")
+        self._internal_dict["expectedMinValue"] = expected_range[0]
+        self._internal_dict["expectedMaxValue"] = expected_range[1]
 
 
 class DSSTreeNode(object):
