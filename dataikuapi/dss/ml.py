@@ -892,6 +892,97 @@ class DSSMLAssertionCondition(object):
         self._internal_dict["expectedMaxValue"] = expected_range[1]
 
 
+class DSSMLAssertionsMetrics(object):
+    """
+    Object that represents the per assertion metrics for all assertions on a trained model
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_per_assertion_metrics()` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertions metrics
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_per_assertion_metric(self, assertion_name):
+        """
+        Retrieves the metric computed for this trained model for the assertion with the provided name (or None)
+        :returns: an object representing assertion metric
+        :rtype: `dataikuapi.dss.ml.DSSMLAssertionMetric`
+        """
+        for assertion_metric_dict in self._internal_dict["perAssertion"]:
+            if assertion_name == assertion_metric_dict["name"]:
+                return DSSMLAssertionMetric(assertion_metric_dict)
+        return None
+
+    @property
+    def positive_assertion_ratio(self):
+        """
+        Returns the ratio of passing assertions
+        :rtype: float
+        """
+        return self._internal_dict['positiveAssertionsRatio']
+
+
+class DSSMLAssertionMetric(object):
+    """
+    Object that represents the result of an assertion on a trained model
+    Do not create this object directly, use :meth:`DSSMLPerAssertionMetrics.get_assertion_metric(self, assertion_name)` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of metrics of one assertion
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def name(self):
+        """
+        Returns the assertion name
+        :rtype: str
+        """
+        return self._internal_dict["name"]
+
+    @property
+    def result(self):
+        """
+        Returns whether the assertion pass
+        :rtype: bool
+        """
+        return self._internal_dict["result"]
+
+    @property
+    def valid_ratio(self):
+        """
+        Returns the ratio of passing rows in the assertion population
+        :rtype: float
+        """
+        return self._internal_dict["validRatio"]
+
+    @property
+    def nb_matching_rows(self):
+        """
+        Returns the number of rows matching filter
+        :rtype: int
+        """
+        return self._internal_dict["nbMatchingRows"]
+
+    @property
+    def nb_dropped_rows(self):
+        """
+        Returns the number of rows dropped by the preprocessing
+        :rtype: int
+        """
+        return self._internal_dict["nbDroppedRows"]
+
+
 class DSSTreeNode(object):
     def __init__(self, tree, i):
         self.tree = tree
@@ -1050,6 +1141,22 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 del clean_snippet[x]
         return clean_snippet
 
+    @property
+    def assertions_metrics(self):
+        """
+        Retrieves assertions metrics computed for this trained model
+        :returns: an object representing assertion metrics
+        :rtype: `dataikuapi.dss.ml.DSSMLAssertionsMetrics`
+        """
+        return self.get_assertions_metrics()
+
+    def get_assertions_metrics(self):
+        """
+        Retrieves assertions metrics computed for this trained model
+        :returns: an object representing assertion metrics
+        :rtype: `dataikuapi.dss.ml.DSSMLAssertionsMetrics`
+        """
+        return DSSMLAssertionsMetrics(self.snippet["assertionsMetrics"])
 
     def get_hyperparameter_search_points(self):
         """
