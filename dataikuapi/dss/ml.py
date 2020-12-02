@@ -797,7 +797,7 @@ class DSSMLAssertionCondition(object):
     """
       Object that represents an assertion condition
       Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`, `create_from_expected_class(expected_valid_ratio, expected_class)`
-      or `create_from_expected_class(expected_valid_ratio, expected_class)` instead
+      or `create_from_expected_range(expected_valid_ratio, expected_range)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
