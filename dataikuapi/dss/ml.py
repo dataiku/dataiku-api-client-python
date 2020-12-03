@@ -264,7 +264,7 @@ class DSSMLTaskSettings(object):
             algorithm_params = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
             # Subsequent calls get the same object
             self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_params
-        return algorithm_settings
+        return self.mltask_settings["modeling"][algorithm_name.lower()]
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
