@@ -916,6 +916,7 @@ class DSSMLAssertionsMetrics(object):
         Retrieves the metric computed for this trained model for the assertion with the provided name (or None)
 
         :param str assertion_name: Name of the assertion
+
         :returns: an object representing assertion metrics
         :rtype: `dataikuapi.dss.ml.DSSMLAssertionMetric`
         """
