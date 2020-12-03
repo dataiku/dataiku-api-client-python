@@ -434,7 +434,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     @property
     def assertions_params(self):
         """
-        Retrieves the assertion params for this ml task
+        Retrieves the assertions params for this ml task
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
         """
@@ -442,7 +442,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def get_assertions_params(self):
         """
-        Retrieves the assertion params for this ml task
+        Retrieves the assertions params for this ml task
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
         """
@@ -663,11 +663,11 @@ class DSSMLDiagnostic(object):
 class DSSMLAssertionsParams(object):
     """
     Object that represents parameters for all assertions of a ml task
-    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertion_params()` instead
+    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params()` instead
     """
 
-    @classmethod
-    def check_assertion_names_are_uniq(cls, assertion_params_list):
+    @staticmethod
+    def check_assertion_names_are_uniq(assertion_params_list):
         _ = {}
         for assertion_dict in assertion_params_list:
             if 'name' not in assertion_dict:
@@ -693,7 +693,7 @@ class DSSMLAssertionsParams(object):
         Gets a :class:`dataikuapi.dss.ml.DSSMLAssertionParams` representing the params of the assertion with the
         provided name (or None)
         :param str assertion_name: Name of the assertion
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionParams` or None
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams` or None
         """
         for assertion_dict in self._internal_dict["assertions"]:
             if assertion_dict["name"] == assertion_name:
@@ -702,9 +702,9 @@ class DSSMLAssertionsParams(object):
 
     def add_assertion(self, assertion_params):
         """
-        Adds params of an assertion to the assertion params of the ml task. Raises a ValueError if an assertion
-        with the same name already exists
-        :param `dataikuapi.dss.ml.DSSMLAssertionParams` assertion_params: Parameters of the assertion
+        Adds params of an assertion to the assertions params of the ml task.
+        Raises a ValueError if an assertion with the same name already exists
+        :param object  assertion_params: A :class:`~dataikuapi.dss.utils.DSSMLAssertionParams` representing parameters of the assertion
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
             raise ValueError('Assertion params should be of type: {} not {}'.format(DSSMLAssertionParams.__name__, type(assertion_params)))
@@ -736,13 +736,13 @@ class DSSMLAssertionParams(object):
     @staticmethod
     def create_from_parts(name, a_filter, condition):
         """
-        Creates a `dataikuapi.dss.ml.DSSMLAssertionParams` from name, filter and condition
+        Creates assertion params from name, filter and condition
 
         :param str name: Name of the assertion
-        :param ~dataikuapi.dss.utils.DSSFilter a_filter: Filter to select assertion population
-        :param DSSMLAssertionCondition condition: Condition for the assertion to be successful
+        :param object a_filter: A :class:`~dataikuapi.dss.utils.DSSFilter`  to select assertion population
+        :param object condition: A :class:`~dataikuapi.dss.ml.DSSMLAssertionCondition` for the assertion to be successful
 
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionParams`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams`
         """
         assertion_params = DSSMLAssertionParams({})
         assertion_params.name = name
@@ -773,7 +773,7 @@ class DSSMLAssertionParams(object):
     def filter(self):
         """
         Returns the assertion filter
-        :rtype: ~dataikuapi.dss.utils.DSSFilter
+        :rtype: :class:`dataikuapi.dss.utils.DSSFilter`
         """
         return self._internal_dict["filter"]
 
@@ -785,9 +785,8 @@ class DSSMLAssertionParams(object):
     def condition(self):
         """
         Returns the assertion condition
-        :rtype: DSSMLAssertionCondition
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionCondition`
         """
-
         return DSSMLAssertionCondition(self._internal_dict["assertionCondition"])
 
     @condition.setter
@@ -800,8 +799,8 @@ class DSSMLAssertionParams(object):
 class DSSMLAssertionCondition(object):
     """
       Object that represents an assertion condition
-      Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, `create_from_expected_class(expected_valid_ratio, expected_class)`
-      or `create_from_expected_range(expected_valid_ratio, expected_range)` instead
+      Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.create_from_expected_class(expected_valid_ratio, expected_class)`
+      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.create_from_expected_range(expected_valid_ratio, expected_range)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -809,12 +808,12 @@ class DSSMLAssertionCondition(object):
     @staticmethod
     def create_from_expected_class(expected_valid_ratio, expected_class):
         """
-        Creates a `dataikuapi.dss.ml.DSSMLAssertionCondition` from an expected valid ratio and  an expected class
+        Creates an assertion condition from an expected valid ratio and  an expected class
 
         :param float expected_valid_ratio: Ratio of valid rows needed for the assertion to pass
         :param str expected_class: Class on which the `expected_valid_ratio` will be calculated
 
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionCondition`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionCondition`
         """
         assertion_condition = DSSMLAssertionCondition({})
         assertion_condition.expected_valid_ratio = expected_valid_ratio
@@ -824,13 +823,13 @@ class DSSMLAssertionCondition(object):
     @staticmethod
     def create_from_expected_range(expected_valid_ratio, expected_range):
         """
-        Creates a `dataikuapi.dss.ml.DSSMLAssertionCondition` from an expected valid ratio and an expected range
+        Creates an assertion condition from an expected valid ratio and an expected range
 
         :param float expected_valid_ratio: Ratio of valid rows to exceed for the assertion to pass
         :param tuple(float,float) expected_range: Range of values (min, max) where the prediction will be considered as
         valid for the `expected_valid_ratio`
 
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionCondition`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionCondition`
         """
         assertion_condition = DSSMLAssertionCondition({})
         assertion_condition.expected_valid_ratio = expected_valid_ratio
@@ -899,7 +898,7 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the per assertion metrics for all assertions on a trained model
-    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_per_assertion_metrics()` instead
+    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails.get_per_assertion_metrics()` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -918,7 +917,7 @@ class DSSMLAssertionsMetrics(object):
         :param str assertion_name: Name of the assertion
 
         :returns: an object representing assertion metrics
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionMetric`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionMetric`
         """
         for assertion_metric_dict in self._internal_dict["perAssertion"]:
             if assertion_name == assertion_metric_dict["name"]:
@@ -937,7 +936,7 @@ class DSSMLAssertionsMetrics(object):
 class DSSMLAssertionMetric(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`DSSMLPerAssertionMetrics.get_assertion_metric(self, assertion_name)` instead
+    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLPerAssertionMetrics.get_assertion_metric(self, assertion_name)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -1153,7 +1152,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Retrieves assertions metrics computed for this trained model
         :returns: an object representing assertion metrics
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionsMetrics`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsMetrics`
         """
         return self.get_assertions_metrics()
 
@@ -1161,7 +1160,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Retrieves assertions metrics computed for this trained model
         :returns: an object representing assertion metrics
-        :rtype: `dataikuapi.dss.ml.DSSMLAssertionsMetrics`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsMetrics`
         """
         return DSSMLAssertionsMetrics(self.snippet["assertionsMetrics"])
 
