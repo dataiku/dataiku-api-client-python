@@ -551,19 +551,46 @@ class HyperparameterSettings(object):
         self.name = name
         self._algo_settings = algo_settings
 
+    def _repr_html_(self):
+        return "<pre>" + self._pretty_repr() + "</pre><details><pre>{}</pre></details>".format(self.__repr__())
+
+    def _pretty_repr(self):
+        raise NotImplementedError()
+
 
 class NumericalHyperparameterSettings(HyperparameterSettings):
 
-    def _repr_html_(self):
-        active_dict = self._algo_settings._get_active_numerical_hyperparam_dict(self.name)
-        return "<pre>" + self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})</pre>".format(self.name, json.dumps(active_dict, indent=4)) + \
-               "\n<details><pre>{}</pre></details>".format(self.__repr__())
+    def _pretty_repr(self):
+        active_dict = self._get_active_settings_dict()
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(active_dict, indent=4))
 
     def __repr__(self):
         raw_dict = self._algo_settings[self.name]
-        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(raw_dict, indent=4))
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(raw_dict))
 
     __str__ = __repr__
+
+    def _get_hyperparameter_mode(self):
+        if self._algo_settings.strategy == "GRID":
+            return self._algo_settings[self.name]["gridMode"]
+        else:
+            # RANDOM and BAYESIAN search strategies
+            return self._algo_settings[self.name]["randomMode"]
+
+    def _get_active_settings_dict(self):
+        clean_hyperparam = dict()
+        raw_hyperparam = self._algo_settings[self.name]
+        mode = self._get_hyperparameter_mode()
+        if mode == "EXPLICIT":
+            clean_hyperparam["values"] = raw_hyperparam["values"]
+        else:
+            clean_hyperparam["range"] = raw_hyperparam["range"]
+        if self._algo_settings.strategy == "GRID":
+            clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
+        else:
+            # RANDOM and BAYESIAN strategies
+            clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
+        return clean_hyperparam
 
     def set_explicit_values(self, values=None):
         self._algo_settings._set_numerical_explicit_values(self.name, values)
@@ -575,9 +602,12 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 class CategoricalHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
-        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name]))
 
     __str__ = __repr__
+
+    def _pretty_repr(self):
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
 
     def set_values(self, values=None):
         self._algo_settings._set_categorical_values(self.name, values=values)
@@ -609,31 +639,44 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
 
 class SingleValuedHyperparameterSettings(HyperparameterSettings):
 
-    def __init__(self, name, algo_settings, accepted_values=None, accepted_types=None):
+    def __init__(self, name, algo_settings, accepted_types=None):
         super(SingleValuedHyperparameterSettings, self).__init__(name, algo_settings)
-        self.accepted_values = accepted_values
         self.accepted_types = accepted_types
 
     def __repr__(self):
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, self._algo_settings[self.name])
+
+    __str__ = __repr__
+
+    _pretty_repr = __repr__
+
+    def set_value(self, value):
+        if self.accepted_types is not None:
+            assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
+        self._algo_settings._set_single_valued_hyperparameter(self.name, value)
+
+
+class SingleValuedCategoricalHyperparameterSettings(HyperparameterSettings):
+
+    def __init__(self, name, algo_settings, accepted_values=None):
+        super(SingleValuedCategoricalHyperparameterSettings, self).__init__(name, algo_settings)
+        self.accepted_values = accepted_values
+
+    def __repr__(self):
         if self.accepted_values is not None:
-            if isinstance(self._algo_settings[self.name], string_types):
-                return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\", accepted_values={})".format(self.name,
-                                                                                                                    self._algo_settings[self.name],
-                                                                                                                    json.dumps(self.accepted_values))
-            else:
-                return self.__class__.__name__ + "(hyperparameter=\"{}\", value={}, accepted_values={})".format(self.name,
-                                                                                                                    self._algo_settings[self.name],
-                                                                                                                    str(self.accepted_values))
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={}, accepted_values={})".format(self.name,
+                                                                                                            self._algo_settings[self.name],
+                                                                                                            self.accepted_values)
         else:
             return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, self._algo_settings[self.name])
 
     __str__ = __repr__
 
+    _pretty_repr = __repr__
+
     def set_value(self, value):
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
-        if self.accepted_types is not None:
-            assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
         self._algo_settings._set_single_valued_hyperparameter(self.name, value)
 
 
@@ -644,46 +687,38 @@ class AlgorithmSettings(dict):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(AlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
+        self._hyperparameters_registry = dict()
+
+    def register_numerical_hyperparameter(self, name):
+        self._hyperparameters_registry[name] = NumericalHyperparameterSettings(name, self)
+        return self._hyperparameters_registry[name]
+
+    def register_categorical_hyperparameter(self, name):
+        self._hyperparameters_registry[name] = CategoricalHyperparameterSettings(name, self)
+        return self._hyperparameters_registry[name]
+
+    def register_single_valued_categorical_hyperparameter(self, name, accepted_values=None):
+        self._hyperparameters_registry[name] = SingleValuedCategoricalHyperparameterSettings(name, self, accepted_values=accepted_values)
+        return self._hyperparameters_registry[name]
+
+    def register_single_valued_hyperparameter(self, name, accepted_types=None):
+        self._hyperparameters_registry[name] = SingleValuedHyperparameterSettings(name, self, accepted_types=accepted_types)
+        return self._hyperparameters_registry[name]
 
     def _repr_html_(self):
-        active_settings = dict()
-        for key in self.keys():
-            if isinstance(self[key], dict):
-                # Searchable hyperparameter
-                if "range" in self[key]:
-                    # Numerical hyperparameter
-                    active_hyperparam = self._get_active_numerical_hyperparam_dict(key)
-                else:
-                    # Categorical hyperparameter
-                    active_hyperparam = self[key]
-                active_settings[key] = active_hyperparam
-            else:
-                active_settings[key] = self[key]
-        return "<pre>" + self.__class__.__name__ + "(active_values={})</pre>".format(json.dumps(active_settings, indent=4)) + \
-               "\n<details><pre>{}</pre></details>".format(self.__repr__())
+        res = "<pre>" + self.__class__.__name__ + "\n"
+        for name, hyperparam_settings in self._hyperparameters_registry.items():
+            res += hyperparam_settings._pretty_repr() + "\n"
+        res += "</pre>"
+        return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
         return self.__class__.__name__ + "(values={})".format(json.dumps(super(AlgorithmSettings, self).copy(), indent=4))
 
     __str__ = __repr__
 
-    def _get_active_numerical_hyperparam_dict(self, hyperparameter_name):
-        clean_hyperparam = dict()
-        raw_hyperparam = self[hyperparameter_name]
-        mode = self._get_hyperparameter_mode(hyperparameter_name)
-        if mode == "EXPLICIT":
-            clean_hyperparam["values"] = raw_hyperparam["values"]
-        else:
-            clean_hyperparam["range"] = raw_hyperparam["range"]
-        if self.strategy == "GRID":
-            clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
-        else:
-            # RANDOM and BAYESIAN strategies
-            clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
-        return clean_hyperparam
-
     def _get_all_hyperparameter_names(self):
-        return [key for key in self.keys() if key not in self.excluded_keys]
+        return list(self._hyperparameters_registry.keys())
 
     @property
     def enabled(self):
@@ -785,13 +820,6 @@ class AlgorithmSettings(dict):
     def strategy(self):
         return self._hyperparameter_search_params["strategy"]
 
-    def _get_hyperparameter_mode(self, hyperparameter_name):
-        if self.strategy == "GRID":
-            return self[hyperparameter_name]["gridMode"]
-        else:
-            # RANDOM and BAYESIAN search strategies
-            return self[hyperparameter_name]["randomMode"]
-
     def _check_hyperparameter_name(self, hyperparameter_name):
         assert isinstance(hyperparameter_name, string_types), "Invalid type for hyperparameter name: expecting a string"
         hyperparameter_names = self._get_all_hyperparameter_names()
@@ -818,209 +846,209 @@ class RandomForestSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_estimators = NumericalHyperparameterSettings("n_estimators", self)
-        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
-        self.max_tree_depth = NumericalHyperparameterSettings("max_tree_depth", self)
-        self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
-        self.max_features = NumericalHyperparameterSettings("max_features", self)
-        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self, accepted_types=[int])
-        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self, accepted_values=["auto", "sqrt", "log2", "number","prop"])
+        self.n_estimators = self.register_numerical_hyperparameter("n_estimators")
+        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
+        self.max_tree_depth = self.register_numerical_hyperparameter("max_tree_depth")
+        self.max_feature_prop = self.register_numerical_hyperparameter("max_feature_prop")
+        self.max_features = self.register_numerical_hyperparameter("max_features")
+        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
+        self.selection_mode = self.register_single_valued_categorical_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number","prop"])
 
 
 class XGBoostSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
-        self.learning_rate = NumericalHyperparameterSettings("learning_rate", self)
-        self.gamma = NumericalHyperparameterSettings("gamma", self)
-        self.min_child_weight = NumericalHyperparameterSettings("min_child_weight", self)
-        self.max_delta_step = NumericalHyperparameterSettings("max_delta_step", self)
-        self.subsample = NumericalHyperparameterSettings("subsample", self)
-        self.colsample_bytree = NumericalHyperparameterSettings("colsample_bytree", self)
-        self.colsample_bylevel = NumericalHyperparameterSettings("colsample_bylevel", self)
-        self.alpha = NumericalHyperparameterSettings("alpha", self)
-        self.lambda_ = NumericalHyperparameterSettings("lambda", self)
-        self.booster = CategoricalHyperparameterSettings("booster", self)
-        self.objective = CategoricalHyperparameterSettings("objective", self)
-        self.n_estimators = SingleValuedHyperparameterSettings("n_estimators", self, accepted_types=[int])
-        self.nthread = SingleValuedHyperparameterSettings("nthread", self, accepted_types=[int])
-        self.scale_pos_weight = SingleValuedHyperparameterSettings("scale_pos_weight", self, accepted_types=[int, float])
-        self.base_score = SingleValuedHyperparameterSettings("base_score", self, accepted_types=[int, float])
-        self.impute_missing = SingleValuedHyperparameterSettings("impute_missing", self, accepted_types=[bool])
-        self.missing = SingleValuedHyperparameterSettings("missing", self, accepted_types=[int, float])
-        self.cpu_tree_method = SingleValuedHyperparameterSettings("cpu_tree_method", self, accepted_values=["auto", "exact", "approx", "hist"])
-        self.gpu_tree_method = SingleValuedHyperparameterSettings("gpu_tree_method", self, accepted_values=["gpu_exact", "gpu_hist"])
-        self.enable_cuda = SingleValuedHyperparameterSettings("enable_cuda", self, accepted_types=[bool])
-        self.seed = SingleValuedHyperparameterSettings("seed", self, accepted_types=[int])
-        self.enable_early_stopping = SingleValuedHyperparameterSettings("enable_early_stopping", self, accepted_types=[bool])
-        self.early_stopping_rounds = SingleValuedHyperparameterSettings("early_stopping_rounds", self, accepted_types=[int])
+        self.max_depth = self.register_numerical_hyperparameter("max_depth")
+        self.learning_rate = self.register_numerical_hyperparameter("learning_rate")
+        self.gamma = self.register_numerical_hyperparameter("gamma")
+        self.min_child_weight = self.register_numerical_hyperparameter("min_child_weight")
+        self.max_delta_step = self.register_numerical_hyperparameter("max_delta_step")
+        self.subsample = self.register_numerical_hyperparameter("subsample")
+        self.colsample_bytree = self.register_numerical_hyperparameter("colsample_bytree")
+        self.colsample_bylevel = self.register_numerical_hyperparameter("colsample_bylevel")
+        self.alpha = self.register_numerical_hyperparameter("alpha")
+        self.lambda_ = self.register_numerical_hyperparameter("lambda")
+        self.booster = self.register_categorical_hyperparameter("booster")
+        self.objective = self.register_categorical_hyperparameter("objective")
+        self.n_estimators = self.register_single_valued_hyperparameter("n_estimators", accepted_types=[int])
+        self.nthread = self.register_single_valued_hyperparameter("nthread", accepted_types=[int])
+        self.scale_pos_weight = self.register_single_valued_hyperparameter("scale_pos_weight", accepted_types=[int, float])
+        self.base_score = self.register_single_valued_hyperparameter("base_score", accepted_types=[int, float])
+        self.impute_missing = self.register_single_valued_hyperparameter("impute_missing", accepted_types=[bool])
+        self.missing = self.register_single_valued_hyperparameter("missing", accepted_types=[int, float])
+        self.cpu_tree_method = self.register_single_valued_categorical_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
+        self.gpu_tree_method = self.register_single_valued_categorical_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
+        self.enable_cuda = self.register_single_valued_hyperparameter("enable_cuda", accepted_types=[bool])
+        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
+        self.enable_early_stopping = self.register_single_valued_hyperparameter("enable_early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self.register_single_valued_hyperparameter("early_stopping_rounds", accepted_types=[int])
 
 
 class GradientBoostedTreesSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_estimators = NumericalHyperparameterSettings("n_estimator", self)
-        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
-        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
-        self.max_features = NumericalHyperparameterSettings("max_features", self)
-        self.max_feature_prop = NumericalHyperparameterSettings("max_feature_prop", self)
-        self.learning_rate = NumericalHyperparameterSettings("learning_rate", self)
-        self.loss = CategoricalHyperparameterSettings("loss", self)
-        self.selection_mode = SingleValuedHyperparameterSettings("selection_mode", self, accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.n_estimators = self.register_numerical_hyperparameter("n_estimator")
+        self.max_depth = self.register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
+        self.max_features = self.register_numerical_hyperparameter("max_features")
+        self.max_feature_prop = self.register_numerical_hyperparameter("max_feature_prop")
+        self.learning_rate = self.register_numerical_hyperparameter("learning_rate")
+        self.loss = self.register_categorical_hyperparameter("loss")
+        self.selection_mode = self.register_single_valued_categorical_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
 class DecisionTreeSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(DecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
-        self.min_samples_leaf = NumericalHyperparameterSettings("min_samples_leaf", self)
-        self.criterion = CategoricalHyperparameterSettings("criterion", self)
-        self.splitter = CategoricalHyperparameterSettings("splitter", self)
+        self.max_depth = self.register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
+        self.criterion = self.register_categorical_hyperparameter("criterion")
+        self.splitter = self.register_categorical_hyperparameter("splitter")
 
 
 class LogitSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.C = NumericalHyperparameterSettings("C", self)
-        self.penalty = CategoricalHyperparameterSettings("penalty", self)
-        self.multi_class = SingleValuedHyperparameterSettings("multi_class", self, accepted_values=["multinomial", "ovr"])
-        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self, accepted_types=[int])
+        self.C = self.register_numerical_hyperparameter("C")
+        self.penalty = self.register_categorical_hyperparameter("penalty")
+        self.multi_class = self.register_single_valued_categorical_hyperparameter("multi_class", accepted_values=["multinomial", "ovr"])
+        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class RidgeRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = NumericalHyperparameterSettings("alpha", self)
-        self.alpha_mode = SingleValuedHyperparameterSettings("alphaMode", self, accepted_values=["MANUAL", "AUTO"])
+        self.alpha = self.register_numerical_hyperparameter("alpha", self)
+        self.alpha_mode = self.register_single_valued_categorical_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
 
 
 class LassoRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = NumericalHyperparameterSettings("alpha", self)
-        self.alpha_mode = SingleValuedHyperparameterSettings("alphaMode", self, accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
+        self.alpha = self.register_numerical_hyperparameter("alpha")
+        self.alpha_mode = self.register_single_valued_categorical_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
 
 
 class OLSSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self, accepted_types=[int])
+        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class LARSSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LARSSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_features = SingleValuedHyperparameterSettings("max_features", self, accepted_types=[int])
-        self.K = SingleValuedHyperparameterSettings("K", self, accepted_types=[int])
+        self.max_features = self.register_single_valued_hyperparameter("max_features", accepted_types=[int])
+        self.K = self.register_single_valued_hyperparameter("K", accepted_types=[int])
 
 
 class SGDSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SGDSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = NumericalHyperparameterSettings("alpha", self)
-        self.loss = CategoricalHyperparameterSettings("loss", self)
-        self.penalty = CategoricalHyperparameterSettings("penalty", self)
-        self.l1_ratio = SingleValuedHyperparameterSettings("l1_ratio", self, accepted_types=[int, float])
-        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self, accepted_types=[int])
-        self.tol = SingleValuedHyperparameterSettings("tol", self, accepted_types=[int, float])
-        self.n_jobs = SingleValuedHyperparameterSettings("n_jobs", self, accepted_types=[int])
+        self.alpha = self.register_numerical_hyperparameter("alpha")
+        self.loss = self.register_categorical_hyperparameter("loss")
+        self.penalty = self.register_categorical_hyperparameter("penalty")
+        self.l1_ratio = self.register_single_valued_hyperparameter("l1_ratio", accepted_types=[int, float])
+        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
+        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
+        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class KNNSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.k = NumericalHyperparameterSettings("k", self)
-        self.algorithm = SingleValuedHyperparameterSettings("algorithm", self, accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
-        self.distance_weighting = SingleValuedHyperparameterSettings("distance_weighting", self, accepted_types=[bool])
-        self.p = SingleValuedHyperparameterSettings("p", self, accepted_types=[int])
-        self.leaf_size = SingleValuedHyperparameterSettings("leaf_size", self, accepted_types=[int])
+        self.k = self.register_numerical_hyperparameter("k")
+        self.algorithm = self.register_single_valued_categorical_hyperparameter("algorithm", accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
+        self.distance_weighting = self.register_single_valued_hyperparameter("distance_weighting", accepted_types=[bool])
+        self.p = self.register_single_valued_hyperparameter("p", accepted_types=[int])
+        self.leaf_size = self.register_single_valued_hyperparameter("leaf_size", accepted_types=[int])
 
 
 class SVMSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.custom_gamma = NumericalHyperparameterSettings("custom_gamma", self)
-        self.C = NumericalHyperparameterSettings("C", self)
-        self.gamma = CategoricalHyperparameterSettings("gamma", self)
-        self.kernel = CategoricalHyperparameterSettings("kernel", self)
-        self.coef0 = SingleValuedHyperparameterSettings("coef0", self, accepted_types=[int, float])
-        self.tol = SingleValuedHyperparameterSettings("tol", self, accepted_types=[int, float])
-        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self, accepted_types=[int])
+        self.custom_gamma = self.register_numerical_hyperparameter("custom_gamma")
+        self.C = self.register_numerical_hyperparameter("C")
+        self.gamma = self.register_categorical_hyperparameter("gamma")
+        self.kernel = self.register_categorical_hyperparameter("kernel")
+        self.coef0 = self.register_single_valued_hyperparameter("coef0", accepted_types=[int, float])
+        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
+        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLPSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.layer_sizes = NumericalHyperparameterSettings("layer_sizes", self)
-        self.activation = SingleValuedHyperparameterSettings("activation", self, accepted_values=["relu", "identity", "logistic", "tanh"])
-        self.solver = SingleValuedHyperparameterSettings("solver", self, accepted_values=["adam", "sgd"])
-        self.alpha = SingleValuedHyperparameterSettings("alpha", self, accepted_types=[int, float])
-        self.batch_size = SingleValuedHyperparameterSettings("batch_size", self, accepted_types=[int])
-        self.auto_batch = SingleValuedHyperparameterSettings("auto_batch", self, accepted_types=[bool])
-        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self, accepted_types=[int])
-        self.seed = SingleValuedHyperparameterSettings("seed", self, accepted_types=[int])
-        self.tol = SingleValuedHyperparameterSettings("tol", self, accepted_types=[int, float])
-        self.early_stopping = SingleValuedHyperparameterSettings("early_stopping", self, accepted_types=[bool])
-        self.validation_fraction = SingleValuedHyperparameterSettings("validation_fraction", self, accepted_types=[int, float])
-        self.beta_1 = SingleValuedHyperparameterSettings("beta_1", self, accepted_types=[int, float])
-        self.beta_2 = SingleValuedHyperparameterSettings("beta_2", self, accepted_types=[int, float])
-        self.epsilon = SingleValuedHyperparameterSettings("epsilon", self, accepted_types=[int, float])
-        self.learning_rate = SingleValuedHyperparameterSettings("learning_rate", self, accepted_values=["constant", "invscaling", "adaptive"])
-        self.power_t = SingleValuedHyperparameterSettings("power_t", self, accepted_types=[int, float])
-        self.momentum = SingleValuedHyperparameterSettings("momentum", self, accepted_types=[int, float])
-        self.nesterovs_momentum = SingleValuedHyperparameterSettings("nesterovs_momentum", self, accepted_types=[bool])
-        self.shuffle = SingleValuedHyperparameterSettings("shuffle", self, accepted_types=[bool])
-        self.learning_rate_init = SingleValuedHyperparameterSettings("learning_rate_init", self, accepted_types=[int, float])
+        self.layer_sizes = self.register_numerical_hyperparameter("layer_sizes")
+        self.activation = self.register_single_valued_categorical_hyperparameter("activation", accepted_values=["relu", "identity", "logistic", "tanh"])
+        self.solver = self.register_single_valued_categorical_hyperparameter("solver", accepted_values=["adam", "sgd"])
+        self.alpha = self.register_single_valued_hyperparameter("alpha", accepted_types=[int, float])
+        self.batch_size = self.register_single_valued_hyperparameter("batch_size", accepted_types=[int])
+        self.auto_batch = self.register_single_valued_hyperparameter("auto_batch", accepted_types=[bool])
+        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
+        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
+        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
+        self.early_stopping = self.register_single_valued_hyperparameter("early_stopping", accepted_types=[bool])
+        self.validation_fraction = self.register_single_valued_hyperparameter("validation_fraction", accepted_types=[int, float])
+        self.beta_1 = self.register_single_valued_hyperparameter("beta_1", accepted_types=[int, float])
+        self.beta_2 = self.register_single_valued_hyperparameter("beta_2", accepted_types=[int, float])
+        self.epsilon = self.register_single_valued_hyperparameter("epsilon", accepted_types=[int, float])
+        self.learning_rate = self.register_single_valued_categorical_hyperparameter("learning_rate", accepted_values=["constant", "invscaling", "adaptive"])
+        self.power_t = self.register_single_valued_hyperparameter("power_t", accepted_types=[int, float])
+        self.momentum = self.register_single_valued_hyperparameter("momentum", accepted_types=[int, float])
+        self.nesterovs_momentum = self.register_single_valued_hyperparameter("nesterovs_momentum", accepted_types=[bool])
+        self.shuffle = self.register_single_valued_hyperparameter("shuffle", accepted_types=[bool])
+        self.learning_rate_init = self.register_single_valued_hyperparameter("learning_rate_init", accepted_types=[int, float])
 
 
 class MLLibLogitSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.reg_param = NumericalHyperparameterSettings("reg_param", self)
-        self.enet_param = NumericalHyperparameterSettings("enet_param", self)
-        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self, accepted_types=[int])
+        self.reg_param = self.register_numerical_hyperparameter("reg_param")
+        self.enet_param = self.register_numerical_hyperparameter("enet_param")
+        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLLibNaiveBayesSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.lambda_ = NumericalHyperparameterSettings("lambda", self)
+        self.lambda_ = self.register_numerical_hyperparameter("lambda")
 
 
 class MLLibLinearRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLinearRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.reg_param = NumericalHyperparameterSettings("reg_param", self)
-        self.enet_param = NumericalHyperparameterSettings("enet_param", self)
-        self.max_iter = SingleValuedHyperparameterSettings("max_iter", self, accepted_types=[int])
+        self.reg_param = self.register_numerical_hyperparameter("reg_param")
+        self.enet_param = self.register_numerical_hyperparameter("enet_param")
+        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLLibDecisionTreeSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
-        self.cache_node_ids = SingleValuedHyperparameterSettings("cache_node_ids", self, accepted_types=[bool])
-        self.checkpoint_interval = SingleValuedHyperparameterSettings("checkpoint_interval", self, accepted_types=[int])
-        self.max_bins = SingleValuedHyperparameterSettings("max_bins", self, accepted_types=[int])
-        self.max_memory_mb = SingleValuedHyperparameterSettings("max_memory_mb", self, accepted_types=[int])
-        self.min_info_gain = SingleValuedHyperparameterSettings("min_info_gain", self, accepted_types=[int, float])
-        self.min_instance_per_node = SingleValuedHyperparameterSettings("min_instance_per_node", self, accepted_types=[int])
+        self.max_depth = self.register_numerical_hyperparameter("max_depth")
+        self.cache_node_ids = self.register_single_valued_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.checkpoint_interval = self.register_single_valued_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.max_bins = self.register_single_valued_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self.register_single_valued_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.min_info_gain = self.register_single_valued_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self.register_single_valued_hyperparameter("min_instance_per_node", accepted_types=[int])
 
 
 class _MLLibTreeEnsembleSettings(AlgorithmSettings):
@@ -1028,33 +1056,33 @@ class _MLLibTreeEnsembleSettings(AlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(_MLLibTreeEnsembleSettings, self).__init__(raw_settings, hyperparameter_search_params)
 
-        self.max_depth = NumericalHyperparameterSettings("max_depth", self)
-        self.num_trees = NumericalHyperparameterSettings("num_trees", self)
+        self.max_depth = self.register_numerical_hyperparameter("max_depth")
+        self.num_trees = self.register_numerical_hyperparameter("num_trees")
 
-        self.cache_node_ids = SingleValuedHyperparameterSettings("cache_node_ids", self, accepted_types=[bool])
-        self.checkpoint_interval = SingleValuedHyperparameterSettings("checkpoint_interval", self, accepted_types=[int])
-        self.impurity = SingleValuedHyperparameterSettings("impurity", self, accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
-        self.max_bins = SingleValuedHyperparameterSettings("max_bins", self, accepted_types=[int])
-        self.max_memory_mb = SingleValuedHyperparameterSettings("max_memory_mb", self, accepted_types=[int])
-        self.min_info_gain = SingleValuedHyperparameterSettings("min_info_gain", self, accepted_types=[int, float])
-        self.min_instance_per_node = SingleValuedHyperparameterSettings("min_instance_per_node", self, accepted_types=[int])
-        self.seed = SingleValuedHyperparameterSettings("seed", self, accepted_types=[int])
-        self.subsampling_rate = SingleValuedHyperparameterSettings("subsampling_rate", self, accepted_types=[int, float])
+        self.cache_node_ids = self.register_single_valued_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.checkpoint_interval = self.register_single_valued_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.impurity = self.register_single_valued_categorical_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
+        self.max_bins = self.register_single_valued_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self.register_single_valued_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.min_info_gain = self.register_single_valued_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self.register_single_valued_hyperparameter("min_instance_per_node", accepted_types=[int])
+        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
+        self.subsampling_rate = self.register_single_valued_hyperparameter("subsampling_rate", accepted_types=[int, float])
 
 
 class MLLibRandomForestSettings(_MLLibTreeEnsembleSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibRandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.impurity = SingleValuedHyperparameterSettings("impurity", self, accepted_values=["gini", "entropy", "variance"])
-        self.subset_strategy = SingleValuedHyperparameterSettings("subset_strategy", self, accepted_values=["auto", "all", "onethird", "sqrt", "log2"])
+        self.impurity = self.register_single_valued_categorical_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])
+        self.subset_strategy = self.register_single_valued_categorical_hyperparameter("subset_strategy", accepted_values=["auto", "all", "onethird", "sqrt", "log2"])
 
 
 class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibGBTSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.step_size = NumericalHyperparameterSettings("step_size", self)
+        self.step_size = self.register_numerical_hyperparameter("step_size")
 
 
 class AlgorithmMeta:
