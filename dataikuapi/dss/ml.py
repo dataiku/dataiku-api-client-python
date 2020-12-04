@@ -573,8 +573,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     def _get_active_settings_dict(self):
         clean_hyperparam = dict()
         raw_hyperparam = self._algo_settings[self.name]
-        mode = self._get_hyperparameter_mode()
-        if mode == "EXPLICIT":
+        if self.search_mode == "EXPLICIT":
             clean_hyperparam["values"] = raw_hyperparam["values"]
         else:
             clean_hyperparam["range"] = raw_hyperparam["range"]
@@ -595,7 +594,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @search_mode.setter
     def search_mode(self, mode):
-        assert mode in ["GRID", "RANGE"]
+        assert mode in ["EXPLICIT", "RANGE"]
         if self._algo_settings.strategy == "GRID":
             self._algo_settings[self.name]["gridMode"] = mode
         else:
