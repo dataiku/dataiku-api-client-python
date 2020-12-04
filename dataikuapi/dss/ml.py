@@ -601,25 +601,9 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             # RANDOM and BAYESIAN search strategies
             self._algo_settings[self.name]["randomMode"] = mode
 
-    def set_explicit_values(self, values=None, set_mode_to_explicit=True):
-        error_message = "Invalid values input type for hyperparameter " \
-                        "\"{}\": ".format(self.name) + \
-                        " expecting a non-empty list of numbers"
-        if values is not None:
-            assert isinstance(values, list) and len(values) > 0, error_message
-            for val in values:
-                assert isinstance(val, int) or isinstance(val, float), error_message
-            limit_min = self._algo_settings[self.name]["limit"].get("min")
-            if limit_min is not None:
-                assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(self.name, limit_min)
-            limit_max = self._algo_settings[self.name]["limit"].get("max")
-            if limit_max is not None:
-                assert all(val <= limit_max for val in values), "Value(s) above hyperparameter \"{}\" limit {}".format(self.name, limit_max)
-            if len(set(values)) < len(values):
-                warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
-            self._algo_settings[self.name]["values"] = values
-        if set_mode_to_explicit:
-            self._set_mode_to_explicit()
+    def set_explicit_values(self, values):
+        self.values(values)
+        self.search_mode("EXPLICIT")
 
     @property
     def values(self):
@@ -627,14 +611,28 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @values.setter
     def values(self, values):
-        self.set_explicit_values(values)
+        error_message = "Invalid values input type for hyperparameter " \
+                        "\"{}\": ".format(self.name) + \
+                        " expecting a non-empty list of numbers"
+        assert values is not None and isinstance(values, list) and len(values) > 0, error_message
+        for val in values:
+            assert isinstance(val, int) or isinstance(val, float), error_message
+        limit_min = self._algo_settings[self.name]["limit"].get("min")
+        if limit_min is not None:
+            assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(self.name, limit_min)
+        limit_max = self._algo_settings[self.name]["limit"].get("max")
+        if limit_max is not None:
+            assert all(val <= limit_max for val in values), "Value(s) above hyperparameter \"{}\" limit {}".format(self.name, limit_max)
+        if len(set(values)) < len(values):
+            warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
+        self._algo_settings[self.name]["values"] = values
 
     def _check_number_input(self, input):
         assert isinstance(input, int) or isinstance(input, float), \
             "Invalid input type for hyperparameter \"{}\": ".format(self.name) + \
             "range bounds must be numbers"
 
-    def set_range(self, min=None, max=None, nb_values=None, set_mode_to_range=True):
+    def _set_range(self, min=None, max=None, nb_values=None, set_mode_to_range=True):
         if min is None and max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(self.name))
         else:
@@ -657,8 +655,10 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
                 self._algo_settings[self.name]["range"]["max"] = max
             if nb_values is not None:
                 self._algo_settings[self.name]["range"]["nbValues"] = nb_values
-        if set_mode_to_range:
-            self._set_mode_to_range()
+
+    def set_range(self, min=None, max=None, nb_values=None):
+        self._set_range(min=min, max=max, nb_values=nb_values)
+        self.search_mode("RANGE")
 
     @property
     def range(self):
@@ -678,7 +678,7 @@ class Range(object):
 
     @min.setter
     def min(self, val):
-        self._numerical_hyperparameter_settings.set_range(min=val)
+        self._numerical_hyperparameter_settings._set_range(min=val)
 
     @property
     def max(self):
@@ -686,7 +686,7 @@ class Range(object):
 
     @max.setter
     def max(self, val):
-        self._numerical_hyperparameter_settings.set_range(max=val)
+        self._numerical_hyperparameter_settings._set_range(max=val)
 
     @property
     def nb_values(self):
@@ -694,7 +694,7 @@ class Range(object):
 
     @nb_values.setter
     def nb_values(self, val):
-        self._numerical_hyperparameter_settings.set_range(nb_values=val)
+        self._numerical_hyperparameter_settings._set_range(nb_values=val)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
