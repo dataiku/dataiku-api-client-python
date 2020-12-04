@@ -707,7 +707,7 @@ class DSSMLAssertionsParams(object):
         :param object  assertion_params: A :class:`~dataikuapi.dss.utils.DSSMLAssertionParams` representing parameters of the assertion
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
-            raise ValueError('Assertion params should be of type: {} not {}'.format(DSSMLAssertionParams.__name__, type(assertion_params)))
+            raise ValueError('Wrong type for assertion params: {}'.format(type(assertion_params)))
         self.check_assertion_names_are_uniq(self._internal_dict["assertions"] + [assertion_params._internal_dict])
         self._internal_dict["assertions"].append(assertion_params._internal_dict)
 
