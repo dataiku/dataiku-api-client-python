@@ -585,26 +585,22 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
         return clean_hyperparam
 
-    def _get_hyperparameter_mode(self):
+    @property
+    def search_mode(self):
         if self._algo_settings.strategy == "GRID":
             return self._algo_settings[self.name]["gridMode"]
         else:
             # RANDOM and BAYESIAN search strategies
             return self._algo_settings[self.name]["randomMode"]
 
-    def _set_mode_to_range(self):
+    @search_mode.setter
+    def search_mode(self, mode):
+        assert mode in ["GRID", "RANGE"]
         if self._algo_settings.strategy == "GRID":
-            self._algo_settings[self.name]["gridMode"] = "RANGE"
+            self._algo_settings[self.name]["gridMode"] = mode
         else:
             # RANDOM and BAYESIAN search strategies
-            self._algo_settings[self.name]["randomMode"] = "RANGE"
-
-    def _set_mode_to_explicit(self):
-        if self._algo_settings.strategy == "GRID":
-            self._algo_settings[self.name]["gridMode"] = "EXPLICIT"
-        else:
-            # RANDOM and BAYESIAN search strategies
-            self._algo_settings[self.name]["randomMode"] = "EXPLICIT"
+            self._algo_settings[self.name]["randomMode"] = mode
 
     def set_explicit_values(self, values=None, set_mode_to_explicit=True):
         error_message = "Invalid values input type for hyperparameter " \
