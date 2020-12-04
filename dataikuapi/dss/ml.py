@@ -983,7 +983,7 @@ class DSSMLAssertionMetric(object):
     @property
     def nb_dropped_rows(self):
         """
-        Returns the number of rows dropped by the preprocessing
+        Returns the number of rows dropped by the model's preprocessing
         :rtype: int
         """
         return self._internal_dict["nbDroppedRows"]
