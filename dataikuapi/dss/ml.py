@@ -808,7 +808,7 @@ class DSSMLAssertionCondition(object):
     @staticmethod
     def create_from_expected_class(expected_valid_ratio, expected_class):
         """
-        Creates an assertion condition from an expected valid ratio and  an expected class
+        Creates an assertion condition from the expected valid ratio and class
 
         :param float expected_valid_ratio: Ratio of valid rows needed for the assertion to pass
         :param str expected_class: Class on which the `expected_valid_ratio` will be calculated
