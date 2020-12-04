@@ -825,7 +825,7 @@ class DSSMLAssertionCondition(object):
         """
         Creates an assertion condition from an expected valid ratio and an expected range
 
-        :param float expected_valid_ratio: Ratio of valid rows to exceed for the assertion to pass
+        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max is attained
         :param tuple(float,float) expected_range: Range of values (min, max) where the prediction will be considered as
         valid for the `expected_valid_ratio`
 
