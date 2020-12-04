@@ -673,7 +673,7 @@ class DSSMLAssertionsParams(object):
             if 'name' not in assertion_dict:
                 raise ValueError('No name provided for assertion')
             if assertion_dict['name'] in _:
-                raise ValueError('Assertion names should be uniq. {} is multiple times in the data'.format(
+                raise ValueError('Assertion names must be unique, but got multiple instances of: {}'.format(
                     assertion_dict['name']))
             _[assertion_dict['name']] = True
 
