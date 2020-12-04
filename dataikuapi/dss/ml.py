@@ -691,7 +691,7 @@ class DSSMLAssertionsParams(object):
     def get_assertion(self, assertion_name):
         """
         Gets a :class:`dataikuapi.dss.ml.DSSMLAssertionParams` representing the params of the assertion with the
-        provided name (or None)
+        provided name (or None if no assertion has that name)
         :param str assertion_name: Name of the assertion
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams` or None
         """
@@ -721,7 +721,7 @@ class DSSMLAssertionsParams(object):
             if assertion_dict["name"] == assertion_name:
                 del self._internal_dict["assertions"][idx]
                 return
-        raise ValueError('No assertion name: {} was found'.format(assertion_name))
+        raise ValueError('No assertion found with name: {}'.format(assertion_name))
 
 
 class DSSMLAssertionParams(object):
@@ -792,7 +792,7 @@ class DSSMLAssertionParams(object):
     @condition.setter
     def condition(self, condition):
         if not isinstance(condition, DSSMLAssertionCondition):
-            raise ValueError('Condition should be of type: {} not {}'.format(DSSMLAssertionCondition.__name__, type(condition)))
+            raise ValueError('Wrong type for assertion condition: {}.format(type(condition)))
         self._internal_dict["assertionCondition"] = condition._internal_dict
 
 
