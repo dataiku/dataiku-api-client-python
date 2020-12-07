@@ -434,7 +434,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     @property
     def assertions_params(self):
         """
-        Retrieves the assertions params for this ml task
+        Retrieves the assertions parameters for this ml task
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
         """
@@ -442,7 +442,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def get_assertions_params(self):
         """
-        Retrieves the assertions params for this ml task
+        Retrieves the assertions parameters for this ml task
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
         """
@@ -666,31 +666,19 @@ class DSSMLAssertionsParams(object):
     Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params()` instead
     """
 
-    @staticmethod
-    def check_assertion_names_are_uniq(assertion_params_list):
-        _ = {}
-        for assertion_dict in assertion_params_list:
-            if 'name' not in assertion_dict:
-                raise ValueError('No name provided for assertion')
-            if assertion_dict['name'] in _:
-                raise ValueError('Assertion names must be unique, but got multiple instances of: {}'.format(
-                    assertion_dict['name']))
-            _[assertion_dict['name']] = True
-
     def __init__(self, data):
         self._internal_dict = data
-        self.check_assertion_names_are_uniq(data["assertions"])
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the assertions params
+        Gets the raw dictionary of the assertions parameters
         :rtype: dict
         """
         return self._internal_dict
 
     def get_assertion(self, assertion_name):
         """
-        Gets a :class:`dataikuapi.dss.ml.DSSMLAssertionParams` representing the params of the assertion with the
+        Gets a :class:`dataikuapi.dss.ml.DSSMLAssertionParams` representing the parameters of the assertion with the
         provided name (or None if no assertion has that name)
         :param str assertion_name: Name of the assertion
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams` or None
@@ -702,18 +690,19 @@ class DSSMLAssertionsParams(object):
 
     def add_assertion(self, assertion_params):
         """
-        Adds params of an assertion to the assertions params of the ml task.
+        Adds parameters of an assertion to the assertions parameters of the ml task.
         Raises a ValueError if an assertion with the same name already exists
         :param object  assertion_params: A :class:`~dataikuapi.dss.utils.DSSMLAssertionParams` representing parameters of the assertion
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
-            raise ValueError('Wrong type for assertion params: {}'.format(type(assertion_params)))
+            raise ValueError('Wrong type for assertion parameters: {}'.format(type(assertion_params)))
         self.check_assertion_names_are_uniq(self._internal_dict["assertions"] + [assertion_params._internal_dict])
+
         self._internal_dict["assertions"].append(assertion_params._internal_dict)
 
     def delete_assertion(self, assertion_name):
         """
-        Deletes the assertion params of the assertion with the provided name from the `dataikuapi.dss.ml.DSSMLAssertionsParams`
+        Deletes the assertion parameters of the assertion with the provided name from the `dataikuapi.dss.ml.DSSMLAssertionsParams`
         Raises a ValueError if no assertion with the provided name was found
         :param str assertion_name: Name of the assertion
         """
@@ -736,7 +725,7 @@ class DSSMLAssertionParams(object):
     @staticmethod
     def create_from_parts(name, a_filter, condition):
         """
-        Creates assertion params from name, filter and condition
+        Creates assertion parameters from name, filter and condition
 
         :param str name: Name of the assertion
         :param object a_filter: A :class:`~dataikuapi.dss.utils.DSSFilter`  to select assertion population
@@ -752,7 +741,7 @@ class DSSMLAssertionParams(object):
 
     def get_raw(self):
         """
-        Gets the raw dictionary of the assertion params
+        Gets the raw dictionary of the assertion parameters
         :rtype: dict
         """
         return self._internal_dict
@@ -792,7 +781,7 @@ class DSSMLAssertionParams(object):
     @condition.setter
     def condition(self, condition):
         if not isinstance(condition, DSSMLAssertionCondition):
-            raise ValueError('Wrong type for assertion condition: {}.format(type(condition)))
+            raise ValueError('Wrong type for assertion condition: {}.format(type(condition))')
         self._internal_dict["assertionCondition"] = condition._internal_dict
 
 
