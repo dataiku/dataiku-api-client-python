@@ -788,7 +788,7 @@ class DSSMLAssertionCondition(object):
     """
       Object that represents an assertion condition
       Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
-      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_range)` instead
+      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -809,19 +809,22 @@ class DSSMLAssertionCondition(object):
         return assertion_condition
 
     @staticmethod
-    def from_expected_range(expected_valid_ratio, expected_range):
+    def from_expected_range(expected_valid_ratio, expected_min, expected_max):
         """
-        Creates an assertion condition from an expected valid ratio and an expected range
+        Creates an assertion condition from an expected valid ratio and an expected range. The expected range is the
+        interval between expected_min and expected_max where the predictions and therefore the rows will be considered
+        valid.
 
         :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max is attained
-        :param tuple(float,float) expected_range: Range of values (min, max) where the prediction will be considered as
-        valid for the `expected_valid_ratio`
+        :param float expected_min: Min value of the expected range
+        :param float expected_max: Max value of the expected range
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionCondition`
         """
         assertion_condition = DSSMLAssertionCondition({})
         assertion_condition.expected_valid_ratio = expected_valid_ratio
-        assertion_condition.expected_range = expected_range
+        assertion_condition.expected_min = expected_min
+        assertion_condition.expected_max = expected_max
         return assertion_condition
 
     def get_raw(self):
@@ -834,7 +837,7 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_class(self):
         """
-        Returns the expected class on which the valid ratio will be calculated
+        Returns the expected class on which the valid ratio will be calculated or None if it is not defined
         :rtype: str
         """
         if "expectedClass" in self._internal_dict:
@@ -844,8 +847,6 @@ class DSSMLAssertionCondition(object):
 
     @expected_class.setter
     def expected_class(self, expected_class):
-        if self.expected_range is not None:
-            raise ValueError("Expected class and expected range can't be both set")
         self._internal_dict["expectedClass"] = expected_class
 
     @property
@@ -861,26 +862,34 @@ class DSSMLAssertionCondition(object):
         self._internal_dict["successRatio"] = expected_valid_ratio
 
     @property
-    def expected_range(self):
+    def expected_min(self):
         """
-        Returns the expected range on which the valid ratio will be calculated
-        :rtype: tuple(float,float)
+        Returns the min (included) of the expected range or None if it is not defined
+        :rtype: float
         """
-        if "expectedMinValue" in self._internal_dict and "expectedMaxValue" in self._internal_dict:
-            return self._internal_dict["expectedMinValue"], self._internal_dict["expectedMaxValue"]
+        if "expectedMinValue" in self._internal_dict:
+            return self._internal_dict["expectedMinValue"]
         else:
             return None
 
-    @expected_range.setter
-    def expected_range(self, expected_range):
-        if not isinstance(expected_range, tuple):
-            raise ValueError("Expected range needs to be a tuple")
-        if self.expected_class is not None:
-            raise ValueError("Expected class and expected range can't be both set")
-        if expected_range[0] > expected_range:
-            raise ValueError("Expected range needs to be sorted in ascending order. (min value, max value)")
-        self._internal_dict["expectedMinValue"] = expected_range[0]
-        self._internal_dict["expectedMaxValue"] = expected_range[1]
+    @expected_min.setter
+    def expected_min(self, expected_min):
+        self._internal_dict["expectedMinValue"] = expected_min
+
+    @property
+    def expected_max(self):
+        """
+        Returns the max (included) of the expected range
+        :rtype: float
+        """
+        if "expectedMaxValue" in self._internal_dict:
+            return self._internal_dict["expectedMaxValue"]
+        else:
+            return None
+
+    @expected_max.setter
+    def expected_max(self, expected_max):
+        self._internal_dict["expectedMaxValue"] = expected_max
 
 
 class DSSMLAssertionsMetrics(object):
