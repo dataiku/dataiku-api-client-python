@@ -431,15 +431,6 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
 
-    @property
-    def assertions_params(self):
-        """
-        Retrieves the assertions parameters for this ml task
-
-        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
-        """
-        return self.get_assertions_params()
-
     def get_assertions_params(self):
         """
         Retrieves the assertions parameters for this ml task
@@ -899,7 +890,7 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the per assertion metrics for all assertions on a trained model
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails.get_per_assertion_metrics()` instead
+    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails.get_assertions_metrics()` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -911,13 +902,14 @@ class DSSMLAssertionsMetrics(object):
         """
         return self._internal_dict
 
-    def get_per_assertion_metric(self, assertion_name):
+    def get_metric(self, assertion_name):
         """
-        Retrieves the metric computed for this trained model for the assertion with the provided name (or None)
+        Retrieves the metric computed for this trained model for the assertion with the provided name (or None if no
+        assertion with that name exists)
 
         :param str assertion_name: Name of the assertion
 
-        :returns: an object representing assertion metrics
+        :returns: an object representing assertion metrics or None if if no assertion with that name exists
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionMetric`
         """
         for assertion_metric_dict in self._internal_dict["perAssertion"]:
@@ -937,7 +929,7 @@ class DSSMLAssertionsMetrics(object):
 class DSSMLAssertionMetric(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLPerAssertionMetrics.get_assertion_metric(self, assertion_name)` instead
+    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionMetrics.get_metric(self, assertion_name)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -968,7 +960,8 @@ class DSSMLAssertionMetric(object):
     @property
     def valid_ratio(self):
         """
-        Returns the ratio of passing rows in the assertion population
+        Returns the ratio of rows in the assertion population with prediction equals to the expected class
+        for classification or in the expected range for regression
         :rtype: float
         """
         return self._internal_dict["validRatio"]
@@ -1147,15 +1140,6 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             if x in clean_snippet:
                 del clean_snippet[x]
         return clean_snippet
-
-    @property
-    def assertions_metrics(self):
-        """
-        Retrieves assertions metrics computed for this trained model
-        :returns: an object representing assertion metrics
-        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsMetrics`
-        """
-        return self.get_assertions_metrics()
 
     def get_assertions_metrics(self):
         """
