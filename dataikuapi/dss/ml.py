@@ -798,8 +798,8 @@ class DSSMLAssertionCondition(object):
         """
         Creates an assertion condition from the expected valid ratio and class
 
-        :param float expected_valid_ratio: Ratio of valid rows needed for the assertion to pass
-        :param str expected_class: Class on which the `expected_valid_ratio` will be calculated
+        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted as expected_class is attained
+        :param str expected_class: Assertion passes if the ratio of rows predicted as expected_class is attained
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionCondition`
         """
@@ -811,7 +811,7 @@ class DSSMLAssertionCondition(object):
     @staticmethod
     def from_expected_range(expected_valid_ratio, expected_min, expected_max):
         """
-        Creates an assertion condition from an expected valid ratio and an expected range. The expected range is the
+        Creates an assertion condition from expected valid ratio and range. The expected range is the
         interval between expected_min and expected_max where the predictions and therefore the rows will be considered
         valid.
 
@@ -837,7 +837,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_class(self):
         """
-        Returns the expected class on which the valid ratio will be calculated or None if it is not defined
+        Returns the expected class or None if it is not defined. Assertion passes if the ratio of rows predicted
+        as expected_class is attained
         :rtype: str
         """
         if "expectedClass" in self._internal_dict:
@@ -852,7 +853,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_valid_ratio(self):
         """
-        Returns the ratio of valid rows to exceed for the assertion to pass
+        Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
+        is equal to the `expected_class` for classification or in the expected range for regresion
         :rtype: str
         """
         return self._internal_dict["successRatio"]
@@ -864,7 +866,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_min(self):
         """
-        Returns the min (included) of the expected range or None if it is not defined
+        Returns the min (included) of the expected range or None if it is not defined. Assertion passes if the ratio of rows predicted
+        between expected_min and expected_max is attained
         :rtype: float
         """
         if "expectedMinValue" in self._internal_dict:
@@ -879,7 +882,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_max(self):
         """
-        Returns the max (included) of the expected range
+        Returns the max (included) of the expected range or None if it is not defined. Assertion passes if the ratio of rows predicted
+        between expected_min and expected_max is attained
         :rtype: float
         """
         if "expectedMaxValue" in self._internal_dict:
