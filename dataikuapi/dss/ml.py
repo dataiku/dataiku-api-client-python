@@ -696,7 +696,6 @@ class DSSMLAssertionsParams(object):
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
             raise ValueError('Wrong type for assertion parameters: {}'.format(type(assertion_params)))
-        self.check_assertion_names_are_uniq(self._internal_dict["assertions"] + [assertion_params._internal_dict])
 
         self._internal_dict["assertions"].append(assertion_params._internal_dict)
 
