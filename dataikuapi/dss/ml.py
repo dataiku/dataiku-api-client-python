@@ -781,7 +781,7 @@ class DSSMLAssertionParams(object):
     @condition.setter
     def condition(self, condition):
         if not isinstance(condition, DSSMLAssertionCondition):
-            raise ValueError('Wrong type for assertion condition: {}.format(type(condition))')
+            raise ValueError('Wrong type for assertion condition: {}'.format(type(condition)))
         self._internal_dict["assertionCondition"] = condition._internal_dict
 
 
