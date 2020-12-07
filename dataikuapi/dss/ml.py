@@ -716,13 +716,13 @@ class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
     Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionsParams.get_assertion(assertion_name)` or
-    `create_from_parts(name, a_filter, condition)` instead
+    `from_parts(name, a_filter, condition)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
 
     @staticmethod
-    def create_from_parts(name, a_filter, condition):
+    def from_parts(name, a_filter, condition):
         """
         Creates assertion parameters from name, filter and condition
 
@@ -787,14 +787,14 @@ class DSSMLAssertionParams(object):
 class DSSMLAssertionCondition(object):
     """
       Object that represents an assertion condition
-      Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.create_from_expected_class(expected_valid_ratio, expected_class)`
-      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.create_from_expected_range(expected_valid_ratio, expected_range)` instead
+      Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
+      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_range)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
 
     @staticmethod
-    def create_from_expected_class(expected_valid_ratio, expected_class):
+    def from_expected_class(expected_valid_ratio, expected_class):
         """
         Creates an assertion condition from the expected valid ratio and class
 
@@ -809,7 +809,7 @@ class DSSMLAssertionCondition(object):
         return assertion_condition
 
     @staticmethod
-    def create_from_expected_range(expected_valid_ratio, expected_range):
+    def from_expected_range(expected_valid_ratio, expected_range):
         """
         Creates an assertion condition from an expected valid ratio and an expected range
 
