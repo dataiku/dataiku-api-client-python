@@ -717,7 +717,7 @@ class DSSMLAssertionParams(object):
         Creates assertion parameters from name, filter and condition
 
         :param str name: Name of the assertion
-        :param object a_filter: A :class:`~dataikuapi.dss.utils.DSSFilter`  to select assertion population
+        :param object a_filter: A :class:`~dataikuapi.dss.utils.DSSFilter` to select assertion population
         :param object condition: A :class:`~dataikuapi.dss.ml.DSSMLAssertionCondition` for the assertion to be successful
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams`
@@ -805,7 +805,7 @@ class DSSMLAssertionCondition(object):
         The expected range is the interval between expected_min and expected_max (included)
         for the predictions in which the rows will be considered valid.
 
-        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max is attained
+        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max (included) is attained
         :param float expected_min: Min value of the expected range
         :param float expected_max: Max value of the expected range
 
@@ -857,7 +857,7 @@ class DSSMLAssertionCondition(object):
     def expected_min(self):
         """
         Returns the min (included) of the expected range or None if it is not defined.
-        Assertion passes if the ratio of rows predicted between expected_min and expected_max is attained.
+        Assertion passes if the expected_valid_ratio of rows predicted between expected_min and expected_max (included) is attained.
         :rtype: float
         """
         if "expectedMinValue" in self._internal_dict:
@@ -873,7 +873,7 @@ class DSSMLAssertionCondition(object):
     def expected_max(self):
         """
         Returns the max (included) of the expected range or None if it is not defined.
-        Assertion passes if the ratio of rows predicted between expected_min and expected_max is attained.
+        Assertion passes if the ratio of rows predicted between expected_min and expected_max (included) is attained.
         :rtype: float
         """
         if "expectedMaxValue" in self._internal_dict:
