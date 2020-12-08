@@ -802,9 +802,9 @@ class DSSMLAssertionCondition(object):
     @staticmethod
     def from_expected_range(expected_valid_ratio, expected_min, expected_max):
         """
-        Creates an assertion condition from expected valid ratio and range. The expected range is the
-        interval between expected_min and expected_max where the predictions and therefore the rows will be considered
-        valid.
+        Creates an assertion condition from expected valid ratio and range.
+        The expected range is the interval between expected_min and expected_max (included)
+        for the predictions in which the rows will be considered valid.
 
         :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max is attained
         :param float expected_min: Min value of the expected range
@@ -828,8 +828,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_class(self):
         """
-        Returns the expected class or None if it is not defined. Assertion passes if the ratio of rows predicted
-        as expected_class is attained
+        Returns the expected class or None if it is not defined. Assertion passes if the expected_valid_ratio
+        of rows predicted as expected_class is attained.
         :rtype: str
         """
         if "expectedClass" in self._internal_dict:
@@ -845,7 +845,7 @@ class DSSMLAssertionCondition(object):
     def expected_valid_ratio(self):
         """
         Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
-        is equal to the `expected_class` for classification or in the expected range for regresion
+        is equal to the `expected_class` for classification or in the expected range for regression
         :rtype: str
         """
         return self._internal_dict["successRatio"]
@@ -857,8 +857,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_min(self):
         """
-        Returns the min (included) of the expected range or None if it is not defined. Assertion passes if the ratio of rows predicted
-        between expected_min and expected_max is attained
+        Returns the min (included) of the expected range or None if it is not defined.
+        Assertion passes if the ratio of rows predicted between expected_min and expected_max is attained.
         :rtype: float
         """
         if "expectedMinValue" in self._internal_dict:
@@ -873,8 +873,8 @@ class DSSMLAssertionCondition(object):
     @property
     def expected_max(self):
         """
-        Returns the max (included) of the expected range or None if it is not defined. Assertion passes if the ratio of rows predicted
-        between expected_min and expected_max is attained
+        Returns the max (included) of the expected range or None if it is not defined.
+        Assertion passes if the ratio of rows predicted between expected_min and expected_max is attained.
         :rtype: float
         """
         if "expectedMaxValue" in self._internal_dict:
