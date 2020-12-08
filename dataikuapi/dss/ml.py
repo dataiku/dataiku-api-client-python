@@ -801,19 +801,19 @@ class AlgorithmSettings(dict):
         self._hyperparameter_search_params = hyperparameter_search_params
         self._hyperparameters_registry = dict()
 
-    def register_numerical_hyperparameter(self, name):
+    def _register_numerical_hyperparameter(self, name):
         self._hyperparameters_registry[name] = NumericalHyperparameterSettings(name, self)
         return self._hyperparameters_registry[name]
 
-    def register_categorical_hyperparameter(self, name):
+    def _register_categorical_hyperparameter(self, name):
         self._hyperparameters_registry[name] = CategoricalHyperparameterSettings(name, self)
         return self._hyperparameters_registry[name]
 
-    def register_single_valued_categorical_hyperparameter(self, name, accepted_values=None):
+    def _register_single_category_hyperparameter(self, name, accepted_values=None):
         self._hyperparameters_registry[name] = SingleCategoryHyperparameterSettings(name, self, accepted_values=accepted_values)
         return self._hyperparameters_registry[name]
 
-    def register_single_valued_hyperparameter(self, name, accepted_types=None):
+    def _register_single_value_hyperparameter(self, name, accepted_types=None):
         self._hyperparameters_registry[name] = SingleValueHyperparameterSettings(name, self, accepted_types=accepted_types)
         return self._hyperparameters_registry[name]
 
@@ -850,209 +850,209 @@ class RandomForestSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_estimators = self.register_numerical_hyperparameter("n_estimators")
-        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
-        self.max_tree_depth = self.register_numerical_hyperparameter("max_tree_depth")
-        self.max_feature_prop = self.register_numerical_hyperparameter("max_feature_prop")
-        self.max_features = self.register_numerical_hyperparameter("max_features")
-        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
-        self.selection_mode = self.register_single_valued_categorical_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number","prop"])
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_tree_depth = self._register_numerical_hyperparameter("max_tree_depth")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
 class XGBoostSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = self.register_numerical_hyperparameter("max_depth")
-        self.learning_rate = self.register_numerical_hyperparameter("learning_rate")
-        self.gamma = self.register_numerical_hyperparameter("gamma")
-        self.min_child_weight = self.register_numerical_hyperparameter("min_child_weight")
-        self.max_delta_step = self.register_numerical_hyperparameter("max_delta_step")
-        self.subsample = self.register_numerical_hyperparameter("subsample")
-        self.colsample_bytree = self.register_numerical_hyperparameter("colsample_bytree")
-        self.colsample_bylevel = self.register_numerical_hyperparameter("colsample_bylevel")
-        self.alpha = self.register_numerical_hyperparameter("alpha")
-        self.lambda_ = self.register_numerical_hyperparameter("lambda")
-        self.booster = self.register_categorical_hyperparameter("booster")
-        self.objective = self.register_categorical_hyperparameter("objective")
-        self.n_estimators = self.register_single_valued_hyperparameter("n_estimators", accepted_types=[int])
-        self.nthread = self.register_single_valued_hyperparameter("nthread", accepted_types=[int])
-        self.scale_pos_weight = self.register_single_valued_hyperparameter("scale_pos_weight", accepted_types=[int, float])
-        self.base_score = self.register_single_valued_hyperparameter("base_score", accepted_types=[int, float])
-        self.impute_missing = self.register_single_valued_hyperparameter("impute_missing", accepted_types=[bool])
-        self.missing = self.register_single_valued_hyperparameter("missing", accepted_types=[int, float])
-        self.cpu_tree_method = self.register_single_valued_categorical_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
-        self.gpu_tree_method = self.register_single_valued_categorical_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
-        self.enable_cuda = self.register_single_valued_hyperparameter("enable_cuda", accepted_types=[bool])
-        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
-        self.enable_early_stopping = self.register_single_valued_hyperparameter("enable_early_stopping", accepted_types=[bool])
-        self.early_stopping_rounds = self.register_single_valued_hyperparameter("early_stopping_rounds", accepted_types=[int])
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.gamma = self._register_numerical_hyperparameter("gamma")
+        self.min_child_weight = self._register_numerical_hyperparameter("min_child_weight")
+        self.max_delta_step = self._register_numerical_hyperparameter("max_delta_step")
+        self.subsample = self._register_numerical_hyperparameter("subsample")
+        self.colsample_bytree = self._register_numerical_hyperparameter("colsample_bytree")
+        self.colsample_bylevel = self._register_numerical_hyperparameter("colsample_bylevel")
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.lambda_ = self._register_numerical_hyperparameter("lambda")
+        self.booster = self._register_categorical_hyperparameter("booster")
+        self.objective = self._register_categorical_hyperparameter("objective")
+        self.n_estimators = self._register_single_value_hyperparameter("n_estimators", accepted_types=[int])
+        self.nthread = self._register_single_value_hyperparameter("nthread", accepted_types=[int])
+        self.scale_pos_weight = self._register_single_value_hyperparameter("scale_pos_weight", accepted_types=[int, float])
+        self.base_score = self._register_single_value_hyperparameter("base_score", accepted_types=[int, float])
+        self.impute_missing = self._register_single_value_hyperparameter("impute_missing", accepted_types=[bool])
+        self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
+        self.cpu_tree_method = self._register_single_category_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
+        self.gpu_tree_method = self._register_single_category_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
+        self.enable_cuda = self._register_single_value_hyperparameter("enable_cuda", accepted_types=[bool])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
 
 
 class GradientBoostedTreesSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_estimators = self.register_numerical_hyperparameter("n_estimator")
-        self.max_depth = self.register_numerical_hyperparameter("max_depth")
-        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
-        self.max_features = self.register_numerical_hyperparameter("max_features")
-        self.max_feature_prop = self.register_numerical_hyperparameter("max_feature_prop")
-        self.learning_rate = self.register_numerical_hyperparameter("learning_rate")
-        self.loss = self.register_categorical_hyperparameter("loss")
-        self.selection_mode = self.register_single_valued_categorical_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimator")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.loss = self._register_categorical_hyperparameter("loss")
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
 class DecisionTreeSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(DecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = self.register_numerical_hyperparameter("max_depth")
-        self.min_samples_leaf = self.register_numerical_hyperparameter("min_samples_leaf")
-        self.criterion = self.register_categorical_hyperparameter("criterion")
-        self.splitter = self.register_categorical_hyperparameter("splitter")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.criterion = self._register_categorical_hyperparameter("criterion")
+        self.splitter = self._register_categorical_hyperparameter("splitter")
 
 
 class LogitSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.C = self.register_numerical_hyperparameter("C")
-        self.penalty = self.register_categorical_hyperparameter("penalty")
-        self.multi_class = self.register_single_valued_categorical_hyperparameter("multi_class", accepted_values=["multinomial", "ovr"])
-        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
+        self.C = self._register_numerical_hyperparameter("C")
+        self.penalty = self._register_categorical_hyperparameter("penalty")
+        self.multi_class = self._register_single_category_hyperparameter("multi_class", accepted_values=["multinomial", "ovr"])
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class RidgeRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = self.register_numerical_hyperparameter("alpha", self)
-        self.alpha_mode = self.register_single_valued_categorical_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
+        self.alpha = self._register_numerical_hyperparameter("alpha", self)
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
 
 
 class LassoRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = self.register_numerical_hyperparameter("alpha")
-        self.alpha_mode = self.register_single_valued_categorical_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
 
 
 class OLSSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class LARSSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LARSSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_features = self.register_single_valued_hyperparameter("max_features", accepted_types=[int])
-        self.K = self.register_single_valued_hyperparameter("K", accepted_types=[int])
+        self.max_features = self._register_single_value_hyperparameter("max_features", accepted_types=[int])
+        self.K = self._register_single_value_hyperparameter("K", accepted_types=[int])
 
 
 class SGDSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SGDSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = self.register_numerical_hyperparameter("alpha")
-        self.loss = self.register_categorical_hyperparameter("loss")
-        self.penalty = self.register_categorical_hyperparameter("penalty")
-        self.l1_ratio = self.register_single_valued_hyperparameter("l1_ratio", accepted_types=[int, float])
-        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
-        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
-        self.n_jobs = self.register_single_valued_hyperparameter("n_jobs", accepted_types=[int])
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.loss = self._register_categorical_hyperparameter("loss")
+        self.penalty = self._register_categorical_hyperparameter("penalty")
+        self.l1_ratio = self._register_single_value_hyperparameter("l1_ratio", accepted_types=[int, float])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
 class KNNSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.k = self.register_numerical_hyperparameter("k")
-        self.algorithm = self.register_single_valued_categorical_hyperparameter("algorithm", accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
-        self.distance_weighting = self.register_single_valued_hyperparameter("distance_weighting", accepted_types=[bool])
-        self.p = self.register_single_valued_hyperparameter("p", accepted_types=[int])
-        self.leaf_size = self.register_single_valued_hyperparameter("leaf_size", accepted_types=[int])
+        self.k = self._register_numerical_hyperparameter("k")
+        self.algorithm = self._register_single_category_hyperparameter("algorithm", accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
+        self.distance_weighting = self._register_single_value_hyperparameter("distance_weighting", accepted_types=[bool])
+        self.p = self._register_single_value_hyperparameter("p", accepted_types=[int])
+        self.leaf_size = self._register_single_value_hyperparameter("leaf_size", accepted_types=[int])
 
 
 class SVMSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.custom_gamma = self.register_numerical_hyperparameter("custom_gamma")
-        self.C = self.register_numerical_hyperparameter("C")
-        self.gamma = self.register_categorical_hyperparameter("gamma")
-        self.kernel = self.register_categorical_hyperparameter("kernel")
-        self.coef0 = self.register_single_valued_hyperparameter("coef0", accepted_types=[int, float])
-        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
-        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
+        self.custom_gamma = self._register_numerical_hyperparameter("custom_gamma")
+        self.C = self._register_numerical_hyperparameter("C")
+        self.gamma = self._register_categorical_hyperparameter("gamma")
+        self.kernel = self._register_categorical_hyperparameter("kernel")
+        self.coef0 = self._register_single_value_hyperparameter("coef0", accepted_types=[int, float])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLPSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.layer_sizes = self.register_numerical_hyperparameter("layer_sizes")
-        self.activation = self.register_single_valued_categorical_hyperparameter("activation", accepted_values=["relu", "identity", "logistic", "tanh"])
-        self.solver = self.register_single_valued_categorical_hyperparameter("solver", accepted_values=["adam", "sgd"])
-        self.alpha = self.register_single_valued_hyperparameter("alpha", accepted_types=[int, float])
-        self.batch_size = self.register_single_valued_hyperparameter("batch_size", accepted_types=[int])
-        self.auto_batch = self.register_single_valued_hyperparameter("auto_batch", accepted_types=[bool])
-        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
-        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
-        self.tol = self.register_single_valued_hyperparameter("tol", accepted_types=[int, float])
-        self.early_stopping = self.register_single_valued_hyperparameter("early_stopping", accepted_types=[bool])
-        self.validation_fraction = self.register_single_valued_hyperparameter("validation_fraction", accepted_types=[int, float])
-        self.beta_1 = self.register_single_valued_hyperparameter("beta_1", accepted_types=[int, float])
-        self.beta_2 = self.register_single_valued_hyperparameter("beta_2", accepted_types=[int, float])
-        self.epsilon = self.register_single_valued_hyperparameter("epsilon", accepted_types=[int, float])
-        self.learning_rate = self.register_single_valued_categorical_hyperparameter("learning_rate", accepted_values=["constant", "invscaling", "adaptive"])
-        self.power_t = self.register_single_valued_hyperparameter("power_t", accepted_types=[int, float])
-        self.momentum = self.register_single_valued_hyperparameter("momentum", accepted_types=[int, float])
-        self.nesterovs_momentum = self.register_single_valued_hyperparameter("nesterovs_momentum", accepted_types=[bool])
-        self.shuffle = self.register_single_valued_hyperparameter("shuffle", accepted_types=[bool])
-        self.learning_rate_init = self.register_single_valued_hyperparameter("learning_rate_init", accepted_types=[int, float])
+        self.layer_sizes = self._register_numerical_hyperparameter("layer_sizes")
+        self.activation = self._register_single_category_hyperparameter("activation", accepted_values=["relu", "identity", "logistic", "tanh"])
+        self.solver = self._register_single_category_hyperparameter("solver", accepted_values=["adam", "sgd"])
+        self.alpha = self._register_single_value_hyperparameter("alpha", accepted_types=[int, float])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.auto_batch = self._register_single_value_hyperparameter("auto_batch", accepted_types=[bool])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.early_stopping = self._register_single_value_hyperparameter("early_stopping", accepted_types=[bool])
+        self.validation_fraction = self._register_single_value_hyperparameter("validation_fraction", accepted_types=[int, float])
+        self.beta_1 = self._register_single_value_hyperparameter("beta_1", accepted_types=[int, float])
+        self.beta_2 = self._register_single_value_hyperparameter("beta_2", accepted_types=[int, float])
+        self.epsilon = self._register_single_value_hyperparameter("epsilon", accepted_types=[int, float])
+        self.learning_rate = self._register_single_category_hyperparameter("learning_rate", accepted_values=["constant", "invscaling", "adaptive"])
+        self.power_t = self._register_single_value_hyperparameter("power_t", accepted_types=[int, float])
+        self.momentum = self._register_single_value_hyperparameter("momentum", accepted_types=[int, float])
+        self.nesterovs_momentum = self._register_single_value_hyperparameter("nesterovs_momentum", accepted_types=[bool])
+        self.shuffle = self._register_single_value_hyperparameter("shuffle", accepted_types=[bool])
+        self.learning_rate_init = self._register_single_value_hyperparameter("learning_rate_init", accepted_types=[int, float])
 
 
 class MLLibLogitSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.reg_param = self.register_numerical_hyperparameter("reg_param")
-        self.enet_param = self.register_numerical_hyperparameter("enet_param")
-        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
+        self.reg_param = self._register_numerical_hyperparameter("reg_param")
+        self.enet_param = self._register_numerical_hyperparameter("enet_param")
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLLibNaiveBayesSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.lambda_ = self.register_numerical_hyperparameter("lambda")
+        self.lambda_ = self._register_numerical_hyperparameter("lambda")
 
 
 class MLLibLinearRegressionSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLinearRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.reg_param = self.register_numerical_hyperparameter("reg_param")
-        self.enet_param = self.register_numerical_hyperparameter("enet_param")
-        self.max_iter = self.register_single_valued_hyperparameter("max_iter", accepted_types=[int])
+        self.reg_param = self._register_numerical_hyperparameter("reg_param")
+        self.enet_param = self._register_numerical_hyperparameter("enet_param")
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
 class MLLibDecisionTreeSettings(AlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.max_depth = self.register_numerical_hyperparameter("max_depth")
-        self.cache_node_ids = self.register_single_valued_hyperparameter("cache_node_ids", accepted_types=[bool])
-        self.checkpoint_interval = self.register_single_valued_hyperparameter("checkpoint_interval", accepted_types=[int])
-        self.max_bins = self.register_single_valued_hyperparameter("max_bins", accepted_types=[int])
-        self.max_memory_mb = self.register_single_valued_hyperparameter("max_memory_mb", accepted_types=[int])
-        self.min_info_gain = self.register_single_valued_hyperparameter("min_info_gain", accepted_types=[int, float])
-        self.min_instance_per_node = self.register_single_valued_hyperparameter("min_instance_per_node", accepted_types=[int])
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.cache_node_ids = self._register_single_value_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self._register_single_value_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
 
 
 class _MLLibTreeEnsembleSettings(AlgorithmSettings):
@@ -1060,33 +1060,33 @@ class _MLLibTreeEnsembleSettings(AlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(_MLLibTreeEnsembleSettings, self).__init__(raw_settings, hyperparameter_search_params)
 
-        self.max_depth = self.register_numerical_hyperparameter("max_depth")
-        self.num_trees = self.register_numerical_hyperparameter("num_trees")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.num_trees = self._register_numerical_hyperparameter("num_trees")
 
-        self.cache_node_ids = self.register_single_valued_hyperparameter("cache_node_ids", accepted_types=[bool])
-        self.checkpoint_interval = self.register_single_valued_hyperparameter("checkpoint_interval", accepted_types=[int])
-        self.impurity = self.register_single_valued_categorical_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
-        self.max_bins = self.register_single_valued_hyperparameter("max_bins", accepted_types=[int])
-        self.max_memory_mb = self.register_single_valued_hyperparameter("max_memory_mb", accepted_types=[int])
-        self.min_info_gain = self.register_single_valued_hyperparameter("min_info_gain", accepted_types=[int, float])
-        self.min_instance_per_node = self.register_single_valued_hyperparameter("min_instance_per_node", accepted_types=[int])
-        self.seed = self.register_single_valued_hyperparameter("seed", accepted_types=[int])
-        self.subsampling_rate = self.register_single_valued_hyperparameter("subsampling_rate", accepted_types=[int, float])
+        self.cache_node_ids = self._register_single_value_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
+        self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self._register_single_value_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.subsampling_rate = self._register_single_value_hyperparameter("subsampling_rate", accepted_types=[int, float])
 
 
 class MLLibRandomForestSettings(_MLLibTreeEnsembleSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibRandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.impurity = self.register_single_valued_categorical_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])
-        self.subset_strategy = self.register_single_valued_categorical_hyperparameter("subset_strategy", accepted_values=["auto", "all", "onethird", "sqrt", "log2"])
+        self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])
+        self.subset_strategy = self._register_single_category_hyperparameter("subset_strategy", accepted_values=["auto", "all", "onethird", "sqrt", "log2"])
 
 
 class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibGBTSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.step_size = self.register_numerical_hyperparameter("step_size")
+        self.step_size = self._register_numerical_hyperparameter("step_size")
 
 
 class AlgorithmMeta:
