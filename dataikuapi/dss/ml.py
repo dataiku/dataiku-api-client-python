@@ -261,9 +261,9 @@ class DSSMLTaskSettings(object):
         algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
         if not isinstance(algorithm_settings, AlgorithmSettings):
             raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
-            algorithm_params = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
+            algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
             # Subsequent calls get the same object
-            self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_params
+            self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
         return self.mltask_settings["modeling"][algorithm_name.lower()]
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
@@ -400,7 +400,7 @@ class HyperparameterSearchSettings(object):
         return res
 
     def __repr__(self):
-        return self.__class__.__name__ + "(settings={})".format(json.dumps(self._raw_settings, indent=4))
+        return self.__class__.__name__ + "(settings={})".format(self._raw_settings)
 
     __str__ = __repr__
 
@@ -632,7 +632,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             "Invalid input type for hyperparameter \"{}\": ".format(self.name) + \
             "range bounds must be numbers"
 
-    def _set_range(self, min=None, max=None, nb_values=None, set_mode_to_range=True):
+    def _set_range(self, min=None, max=None, nb_values=None):
         if min is None and max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(self.name))
         else:
@@ -669,8 +669,7 @@ class Range(object):
 
     def __init__(self, numerical_hyperparameter_settings):
         self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
-        self._algo_settings = numerical_hyperparameter_settings._algo_settings
-        self._range_dict = self._algo_settings[numerical_hyperparameter_settings.name]["range"]
+        self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
 
     @property
     def min(self):
@@ -750,10 +749,10 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
                              if category not in categories})
 
 
-class SingleValuedHyperparameterSettings(HyperparameterSettings):
+class SingleValueHyperparameterSettings(HyperparameterSettings):
 
     def __init__(self, name, algo_settings, accepted_types=None):
-        super(SingleValuedHyperparameterSettings, self).__init__(name, algo_settings)
+        super(SingleValueHyperparameterSettings, self).__init__(name, algo_settings)
         self.accepted_types = accepted_types
 
     def __repr__(self):
@@ -769,10 +768,10 @@ class SingleValuedHyperparameterSettings(HyperparameterSettings):
         self._algo_settings[self.name] = value
 
 
-class SingleValuedCategoricalHyperparameterSettings(HyperparameterSettings):
+class SingleCategoryHyperparameterSettings(HyperparameterSettings):
 
     def __init__(self, name, algo_settings, accepted_values=None):
-        super(SingleValuedCategoricalHyperparameterSettings, self).__init__(name, algo_settings)
+        super(SingleCategoryHyperparameterSettings, self).__init__(name, algo_settings)
         self.accepted_values = accepted_values
 
     def __repr__(self):
@@ -811,11 +810,11 @@ class AlgorithmSettings(dict):
         return self._hyperparameters_registry[name]
 
     def register_single_valued_categorical_hyperparameter(self, name, accepted_values=None):
-        self._hyperparameters_registry[name] = SingleValuedCategoricalHyperparameterSettings(name, self, accepted_values=accepted_values)
+        self._hyperparameters_registry[name] = SingleCategoryHyperparameterSettings(name, self, accepted_values=accepted_values)
         return self._hyperparameters_registry[name]
 
     def register_single_valued_hyperparameter(self, name, accepted_types=None):
-        self._hyperparameters_registry[name] = SingleValuedHyperparameterSettings(name, self, accepted_types=accepted_types)
+        self._hyperparameters_registry[name] = SingleValueHyperparameterSettings(name, self, accepted_types=accepted_types)
         return self._hyperparameters_registry[name]
 
     def _repr_html_(self):
@@ -826,7 +825,7 @@ class AlgorithmSettings(dict):
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
-        return self.__class__.__name__ + "(values={})".format(json.dumps(super(AlgorithmSettings, self).copy(), indent=4))
+        return self.__class__.__name__ + "(values={})".format(super(AlgorithmSettings, self).copy())
 
     __str__ = __repr__
 
