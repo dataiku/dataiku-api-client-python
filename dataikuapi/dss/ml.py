@@ -776,9 +776,9 @@ class DSSMLAssertionParams(object):
 
 class DSSMLAssertionCondition(object):
     """
-      Object that represents an assertion condition
-      Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
-      or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
+    Object that represents an assertion condition
+    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
+    or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -844,7 +844,7 @@ class DSSMLAssertionCondition(object):
     def expected_valid_ratio(self):
         """
         Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
-        is equal to the expected class for classification or in the expected range for regression
+        is equal to the expected class for classification or in the expected range for regression.
         :rtype: str
         """
         return self._internal_dict["successRatio"]
@@ -908,7 +908,7 @@ class DSSMLAssertionsMetrics(object):
 
         :param str assertion_name: Name of the assertion
 
-        :returns: an object representing assertion metrics or None if if no assertion with that name exists
+        :returns: an object representing assertion metrics or None if no assertion with that name exists
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionMetric`
         """
         for assertion_metric_dict in self._internal_dict["perAssertion"]:
