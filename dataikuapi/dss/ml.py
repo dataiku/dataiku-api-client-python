@@ -672,7 +672,7 @@ class DSSMLAssertionsParams(object):
         Gets a :class:`dataikuapi.dss.ml.DSSMLAssertionParams` representing the parameters of the assertion with the
         provided name (or None if no assertion has that name)
         :param str assertion_name: Name of the assertion
-        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams` or None
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams` or None if no assertion has that name
         """
         for assertion_dict in self._internal_dict["assertions"]:
             if assertion_dict["name"] == assertion_name:
@@ -682,7 +682,6 @@ class DSSMLAssertionsParams(object):
     def add_assertion(self, assertion_params):
         """
         Adds parameters of an assertion to the assertions parameters of the ml task.
-        Raises a ValueError if an assertion with the same name already exists
         :param object  assertion_params: A :class:`~dataikuapi.dss.utils.DSSMLAssertionParams` representing parameters of the assertion
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
@@ -692,7 +691,7 @@ class DSSMLAssertionsParams(object):
 
     def delete_assertion(self, assertion_name):
         """
-        Deletes the assertion parameters of the assertion with the provided name from the `dataikuapi.dss.ml.DSSMLAssertionsParams`
+        Deletes the assertion parameters of the assertion with the provided name from the assertions parameters of the ml task.
         Raises a ValueError if no assertion with the provided name was found
         :param str assertion_name: Name of the assertion
         """
@@ -845,7 +844,7 @@ class DSSMLAssertionCondition(object):
     def expected_valid_ratio(self):
         """
         Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
-        is equal to the `expected_class` for classification or in the expected range for regression
+        is equal to the expected class for classification or in the expected range for regression
         :rtype: str
         """
         return self._internal_dict["successRatio"]
@@ -952,7 +951,7 @@ class DSSMLAssertionMetric(object):
     @property
     def result(self):
         """
-        Returns whether the assertion pass
+        Returns whether the assertion passes
         :rtype: bool
         """
         return self._internal_dict["result"]
