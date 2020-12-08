@@ -119,7 +119,7 @@ class DSSModelEvaluationStore(object):
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
         if as_type == "objects" or as_type == "object":
-            return [DSSModelEvaluation(self, item["fme"]["runId"]) for item in items]
+            return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
         else:
             return items
 
