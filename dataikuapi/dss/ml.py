@@ -251,20 +251,22 @@ class DSSMLTaskSettings(object):
         :return: An AlgortihmSettings (extended dict) for an algorithm.
         :rtype: AlgorithmSettings
         """
-        if algorithm_name not in self.__class__.algorithm_remap:
-            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
-        else:
+        if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        elif algorithm_name in self.__class__.algorithm_remap:
             algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
             algorithm_name = algorithm_meta.algorithm_name
             algorithm_settings_class = algorithm_meta.algorithm_settings_class
 
-        algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-        if not isinstance(algorithm_settings, AlgorithmSettings):
-            raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
-            algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
-            # Subsequent calls get the same object
-            self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
-        return self.mltask_settings["modeling"][algorithm_name.lower()]
+            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
+            if not isinstance(algorithm_settings, AlgorithmSettings):
+                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
+                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
+                # Subsequent calls get the same object
+                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        else:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -311,7 +313,14 @@ class DSSMLTaskSettings(object):
         :rtype: list of string
         """
         algos = self.__class__.algorithm_remap
-        return [algorithm_name for algorithm_name in algos.keys() if self.mltask_settings["modeling"][algos[algorithm_name].algorithm_name.lower()]["enabled"]]
+        algo_names = [algo_name for algo_name in algos.keys() if self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]]
+        if any(custom_mllib["enabled"] for custom_mllib in self.mltask_settings["modeling"]["custom_mllib"]):
+            algo_names.append("CUSTOM_MLLIB")
+        if any(custom_python["enabled"] for custom_python in self.mltask_settings["modeling"]["custom_python"]):
+            algo_names.append("CUSTOM_PYTHON")
+        if any(custom_python["enabled"] for custom_python in self.mltask_settings["modeling"]["plugin_python"]):
+            algo_names.append("PLUGIN_PYTHON")
+        return algo_names
 
     def get_enabled_algorithm_settings(self):
         """
