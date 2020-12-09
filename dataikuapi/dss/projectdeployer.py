@@ -35,23 +35,33 @@ class DSSProjectDeployer(object):
         """
         return DSSProjectDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, project_key, infra_id, bundle_id):
+    def create_deployment(self, deployment_id, project_key, infra_id, bundle_id,
+                          deployed_project_key=None, project_folder_id=None):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSProjectDeployerDeployment.start_update`
 
         :param str deployment_id: Identifier of the deployment to create
-        :param str project_key: Identifier of the published project target
+        :param str project_key: The source published project key
         :param str infra_id: Identifier of the deployment infrastructure to use
         :param str bundle_id: Identifier of the bundle to deploy
+        :param str deployed_project_key: The project key to use when deploying this project to the automation node. If
+                                         not set, the project will be created with the same project key as the source
+                                         published project
+        :param str project_folder_id: The automation node project folder id to deploy this project into. If not set,
+                                      the project will be created in the root folder
         :rtype: :class:`DSSProjectDeployerDeployment`
         """
         settings = {
-            "deploymentId" : deployment_id,
-            "publishedProjectKey" : project_key,
-            "infraId" : infra_id,
-            "bundleId" : bundle_id
+            "deploymentId": deployment_id,
+            "publishedProjectKey": project_key,
+            "infraId": infra_id,
+            "bundleId": bundle_id
         }
+        if deployed_project_key:
+            settings["deployedProjectKey"] = deployed_project_key
+        if project_folder_id:
+            settings["projectFolderId"] = project_folder_id
         self.client._perform_json("POST", "/project-deployer/deployments", body=settings)
         return self.get_deployment(deployment_id)
 
@@ -128,7 +138,7 @@ class DSSProjectDeployer(object):
         :rtype: :class:`DSSProjectDeployerProject`
         """
         settings = {
-            "projectKey" : project_key
+            "publishedProjectKey": project_key
         }
         self.client._perform_json("POST", "/project-deployer/projects", body=settings)
         return self.get_project(project_key)
