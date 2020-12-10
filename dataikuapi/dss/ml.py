@@ -828,7 +828,7 @@ class AlgorithmSettings(dict):
     def _repr_html_(self):
         res = "<pre>" + self.__class__.__name__ + "\n"
         for name, hyperparam_settings in self._hyperparameters_registry.items():
-            res += hyperparam_settings._pretty_repr() + "\n"
+            res += "\"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
         res += "</pre>"
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
