@@ -583,7 +583,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     def _get_active_settings_dict(self):
         clean_hyperparam = dict()
         raw_hyperparam = self._algo_settings[self.name]
-        if self.search_mode == "EXPLICIT":
+        if self.definition_mode == "EXPLICIT":
             clean_hyperparam["values"] = raw_hyperparam["values"]
         else:
             clean_hyperparam["range"] = raw_hyperparam["range"]
@@ -595,16 +595,16 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         return clean_hyperparam
 
     @property
-    def search_mode(self):
+    def definition_mode(self):
         if self._algo_settings.strategy == "GRID":
             return self._algo_settings[self.name]["gridMode"]
         else:
             # RANDOM and BAYESIAN search strategies
             return self._algo_settings[self.name]["randomMode"]
 
-    @search_mode.setter
-    def search_mode(self, mode):
-        assert mode in ["EXPLICIT", "RANGE"]
+    @definition_mode.setter
+    def definition_mode(self, mode):
+        assert mode in ["EXPLICIT", "RANGE"], "Hyperparameter definition mode must be either \"EXPLICIT\" or \"RANGE\""
         if self._algo_settings.strategy == "GRID":
             self._algo_settings[self.name]["gridMode"] = mode
         else:
@@ -613,7 +613,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def set_explicit_values(self, values):
         self.values(values)
-        self.search_mode("EXPLICIT")
+        self.definition_mode = "EXPLICIT"
 
     @property
     def values(self):
@@ -668,7 +668,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def set_range(self, min=None, max=None, nb_values=None):
         self._set_range(min=min, max=max, nb_values=nb_values)
-        self.search_mode("RANGE")
+        self.definition_mode = "RANGE"
 
     @property
     def range(self):
