@@ -237,19 +237,20 @@ class DSSMLTaskSettings(object):
         Gets the training settings for a particular algorithm. This returns a reference to the
         algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
 
-        This method returns a dictionary of the settings for this algorithm.
-        All algorithm dicts have at least an "enabled" key in the dictionary.
-        The 'enabled' key indicates whether this algorithm will be trained
+        This method returns the settings for this algorithm as an AlgorithmSettings (extended dict).
+        All algorithm dicts have at least an "enabled" property/key in the settings.
+        The 'enabled' key/property indicates whether this algorithm will be trained.
 
         Other settings are algorithm-dependent and are the various hyperparameters of the 
-        algorithm. The precise keys for each algorithm are not all documented. You can print
-        the returned dictionary to learn more about the settings of each particular algorithm
+        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
+        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
 
         Please refer to the documentation for details on available algorithms.
 
         :param str algorithm_name: Name (in capitals) of the algorithm.
-        :return: An AlgortihmSettings (extended dict) for an algorithm.
-        :rtype: AlgorithmSettings
+        :return: An AlgorithmSettings (extended dict) for a single built-in algorithm,
+                 or a plain dict for the settings of custom inline-code (CUSTOM_*) or plugin (PLUGIN_*) algorithms.
+        :rtype: AlgorithmSettings | dict
         """
         if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
             return self.mltask_settings["modeling"][algorithm_name.lower()]
