@@ -302,10 +302,6 @@ class DSSProjectDeployerDeploymentSettings(object):
         """
         return self.settings
 
-    def set_enabled(self, enabled):
-        """Enables or disables this deployment"""
-        self.settings["enabled"] = enabled
-
     def save(self):
         """Saves back these settings to the deployment"""
         self.client._perform_empty(
