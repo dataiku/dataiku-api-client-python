@@ -306,7 +306,7 @@ class DSSMLTaskSettings(object):
         :returns: the list of algorithm names as a list of strings
         :rtype: list of string
         """
-        return self.__class__.algorithm_remap.keys()
+        return list(self.__class__.algorithm_remap.keys())
 
     def get_enabled_algorithm_names(self):
         """
@@ -803,8 +803,6 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
 
 
 class AlgorithmSettings(dict):
-
-    excluded_keys = {"enabled"}
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(AlgorithmSettings, self).__init__(raw_settings)
