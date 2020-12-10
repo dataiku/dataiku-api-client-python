@@ -233,41 +233,7 @@ class DSSMLTaskSettings(object):
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
 
     def get_algorithm_settings(self, algorithm_name):
-        """
-        Gets the training settings for a particular algorithm. This returns a reference to the
-        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
-
-        This method returns the settings for this algorithm as an AlgorithmSettings (extended dict).
-        All algorithm dicts have at least an "enabled" property/key in the settings.
-        The 'enabled' key/property indicates whether this algorithm will be trained.
-
-        Other settings are algorithm-dependent and are the various hyperparameters of the 
-        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
-        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
-
-        Please refer to the documentation for details on available algorithms.
-
-        :param str algorithm_name: Name (in capitals) of the algorithm.
-        :return: An AlgorithmSettings (extended dict) for a single built-in algorithm,
-                 or a plain dict for the settings of custom inline-code (CUSTOM_*) or plugin (PLUGIN_*) algorithms.
-        :rtype: AlgorithmSettings | dict
-        """
-        if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
-            return self.mltask_settings["modeling"][algorithm_name.lower()]
-        elif algorithm_name in self.__class__.algorithm_remap:
-            algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
-            algorithm_name = algorithm_meta.algorithm_name
-            algorithm_settings_class = algorithm_meta.algorithm_settings_class
-
-            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-            if not isinstance(algorithm_settings, AlgorithmSettings):
-                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
-                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
-                # Subsequent calls get the same object
-                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
-            return self.mltask_settings["modeling"][algorithm_name.lower()]
-        else:
-            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+        raise NotImplementedError()
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
@@ -345,9 +311,6 @@ class DSSMLTaskSettings(object):
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricCode"] = custom_metric
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
-
-    def get_hyperparameter_search_settings(self):
-        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
 
     def save(self):
         """Saves back these settings to the ML Task"""
@@ -1158,6 +1121,50 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     def get_prediction_type(self):
         return self.mltask_settings['predictionType']
 
+    def get_algorithm_settings(self, algorithm_name):
+        """
+        Gets the training settings for a particular algorithm. This returns a reference to the
+        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns the settings for this algorithm as an AlgorithmSettings (extended dict).
+        All algorithm dicts have at least an "enabled" property/key in the settings.
+        The 'enabled' key/property indicates whether this algorithm will be trained.
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the
+        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
+        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
+
+        Please refer to the documentation for details on available algorithms.
+
+        :param str algorithm_name: Name (in capitals) of the algorithm.
+        :return: A PredictionAlgorithmSettings (extended dict) for a single built-in prediction algorithm,
+                 or a plain dict for the settings of custom inline-code (CUSTOM_*) or plugin (PLUGIN_*) algorithms.
+        :rtype: PredictionAlgorithmSettings | dict
+        """
+        if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        elif algorithm_name in self.__class__.algorithm_remap:
+            algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
+            algorithm_name = algorithm_meta.algorithm_name
+            algorithm_settings_class = algorithm_meta.algorithm_settings_class
+
+            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
+            if not isinstance(algorithm_settings, PredictionAlgorithmSettings):
+                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
+                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
+                # Subsequent calls get the same object
+                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        else:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
+    def get_hyperparameter_search_settings(self):
+        """
+        :return: A HyperparameterSearchSettings
+        :rtype: :class:`HyperparameterSearchSettings`
+        """
+        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
+
     @property
     def split_params(self):
         """
@@ -1262,6 +1269,29 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
             "DBSCAN" : "db_scan_clustering",
         }
 
+    def get_algorithm_settings(self, algorithm_name):
+        """
+        Gets the training settings for a particular algorithm. This returns a reference to the
+        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns a dictionary of the settings for this algorithm.
+        All algorithm dicts have at least an "enabled" key in the dictionary.
+        The 'enabled' key indicates whether this algorithm will be trained
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the
+        algorithm. The precise keys for each algorithm are not all documented. You can print
+        the returned dictionary to learn more about the settings of each particular algorithm
+
+        Please refer to the documentation for details on available algorithms.
+
+        :param str algorithm_name: Name (in capitals) of the algorithm.
+        :return: A dict of the settings for an algorithm
+        :rtype: dict
+        """
+        if algorithm_name in self.__class__.algorithm_remap:
+            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
+
+        return self.mltask_settings["modeling"][algorithm_name.lower()]
 
 
 class DSSTrainedModelDetails(object):
