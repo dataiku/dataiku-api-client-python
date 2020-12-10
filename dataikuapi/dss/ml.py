@@ -821,6 +821,11 @@ class PredictionAlgorithmSettings(dict):
     def strategy(self):
         return self._hyperparameter_search_params["strategy"]
 
+    @strategy.setter
+    def strategy(self, _):
+        raise AttributeError("The strategy must be set at the MLTask level.\n"
+                             "To update the search strategy, please use the setter of the HyperparameterSearchSettings "
+                             "object obtained with DSSPredictionMLTaskSettings.get_hyperparameter_search_settings method")
 
 class RandomForestSettings(PredictionAlgorithmSettings):
 
