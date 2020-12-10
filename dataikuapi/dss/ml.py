@@ -765,10 +765,15 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
         self._algo_settings[self.name] = value
 
 
-class AlgorithmSettings(dict):
+class PredictionAlgorithmSettings(dict):
 
+    """
+    Object to read and modify the settings of a prediction ML algorithm.
+
+    Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings(algorithm)` instead
+    """
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(AlgorithmSettings, self).__init__(raw_settings)
+        super(PredictionAlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
         self._hyperparameters_registry = dict()
 
@@ -796,7 +801,7 @@ class AlgorithmSettings(dict):
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
-        return self.__class__.__name__ + "(values={})".format(super(AlgorithmSettings, self).copy())
+        return self.__class__.__name__ + "(values={})".format(super(PredictionAlgorithmSettings, self).copy())
 
     __str__ = __repr__
 
@@ -817,7 +822,7 @@ class AlgorithmSettings(dict):
         return self._hyperparameter_search_params["strategy"]
 
 
-class RandomForestSettings(AlgorithmSettings):
+class RandomForestSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -830,7 +835,7 @@ class RandomForestSettings(AlgorithmSettings):
         self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
-class XGBoostSettings(AlgorithmSettings):
+class XGBoostSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -860,7 +865,7 @@ class XGBoostSettings(AlgorithmSettings):
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
 
 
-class GradientBoostedTreesSettings(AlgorithmSettings):
+class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -874,7 +879,7 @@ class GradientBoostedTreesSettings(AlgorithmSettings):
         self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
-class DecisionTreeSettings(AlgorithmSettings):
+class DecisionTreeSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(DecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -884,7 +889,7 @@ class DecisionTreeSettings(AlgorithmSettings):
         self.splitter = self._register_categorical_hyperparameter("splitter")
 
 
-class LogitSettings(AlgorithmSettings):
+class LogitSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -894,7 +899,7 @@ class LogitSettings(AlgorithmSettings):
         self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
-class RidgeRegressionSettings(AlgorithmSettings):
+class RidgeRegressionSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -902,7 +907,7 @@ class RidgeRegressionSettings(AlgorithmSettings):
         self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
 
 
-class LassoRegressionSettings(AlgorithmSettings):
+class LassoRegressionSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -910,14 +915,14 @@ class LassoRegressionSettings(AlgorithmSettings):
         self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
 
 
-class OLSSettings(AlgorithmSettings):
+class OLSSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
-class LARSSettings(AlgorithmSettings):
+class LARSSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LARSSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -925,7 +930,7 @@ class LARSSettings(AlgorithmSettings):
         self.K = self._register_single_value_hyperparameter("K", accepted_types=[int])
 
 
-class SGDSettings(AlgorithmSettings):
+class SGDSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SGDSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -938,7 +943,7 @@ class SGDSettings(AlgorithmSettings):
         self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
 
 
-class KNNSettings(AlgorithmSettings):
+class KNNSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -949,7 +954,7 @@ class KNNSettings(AlgorithmSettings):
         self.leaf_size = self._register_single_value_hyperparameter("leaf_size", accepted_types=[int])
 
 
-class SVMSettings(AlgorithmSettings):
+class SVMSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -962,7 +967,7 @@ class SVMSettings(AlgorithmSettings):
         self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
-class MLPSettings(AlgorithmSettings):
+class MLPSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -988,7 +993,7 @@ class MLPSettings(AlgorithmSettings):
         self.learning_rate_init = self._register_single_value_hyperparameter("learning_rate_init", accepted_types=[int, float])
 
 
-class MLLibLogitSettings(AlgorithmSettings):
+class MLLibLogitSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -997,14 +1002,14 @@ class MLLibLogitSettings(AlgorithmSettings):
         self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
-class MLLibNaiveBayesSettings(AlgorithmSettings):
+class MLLibNaiveBayesSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.lambda_ = self._register_numerical_hyperparameter("lambda")
 
 
-class MLLibLinearRegressionSettings(AlgorithmSettings):
+class MLLibLinearRegressionSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibLinearRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -1013,7 +1018,7 @@ class MLLibLinearRegressionSettings(AlgorithmSettings):
         self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
-class MLLibDecisionTreeSettings(AlgorithmSettings):
+class MLLibDecisionTreeSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -1026,7 +1031,7 @@ class MLLibDecisionTreeSettings(AlgorithmSettings):
         self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
 
 
-class _MLLibTreeEnsembleSettings(AlgorithmSettings):
+class _MLLibTreeEnsembleSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(_MLLibTreeEnsembleSettings, self).__init__(raw_settings, hyperparameter_search_params)
@@ -1060,8 +1065,8 @@ class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
         self.step_size = self._register_numerical_hyperparameter("step_size")
 
 
-class AlgorithmMeta:
-    def __init__(self, algorithm_name, algorithm_settings_class=AlgorithmSettings):
+class PredictionAlgorithmMeta:
+    def __init__(self, algorithm_name, algorithm_settings_class=PredictionAlgorithmSettings):
         self.algorithm_name = algorithm_name
         self.algorithm_settings_class = algorithm_settings_class
 
@@ -1069,40 +1074,40 @@ class AlgorithmMeta:
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
-            "RANDOM_FOREST_CLASSIFICATION": AlgorithmMeta("random_forest_classification", RandomForestSettings),
-            "RANDOM_FOREST_REGRESSION": AlgorithmMeta("random_forest_regression", RandomForestSettings),
-            "EXTRA_TREES": AlgorithmMeta("extra_trees", RandomForestSettings),
-            "GBT_CLASSIFICATION": AlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
-            "GBT_REGRESSION": AlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
-            "DECISION_TREE_CLASSIFICATION": AlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
-            "DECISION_TREE_REGRESSION": AlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
-            "RIDGE_REGRESSION": AlgorithmMeta("ridge_regression", RidgeRegressionSettings),
-            "LASSO_REGRESSION": AlgorithmMeta("lasso_regression", LassoRegressionSettings),
-            "LEASTSQUARE_REGRESSION": AlgorithmMeta("leastsquare_regression", OLSSettings),
-            "SGD_REGRESSION": AlgorithmMeta("sgd_regression", SGDSettings),
-            "KNN": AlgorithmMeta("knn", KNNSettings),
-            "LOGISTIC_REGRESSION": AlgorithmMeta("logistic_regression", LogitSettings),
-            "NEURAL_NETWORK": AlgorithmMeta("neural_network", MLPSettings),
-            "SVC_CLASSIFICATION": AlgorithmMeta("svc_classifier", SVMSettings),
-            "SVM_REGRESSION": AlgorithmMeta("svm_regression", SVMSettings),
-            "SGD_CLASSIFICATION": AlgorithmMeta("sgd_classifier", SGDSettings),
-            "LARS": AlgorithmMeta("lars_params", LARSSettings),
-            "XGBOOST_CLASSIFICATION": AlgorithmMeta("xgboost", XGBoostSettings),
-            "XGBOOST_REGRESSION": AlgorithmMeta("xgboost", XGBoostSettings),
-            "SPARKLING_DEEP_LEARNING": AlgorithmMeta("deep_learning_sparkling"),
-            "SPARKLING_GBM": AlgorithmMeta("gbm_sparkling"),
-            "SPARKLING_RF": AlgorithmMeta("rf_sparkling"),
-            "SPARKLING_GLM": AlgorithmMeta("glm_sparkling"),
-            "SPARKLING_NB": AlgorithmMeta("nb_sparkling"),
-            "MLLIB_LOGISTIC_REGRESSION": AlgorithmMeta("mllib_logit", MLLibLogitSettings),
-            "MLLIB_NAIVE_BAYES": AlgorithmMeta("mllib_naive_bayes", MLLibNaiveBayesSettings),
-            "MLLIB_LINEAR_REGRESSION": AlgorithmMeta("mllib_linreg", MLLibLinearRegressionSettings),
-            "MLLIB_RANDOM_FOREST": AlgorithmMeta("mllib_rf", MLLibRandomForestSettings),
-            "MLLIB_GBT": AlgorithmMeta("mllib_gbt", MLLibGBTSettings),
-            "MLLIB_DECISION_TREE": AlgorithmMeta("mllib_dt", MLLibDecisionTreeSettings),
-            "VERTICA_LINEAR_REGRESSION": AlgorithmMeta("vertica_linear_regression"),
-            "VERTICA_LOGISTIC_REGRESSION": AlgorithmMeta("vertica_logistic_regression"),
-            "KERAS_CODE": AlgorithmMeta("keras")
+            "RANDOM_FOREST_CLASSIFICATION": PredictionAlgorithmMeta("random_forest_classification", RandomForestSettings),
+            "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
+            "EXTRA_TREES": PredictionAlgorithmMeta("extra_trees", RandomForestSettings),
+            "GBT_CLASSIFICATION": PredictionAlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
+            "GBT_REGRESSION": PredictionAlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
+            "DECISION_TREE_CLASSIFICATION": PredictionAlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
+            "DECISION_TREE_REGRESSION": PredictionAlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
+            "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+            "LASSO_REGRESSION": PredictionAlgorithmMeta("lasso_regression", LassoRegressionSettings),
+            "LEASTSQUARE_REGRESSION": PredictionAlgorithmMeta("leastsquare_regression", OLSSettings),
+            "SGD_REGRESSION": PredictionAlgorithmMeta("sgd_regression", SGDSettings),
+            "KNN": PredictionAlgorithmMeta("knn", KNNSettings),
+            "LOGISTIC_REGRESSION": PredictionAlgorithmMeta("logistic_regression", LogitSettings),
+            "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", MLPSettings),
+            "SVC_CLASSIFICATION": PredictionAlgorithmMeta("svc_classifier", SVMSettings),
+            "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
+            "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
+            "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
+            "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+            "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+            "SPARKLING_DEEP_LEARNING": PredictionAlgorithmMeta("deep_learning_sparkling"),
+            "SPARKLING_GBM": PredictionAlgorithmMeta("gbm_sparkling"),
+            "SPARKLING_RF": PredictionAlgorithmMeta("rf_sparkling"),
+            "SPARKLING_GLM": PredictionAlgorithmMeta("glm_sparkling"),
+            "SPARKLING_NB": PredictionAlgorithmMeta("nb_sparkling"),
+            "MLLIB_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("mllib_logit", MLLibLogitSettings),
+            "MLLIB_NAIVE_BAYES": PredictionAlgorithmMeta("mllib_naive_bayes", MLLibNaiveBayesSettings),
+            "MLLIB_LINEAR_REGRESSION": PredictionAlgorithmMeta("mllib_linreg", MLLibLinearRegressionSettings),
+            "MLLIB_RANDOM_FOREST": PredictionAlgorithmMeta("mllib_rf", MLLibRandomForestSettings),
+            "MLLIB_GBT": PredictionAlgorithmMeta("mllib_gbt", MLLibGBTSettings),
+            "MLLIB_DECISION_TREE": PredictionAlgorithmMeta("mllib_dt", MLLibDecisionTreeSettings),
+            "VERTICA_LINEAR_REGRESSION": PredictionAlgorithmMeta("vertica_linear_regression"),
+            "VERTICA_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("vertica_logistic_regression"),
+            "KERAS_CODE": PredictionAlgorithmMeta("keras")
         }
 
     class PredictionTypes:
