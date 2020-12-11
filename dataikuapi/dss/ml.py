@@ -437,7 +437,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionsParams`
         """
-        return DSSMLAssertionsParams(self.mltask_settings["assertionParams"])
+        return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
@@ -847,11 +847,11 @@ class DSSMLAssertionCondition(object):
         is equal to the expected class for classification or in the expected range for regression.
         :rtype: str
         """
-        return self._internal_dict["successRatio"]
+        return self._internal_dict["expectedValidRatio"]
 
     @expected_valid_ratio.setter
     def expected_valid_ratio(self, expected_valid_ratio):
-        self._internal_dict["successRatio"] = expected_valid_ratio
+        self._internal_dict["expectedValidRatio"] = expected_valid_ratio
 
     @property
     def expected_min(self):
@@ -917,12 +917,12 @@ class DSSMLAssertionsMetrics(object):
         return None
 
     @property
-    def positive_assertion_ratio(self):
+    def passing_assertions_ratio(self):
         """
         Returns the ratio of passing assertions
         :rtype: float
         """
-        return self._internal_dict['positiveAssertionsRatio']
+        return self._internal_dict['passingAssertionsRatio']
 
 
 class DSSMLAssertionMetric(object):
