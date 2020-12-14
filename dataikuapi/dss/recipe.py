@@ -94,7 +94,7 @@ class DSSRecipe(object):
             jd = project.new_job(job_type)
             jd.with_output(first_output["ref"], object_type=object_type_map[first_output["type"]], partition=partitions)
         else:
-            raise Exception("recipe has unsuported output type {}, can't run it".format(first_output["type"]))
+            raise Exception("Recipe has unsupported output type {}, can't run it".format(first_output["type"]))
 
         if wait:
             return jd.start_and_wait()
