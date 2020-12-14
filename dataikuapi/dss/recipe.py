@@ -77,13 +77,9 @@ class DSSRecipe(object):
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
         project = self.client.get_project(self.project_key)
-
-        continuous_recipes_names = set(activity.recipe_id for activity in project.list_continuous_activities())
-        if self.name in continuous_recipes_names:
-            raise Exception(
-                "Cannot run continuous recipe. Use a dataikuapi.dss.continuousactivity.DSSContinuousActivity instead")
-
+        settings = self.get_settings()
         outputs = project.get_flow().get_graph().get_successor_computables(self)
+
         if len(outputs) == 0:
             raise Exception("recipe has no outputs, can't run it")
 
@@ -95,6 +91,11 @@ class DSSRecipe(object):
             "COMPUTABLE_SAVED_MODEL": "SAVED_MODEL",
             "COMPUTABLE_STREAMING_ENDPOINT": "STREAMING_ENDPOINT",
         }
+
+        if first_output["type"] == "COMPUTABLE_STREAMING_ENDPOINT" and not isinstance(settings, SyncRecipeSettings):
+            raise Exception(
+                "Cannot run recipe with output type STREAMING_ENDPOINT. Use a dataikuapi.dss.continuousactivity.DSSContinuousActivity instead")
+
         if first_output["type"] in object_type_map:
             jd = project.new_job(job_type)
             jd.with_output(first_output["ref"], object_type=object_type_map[first_output["type"]], partition=partitions)
