@@ -944,6 +944,10 @@ class DSSMLAssertionMetric(object):
     def __init__(self, data):
         self._internal_dict = data
 
+    def __repr__(self):
+        return u"DSSMLAssertionParams(\n    name='{}',\n    result={},\n    valid_ratio={},\n    nb_matching_rows={}," \
+               u"\n    nb_dropped_rows={}\n)".format(self.name, self.result, self.valid_ratio, self.nb_matching_rows,
+                                                 self.nb_dropped_rows)
     def get_raw(self):
         """
         Gets the raw dictionary of metrics of one assertion
