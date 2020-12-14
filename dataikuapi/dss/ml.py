@@ -712,12 +712,12 @@ class DSSMLAssertionParams(object):
         self._internal_dict = data
 
     @staticmethod
-    def from_parts(name, a_filter, condition):
+    def from_params(name, a_filter, condition):
         """
         Creates assertion parameters from name, filter and condition
 
         :param str name: Name of the assertion
-        :param object a_filter: A :class:`~dataikuapi.dss.utils.DSSFilter` to select assertion population
+        :param object a_filter: A dict representing the filter to select assertion population
         :param object condition: A :class:`~dataikuapi.dss.ml.DSSMLAssertionCondition` for the assertion to be successful
 
         :rtype: :class:`dataikuapi.dss.ml.DSSMLAssertionParams`
@@ -751,7 +751,7 @@ class DSSMLAssertionParams(object):
     def filter(self):
         """
         Returns the assertion filter
-        :rtype: :class:`dataikuapi.dss.utils.DSSFilter`
+        :rtype: dict
         """
         return self._internal_dict["filter"]
 
