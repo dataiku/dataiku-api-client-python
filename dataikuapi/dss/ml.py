@@ -706,7 +706,7 @@ class DSSMLAssertionsParams(object):
 class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionsParams.get_assertion(assertion_name)` or
+    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion(assertion_name)` or
     `from_parts(name, a_filter, condition)` instead
     """
     def __init__(self, data):
@@ -782,8 +782,8 @@ class DSSMLAssertionParams(object):
 class DSSMLAssertionCondition(object):
     """
     Object that represents an assertion condition
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionParams.condition`, :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
-    or :meth:`dataikuapi.dss.ml.DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`, :meth:`DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
+    or :meth:`DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -900,7 +900,7 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the per assertion metrics for all assertions on a trained model
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails.get_assertions_metrics()` instead
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics()` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -939,7 +939,7 @@ class DSSMLAssertionsMetrics(object):
 class DSSMLAssertionMetric(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`dataikuapi.dss.ml.DSSMLAssertionMetrics.get_metric(self, assertion_name)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metric(self, assertion_name)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
