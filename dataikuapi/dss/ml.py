@@ -5,6 +5,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json, warnings
 import time
+import pprint
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 from .future import DSSFuture
@@ -711,6 +712,10 @@ class DSSMLAssertionParams(object):
     def __init__(self, data):
         self._internal_dict = data
 
+    def __repr__(self):
+        return u"DSSMLAssertionParams(\n    name= '{name}',\n    condition= {condition},\n    filter= {filter}\n)".format(
+            name=self.name, filter=pprint.pformat(self.filter).replace('\n', '\n            '), condition=self.condition)
+
     @staticmethod
     def from_params(name, a_filter, condition):
         """
@@ -782,6 +787,12 @@ class DSSMLAssertionCondition(object):
     """
     def __init__(self, data):
         self._internal_dict = data
+
+    def __repr__(self):
+        return u"DSSMLAssertionCondition(expected_valid_ratio = {}, expected_class= {}," \
+               u" expected_min={}, expected_max={})".format(
+            self.expected_valid_ratio, self.expected_class, self.expected_min, self.expected_max)
+
 
     @staticmethod
     def from_expected_class(expected_valid_ratio, expected_class):
