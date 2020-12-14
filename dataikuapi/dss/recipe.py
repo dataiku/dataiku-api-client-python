@@ -1121,7 +1121,7 @@ class CodeRecipeSettings(DSSRecipeSettings):
             raise ValueError("This recipe kind does not seem to take a code env selection")
 
         if code_env is not None:
-            rp["envSelection"] = {"envMode": "EXPLICIT_ENV", "envName": "code_env"}
+            rp["envSelection"] = {"envMode": "EXPLICIT_ENV", "envName": code_env}
         elif inherit:
             rp["envSelection"] = {"envMode": "INHERIT"}
         elif use_builtin:
