@@ -471,6 +471,7 @@ class HyperparameterSearchSettings(object):
             if not (isinstance(n_folds, int) and n_folds > 0):
                 warnings.warn("HyperparameterSearchSettings.set_kfold_validation ignoring invalid input: n_folds")
                 warnings.warn("n_folds must be a positive integer")
+            else:
                 self._raw_settings["nFolds"] = n_folds
         if stratified is not None:
             if not isinstance(stratified, bool):
@@ -496,7 +497,8 @@ class HyperparameterSearchSettings(object):
             if not (isinstance(split_ratio, float) and split_ratio > 0 and split_ratio < 1):
                 warnings.warn("HyperparameterSearchSettings.set_single_split_validation ignoring invalid input: split_ratio")
                 warnings.warn(" split_ratio must be float between 0 and 1")
-            self._raw_settings["splitRatio"] = split_ratio
+            else:
+                self._raw_settings["splitRatio"] = split_ratio
         if stratified is not None:
             if not isinstance(stratified, bool):
                 warnings.warn("HyperparameterSearchSettings.set_single_split_validation ignoring invalid input: stratified")
@@ -516,7 +518,8 @@ class HyperparameterSearchSettings(object):
             if not isinstance(code, string_types):
                 warnings.warn("HyperparameterSearchSettings.set_custom_validation ignoring invalid input: code")
                 warnings.warn("code must be a Python interpretable string")
-            self._raw_settings["code"] = code
+            else:
+                self._raw_settings["code"] = code
         return self
 
     def set_search_distribution(self, distributed=False, n_containers=4):
