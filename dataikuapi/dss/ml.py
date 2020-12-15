@@ -389,14 +389,15 @@ class HyperparameterSearchSettings(object):
     def strategy(self):
         """
         :return: strategy: "GRID" | "RANDOM" | "BAYESIAN"
-        :rtype str
+        :rtype: str
         """
         return self._raw_settings["strategy"]
 
     @strategy.setter
     def strategy(self, strategy):
         """
-        :param str strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :param strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :type strategy: str
         """
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
         self._raw_settings["strategy"] = strategy
@@ -404,10 +405,14 @@ class HyperparameterSearchSettings(object):
     def set_grid_search(self, shuffle=True, seed=0):
         """
         Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
-        :param bool shuffle: if True, the search will iterate over a shuffled grid as opposed to the lexicographical
+        :param shuffle: if True, iterate over a shuffled grid as opposed to the lexicographical
         iteration over the cartesian product of the hyperparameters.
-        :param int seed:
-        :return current HyperparameterSearchSettings
+        :type shuffle: bool
+        :param seed:
+        :type seed: int
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
+
         """
         self._raw_settings["strategy"] = "GRID"
         if shuffle is not None:
@@ -422,8 +427,10 @@ class HyperparameterSearchSettings(object):
     def set_random_search(self, seed=0):
         """
         Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
-        :param int seed:
-        :return current HyperparameterSearchSettings
+        :param seed:
+        :type seed: int
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         self._raw_settings["strategy"] = "RANDOM"
         self._set_seed(seed)
@@ -432,8 +439,10 @@ class HyperparameterSearchSettings(object):
     def set_bayesian_search(self, seed=0):
         """
         Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
-        :param int seed:
-        :return current HyperparameterSearchSettings
+        :param seed:
+        :type seed: int
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         self._raw_settings["strategy"] = "BAYESIAN"
         self._set_seed(seed)
@@ -442,15 +451,16 @@ class HyperparameterSearchSettings(object):
     @property
     def validation_mode(self):
         """
-        :return mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
-        :rtype str
+        :return: mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :rtype: str
         """
         return self._raw_settings["mode"]
 
     @validation_mode.setter
     def validation_mode(self, mode):
         """
-        :param str mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :param mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :type mode: str
         """
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
@@ -459,9 +469,12 @@ class HyperparameterSearchSettings(object):
         """
         Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
         is enabled).
-        :param int n_folds: the number of folds used for the hyperparameter search
-        :param bool stratified: if True, will keep the same proportion of each target classes in all folds
-        :return current HyperparameterSearchSettings
+        :param n_folds: the number of folds used for the hyperparameter search
+        :type n_folds: int
+        :param stratified: if True, keep the same proportion of each target classes in all folds
+        :type stratified: bool
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
             self._raw_settings["mode"] = "TIME_SERIES_KFOLD"
@@ -485,9 +498,12 @@ class HyperparameterSearchSettings(object):
         """
         Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
         is enabled).
-        :param float split_ratio: ratio of the data used for the train during hyperparameter search
-        :param bool stratified: if True, will keep the same proportion of each target classes in both splits
-        :return current HyperparameterSearchSettings
+        :param split_ratio: ratio of the data used for the train during hyperparameter search
+        :type split_ratio: float
+        :param stratified: if True, keep the same proportion of each target classes in both splits
+        :type stratified: bool
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         if self._raw_settings["mode"] == "TIME_SERIES_KFOLD":
             self._raw_settings["mode"] = "TIME_SERIES_SINGLE_SPLIT"
@@ -510,8 +526,10 @@ class HyperparameterSearchSettings(object):
     def set_custom_validation(self, code=None):
         """
         Sets the validation mode to "CUSTOM".
-        :param str code: definition of the validation
-        :return current HyperparameterSearchSettings
+        :param code: definition of the validation
+        :type code: str
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         self._raw_settings["mode"] = "CUSTOM"
         if code is not None:
@@ -525,10 +543,13 @@ class HyperparameterSearchSettings(object):
     def set_search_distribution(self, distributed=False, n_containers=4):
         """
         Sets the distribution parameters for the hyperparameter search execution.
-        :param bool distributed: if True, search will be distributed across n_containers containers in the Kubernetes
+        :param distributed: if True, distribute search across n_containers containers in the Kubernetes
         cluster selected in containerized execution configuration of the runtime environment
-        :param int n_containers:
-        :return current HyperparameterSearchSettings
+        :type distributed: bool
+        :param n_containers:
+        :type n_containers: int
+        :return: current (mutated) settings
+        :rtype: HyperparameterSearchSettings
         """
         assert isinstance(distributed, bool)
         if n_containers is not None:
@@ -637,7 +658,8 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     @definition_mode.setter
     def definition_mode(self, mode):
         """
-        :param str mode: "EXPLICIT" | "RANGE"
+        :param mode: "EXPLICIT" | "RANGE"
+        :type mode: str
         """
         assert mode in ["EXPLICIT", "RANGE"], "Hyperparameter definition mode must be either \"EXPLICIT\" or \"RANGE\""
         if self._algo_settings.strategy == "GRID":
@@ -651,8 +673,10 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         Sets both:
         - the explicit values to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "EXPLICIT"
-        :param list values: the explicit list of numerical values that will be searched for this hyperparameter
-        :return current NumericalHyperparameterSettings
+        :param values: the explicit list of numerical values considered for this hyperparameter in the search
+        :type values: list of float | int
+        :return: current (mutated) settings
+        :rtype: NumericalHyperparameterSettings
         """
         self.values = values
         self.definition_mode = "EXPLICIT"
@@ -661,7 +685,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     @property
     def values(self):
         """
-        :return: the explicit list of numerical values that will be searched for this hyperparameter
+        :return: the explicit list of numerical values considered for this hyperparameter in the search
         :rtype: list
         """
         return self._algo_settings[self.name]["values"]
@@ -669,7 +693,8 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     @values.setter
     def values(self, values):
         """
-        :param list values: the explicit list of numerical values that will be searched for this hyperparameter
+        :param values: the explicit list of numerical values considered for this hyperparameter in the search
+        :type values: list of float | int
         """
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(self.name) + \
@@ -721,10 +746,14 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         Sets both:
         - the Range parameters to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "RANGE"
-        :param min: the lower bound of the Range that will be searched for this hyperparameter
-        :param max: the upper bound of the Range that will be searched for this hyperparameter
+        :param min: the lower bound of the Range for this hyperparameter
+        :type min: float | int
+        :param max: the upper bound of the Range for this hyperparameter
+        :type max: float | int
         :param nb_values: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
-        :return current NumericalHyperparameterSettings
+        :type nb_values: int
+        :return: current (mutated) settings
+        :rtype: NumericalHyperparameterSettings
         """
         self._set_range(min=min, max=max, nb_values=nb_values)
         self.definition_mode = "RANGE"
@@ -747,44 +776,50 @@ class Range(object):
     @property
     def min(self):
         """
+        :return: the lower bound of the Range for this hyperparameter
         :rtype: float | int
         """
         return self._range_dict["min"]
 
     @min.setter
-    def min(self, val):
+    def min(self, value):
         """
-        :param float | int val: the lower bound of the Range that will be searched for this hyperparameter
+        :param value: the lower bound of the Range this hyperparameter
+        :type value: float | int
         """
-        self._numerical_hyperparameter_settings._set_range(min=val)
+        self._numerical_hyperparameter_settings._set_range(min=value)
 
     @property
     def max(self):
         """
+        :return: the upper bound of the Range this hyperparameter
         :rtype: float | int
         """
         return self._range_dict["max"]
 
     @max.setter
-    def max(self, val):
+    def max(self, value):
         """
-        :param float | int val: the upper bound of the Range that will be searched for this hyperparameter
+        :param value: the upper bound of the Range for this hyperparameter
+        :type value: float | int
         """
-        self._numerical_hyperparameter_settings._set_range(max=val)
+        self._numerical_hyperparameter_settings._set_range(max=value)
 
     @property
     def nb_values(self):
         """
+        :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
         :rtype: int
         """
         return self._range_dict["nbValues"]
 
     @nb_values.setter
-    def nb_values(self, val):
+    def nb_values(self, value):
         """
-        :param int val: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+        :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+        :type value: int
         """
-        self._numerical_hyperparameter_settings._set_range(nb_values=val)
+        self._numerical_hyperparameter_settings._set_range(nb_values=value)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
@@ -800,9 +835,10 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def set_values(self, values):
         """
         Enables the search over listed values (categories).
-        :param values: enable the search over the provided categories and disable the search over non-provided categories
+        :param values: values to enable, all other values will be disabled
         :type values: list of str
-        :return: current CategoricalHyperparameterSettings
+        :return: current (mutated) settings
+        :rtype: CategoricalHyperparameterSettings
         """
         all_possible_values = self.get_all_possible_values()
         for category in values:
@@ -851,7 +887,8 @@ class SingleValueHyperparameterSettings(HyperparameterSettings):
         """
         :param value:
         :type value: bool | int | float
-        :return: current SingleValueHyperparameterSettings
+        :return: current (mutated) settings
+        :rtype: SingleValueHyperparameterSettings
         """
         if self.accepted_types is not None:
             assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
@@ -894,7 +931,8 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
         """
         :param value:
         :type value: str
-        :return: current SingleValueHyperparameterSettings
+        :return: current (mutated) settings
+        :rtype: SingleValueHyperparameterSettings
         """
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
@@ -969,7 +1007,8 @@ class PredictionAlgorithmSettings(dict):
     @enabled.setter
     def enabled(self, enabled):
         """
-        :param bool enabled:
+        :param enabled:
+        :type enabled: bool
         """
         assert isinstance(enabled, bool), "enabled property must be a boolean"
         self["enabled"] = enabled
@@ -1303,10 +1342,10 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         Please refer to the documentation for details on available algorithms.
 
-        :param str algorithm_name: Name (in capitals) of the algorithm.
-        :return: A PredictionAlgorithmSettings (extended dict) for a single built-in prediction algorithm,
-                 or a plain dict for the settings of custom inline-code (CUSTOM_*) or plugin (PLUGIN_*) algorithms.
-        :rtype: PredictionAlgorithmSettings | dict
+        :param algorithm_name: Name (in capitals) of the algorithm.
+        :type algorithm_name: str
+        :return: A PredictionAlgorithmSettings (extended dict) for a single built-in prediction algorithm
+        :rtype: PredictionAlgorithmSettings
         """
         if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
             return self.mltask_settings["modeling"][algorithm_name.lower()]
@@ -1455,7 +1494,8 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
 
         Please refer to the documentation for details on available algorithms.
 
-        :param str algorithm_name: Name (in capitals) of the algorithm.
+        :param: algorithm_name: Name (in capitals) of the algorithm.
+        :type: algorithm_name: str
         :return: A dict of the settings for an algorithm
         :rtype: dict
         """
