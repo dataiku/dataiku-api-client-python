@@ -281,12 +281,6 @@ class DSSMLTaskSettings(object):
         """
         algos = self.__class__.algorithm_remap
         algo_names = [algo_name for algo_name in algos.keys() if self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]]
-        if any(custom_mllib["enabled"] for custom_mllib in self.mltask_settings["modeling"]["custom_mllib"]):
-            algo_names.append("CUSTOM_MLLIB")
-        if any(custom_python["enabled"] for custom_python in self.mltask_settings["modeling"]["custom_python"]):
-            algo_names.append("CUSTOM_PYTHON")
-        if any(custom_python["enabled"] for custom_python in self.mltask_settings["modeling"]["plugin_python"]):
-            algo_names.append("PLUGIN_PYTHON")
         return algo_names
 
     def get_enabled_algorithm_settings(self):
@@ -1347,9 +1341,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         :return: A PredictionAlgorithmSettings (extended dict) for a single built-in prediction algorithm
         :rtype: PredictionAlgorithmSettings
         """
-        if algorithm_name in ["CUSTOM_MLLIB", "CUSTOM_PYTHON", "PLUGIN_PYTHON"]:
-            return self.mltask_settings["modeling"][algorithm_name.lower()]
-        elif algorithm_name in self.__class__.algorithm_remap:
+        if algorithm_name in self.__class__.algorithm_remap:
             algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
             algorithm_name = algorithm_meta.algorithm_name
             algorithm_settings_class = algorithm_meta.algorithm_settings_class
