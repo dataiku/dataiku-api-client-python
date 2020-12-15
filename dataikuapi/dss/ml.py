@@ -797,68 +797,41 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def _pretty_repr(self):
         return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
 
-    def _set_values(self, values=None):
-        if values is None:
-            warnings.warn("Categorical hyperparameter \"{}\" not modified".format(self.name))
-        else:
-            assert isinstance(values, dict), "Invalid values input type for hyperparameter " \
-                                             "\"{}\": ".format(self.name) + \
-                                             "must be a dictionary"
-            admissible_values = self._algo_settings[self.name]["values"].keys()
-            for category, setting in values.items():
-                assert category in admissible_values, "Unknown categorical value \"" + category + "\". Expected a member of " + str(list(admissible_values))
-                value_error_message = "Invalid input value for hyperparameter \"{}\", category \"{}\": ".format(self.name, category)
-                value_error_message += "expected a {\"enabled\": bool} dictionary"
-                assert isinstance(setting, dict), value_error_message
-                assert list(setting.keys()) == ["enabled"], value_error_message
-                assert all(type(v) == bool for v in setting.values()), value_error_message
-            for category, setting in values.items():
-                self._algo_settings[self.name]["values"][category] = setting
+    def set_values(self, values):
+        """
+        Enables the search over listed values (categories).
+        :param values: enable the search over the provided categories and disable the search over non-provided categories
+        :type values: list of str
+        :return: current CategoricalHyperparameterSettings
+        """
+        all_possible_values = self.get_all_possible_values()
+        for category in values:
+            assert isinstance(category, string_types), \
+                "Invalid input type {} for categorical hyperparameter {}: must be a string".format(type(category), self.name)
+            assert category in all_possible_values, \
+                "Invalid input value \"{}\" for categorical hyperparameter {}: must be a member of {}".format(category, self.name, all_possible_values)
 
-    def enable_categories(self, categories, disable_others=False):
-        """
-        Enables the search over categories listed in the first argument.
-        :param list categories: will enable the search over the provided categories
-        :param bool disable_others: if True, will also disable the search over categories not listed in the first argument
-        :return current CategoricalHyperparameterSettings
-        """
-        accepted_categories = self.get_all_categories()
-        for category in categories:
-            assert isinstance(category, string_types)
-            assert category in accepted_categories
-        self._set_values({category: {"enabled": True}
-                          for category in categories})
-        if disable_others:
-            self._set_values({category: {"enabled": False}
-                              for category in accepted_categories
-                              if category not in categories})
+        for category in all_possible_values:
+            if category in values:
+                self._algo_settings[self.name]["values"][category] = {"enabled": True}
+            else:
+                self._algo_settings[self.name]["values"][category] = {"enabled": False}
         return self
 
-    def disable_categories(self, categories, enable_others=False):
+    def get_values(self):
         """
-        Disables the search over categories listed in the first argument.
-        :param list categories: will disable the search over the provided categories
-        :param bool enable_others: if True, will also enable the search over categories not listed in the first argument
-        :return current CategoricalHyperparameterSettings
+        :return: list of enabled categories for this hyperparameter
+        :rtype: list of str
         """
-        accepted_categories = self.get_all_categories()
-        for category in categories:
-            assert isinstance(category, string_types)
-            assert category in accepted_categories
-        self._set_values({category: {"enabled": False}
-                          for category in categories})
-        if enable_others:
-            self._set_values({category: {"enabled": True}
-                              for category in accepted_categories
-                              if category not in categories})
-        return self
+        values_dict = self._algo_settings[self.name]["values"]
+        return [value for value in values_dict.keys() if values_dict[value]["enabled"]]
 
-    def get_all_categories(self):
+    def get_all_possible_values(self):
         """
-        :return: list of valid categories for this hyperparameter
+        :return: list of possible values for this hyperparameter
+        :rtype: list of str
         """
         return list(self._algo_settings[self.name]["values"].keys())
-
 
 
 class SingleValueHyperparameterSettings(HyperparameterSettings):
@@ -876,13 +849,27 @@ class SingleValueHyperparameterSettings(HyperparameterSettings):
 
     def set_value(self, value):
         """
-        :param bool | int | float value:
+        :param value:
+        :type value: bool | int | float
         :return: current SingleValueHyperparameterSettings
         """
         if self.accepted_types is not None:
             assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
         self._algo_settings[self.name] = value
         return self
+
+    def get_value(self):
+        """
+        :return: current value
+        :rtype: bool | int | float
+        """
+        return self._algo_settings[self.name]
+
+    def get_accepted_types(self):
+        """
+        :return: valid types for this hyperparameter
+        """
+        return self.accepted_types
 
 
 class SingleCategoryHyperparameterSettings(HyperparameterSettings):
@@ -905,13 +892,28 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
 
     def set_value(self, value):
         """
-        :param str value:
+        :param value:
+        :type value: str
         :return: current SingleValueHyperparameterSettings
         """
         if self.accepted_values is not None:
             assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
         self._algo_settings[self.name] = value
         return self
+
+    def get_value(self):
+        """
+        :return: current value
+        :rtype: str
+        """
+        return self._algo_settings[self.name]
+
+    def get_all_possible_values(self):
+        """
+        :return: list of possible values for this hyperparameter
+        :rtype: list of str
+        """
+        return list(self._algo_settings[self.name]["values"].keys())
 
 
 class PredictionAlgorithmSettings(dict):
