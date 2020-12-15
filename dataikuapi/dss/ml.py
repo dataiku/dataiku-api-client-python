@@ -577,6 +577,7 @@ class HyperparameterSearchSettings(object):
 
     @parallelism.setter
     def parallelism(self, n_jobs):
+        assert isinstance(n_jobs, int)
         self._raw_settings["nJobs"] = n_jobs
 
 
