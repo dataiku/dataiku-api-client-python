@@ -628,6 +628,7 @@ class DSSMLDiagnostic(object):
     def get_type(self):
         """
         Returns the base Diagnostic type
+
         :rtype: str
         """
         return self._internal_dict["type"]
@@ -635,6 +636,7 @@ class DSSMLDiagnostic(object):
     def get_type_pretty(self):
         """
         Returns the Diagnostic type as displayed in the UI
+
         :rtype: str
         """
         return self._internal_dict["displayableType"]
@@ -642,6 +644,7 @@ class DSSMLDiagnostic(object):
     def get_message(self):
         """
         Returns the message as displayed in the UI
+
         :rtype: str
         """
         return self._internal_dict["message"]
@@ -664,6 +667,7 @@ class DSSMLAssertionsParams(object):
     def get_raw(self):
         """
         Gets the raw dictionary of the assertions parameters
+
         :rtype: dict
         """
         return self._internal_dict
@@ -739,6 +743,7 @@ class DSSMLAssertionParams(object):
     def get_raw(self):
         """
         Gets the raw dictionary of the assertion parameters
+
         :rtype: dict
         """
         return self._internal_dict
@@ -747,6 +752,7 @@ class DSSMLAssertionParams(object):
     def name(self):
         """
         Returns the assertion name
+
         :rtype: str
         """
         return self._internal_dict["name"]
@@ -759,6 +765,7 @@ class DSSMLAssertionParams(object):
     def filter(self):
         """
         Returns the assertion filter
+
         :rtype: dict
         """
         return self._internal_dict["filter"]
@@ -771,6 +778,7 @@ class DSSMLAssertionParams(object):
     def condition(self):
         """
         Returns the assertion condition
+
         :rtype: :class:`DSSMLAssertionCondition`
         """
         return DSSMLAssertionCondition(self._internal_dict["assertionCondition"])
@@ -834,6 +842,7 @@ class DSSMLAssertionCondition(object):
     def get_raw(self):
         """
         Gets the raw dictionary of the condition
+
         :rtype: dict
         """
         return self._internal_dict
@@ -843,6 +852,7 @@ class DSSMLAssertionCondition(object):
         """
         Returns the expected class or None if it is not defined. Assertion passes if the expected_valid_ratio
         of rows predicted as expected_class is attained.
+
         :rtype: str
         """
         if "expectedClass" in self._internal_dict:
@@ -859,6 +869,7 @@ class DSSMLAssertionCondition(object):
         """
         Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
         is equal to the expected class for classification or in the expected range for regression.
+
         :rtype: str
         """
         return self._internal_dict["expectedValidRatio"]
@@ -872,6 +883,7 @@ class DSSMLAssertionCondition(object):
         """
         Returns the min (included) of the expected range or None if it is not defined.
         Assertion passes if the expected_valid_ratio of rows predicted between expected_min and expected_max (included) is attained.
+
         :rtype: float
         """
         if "expectedMinValue" in self._internal_dict:
@@ -888,6 +900,7 @@ class DSSMLAssertionCondition(object):
         """
         Returns the max (included) of the expected range or None if it is not defined.
         Assertion passes if the ratio of rows predicted between expected_min and expected_max (included) is attained.
+
         :rtype: float
         """
         if "expectedMaxValue" in self._internal_dict:
@@ -911,6 +924,7 @@ class DSSMLAssertionsMetrics(object):
     def get_raw(self):
         """
         Gets the raw dictionary of the assertions metrics
+
         :rtype: dict
         """
         return self._internal_dict
@@ -934,6 +948,7 @@ class DSSMLAssertionsMetrics(object):
     def passing_assertions_ratio(self):
         """
         Returns the ratio of passing assertions
+
         :rtype: float
         """
         return self._internal_dict['passingAssertionsRatio']
@@ -954,6 +969,7 @@ class DSSMLAssertionMetric(object):
     def get_raw(self):
         """
         Gets the raw dictionary of metrics of one assertion
+
         :rtype: dict
         """
         return self._internal_dict
@@ -962,6 +978,7 @@ class DSSMLAssertionMetric(object):
     def name(self):
         """
         Returns the assertion name
+
         :rtype: str
         """
         return self._internal_dict["name"]
@@ -970,6 +987,7 @@ class DSSMLAssertionMetric(object):
     def result(self):
         """
         Returns whether the assertion passes
+
         :rtype: bool
         """
         return self._internal_dict["result"]
@@ -979,6 +997,7 @@ class DSSMLAssertionMetric(object):
         """
         Returns the ratio of rows in the assertion population with prediction equals to the expected class
         for classification or in the expected range for regression
+
         :rtype: float
         """
         return self._internal_dict["validRatio"]
@@ -987,6 +1006,7 @@ class DSSMLAssertionMetric(object):
     def nb_matching_rows(self):
         """
         Returns the number of rows matching filter
+
         :rtype: int
         """
         return self._internal_dict["nbMatchingRows"]
@@ -995,6 +1015,7 @@ class DSSMLAssertionMetric(object):
     def nb_dropped_rows(self):
         """
         Returns the number of rows dropped by the model's preprocessing
+
         :rtype: int
         """
         return self._internal_dict["nbDroppedRows"]
@@ -1161,6 +1182,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     def get_assertions_metrics(self):
         """
         Retrieves assertions metrics computed for this trained model
+
         :returns: an object representing assertion metrics
         :rtype: :class:`DSSMLAssertionsMetrics`
         """
@@ -1858,6 +1880,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     def get_performance_metrics(self):
         """
         Returns all performance metrics for this clustering model.
+
         :returns: a dict of performance metrics values
         :rtype: dict
         """
@@ -1890,6 +1913,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     def get_actual_modeling_params(self):
         """
         Gets the actual / resolved parameters that were used to train this model.
+
         :return: A dictionary, which contains at least a "resolved" key
         :rtype: dict
         """
