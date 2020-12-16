@@ -540,7 +540,7 @@ class HyperparameterSearchSettings(object):
         :param distributed: if True, distribute search across n_containers containers in the Kubernetes
         cluster selected in containerized execution configuration of the runtime environment
         :type distributed: bool
-        :param n_containers:
+        :param n_containers: number of containers to use for the distributed search
         :type n_containers: int
         :return: current (mutated) settings
         :rtype: HyperparameterSearchSettings
@@ -1338,7 +1338,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         :param algorithm_name: Name (in capitals) of the algorithm.
         :type algorithm_name: str
-        :return: A PredictionAlgorithmSettings (extended dict) for a single built-in prediction algorithm
+        :return: A PredictionAlgorithmSettings (extended dict) for one of the built-in prediction algorithms
         :rtype: PredictionAlgorithmSettings
         """
         if algorithm_name in self.__class__.algorithm_remap:
@@ -1486,7 +1486,7 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
 
         Please refer to the documentation for details on available algorithms.
 
-        :param: algorithm_name: Name (in capitals) of the algorithm.
+        :param: algorithm_name: Name of the algorithm (uppercase).
         :type: algorithm_name: str
         :return: A dict of the settings for an algorithm
         :rtype: dict
