@@ -945,7 +945,7 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
         :return: list of possible values for this hyperparameter
         :rtype: list of str
         """
-        return list(self._algo_settings[self.name]["values"].keys())
+        return self.accepted_values
 
 
 class PredictionAlgorithmSettings(dict):
@@ -1016,6 +1016,7 @@ class PredictionAlgorithmSettings(dict):
         raise AttributeError("The strategy must be set at the MLTask settings level.\n"
                              "To update the search strategy, use <HyperparameterSearchSettings object>.strategy = ..., "
                              "obtained with <DSSPredictionMLTaskSettings object>.get_hyperparameter_search_settings()")
+
 
 class RandomForestSettings(PredictionAlgorithmSettings):
 
