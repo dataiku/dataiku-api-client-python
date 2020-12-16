@@ -924,7 +924,7 @@ class DSSMLAssertionCondition(object):
 
 class DSSMLAssertionsMetrics(object):
     """
-    Object that represents the per assertion metrics for all assertions on a trained model
+    Object that represents the assertions metrics for all assertions on a trained model
     Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics()` instead
     """
     def __init__(self, data):
