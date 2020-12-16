@@ -5,7 +5,6 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json, warnings
 import time
-import pprint
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 from .future import DSSFuture
@@ -720,8 +719,8 @@ class DSSMLAssertionParams(object):
         self._internal_dict = data
 
     def __repr__(self):
-        return u"DSSMLAssertionParams(\n    name= '{name}',\n    condition= {condition},\n    filter= {filter}\n)".format(
-            name=self.name, filter=pprint.pformat(self.filter).replace('\n', '\n            '), condition=self.condition)
+        return u"DSSMLAssertionParams(name= '{name}', condition= {condition}, filter= {filter})".format(
+            name=self.name, filter=self.filter, condition=self.condition)
 
     @staticmethod
     def from_params(name, a_filter, condition):
@@ -963,8 +962,8 @@ class DSSMLAssertionMetric(object):
         self._internal_dict = data
 
     def __repr__(self):
-        return u"DSSMLAssertionParams(\n    name='{}',\n    result={},\n    valid_ratio={},\n    nb_matching_rows={}," \
-               u"\n    nb_dropped_rows={}\n)".format(self.name, self.result, self.valid_ratio, self.nb_matching_rows,
+        return u"DSSMLAssertionParams(name='{}', result={}, valid_ratio={}, nb_matching_rows={}," \
+               u" nb_dropped_rows={})".format(self.name, self.result, self.valid_ratio, self.nb_matching_rows,
                                                  self.nb_dropped_rows)
     def get_raw(self):
         """
