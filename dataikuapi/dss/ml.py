@@ -693,7 +693,7 @@ class DSSMLAssertionsParams(object):
         if not isinstance(assertion_params, DSSMLAssertionParams):
             raise ValueError('Wrong type for assertion parameters: {}'.format(type(assertion_params)))
 
-        self._internal_dict["assertions"].append(assertion_params._internal_dict)
+        self._internal_dict["assertions"].append(assertion_params.get_raw())
 
     def delete_assertion(self, assertion_name):
         """
@@ -786,7 +786,7 @@ class DSSMLAssertionParams(object):
     def condition(self, condition):
         if not isinstance(condition, DSSMLAssertionCondition):
             raise ValueError('Wrong type for assertion condition: {}'.format(type(condition)))
-        self._internal_dict["assertionCondition"] = condition._internal_dict
+        self._internal_dict["assertionCondition"] = condition.get_raw()
 
 
 class DSSMLAssertionCondition(object):
