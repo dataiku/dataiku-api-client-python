@@ -928,19 +928,19 @@ class DSSMLAssertionsMetrics(object):
         """
         return self._internal_dict
 
-    def get_metric(self, assertion_name):
+    def get_metrics(self, assertion_name):
         """
-        Retrieves the metric computed for this trained model for the assertion with the provided name (or None if no
+        Retrieves the metrics computed for this trained model for the assertion with the provided name (or None if no
         assertion with that name exists)
 
         :param str assertion_name: Name of the assertion
 
         :returns: an object representing assertion metrics or None if no assertion with that name exists
-        :rtype: :class:`DSSMLAssertionMetric`
+        :rtype: :class:`DSSMLAssertionMetrics`
         """
-        for assertion_metric_dict in self._internal_dict["perAssertion"]:
-            if assertion_name == assertion_metric_dict["name"]:
-                return DSSMLAssertionMetric(assertion_metric_dict)
+        for assertion_metrics_dict in self._internal_dict["perAssertion"]:
+            if assertion_name == assertion_metrics_dict["name"]:
+                return DSSMLAssertionMetrics(assertion_metrics_dict)
         return None
 
     @property
@@ -953,10 +953,10 @@ class DSSMLAssertionsMetrics(object):
         return self._internal_dict['passingAssertionsRatio']
 
 
-class DSSMLAssertionMetric(object):
+class DSSMLAssertionMetrics(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metric(self, assertion_name)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics(self, assertion_name)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
