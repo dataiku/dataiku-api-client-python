@@ -949,12 +949,12 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
 
 
 class PredictionAlgorithmSettings(dict):
-
     """
     Object to read and modify the settings of a prediction ML algorithm.
 
     Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings(algorithm)` instead
     """
+
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(PredictionAlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
@@ -984,7 +984,7 @@ class PredictionAlgorithmSettings(dict):
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
-        return self.__class__.__name__ + "(values={})".format(super(PredictionAlgorithmSettings, self).copy())
+        return self.__class__.__name__ + "(values={})".format(self.copy())
 
     __str__ = __repr__
 
