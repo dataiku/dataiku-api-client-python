@@ -663,6 +663,9 @@ class DSSMLAssertionsParams(object):
     def __init__(self, data):
         self._internal_dict = data
 
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
     def get_raw(self):
         """
         Gets the raw dictionary of the assertions parameters
@@ -920,6 +923,9 @@ class DSSMLAssertionsMetrics(object):
     def __init__(self, data):
         self._internal_dict = data
 
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
     def get_raw(self):
         """
         Gets the raw dictionary of the assertions metrics
@@ -962,9 +968,10 @@ class DSSMLAssertionMetrics(object):
         self._internal_dict = data
 
     def __repr__(self):
-        return u"DSSMLAssertionParams(name='{}', result={}, valid_ratio={}, nb_matching_rows={}," \
-               u" nb_dropped_rows={})".format(self.name, self.result, self.valid_ratio, self.nb_matching_rows,
-                                                 self.nb_dropped_rows)
+        return u"{}(name='{}', result={}, valid_ratio={}, nb_matching_rows={}," \
+               u" nb_dropped_rows={})".format(self.__class__.__name__, self.name, self.result, self.valid_ratio,
+                                              self.nb_matching_rows, self.nb_dropped_rows)
+
     def get_raw(self):
         """
         Gets the raw dictionary of metrics of one assertion
