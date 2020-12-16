@@ -689,9 +689,9 @@ class DSSMLAssertionsParams(object):
 
     def get_assertions_names(self):
         """
-        Gets the list of all assertion's names
+        Gets the list of all assertions' names
 
-        :return: A list of all assertion's names
+        :return: A list of all assertions' names
         :rtype: list
         """
         return [assertion_dict["name"] for assertion_dict in self._internal_dict["assertions"]]
@@ -725,7 +725,7 @@ class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
     Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion(assertion_name)` or
-    `from_parts(name, a_filter, condition)` instead
+    `from_params(name, a_filter, condition)` instead
     """
     def __init__(self, data):
         self._internal_dict = data
