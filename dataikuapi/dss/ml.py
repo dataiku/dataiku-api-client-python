@@ -731,7 +731,8 @@ class DSSMLAssertionParams(object):
         Creates assertion parameters from name, filter and condition
 
         :param str name: Name of the assertion
-        :param object a_filter: A dict representing the filter to select assertion population
+        :param dict a_filter: A dict representing the filter to select assertion population. You can use
+        a :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter
         :param object condition: A :class:`DSSMLAssertionCondition` for the assertion to be successful
 
         :rtype: :class:`DSSMLAssertionParams`
