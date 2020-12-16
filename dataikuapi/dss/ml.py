@@ -774,8 +774,8 @@ class DSSMLAssertionParams(object):
         return self._internal_dict["filter"]
 
     @filter.setter
-    def filter(self, filter):
-        self._internal_dict["filter"] = filter
+    def filter(self, a_filter):
+        self._internal_dict["filter"] = a_filter
 
     @property
     def condition(self):
@@ -902,7 +902,7 @@ class DSSMLAssertionCondition(object):
     def expected_max(self):
         """
         Returns the max (included) of the expected range or None if it is not defined.
-        Assertion passes if the ratio of rows predicted between expected_min and expected_max (included) is attained.
+        Assertion passes if the expected_valid_ratio of rows predicted between expected_min and expected_max (included) is attained.
 
         :rtype: float
         """
@@ -1021,7 +1021,7 @@ class DSSMLAssertionMetrics(object):
     @property
     def nb_dropped_rows(self):
         """
-        Returns the number of rows dropped by the model's preprocessing
+        Returns the number of rows matching filter and dropped by the model's preprocessing
 
         :rtype: int
         """
