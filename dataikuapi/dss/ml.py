@@ -731,8 +731,7 @@ class DSSMLAssertionParams(object):
         self._internal_dict = data
 
     def __repr__(self):
-        return u"DSSMLAssertionParams(name= '{name}', condition= {condition}, filter= {filter})".format(
-            name=self.name, filter=self.filter, condition=self.condition)
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
 
     @staticmethod
     def from_params(name, a_filter, condition):
@@ -812,9 +811,7 @@ class DSSMLAssertionCondition(object):
         self._internal_dict = data
 
     def __repr__(self):
-        return u"DSSMLAssertionCondition(expected_valid_ratio = {}, expected_class= {}," \
-               u" expected_min={}, expected_max={})".format(
-            self.expected_valid_ratio, self.expected_class, self.expected_min, self.expected_max)
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
 
 
     @staticmethod
