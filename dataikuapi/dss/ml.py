@@ -687,6 +687,15 @@ class DSSMLAssertionsParams(object):
                 return DSSMLAssertionParams(assertion_dict)
         return None
 
+    def get_assertions_names(self):
+        """
+        Gets the list of all assertion's names
+
+        :return: A list of all assertion's names
+        :rtype: list
+        """
+        return [assertion_dict["name"] for assertion_dict in self._internal_dict["assertions"]]
+
     def add_assertion(self, assertion_params):
         """
         Adds parameters of an assertion to the assertions parameters of the ml task.
