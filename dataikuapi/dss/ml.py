@@ -672,6 +672,7 @@ class DSSMLAssertionsParams(object):
         """
         Gets a :class:`DSSMLAssertionParams` representing the parameters of the assertion with the
         provided name (or None if no assertion has that name)
+
         :param str assertion_name: Name of the assertion
         :rtype: :class:`DSSMLAssertionParams` or None if no assertion has that name
         """
@@ -683,6 +684,7 @@ class DSSMLAssertionsParams(object):
     def add_assertion(self, assertion_params):
         """
         Adds parameters of an assertion to the assertions parameters of the ml task.
+
         :param object  assertion_params: A :class:`DSSMLAssertionParams` representing parameters of the assertion
         """
         if not isinstance(assertion_params, DSSMLAssertionParams):
@@ -694,6 +696,7 @@ class DSSMLAssertionsParams(object):
         """
         Deletes the assertion parameters of the assertion with the provided name from the assertions parameters of the ml task.
         Raises a ValueError if no assertion with the provided name was found
+
         :param str assertion_name: Name of the assertion
         """
         for idx, assertion_dict in enumerate(self._internal_dict["assertions"]):
