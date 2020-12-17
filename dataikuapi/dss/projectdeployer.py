@@ -408,6 +408,14 @@ class DSSProjectDeployerProject(object):
 
         return DSSProjectDeployerProjectSettings(self.client, self.project_key, settings)
 
+    def delete_bundle(self, bundle_id):
+        """
+        Deletes a bundle from this project
+        :param string bundle_id: The identifier of the bundle to delete
+        """
+        self.client._perform_empty(
+            "DELETE", "/project-deployer/projects/%s/bundles/%s" % (self.project_key, bundle_id))
+
     def delete(self):
         """
         Deletes this project

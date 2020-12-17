@@ -449,6 +449,14 @@ class DSSAPIDeployerService(object):
 
         return DSSAPIDeployerServiceSettings(self.client, self.service_id, settings)
 
+    def delete_version(self, version):
+        """
+        Deletes a version from this service
+        :param string version: The version to delete
+        """
+        self.client._perform_empty(
+            "DELETE", "/api-deployer/services/%s/versions/%s" % (self.service_id, version))
+
     def delete(self):
         """
         Deletes this service
