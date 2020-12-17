@@ -877,11 +877,11 @@ class SingleCategoryHyperparameterSettings(HyperparameterSettings):
 
     def __repr__(self):
         if self.accepted_values is not None:
-            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={}, accepted_values={})".format(self.name,
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\", accepted_values={})".format(self.name,
                                                                                                             self._algo_settings[self.name],
                                                                                                             self.accepted_values)
         else:
-            return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, self._algo_settings[self.name])
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\")".format(self.name, self._algo_settings[self.name])
 
     __str__ = __repr__
 
@@ -922,6 +922,26 @@ class PredictionAlgorithmSettings(dict):
         super(PredictionAlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
         self._hyperparameters_registry = dict()
+
+    def __setattr__(self, key, value):
+        if key in {"_hyperparameters_registry", "_hyperparameter_search_params"} or key in {"enabled", "strategy"}:
+            # attributes and properties of the PredictionAlgorithmSettings object must be handled separately
+            super(PredictionAlgorithmSettings, self).__setattr__(key, value)
+        elif key in self._hyperparameters_registry or (key=="lambda_" and "lambda" in self._hyperparameters_registry):
+            if isinstance(value, HyperparameterSettings):
+                # call from a PredictionAlgorithmSettings child's __init__
+                super(PredictionAlgorithmSettings, self).__setattr__(key, value)
+            else:
+                # syntactic sugars
+                target = self._hyperparameters_registry[key]
+                if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
+                    target.set_value(value)
+                elif isinstance(target, CategoricalHyperparameterSettings):
+                    target.set_values(value)
+                else:
+                    raise Exception("Invalid type for assignment of a NumericalHyperparameterSettings object")
+        else:
+            raise Exception("Unknown hyperparameter: \"{}\"".format(key))
 
     def _register_numerical_hyperparameter(self, name):
         self._hyperparameters_registry[name] = NumericalHyperparameterSettings(name, self)
