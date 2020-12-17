@@ -56,7 +56,7 @@ class DSSProjectFlow(object):
         """
         Finds the zone to which this object belongs.
 
-        If the object is not found in any specific zone, it belongs to the default zone, and the default 
+        If the object is not found in any specific zone, it belongs to the default zone, and the default
         zone is returned
 
         :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
@@ -120,7 +120,7 @@ class DSSProjectFlow(object):
 
         :param type str: one of {COPY, CHECK_CONSISTENCY, PROPAGATE_SCHEMA} (tools) or {TAGS, CUSTOM_FIELDS, CONNECTIONS, COUNT_OF_RECORDS, FILESIZE, FILEFORMATS, RECIPES_ENGINES, RECIPES_CODE_ENVS, IMPALA_WRITE_MODE, HIVE_MODE, SPARK_ENGINE, SPARK_CONFIG, SPARK_PIPELINES, SQL_PIPELINES, PARTITIONING, PARTITIONS, SCENARIOS, CREATION, LAST_MODIFICATION, LAST_BUILD, RECENT_ACTIVITY, WATCH}  (views)
         :param data dict: initial data for the tool (optional)
-    
+
         :returns: a :class:`.flow.DSSFlowTool` handle to interact with the newly-created tool or view
         """
         tool_id = self.client._perform_text("POST", "/projects/%s/flow/tools/" % self.project.project_key, params={'type':type}, body=data)
@@ -214,7 +214,7 @@ class DSSSchemaPropagationRunBuilder(object):
         """Marks a recipe as always considered as OK during propagation"""
         self.settings["markAsOkRecipes"].append(name)
 
-    def set_grouping_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_keys=True, 
+    def set_grouping_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_keys=True,
                                     new_aggregates={}):
         """
         Sets update options for grouping recipes
@@ -230,7 +230,7 @@ class DSSSchemaPropagationRunBuilder(object):
         else:
             self.settings["recipeUpdateOptions"]["byName"][recipe] = data
 
-    def set_window_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_in_window=True, 
+    def set_window_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_in_window=True,
                                     new_aggregates={}):
         """
         Sets update options for window recipes
@@ -246,7 +246,7 @@ class DSSSchemaPropagationRunBuilder(object):
         else:
             self.settings["recipeUpdateOptions"]["byName"][recipe] = data
 
-    def set_join_update_options(self, recipe=None, remove_missing_join_conditions=True, remove_missing_join_values=True, 
+    def set_join_update_options(self, recipe=None, remove_missing_join_conditions=True, remove_missing_join_values=True,
                                 new_selected_columns={}):
         """
         Sets update options for join recipes
@@ -308,7 +308,7 @@ class DSSFlowZone(object):
             p = self.flow.project
         else:
             p = self.client.get_project(zone_item["projectKey"])
-        
+
         if zone_item["objectType"] == "DATASET":
            return p.get_dataset(zone_item["objectId"])
         elif zone_item["objectType"] == "MANAGED_FOLDER":
@@ -346,7 +346,7 @@ class DSSFlowZone(object):
         explicitly in a zone. To get the full list of items in a zone, including in the "default" zone, use
         the :meth:`get_graph` method.
 
-        @rtype list of zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`, 
+        @rtype list of zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`,
             :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
             or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
         """
@@ -381,7 +381,7 @@ class DSSFlowZone(object):
 
         This list is read-only, to modify it, use :meth:`add_shared` and :meth:`remove_shared`
 
-        @rtype list of shared zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`, 
+        @rtype list of shared zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`,
             :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
             or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
         """
@@ -408,7 +408,7 @@ class DSSFlowZoneSettings(object):
         """
         Gets the raw settings of the zone.
 
-        You cannot modify the `items` and `shared` elements through this class. Instead, use :meth:`DSSFlowZone.add_item` and 
+        You cannot modify the `items` and `shared` elements through this class. Instead, use :meth:`DSSFlowZone.add_item` and
         others
         """
         return self._raw
@@ -432,7 +432,7 @@ class DSSFlowZoneSettings(object):
     def save(self):
         """Saves the settings of the zone"""
         self._zone.client._perform_empty("PUT", "/projects/%s/flow/zones/%s" % (self._zone.flow.project.project_key, self._zone.id),
-                                        body=self._raw)        
+                                        body=self._raw)
 
 class DSSProjectFlowGraph(object):
 
@@ -445,8 +445,8 @@ class DSSProjectFlowGraph(object):
         """
         Returns the list of source computables.
         :param as_type: How to return the source computables. Possible values are "dict" and "object"
-        
-        :return: if as_type=dict, each computable is returned as a dict containing at least "ref" and "type". 
+
+        :return: if as_type=dict, each computable is returned as a dict containing at least "ref" and "type".
                  if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.dataset.DSSDataset`,
                     :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
                     :class:`dataikuapi.dss.savedmodel.DSSSavedModel`, or streaming endpoint
@@ -461,8 +461,8 @@ class DSSProjectFlowGraph(object):
         """
         Returns the list of source recipes.
         :param as_type: How to return the source recipes. Possible values are "dict" and "object"
-        
-        :return: if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+
+        :return: if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
                  if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
         """
         ret = []
@@ -484,7 +484,7 @@ class DSSProjectFlowGraph(object):
 
         :param node: Either a name or :class:`dataikuapi.dss.dataset.DSSDataset` object
         :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
-        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
         """
         if isinstance(node, DSSDataset):
@@ -496,13 +496,13 @@ class DSSProjectFlowGraph(object):
 
         runnables = [self.nodes[x] for x in computable["successors"]]
         return self._convert_nodes_list(runnables, as_type)
-        
+
     def get_successor_computables(self, node, as_type="dict"):
         """
         Returns a list of computables that are a successor of a given graph node
-        
+
         :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
-        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type". 
+        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
         """
         if isinstance(node, DSSRecipe):
@@ -515,8 +515,9 @@ class DSSProjectFlowGraph(object):
         return self._convert_nodes_list(computables, as_type)
 
     def _convert_nodes_list(self, nodes, as_type):
+        actual_nodes = [node for node in nodes if node['type'] != 'RUNNABLE_IMPLICIT_RECIPE']
         if as_type == "object" or as_type == "objects":
-            return [self._get_object_from_graph_node(node) for node in nodes]
+            return [self._get_object_from_graph_node(node) for node in actual_nodes]
         else:
             return nodes
 
@@ -525,9 +526,15 @@ class DSSProjectFlowGraph(object):
             return DSSDataset(self.flow.client, self.flow.project.project_key, node["ref"])
         elif node["type"] == "RUNNABLE_RECIPE":
             return DSSRecipe(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "COMPUTABLE_FOLDER":
+            return DSSManagedFolder(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "COMPUTABLE_SAVED_MODEL":
+            return DSSSavedModel(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "COMPUTABLE_STREAMING_ENDPOINT":
+            return DSSStreamingEndpoint(self.flow.client, self.flow.project.project_key, node["ref"])
         else:
-            # TODO
-            raise Exception("unsupported node type  %s" % node["type"])
+            # TODO add streaming elements
+            raise Exception("unsupported node type: %s" % node["type"])
 
     def get_items_in_traversal_order(self, as_type="dict"):
         ret = []
@@ -590,7 +597,7 @@ class DSSFlowTool(object):
         :returns: the state, as a dict
         """
         return self.client._perform_json("GET", "/projects/%s/flow/tools/%s/state" % (self.project_key, self.tool_id), body=options)
- 
+
     def do(self, action):
         """
         Perform a manual user action on the tool
@@ -598,7 +605,7 @@ class DSSFlowTool(object):
         :returns: the current state, as a dict
         """
         return self.client._perform_json("PUT", "/projects/%s/flow/tools/%s/action" % (self.project_key, self.tool_id), body=action)
- 
+
     def update(self, options={}):
         """
         (for tools only) Start updating the tool state

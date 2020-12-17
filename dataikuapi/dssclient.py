@@ -227,6 +227,31 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/plugins/")
 
+    def download_plugin_stream(self, plugin_id):
+        """
+        Download a development plugin, as a binary stream
+        :param str plugin_id: identifier of the plugin to download
+
+        :param plugin_id:
+        :return: the binary stream
+        """
+        return self._perform_raw("GET", "/plugins/%s/download" % plugin_id)
+
+    def download_plugin_to_file(self, plugin_id, path):
+        """
+        Download a development plugin to a file
+
+        :param str plugin_id: identifier of the plugin to download
+        :param str path: the path where to download the plugin
+        :return: None
+        """
+        stream = self.download_plugin_stream(plugin_id)
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+
     def install_plugin_from_archive(self, fp):
         """
         Install a plugin from a plugin archive (as a file object)

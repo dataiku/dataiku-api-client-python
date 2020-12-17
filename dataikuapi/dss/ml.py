@@ -253,6 +253,50 @@ class DSSMLTaskSettings(object):
 
         return self.mltask_settings["modeling"][algorithm_name.lower()]
 
+    def get_diagnostics_settings(self):
+        """
+        Gets the diagnostics settings for a mltask. This returns a reference to the
+        diagnostics' settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns a dictionary of the settings with:
+        - 'enabled': indicates if the diagnostics are enabled globally, if False, all diagnostics will be disabled
+        - 'settings': a list of dict comprised of:
+          - 'type': the diagnostic type
+          - 'enabled': indicates if the diagnostic type is enabled, if False, all diagnostics of that type will be disabled
+
+        Please refer to the documentation for details on available diagnostics.
+
+        :return: A dict of diagnostics settings
+        :rtype: dict
+        """
+        return self.mltask_settings["diagnosticsSettings"]
+
+    def set_diagnostics_enabled(self, enabled):
+        """
+        Globally enables or disables all diagnostics.
+
+        :param bool enabled: if the diagnostics should be enabled or not
+        """
+        settings = self.get_diagnostics_settings()
+        settings["enabled"] = enabled
+
+    def set_diagnostic_type_enabled(self, diagnostic_type, enabled):
+        """
+        Enables or disables a diagnostic based on its type.
+
+        Please refer to the documentation for details on available diagnostics.
+
+        :param str diagnostic_type: Name (in capitals) of the diagnostic type.
+        :param bool enabled: if the diagnostic should be enabled or not
+        """
+        settings = self.get_diagnostics_settings()["settings"]
+        diagnostic = [h for h in settings if h["type"] == diagnostic_type]
+        if len(diagnostic) == 0:
+            raise ValueError("Diagnostic type '{}' not found in settings".format(diagnostic_type))
+        if len(diagnostic) > 1:
+            raise ValueError("Should not happen: multiple diagnostic types '{}' found in settings".format(diagnostic_type))
+        diagnostic[0]["enabled"] = enabled
+
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
         Enables or disables an algorithm based on its name.
@@ -275,7 +319,7 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
             plugin["enabled"] = False
 
     def get_all_possible_algorithm_names(self):
@@ -542,6 +586,62 @@ class DSSTrainedModelDetails(object):
                 origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
                                                               project_key=self.saved_model.project_key)
                 return origin_ml_task.get_trained_model_details(fmi)
+
+    def get_diagnostics(self):
+        """
+        Retrieves diagnostics computed for this trained model
+
+        :returns: list of diagnostics
+        :rtype: list of type `dataikuapi.dss.ml.DSSMLDiagnostic`
+        """
+        diagnostics = self.details.get("trainDiagnostics", {})
+        return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
+
+
+class DSSMLDiagnostic(object):
+    """
+    Object that represents a computed Diagnostic on a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_diagnostics()` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the diagnostic
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_type(self):
+        """
+        Returns the base Diagnostic type
+        :rtype: str
+        """
+        return self._internal_dict["type"]
+
+    def get_type_pretty(self):
+        """
+        Returns the Diagnostic type as displayed in the UI
+        :rtype: str
+        """
+        return self._internal_dict["displayableType"]
+
+    def get_message(self):
+        """
+        Returns the message as displayed in the UI
+        :rtype: str
+        """
+        return self._internal_dict["message"]
+
+    def __repr__(self):
+        return "{cls}(type={type}, message={msg})".format(cls=self.__class__.__name__,
+                                                          type=self._internal_dict["type"],
+                                                          msg=self._internal_dict["message"])
+
 
 class DSSTreeNode(object):
     def __init__(self, tree, i):

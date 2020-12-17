@@ -921,17 +921,28 @@ class DSSProject(object):
                  params = { "archivePath" : osp.abspath(archive_path) })
 
     def import_bundle_from_stream(self, fp):
-        files = {'file': fp }
+        files = {'file': fp}
         return self.client._perform_empty("POST",
                 "/projects/%s/bundles/imported/actions/importFromStream" % (self.project_key),
                 files=files)
 
-    def activate_bundle(self, bundle_id):
-         return self.client._perform_json("POST",
-                "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id))
+    def activate_bundle(self, bundle_id, scenarios_to_enable=None):
+        """
+        Activates a bundle in this project.
+
+        :param str bundle_id: The ID of the bundle to activate
+        :param dict scenarios_to_enable: An optional dict of scenarios to enable or disable upon bundle activation. The
+               format of the dict should be scenario IDs as keys with values of True or False.
+        :returns: A report containing any error or warning messages that occurred during bundle activation
+        :rtype: dict
+        """
+        options = {"scenariosActiveOnActivation": scenarios_to_enable} if scenarios_to_enable else {}
+
+        return self.client._perform_json("POST",
+                "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id), body=options)
 
     def preload_bundle(self, bundle_id):
-         return self.client._perform_json("POST",
+        return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
 
@@ -1373,9 +1384,11 @@ class DSSProjectSettings(object):
         """
         if code_env_name is None:
             self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = True
+            self.settings["settings"]["codeEnvs"]["python"]["mode"] = "USE_BUILTIN_MODE"
         else:
             self.settings["settings"]["codeEnvs"]["python"]["useBuiltinEnv"] = False
             self.settings["settings"]["codeEnvs"]["python"]["envName"] = code_env_name
+            self.settings["settings"]["codeEnvs"]["python"]["mode"] = "EXPLICIT_ENV"
 
     def set_r_code_env(self, code_env_name):
         """Sets the default R code env used by this project
@@ -1384,9 +1397,11 @@ class DSSProjectSettings(object):
         """
         if code_env_name is None:
             self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = True
+            self.settings["settings"]["codeEnvs"]["r"]["mode"] = "USE_BUILTIN_MODE"
         else:
             self.settings["settings"]["codeEnvs"]["r"]["useBuiltinEnv"] = False
             self.settings["settings"]["codeEnvs"]["r"]["envName"] = code_env_name
+            self.settings["settings"]["codeEnvs"]["r"]["mode"] = "EXPLICIT_ENV"
 
     def set_container_exec_config(self, config_name):
         """Sets the default containerized execution config used by this project
