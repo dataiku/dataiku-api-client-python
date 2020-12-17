@@ -432,7 +432,7 @@ class DSSAPIDeployerService(object):
         :param string fp: A file-like object pointing to a version package Zip file
         """
         return self.client._perform_empty("POST",
-                "/api-deployer/services/%s/packages" % (self.service_id), files={"file":fp})
+                "/api-deployer/services/%s/versions" % (self.service_id), files={"file":fp})
 
     def get_settings(self):
         """
