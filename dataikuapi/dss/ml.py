@@ -924,24 +924,23 @@ class PredictionAlgorithmSettings(dict):
         self._hyperparameters_registry = dict()
 
     def __setattr__(self, key, value):
-        if key in {"_hyperparameters_registry", "_hyperparameter_search_params"} or key in {"enabled", "strategy"}:
-            # attributes and properties of the PredictionAlgorithmSettings object must be handled separately
+        if not hasattr(self, key):
+            # call from __init__
             super(PredictionAlgorithmSettings, self).__setattr__(key, value)
-        elif key in self._hyperparameters_registry or (key=="lambda_" and "lambda" in self._hyperparameters_registry):
-            if isinstance(value, HyperparameterSettings):
-                # call from a PredictionAlgorithmSettings child's __init__
-                super(PredictionAlgorithmSettings, self).__setattr__(key, value)
+        elif key in self._hyperparameters_registry:
+            # syntactic sugars
+            target = self._hyperparameters_registry[key]
+            if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
+                target.set_value(value)
+            elif isinstance(target, CategoricalHyperparameterSettings):
+                target.set_values(value)
             else:
-                # syntactic sugars
-                target = self._hyperparameters_registry[key]
-                if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
-                    target.set_value(value)
-                elif isinstance(target, CategoricalHyperparameterSettings):
-                    target.set_values(value)
-                else:
-                    raise Exception("Invalid type for assignment of a NumericalHyperparameterSettings object")
+                raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+        elif key == "lambda_":
+            raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
         else:
-            raise Exception("Unknown hyperparameter: \"{}\"".format(key))
+            # other cases (properties setter, new attribute...)
+            super(PredictionAlgorithmSettings, self).__setattr__(key, value)
 
     def _register_numerical_hyperparameter(self, name):
         self._hyperparameters_registry[name] = NumericalHyperparameterSettings(name, self)
