@@ -65,10 +65,10 @@ class DSSScenario(object):
 
     def get_runs_by_date(self, from_date, to_date=datetime.now()):
         """
-        Get the list of the runs of the scenario in a given datetime range
+        Get the list of the runs of the scenario in a given date range, [from_date, to_date)
 
-        :param datetime from_date: start of the time range to retrieve runs for
-        :param datetime to_date: end of the time range to retrieve runs for, or now()       
+        :param datetime from_date: start of the date range to retrieve runs for, inclusive
+        :param datetime to_date: end of the date range to retrieve runs for, or now(), exclusive
 
         :return: A list of :class:`dataikuapi.dss.scenario.DSSScenarioRun`
         """
@@ -80,8 +80,8 @@ class DSSScenario(object):
 
         runs = self.client._perform_json(
             "GET", "/projects/%s/scenarios/%s/get-runs-by-date" % (self.project_key, self.id), params={
-                'fromDate' : as_date(from_date),
-                'toDate' : as_date(to_date)
+                'fromDate': as_date(from_date),
+                'toDate': as_date(to_date)
             })
         return [DSSScenarioRun(self.client, run) for run in runs]
 
