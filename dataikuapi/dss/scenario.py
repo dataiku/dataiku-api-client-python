@@ -63,6 +63,28 @@ class DSSScenario(object):
             })
         return [DSSScenarioRun(self.client, run) for run in runs]
 
+    def get_runs_by_date(self, from_date, to_date=datetime.now()):
+        """
+        Get the list of the runs of the scenario in a given datetime range
+
+        :param datetime from_date: start of the time range to retrieve runs for
+        :param datetime to_date: end of the time range to retrieve runs for, or now()       
+
+        :return: A list of :class:`dataikuapi.dss.scenario.DSSScenarioRun`
+        """
+        def as_date(d):
+            if isinstance(d, datetime):
+                return d.strftime("%Y-%m-%d")
+            else:
+                return d
+
+        runs = self.client._perform_json(
+            "GET", "/projects/%s/scenarios/%s/get-runs-by-date" % (self.project_key, self.id), params={
+                'fromDate' : as_date(from_date),
+                'toDate' : as_date(to_date)
+            })
+        return [DSSScenarioRun(self.client, run) for run in runs]
+
     def get_last_finished_run(self):
         """
         Gets the last run that completed (successfully or not)
