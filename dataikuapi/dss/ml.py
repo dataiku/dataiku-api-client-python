@@ -947,7 +947,7 @@ class PredictionAlgorithmSettings(dict):
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
-        return self.__class__.__name__ + "(values={})".format(self.copy())
+        return self.__class__.__name__ + "(values={})".format(dict.__repr__(self))
 
     __str__ = __repr__
 
