@@ -131,7 +131,7 @@ class DSSAPIDeployer(object):
         :rtype: :class:`DSSAPIDeployerService`
         """
         settings = {
-            "serviceId" : service_id
+            "publishedServiceId" : service_id
         }
         self.client._perform_json("POST", "/api-deployer/services", body=settings)
         return self.get_service(service_id)
