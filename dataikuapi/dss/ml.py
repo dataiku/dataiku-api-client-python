@@ -725,7 +725,7 @@ class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
     Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion` or
-    `from_params` instead
+    :meth:`from_params` instead
     """
     def __init__(self, data):
         self._internal_dict = data
