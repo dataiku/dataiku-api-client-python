@@ -657,7 +657,7 @@ class DSSMLDiagnostic(object):
 class DSSMLAssertionsParams(object):
     """
     Object that represents parameters for all assertions of a ml task
-    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params()` instead
+    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params` instead
     """
 
     def __init__(self, data):
@@ -724,8 +724,8 @@ class DSSMLAssertionsParams(object):
 class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
-    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion(assertion_name)` or
-    `from_params(name, a_filter, condition)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion` or
+    `from_params` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -804,15 +804,14 @@ class DSSMLAssertionParams(object):
 class DSSMLAssertionCondition(object):
     """
     Object that represents an assertion condition
-    Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`, :meth:`DSSMLAssertionCondition.from_expected_class(expected_valid_ratio, expected_class)`
-    or :meth:`DSSMLAssertionCondition.from_expected_range(expected_valid_ratio, expected_min, expected_max)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`,
+    :meth:`DSSMLAssertionCondition.from_expected_class` or :meth:`DSSMLAssertionCondition.from_expected_range` instead
     """
     def __init__(self, data):
         self._internal_dict = data
 
     def __repr__(self):
         return u"{}({})".format(self.__class__.__name__, self.get_raw())
-
 
     @staticmethod
     def from_expected_class(expected_valid_ratio, expected_class):
@@ -925,7 +924,7 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the assertions metrics for all assertions on a trained model
-    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics()` instead
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -969,7 +968,7 @@ class DSSMLAssertionsMetrics(object):
 class DSSMLAssertionMetrics(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics(self, assertion_name)` instead
+    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics` instead
     """
     def __init__(self, data):
         self._internal_dict = data
