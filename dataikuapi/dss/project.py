@@ -31,6 +31,16 @@ class DSSProject(object):
        self.client = client
        self.project_key = project_key
 
+    def get_summary(self):
+        """
+        Returns a summary of the project. The summary is a read-only view of some of the state of the project.
+        You cannot edit the resulting dict and use it to update the project state on DSS, you must use the other more
+        specific methods of this :class:`dataikuapi.dss.project.DSSProject` object
+
+        :returns: a dict containing a summary of the project. Each dict contains at least a 'projectKey' field
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s" % self.project_key)
 
     def get_project_folder(self):
         """
