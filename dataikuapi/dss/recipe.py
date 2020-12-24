@@ -76,15 +76,25 @@ class DSSRecipe(object):
         :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
+        project = self.client.get_project(self.project_key)
+        outputs = project.get_flow().get_graph().get_successor_computables(self)
 
-        settings = self.get_settings()
-        output_refs = settings.get_flat_output_refs()
-
-        if len(output_refs) == 0:
+        if len(outputs) == 0:
             raise Exception("recipe has no outputs, can't run it")
 
-        jd = self.client.get_project(self.project_key).new_job(job_type)
-        jd.with_output(output_refs[0], partition=partitions)
+        first_output = outputs[0]
+
+        object_type_map = {
+            "COMPUTABLE_DATASET": "DATASET",
+            "COMPUTABLE_FOLDER": "MANAGED_FOLDER",
+            "COMPUTABLE_SAVED_MODEL": "SAVED_MODEL",
+            "COMPUTABLE_STREAMING_ENDPOINT": "STREAMING_ENDPOINT",
+        }
+        if first_output["type"] in object_type_map:
+            jd = project.new_job(job_type)
+            jd.with_output(first_output["ref"], object_type=object_type_map[first_output["type"]], partition=partitions)
+        else:
+            raise Exception("Recipe has unsupported output type {}, can't run it".format(first_output["type"]))
 
         if wait:
             return jd.start_and_wait()
