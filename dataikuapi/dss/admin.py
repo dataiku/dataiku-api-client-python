@@ -290,7 +290,7 @@ class DSSUserSettingsBase(object):
 
     def set_basic_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, user, password):
         """Sets per-user-credentials for a plugin preset that takes a user/password pair"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         self.settings["credentials"][name] = {
             "type": "BASIC",
@@ -300,7 +300,7 @@ class DSSUserSettingsBase(object):
 
     def set_oauth2_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, refresh_token):
         """Sets per-user-credentials for a plugin preset that takes a OAuth refresh token"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         self.settings["credentials"][name] = {
             "type": "OAUTH_REFRESH_TOKEN",
@@ -309,7 +309,7 @@ class DSSUserSettingsBase(object):
 
     def remove_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name):
         """Removes per-user-credentials for a plugin preset"""
-        name = json.dumps(["PLUGIN", pluginId, paramSetId, presetId, paramName])[1:-1]
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
 
         if name in self.settings["credentials"]:
             del self.settings["credentials"][name]
@@ -732,14 +732,15 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def update_packages(self):
+    def update_packages(self, force_rebuild_env=False):
         """
         Update the code env packages so that it matches its spec
         
         Note: this call requires an API key with admin rights
         """
         resp = self.client._perform_json(
-            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name))
+            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name),
+            params={"forceRebuildEnv": force_rebuild_env})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
@@ -796,6 +797,7 @@ class DSSGlobalApiKey(object):
         return self.client._perform_empty(
             "PUT", "/admin/globalAPIKeys/%s" % self.key,
             body = definition)
+
 
 class DSSCluster(object):
     """
@@ -873,7 +875,7 @@ class DSSCluster(object):
         resp = self.client._perform_json(
             "POST", "/admin/clusters/%s/actions/start" % (self.cluster_id))
         if resp is None:
-            raise Exception('Env update returned no data')
+            raise Exception('Cluster operation returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
@@ -895,6 +897,9 @@ class DSSCluster(object):
         return resp
 
 class DSSClusterSettings(object):
+    """
+    The settings of a cluster
+    """
     def __init__(self, client, cluster_id, settings):
         """Do not call directly, use :meth:`DSSCluster.get_settings`"""
         self.client = client
@@ -927,6 +932,9 @@ class DSSClusterSettings(object):
             "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
 
 class DSSClusterStatus(object):
+    """
+    The status of a cluster
+    """
     def __init__(self, client, cluster_id, status):
         """Do not call directly, use :meth:`DSSCluster.get_Status`"""
         self.client = client

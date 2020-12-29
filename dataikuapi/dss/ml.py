@@ -253,6 +253,50 @@ class DSSMLTaskSettings(object):
 
         return self.mltask_settings["modeling"][algorithm_name.lower()]
 
+    def get_diagnostics_settings(self):
+        """
+        Gets the diagnostics settings for a mltask. This returns a reference to the
+        diagnostics' settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns a dictionary of the settings with:
+        - 'enabled': indicates if the diagnostics are enabled globally, if False, all diagnostics will be disabled
+        - 'settings': a list of dict comprised of:
+          - 'type': the diagnostic type
+          - 'enabled': indicates if the diagnostic type is enabled, if False, all diagnostics of that type will be disabled
+
+        Please refer to the documentation for details on available diagnostics.
+
+        :return: A dict of diagnostics settings
+        :rtype: dict
+        """
+        return self.mltask_settings["diagnosticsSettings"]
+
+    def set_diagnostics_enabled(self, enabled):
+        """
+        Globally enables or disables all diagnostics.
+
+        :param bool enabled: if the diagnostics should be enabled or not
+        """
+        settings = self.get_diagnostics_settings()
+        settings["enabled"] = enabled
+
+    def set_diagnostic_type_enabled(self, diagnostic_type, enabled):
+        """
+        Enables or disables a diagnostic based on its type.
+
+        Please refer to the documentation for details on available diagnostics.
+
+        :param str diagnostic_type: Name (in capitals) of the diagnostic type.
+        :param bool enabled: if the diagnostic should be enabled or not
+        """
+        settings = self.get_diagnostics_settings()["settings"]
+        diagnostic = [h for h in settings if h["type"] == diagnostic_type]
+        if len(diagnostic) == 0:
+            raise ValueError("Diagnostic type '{}' not found in settings".format(diagnostic_type))
+        if len(diagnostic) > 1:
+            raise ValueError("Should not happen: multiple diagnostic types '{}' found in settings".format(diagnostic_type))
+        diagnostic[0]["enabled"] = enabled
+
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
         Enables or disables an algorithm based on its name.
@@ -275,7 +319,7 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin"].values():
+        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
             plugin["enabled"] = False
 
     def get_all_possible_algorithm_names(self):
@@ -386,6 +430,14 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         :rtype: :class:`PredictionSplitParamsHandler`
         """
         return PredictionSplitParamsHandler(self.mltask_settings)
+
+    def get_assertions_params(self):
+        """
+        Retrieves the assertions parameters for this ml task
+
+        :rtype: :class:`DSSMLAssertionsParams`
+        """
+        return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
@@ -542,6 +594,444 @@ class DSSTrainedModelDetails(object):
                 origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
                                                               project_key=self.saved_model.project_key)
                 return origin_ml_task.get_trained_model_details(fmi)
+
+    def get_diagnostics(self):
+        """
+        Retrieves diagnostics computed for this trained model
+
+        :returns: list of diagnostics
+        :rtype: list of type `dataikuapi.dss.ml.DSSMLDiagnostic`
+        """
+        diagnostics = self.details.get("trainDiagnostics", {})
+        return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
+
+
+class DSSMLDiagnostic(object):
+    """
+    Object that represents a computed Diagnostic on a trained model
+
+    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_diagnostics()` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the diagnostic
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_type(self):
+        """
+        Returns the base Diagnostic type
+
+        :rtype: str
+        """
+        return self._internal_dict["type"]
+
+    def get_type_pretty(self):
+        """
+        Returns the Diagnostic type as displayed in the UI
+
+        :rtype: str
+        """
+        return self._internal_dict["displayableType"]
+
+    def get_message(self):
+        """
+        Returns the message as displayed in the UI
+
+        :rtype: str
+        """
+        return self._internal_dict["message"]
+
+    def __repr__(self):
+        return "{cls}(type={type}, message={msg})".format(cls=self.__class__.__name__,
+                                                          type=self._internal_dict["type"],
+                                                          msg=self._internal_dict["message"])
+
+
+class DSSMLAssertionsParams(object):
+    """
+    Object that represents parameters for all assertions of a ml task
+    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params` instead
+    """
+
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertions parameters
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_assertion(self, assertion_name):
+        """
+        Gets a :class:`DSSMLAssertionParams` representing the parameters of the assertion with the
+        provided name (or None if no assertion has that name)
+
+        :param str assertion_name: Name of the assertion
+        :rtype: :class:`DSSMLAssertionParams` or None if no assertion has that name
+        """
+        for assertion_dict in self._internal_dict["assertions"]:
+            if assertion_dict["name"] == assertion_name:
+                return DSSMLAssertionParams(assertion_dict)
+        return None
+
+    def get_assertions_names(self):
+        """
+        Gets the list of all assertions' names
+
+        :return: A list of all assertions' names
+        :rtype: list
+        """
+        return [assertion_dict["name"] for assertion_dict in self._internal_dict["assertions"]]
+
+    def add_assertion(self, assertion_params):
+        """
+        Adds parameters of an assertion to the assertions parameters of the ml task.
+
+        :param object  assertion_params: A :class:`DSSMLAssertionParams` representing parameters of the assertion
+        """
+        if not isinstance(assertion_params, DSSMLAssertionParams):
+            raise ValueError('Wrong type for assertion parameters: {}'.format(type(assertion_params)))
+
+        self._internal_dict["assertions"].append(assertion_params.get_raw())
+
+    def delete_assertion(self, assertion_name):
+        """
+        Deletes the assertion parameters of the assertion with the provided name from the assertions parameters of the ml task.
+        Raises a ValueError if no assertion with the provided name was found
+
+        :param str assertion_name: Name of the assertion
+        """
+        for idx, assertion_dict in enumerate(self._internal_dict["assertions"]):
+            if assertion_dict["name"] == assertion_name:
+                del self._internal_dict["assertions"][idx]
+                return
+        raise ValueError('No assertion found with name: {}'.format(assertion_name))
+
+
+class DSSMLAssertionParams(object):
+    """
+    Object that represents parameters for one assertion
+    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion` or
+    :meth:`from_params` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
+    @staticmethod
+    def from_params(name, a_filter, condition):
+        """
+        Creates assertion parameters from name, filter and condition
+
+        :param str name: Name of the assertion
+        :param dict a_filter: A dict representing the filter to select assertion population. You can use
+        a :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter
+        :param object condition: A :class:`DSSMLAssertionCondition` for the assertion to be successful
+
+        :rtype: :class:`DSSMLAssertionParams`
+        """
+        assertion_params = DSSMLAssertionParams({})
+        assertion_params.name = name
+        assertion_params.filter = a_filter
+        assertion_params.condition = condition
+        return assertion_params
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertion parameters
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def name(self):
+        """
+        Returns the assertion name
+
+        :rtype: str
+        """
+        return self._internal_dict["name"]
+
+    @name.setter
+    def name(self, name):
+        self._internal_dict["name"] = name
+
+    @property
+    def filter(self):
+        """
+        Returns the assertion filter
+
+        :rtype: dict
+        """
+        return self._internal_dict["filter"]
+
+    @filter.setter
+    def filter(self, a_filter):
+        self._internal_dict["filter"] = a_filter
+
+    @property
+    def condition(self):
+        """
+        Returns the assertion condition
+
+        :rtype: :class:`DSSMLAssertionCondition`
+        """
+        return DSSMLAssertionCondition(self._internal_dict["assertionCondition"])
+
+    @condition.setter
+    def condition(self, condition):
+        if not isinstance(condition, DSSMLAssertionCondition):
+            raise ValueError('Wrong type for assertion condition: {}'.format(type(condition)))
+        self._internal_dict["assertionCondition"] = condition.get_raw()
+
+
+class DSSMLAssertionCondition(object):
+    """
+    Object that represents an assertion condition
+    Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`,
+    :meth:`DSSMLAssertionCondition.from_expected_class` or :meth:`DSSMLAssertionCondition.from_expected_range` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
+    @staticmethod
+    def from_expected_class(expected_valid_ratio, expected_class):
+        """
+        Creates an assertion condition from the expected valid ratio and class
+
+        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted as expected_class is attained
+        :param str expected_class: Assertion passes if the ratio of rows predicted as expected_class is attained
+
+        :rtype: :class:`DSSMLAssertionCondition`
+        """
+        assertion_condition = DSSMLAssertionCondition({})
+        assertion_condition.expected_valid_ratio = expected_valid_ratio
+        assertion_condition.expected_class = expected_class
+        return assertion_condition
+
+    @staticmethod
+    def from_expected_range(expected_valid_ratio, expected_min, expected_max):
+        """
+        Creates an assertion condition from expected valid ratio and range.
+        The expected range is the interval between expected_min and expected_max (included)
+        for the predictions in which the rows will be considered valid.
+
+        :param float expected_valid_ratio: Assertion passes if this ratio of rows predicted between expected_min and expected_max (included) is attained
+        :param float expected_min: Min value of the expected range
+        :param float expected_max: Max value of the expected range
+
+        :rtype: :class:`DSSMLAssertionCondition`
+        """
+        assertion_condition = DSSMLAssertionCondition({})
+        assertion_condition.expected_valid_ratio = expected_valid_ratio
+        assertion_condition.expected_min = expected_min
+        assertion_condition.expected_max = expected_max
+        return assertion_condition
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the condition
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def expected_class(self):
+        """
+        Returns the expected class or None if it is not defined. Assertion passes if the expected_valid_ratio
+        of rows predicted as expected_class is attained.
+
+        :rtype: str
+        """
+        if "expectedClass" in self._internal_dict:
+            return self._internal_dict["expectedClass"]
+        else:
+            return None
+
+    @expected_class.setter
+    def expected_class(self, expected_class):
+        self._internal_dict["expectedClass"] = expected_class
+
+    @property
+    def expected_valid_ratio(self):
+        """
+        Returns the ratio of valid rows to exceed for the assertion to pass. A row is considered valid if the prediction
+        is equal to the expected class for classification or in the expected range for regression.
+
+        :rtype: str
+        """
+        return self._internal_dict["expectedValidRatio"]
+
+    @expected_valid_ratio.setter
+    def expected_valid_ratio(self, expected_valid_ratio):
+        self._internal_dict["expectedValidRatio"] = expected_valid_ratio
+
+    @property
+    def expected_min(self):
+        """
+        Returns the min (included) of the expected range or None if it is not defined.
+        Assertion passes if the expected_valid_ratio of rows predicted between expected_min and expected_max (included) is attained.
+
+        :rtype: float
+        """
+        if "expectedMinValue" in self._internal_dict:
+            return self._internal_dict["expectedMinValue"]
+        else:
+            return None
+
+    @expected_min.setter
+    def expected_min(self, expected_min):
+        self._internal_dict["expectedMinValue"] = expected_min
+
+    @property
+    def expected_max(self):
+        """
+        Returns the max (included) of the expected range or None if it is not defined.
+        Assertion passes if the expected_valid_ratio of rows predicted between expected_min and expected_max (included) is attained.
+
+        :rtype: float
+        """
+        if "expectedMaxValue" in self._internal_dict:
+            return self._internal_dict["expectedMaxValue"]
+        else:
+            return None
+
+    @expected_max.setter
+    def expected_max(self, expected_max):
+        self._internal_dict["expectedMaxValue"] = expected_max
+
+
+class DSSMLAssertionsMetrics(object):
+    """
+    Object that represents the assertions metrics for all assertions on a trained model
+    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.get_raw())
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of the assertions metrics
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_metrics(self, assertion_name):
+        """
+        Retrieves the metrics computed for this trained model for the assertion with the provided name (or None if no
+        assertion with that name exists)
+
+        :param str assertion_name: Name of the assertion
+
+        :returns: an object representing assertion metrics or None if no assertion with that name exists
+        :rtype: :class:`DSSMLAssertionMetrics`
+        """
+        for assertion_metrics_dict in self._internal_dict["perAssertion"]:
+            if assertion_name == assertion_metrics_dict["name"]:
+                return DSSMLAssertionMetrics(assertion_metrics_dict)
+        return None
+
+    @property
+    def passing_assertions_ratio(self):
+        """
+        Returns the ratio of passing assertions
+
+        :rtype: float
+        """
+        return self._internal_dict['passingAssertionsRatio']
+
+
+class DSSMLAssertionMetrics(object):
+    """
+    Object that represents the result of an assertion on a trained model
+    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics` instead
+    """
+    def __init__(self, data):
+        self._internal_dict = data
+
+    def __repr__(self):
+        return u"{}(name='{}', result={}, valid_ratio={}, nb_matching_rows={}," \
+               u" nb_dropped_rows={})".format(self.__class__.__name__, self.name, self.result, self.valid_ratio,
+                                              self.nb_matching_rows, self.nb_dropped_rows)
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of metrics of one assertion
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    @property
+    def name(self):
+        """
+        Returns the assertion name
+
+        :rtype: str
+        """
+        return self._internal_dict["name"]
+
+    @property
+    def result(self):
+        """
+        Returns whether the assertion passes
+
+        :rtype: bool
+        """
+        return self._internal_dict["result"]
+
+    @property
+    def valid_ratio(self):
+        """
+        Returns the ratio of rows in the assertion population with prediction equals to the expected class
+        for classification or in the expected range for regression
+
+        :rtype: float
+        """
+        return self._internal_dict["validRatio"]
+
+    @property
+    def nb_matching_rows(self):
+        """
+        Returns the number of rows matching filter
+
+        :rtype: int
+        """
+        return self._internal_dict["nbMatchingRows"]
+
+    @property
+    def nb_dropped_rows(self):
+        """
+        Returns the number of rows matching filter and dropped by the model's preprocessing
+
+        :rtype: int
+        """
+        return self._internal_dict["nbDroppedRows"]
+
 
 class DSSTreeNode(object):
     def __init__(self, tree, i):
@@ -701,6 +1191,14 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 del clean_snippet[x]
         return clean_snippet
 
+    def get_assertions_metrics(self):
+        """
+        Retrieves assertions metrics computed for this trained model
+
+        :returns: an object representing assertion metrics
+        :rtype: :class:`DSSMLAssertionsMetrics`
+        """
+        return DSSMLAssertionsMetrics(self.snippet["assertionsMetrics"])
 
     def get_hyperparameter_search_points(self):
         """
@@ -1394,6 +1892,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     def get_performance_metrics(self):
         """
         Returns all performance metrics for this clustering model.
+
         :returns: a dict of performance metrics values
         :rtype: dict
         """
@@ -1426,6 +1925,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     def get_actual_modeling_params(self):
         """
         Gets the actual / resolved parameters that were used to train this model.
+
         :return: A dictionary, which contains at least a "resolved" key
         :rtype: dict
         """
@@ -1447,7 +1947,7 @@ class DSSMLTask(object):
 
     @staticmethod
     def from_full_model_id(client, fmi, project_key=None):
-        match = re.match("^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
+        match = re.match(r"^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
         if match is None:
             return DataikuException("Invalid model id: {}".format(fmi))
         else:

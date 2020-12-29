@@ -518,8 +518,9 @@ class DSSProjectFlowGraph(object):
         return self._convert_nodes_list(computables, as_type)
 
     def _convert_nodes_list(self, nodes, as_type):
+        actual_nodes = [node for node in nodes if node['type'] != 'RUNNABLE_IMPLICIT_RECIPE']
         if as_type == "object" or as_type == "objects":
-            return [self._get_object_from_graph_node(node) for node in nodes]
+            return [self._get_object_from_graph_node(node) for node in actual_nodes]
         else:
             return nodes
 
@@ -532,6 +533,8 @@ class DSSProjectFlowGraph(object):
             return DSSManagedFolder(self.flow.client, self.flow.project.project_key, node["ref"])
         elif node["type"] == "COMPUTABLE_SAVED_MODEL":
             return DSSSavedModel(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "COMPUTABLE_STREAMING_ENDPOINT":
+            return DSSStreamingEndpoint(self.flow.client, self.flow.project.project_key, node["ref"])
         else:
             # TODO add streaming elements
             raise Exception("unsupported node type: %s" % node["type"])

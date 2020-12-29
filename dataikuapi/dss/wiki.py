@@ -30,15 +30,15 @@ class DSSWiki(object):
         """
         return DSSWikiSettings(self.client, self.project_key, self.client._perform_json("GET", "/projects/%s/wiki/" % (self.project_key)))
 
-    def get_article(self, article_id):
+    def get_article(self, article_id_or_name):
         """
         Get a wiki article
 
-        :param str article_id: the article ID
+        :param str article_id_or_name: reference to the article, it can be its ID or its name
         :returns: a handle to manage the Article
         :rtype: :class:`dataikuapi.dss.wiki.DSSWikiArticle`
         """
-        return DSSWikiArticle(self.client, self.project_key, article_id)
+        return DSSWikiArticle(self.client, self.project_key, article_id_or_name)
 
     def __flatten_taxonomy__(self, taxonomy):
         """
@@ -88,6 +88,28 @@ class DSSWiki(object):
             article_data.save()
 
         return article
+
+    def get_export_stream(self, paper_size="A4", export_attachment=False):
+        """
+        Download the whole wiki of the project in PDF format as a binary stream.
+        Warning: this stream will monopolize the DSSClient until closed.
+        """
+        body = {
+            "paperSize": paper_size,
+            "exportAttachment": export_attachment
+        }
+        return self.client._perform_raw("POST", "/projects/%s/wiki/actions/export" % (self.project_key), body=body)
+
+    def export_to_file(self, path, paper_size="A4", export_attachment=False):
+        """
+        Download the whole wiki of the project in PDF format into the given output file.
+        """
+        with self.get_export_stream(paper_size=paper_size, export_attachment=export_attachment) as stream:
+            with open(path, 'wb') as f:
+                for chunk in stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
 
 class DSSWikiSettings(object):
     """
@@ -206,11 +228,14 @@ class DSSWikiArticle(object):
     """
     A handle to manage an article
     """
-    def __init__(self, client, project_key, article_id):
+    def __init__(self, client, project_key, article_id_or_name):
         """Do not call directly, use :meth:`dataikuapi.dss.wiki.DSSWiki.get_article`"""
         self.client = client
         self.project_key = project_key
-        self.article_id = article_id
+
+        # Retrieve the real article id
+        article_data = self.client._perform_json("GET", "/projects/%s/wiki/%s" % (project_key, article_id_or_name))
+        self.article_id = article_data["article"]['id']
         # encode in UTF-8 if its python2 and unicode
         if sys.version_info < (3,0) and isinstance(self.article_id, unicode):
             self.article_id = self.article_id.encode('utf-8')
@@ -233,7 +258,7 @@ class DSSWikiArticle(object):
         :param file fp: A file-like object that represents the upload file
         :param str filename: The attachement filename
         """
-        clean_filename = re.sub('[^A-Za-z0-9 \._-]+', '', filename)
+        clean_filename = re.sub(r'[^A-Za-z0-9 ._-]+', '', filename)
 
         self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(clean_filename, fp)})
 
@@ -246,6 +271,30 @@ class DSSWikiArticle(object):
         :rtype: :class:`requests.Response`
         """
         return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
+
+    def get_export_stream(self, paper_size="A4", export_children=False, export_attachment=False):
+        """
+        Download an article in PDF format as a binary stream.
+        Warning: this stream will monopolize the DSSClient until closed.
+        """
+        body = {
+            "paperSize": paper_size,
+            "exportChildren": export_children,
+            "exportAttachment": export_attachment
+        }
+        return self.client._perform_raw("POST", "/projects/%s/wiki/%s/actions/export" % (self.project_key, self.article_id), body=body)
+
+    def export_to_file(self, path, paper_size="A4", export_children=False, export_attachment=False):
+        """
+        Download an article in PDF format into the given output file.
+        """
+        with self.get_export_stream(paper_size=paper_size, export_children=export_children, export_attachment=export_attachment) as stream:
+            with open(path, 'wb') as f:
+                for chunk in stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
+    
 
     def delete(self):
         """
@@ -327,6 +376,6 @@ class DSSWikiArticleData(object):
 
     def save(self):
         """
-        Save the current article data to the backend
+        Save the current article data to the backend.
         """
         self.article_data = self.client._perform_json("PUT", "/projects/%s/wiki/%s" % (self.project_key, dku_quote_fn(self.article_id)), body=self.article_data)
