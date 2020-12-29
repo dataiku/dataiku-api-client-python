@@ -2,6 +2,7 @@ from .utils import AnyLoc
 from .dataset import DSSDataset
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
+from .modelevaluationstore import DSSModelEvaluationStore
 from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
 from .streaming_endpoint import DSSStreamingEndpoint
@@ -144,6 +145,8 @@ class DSSProjectFlow(object):
             ot = "MANAGED_FOLDER"
         elif isinstance(obj, DSSSavedModel):
             ot = "SAVED_MODEL"
+        elif isinstance(obj, DSSModelEvaluationStore):
+            ot = "MODEL_EVALUATION_STORE"
         elif isinstance(obj, DSSRecipe):
             ot = "RECIPE"
         elif isinstance(obj, DSSStreamingEndpoint):
