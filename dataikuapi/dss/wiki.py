@@ -93,6 +93,10 @@ class DSSWiki(object):
         """
         Download the whole wiki of the project in PDF format as a binary stream.
         Warning: this stream will monopolize the DSSClient until closed.
+
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+        :returns: the exported pdf or zip file as a stream
         """
         body = {
             "paperSize": paper_size,
@@ -103,6 +107,9 @@ class DSSWiki(object):
     def export_to_file(self, path, paper_size="A4", export_attachment=False):
         """
         Download the whole wiki of the project in PDF format into the given output file.
+
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
         """
         with self.get_export_stream(paper_size=paper_size, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
@@ -274,8 +281,14 @@ class DSSWikiArticle(object):
 
     def get_export_stream(self, paper_size="A4", export_children=False, export_attachment=False):
         """
-        Download an article in PDF format as a binary stream.
+        Download the article in PDF format as a binary stream.
         Warning: this stream will monopolize the DSSClient until closed.
+
+        :param str path: the path of the file where the pdf or zip file will be downloaded
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
+        :param bool export_children: export the children of the article in the pdf
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+        :returns: the exported pdf or zip file as a stream
         """
         body = {
             "paperSize": paper_size,
@@ -286,7 +299,11 @@ class DSSWikiArticle(object):
 
     def export_to_file(self, path, paper_size="A4", export_children=False, export_attachment=False):
         """
-        Download an article in PDF format into the given output file.
+        Download the article in PDF format into the given output file.
+
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
+        :param bool export_children: export the children of the article in the pdf
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
         """
         with self.get_export_stream(paper_size=paper_size, export_children=export_children, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
