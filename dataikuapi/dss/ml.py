@@ -342,7 +342,6 @@ class HyperparameterSearchSettings(object):
             res += self._key_repr("nFolds")
 
         res += self._key_repr("stratified")
-        # TODO: pointers to ssdSeed and time variable ?
 
         res += "Execution Settings:\n"
         if self._raw_settings.get("timeout", 0) > 0:
@@ -518,8 +517,8 @@ class HyperparameterSearchSettings(object):
     def set_search_distribution(self, distributed=False, n_containers=4):
         """
         Sets the distribution parameters for the hyperparameter search execution.
-        :param distributed: if True, distribute search across n_containers containers in the Kubernetes
-        cluster selected in containerized execution configuration of the runtime environment, defaults to False
+        :param distributed: if True, distribute search in the Kubernetes cluster selected
+        in the runtime environment's containerized execution configuration, defaults to False
         :type distributed: bool
         :param n_containers: number of containers to use for the distributed search, defaults to 4
         :type n_containers: int
