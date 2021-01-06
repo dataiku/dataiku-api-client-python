@@ -914,7 +914,7 @@ class PredictionAlgorithmSettings(dict):
     """
     Object to read and modify the settings of a prediction ML algorithm.
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings(algorithm)` instead
+    Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings` instead
     """
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -1046,7 +1046,7 @@ class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_estimators = self._register_numerical_hyperparameter("n_estimator")
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
         self.max_depth = self._register_numerical_hyperparameter("max_depth")
         self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
         self.max_features = self._register_numerical_hyperparameter("max_features")
@@ -1080,7 +1080,7 @@ class RidgeRegressionSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.alpha = self._register_numerical_hyperparameter("alpha", self)
+        self.alpha = self._register_numerical_hyperparameter("alpha")
         self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
 
 
@@ -1308,7 +1308,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         Gets the training settings for a particular algorithm. This returns a reference to the
         algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
 
-        This method returns the settings for this algorithm as an AlgorithmSettings (extended dict).
+        This method returns the settings for this algorithm as an PredictionAlgorithmSettings (extended dict).
         All algorithm dicts have at least an "enabled" property/key in the settings.
         The "enabled" property/key indicates whether this algorithm will be trained.
 
