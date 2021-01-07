@@ -978,6 +978,7 @@ class PredictionAlgorithmSettings(dict):
 
     def _repr_html_(self):
         res = "<pre>" + self.__class__.__name__ + "\n"
+        res += "\"enabled\": {}".format(self.enabled) + "\n"
         for name, hyperparam_settings in self._hyperparameters_registry.items():
             res += "\"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
         res += "</pre>"
