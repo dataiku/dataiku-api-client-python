@@ -989,15 +989,13 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
-    def set_offline_license(self, license_path):
+    def set_offline_license(self, license):
         """
         Sets a new licence for DSS
 
-        :param license_path: path to the license file
+        :param license: license (content of license file)
         :return: None
         """
-        with open(license_path, "r") as lf:
-            license = lf.read()
         self._perform_empty(
             "POST", "/admin/licensing/set-offline-license", params={"license": license})
 
