@@ -133,6 +133,7 @@ class PredictionSplitParamsHandler(object):
     def set_time_ordering(self, feature_name, ascending=True):
         """
         Uses a variable to sort the data for train/test split and hyperparameter optimization by time
+
         :param str feature_name: Name of the variable to use
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
@@ -221,6 +222,7 @@ class DSSMLTaskSettings(object):
     def reject_feature(self, feature_name):
         """
         Marks a feature as rejected and not used for training
+
         :param str feature_name: Name of the feature to reject
         """
         self.get_feature_preprocessing(feature_name)["role"] = "REJECT"
@@ -228,6 +230,7 @@ class DSSMLTaskSettings(object):
     def use_feature(self, feature_name):
         """
         Marks a feature as input for training
+
         :param str feature_name: Name of the feature to reject
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
@@ -398,6 +401,7 @@ class HyperparameterSearchSettings(object):
     def set_grid_search(self, shuffle=True, seed=0):
         """
         Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
+
         :param shuffle: if True, iterate over a shuffled grid as opposed to the lexicographical
         iteration over the cartesian product of the hyperparameters.
         :type shuffle: bool
@@ -416,6 +420,7 @@ class HyperparameterSearchSettings(object):
     def set_random_search(self, seed=0):
         """
         Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
+
         :param seed: defaults to 0
         :type seed: int
         """
@@ -425,6 +430,7 @@ class HyperparameterSearchSettings(object):
     def set_bayesian_search(self, seed=0):
         """
         Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
+
         :param seed: defaults to 0
         :type seed: int
         """
@@ -452,6 +458,7 @@ class HyperparameterSearchSettings(object):
         """
         Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
         is enabled).
+
         :param n_folds: the number of folds used for the hyperparameter search, defaults to 5
         :type n_folds: int
         :param stratified: if True, keep the same proportion of each target classes in all folds, defaults to True
@@ -478,6 +485,7 @@ class HyperparameterSearchSettings(object):
         """
         Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
         is enabled).
+
         :param split_ratio: ratio of the data used for the train during hyperparameter search, defaults to 0.8
         :type split_ratio: float
         :param stratified: if True, keep the same proportion of each target classes in both splits, defaults to True
@@ -503,6 +511,7 @@ class HyperparameterSearchSettings(object):
     def set_custom_validation(self, code=None):
         """
         Sets the validation mode to "CUSTOM".
+
         :param code: definition of the validation
         :type code: str
         """
@@ -517,6 +526,7 @@ class HyperparameterSearchSettings(object):
     def set_search_distribution(self, distributed=False, n_containers=4):
         """
         Sets the distribution parameters for the hyperparameter search execution.
+
         :param distributed: if True, distribute search in the Kubernetes cluster selected
         in the runtime environment's containerized execution configuration, defaults to False
         :type distributed: bool
@@ -618,6 +628,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         "EXPLICIT" means that the hyperparameter search is performed over a given set of values (default for grid search)
         "RANGE" means that the hyperparameter search is performed over a range of values (default for random and Bayesian
         searches)
+
         :return: str mode: "EXPLICIT" | "RANGE"
         """
         if self._algo_settings.strategy == "GRID":
@@ -644,6 +655,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         Sets both:
         - the explicit values to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "EXPLICIT"
+
         :param values: the explicit list of numerical values considered for this hyperparameter in the search
         :type values: list of float | int
         """
@@ -714,6 +726,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         Sets both:
         - the Range parameters to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "RANGE"
+
         :param min: the lower bound of the Range for this hyperparameter
         :type min: float | int
         :param max: the upper bound of the Range for this hyperparameter
@@ -800,6 +813,7 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
     def set_values(self, values):
         """
         Enables the search over listed values (categories).
+
         :param values: values to enable, all other values will be disabled
         :type values: list of str
         """
@@ -2429,6 +2443,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     def get_actual_modeling_params(self):
         """
         Gets the actual / resolved parameters that were used to train this model.
+
         :return: A dictionary, which contains at least a "resolved" key
         :rtype: dict
         """
@@ -2754,6 +2769,7 @@ class DSSMLTask(object):
     def guess(self, prediction_type=None, reguess_level=None):
         """
         Guess the feature handling and the algorithms.
+
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
         :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
         """
