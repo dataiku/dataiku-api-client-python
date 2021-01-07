@@ -817,9 +817,11 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
         """
         Enables the search over listed values (categories).
 
-        :param values: values to enable, all other values will be disabled
+        :param values: list of values to enable, all other values will be disabled
         :type values: list of str
         """
+        assert isinstance(values, list) and not isinstance(values, string_types), \
+            "Invalid input type {} for categorical hyperparameter {}: must be a list of strings".format(type(values), self.name)
         all_possible_values = self.get_all_possible_values()
         for category in values:
             assert isinstance(category, string_types), \
