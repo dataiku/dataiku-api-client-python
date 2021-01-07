@@ -250,9 +250,12 @@ class DSSMLTaskSettings(object):
 
     def disable_all_algorithms(self):
         """Disables all algorithms"""
-
-        for algorithm_name in self.__class__.algorithm_remap.keys():
-            key = self.__class__.algorithm_remap[algorithm_name]
+        for algorithm_key in self.__class__.algorithm_remap.keys():
+            algorithm_meta = self.__class__.algorithm_remap[algorithm_key]
+            if isinstance(algorithm_meta, PredictionAlgorithmMeta):
+                key = algorithm_meta.algorithm_name
+            else:
+                key = algorithm_meta
             if key in self.mltask_settings["modeling"]:
                 self.mltask_settings["modeling"][key]["enabled"] = False
 
