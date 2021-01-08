@@ -957,8 +957,14 @@ class PredictionAlgorithmSettings(dict):
                     target.set_value(value)
                 elif isinstance(target, CategoricalHyperparameterSettings):
                     target.set_values(value)
-                else:
+                elif isinstance(target, NumericalHyperparameterSettings):
                     raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+                else:
+                    # simple parameter
+                    assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
+                    super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
+                    self[attr_name] = value
+                    self._hyperparameters_registry[attr_name] = value
             else:
                 # other cases (properties setter, new attribute...)
                 super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
@@ -987,11 +993,18 @@ class PredictionAlgorithmSettings(dict):
         self._hyperparameters_registry[json_key] = SingleValueHyperparameterSettings(json_key, self, accepted_types=accepted_types)
         return self._hyperparameters_registry[json_key]
 
+    def _register_simple_parameter(self, json_key):
+        self._hyperparameters_registry[json_key] = self[json_key]
+        return self._hyperparameters_registry[json_key]
+
     def _repr_html_(self):
         res = "<pre>" + self.__class__.__name__ + "\n"
         res += "\"enabled\": {}".format(self.enabled) + "\n"
         for name, hyperparam_settings in self._hyperparameters_registry.items():
-            res += "\"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
+            if isinstance(hyperparam_settings, HyperparameterSettings):
+                res += "\"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
+            else:
+                res += "\"{}\": {}".format(name, hyperparam_settings) + "\n"
         res += "</pre>"
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
@@ -1039,7 +1052,7 @@ class RandomForestSettings(PredictionAlgorithmSettings):
         self.max_tree_depth = self._register_numerical_hyperparameter("max_tree_depth")
         self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
         self.max_features = self._register_numerical_hyperparameter("max_features")
-        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
         self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
@@ -1060,14 +1073,14 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.booster = self._register_categorical_hyperparameter("booster")
         self.objective = self._register_categorical_hyperparameter("objective")
         self.n_estimators = self._register_single_value_hyperparameter("n_estimators", accepted_types=[int])
-        self.nthread = self._register_single_value_hyperparameter("nthread", accepted_types=[int])
+        self.nthread = self._register_simple_parameter("nthread")
         self.scale_pos_weight = self._register_single_value_hyperparameter("scale_pos_weight", accepted_types=[int, float])
         self.base_score = self._register_single_value_hyperparameter("base_score", accepted_types=[int, float])
         self.impute_missing = self._register_single_value_hyperparameter("impute_missing", accepted_types=[bool])
         self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
         self.cpu_tree_method = self._register_single_category_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
         self.gpu_tree_method = self._register_single_category_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
-        self.enable_cuda = self._register_single_value_hyperparameter("enable_cuda", accepted_types=[bool])
+        self.enable_cuda = self._register_simple_parameter("enable_cuda")
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
         self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
@@ -1127,7 +1140,7 @@ class OLSSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
 
 
 class LARSSettings(PredictionAlgorithmSettings):
@@ -1148,7 +1161,7 @@ class SGDSettings(PredictionAlgorithmSettings):
         self.l1_ratio = self._register_single_value_hyperparameter("l1_ratio", accepted_types=[int, float])
         self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
         self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
-        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
 
 
 class KNNSettings(PredictionAlgorithmSettings):
@@ -1231,10 +1244,10 @@ class MLLibDecisionTreeSettings(PredictionAlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.max_depth = self._register_numerical_hyperparameter("max_depth")
-        self.cache_node_ids = self._register_single_value_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.cache_node_ids = self._register_simple_parameter("cache_node_ids")
         self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
         self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
-        self.max_memory_mb = self._register_single_value_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.max_memory_mb = self._register_simple_parameter("max_memory_mb")
         self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
         self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
 
@@ -1247,11 +1260,11 @@ class _MLLibTreeEnsembleSettings(PredictionAlgorithmSettings):
         self.max_depth = self._register_numerical_hyperparameter("max_depth")
         self.num_trees = self._register_numerical_hyperparameter("num_trees")
 
-        self.cache_node_ids = self._register_single_value_hyperparameter("cache_node_ids", accepted_types=[bool])
+        self.cache_node_ids = self._register_simple_parameter("cache_node_ids")
         self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
         self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
         self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
-        self.max_memory_mb = self._register_single_value_hyperparameter("max_memory_mb", accepted_types=[int])
+        self.max_memory_mb = self._register_simple_parameter("max_memory_mb")
         self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
         self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
