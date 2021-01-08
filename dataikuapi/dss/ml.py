@@ -940,41 +940,52 @@ class PredictionAlgorithmSettings(dict):
         super(PredictionAlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
         self._hyperparameters_registry = dict()
+        self._attr_to_json_remapping = dict()
 
-    def __setattr__(self, key, value):
-        if not hasattr(self, key):
+    def __setattr__(self, attr_name, value):
+        if not hasattr(self, attr_name):
             # call from __init__
-            super(PredictionAlgorithmSettings, self).__setattr__(key, value)
-        elif key in self._hyperparameters_registry:
-            # syntactic sugars
-            target = self._hyperparameters_registry[key]
-            if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
-                target.set_value(value)
-            elif isinstance(target, CategoricalHyperparameterSettings):
-                target.set_values(value)
-            else:
-                raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
-        elif key == "lambda_":
-            raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+            super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
         else:
-            # other cases (properties setter, new attribute...)
-            super(PredictionAlgorithmSettings, self).__setattr__(key, value)
+            if attr_name in self._attr_to_json_remapping:
+                # attribute name and json key mismatch (e.g. "lambda", "alphaMode")
+                attr_name = self._attr_to_json_remapping[attr_name]
+            if attr_name in self._hyperparameters_registry:
+                # syntactic sugars
+                target = self._hyperparameters_registry[attr_name]
+                if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
+                    target.set_value(value)
+                elif isinstance(target, CategoricalHyperparameterSettings):
+                    target.set_values(value)
+                else:
+                    raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+            else:
+                # other cases (properties setter, new attribute...)
+                super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
 
-    def _register_numerical_hyperparameter(self, name):
-        self._hyperparameters_registry[name] = NumericalHyperparameterSettings(name, self)
-        return self._hyperparameters_registry[name]
+    def _maybe_register_attr_json_mismatch(self, json_key, attr_name):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
 
-    def _register_categorical_hyperparameter(self, name):
-        self._hyperparameters_registry[name] = CategoricalHyperparameterSettings(name, self)
-        return self._hyperparameters_registry[name]
+    def _register_numerical_hyperparameter(self, json_key, attr_name=None):
+        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        self._hyperparameters_registry[json_key] = NumericalHyperparameterSettings(json_key, self)
+        return self._hyperparameters_registry[json_key]
 
-    def _register_single_category_hyperparameter(self, name, accepted_values=None):
-        self._hyperparameters_registry[name] = SingleCategoryHyperparameterSettings(name, self, accepted_values=accepted_values)
-        return self._hyperparameters_registry[name]
+    def _register_categorical_hyperparameter(self, json_key, attr_name=None):
+        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        self._hyperparameters_registry[json_key] = CategoricalHyperparameterSettings(json_key, self)
+        return self._hyperparameters_registry[json_key]
 
-    def _register_single_value_hyperparameter(self, name, accepted_types=None):
-        self._hyperparameters_registry[name] = SingleValueHyperparameterSettings(name, self, accepted_types=accepted_types)
-        return self._hyperparameters_registry[name]
+    def _register_single_category_hyperparameter(self, json_key, accepted_values=None, attr_name=None):
+        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        self._hyperparameters_registry[json_key] = SingleCategoryHyperparameterSettings(json_key, self, accepted_values=accepted_values)
+        return self._hyperparameters_registry[json_key]
+
+    def _register_single_value_hyperparameter(self, json_key, accepted_types=None, attr_name=None):
+        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        self._hyperparameters_registry[json_key] = SingleValueHyperparameterSettings(json_key, self, accepted_types=accepted_types)
+        return self._hyperparameters_registry[json_key]
 
     def _repr_html_(self):
         res = "<pre>" + self.__class__.__name__ + "\n"
@@ -1045,7 +1056,7 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.colsample_bytree = self._register_numerical_hyperparameter("colsample_bytree")
         self.colsample_bylevel = self._register_numerical_hyperparameter("colsample_bylevel")
         self.alpha = self._register_numerical_hyperparameter("alpha")
-        self.lambda_ = self._register_numerical_hyperparameter("lambda")
+        self.lambda_ = self._register_numerical_hyperparameter("lambda", attr_name="lambda_")
         self.booster = self._register_categorical_hyperparameter("booster")
         self.objective = self._register_categorical_hyperparameter("objective")
         self.n_estimators = self._register_single_value_hyperparameter("n_estimators", accepted_types=[int])
@@ -1101,7 +1112,7 @@ class RidgeRegressionSettings(PredictionAlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.alpha = self._register_numerical_hyperparameter("alpha")
-        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"])
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"], attr_name="alpha_mode")
 
 
 class LassoRegressionSettings(PredictionAlgorithmSettings):
@@ -1109,7 +1120,7 @@ class LassoRegressionSettings(PredictionAlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.alpha = self._register_numerical_hyperparameter("alpha")
-        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"]) # TODO: enforce attribute name = parameter name ?
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"], attr_name="alpha_mode")
 
 
 class OLSSettings(PredictionAlgorithmSettings):
