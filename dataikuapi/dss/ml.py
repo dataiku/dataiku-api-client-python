@@ -1214,7 +1214,7 @@ class MLLibNaiveBayesSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
         super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
-        self.lambda_ = self._register_numerical_hyperparameter("lambda")
+        self.lambda_ = self._register_numerical_hyperparameter("lambda", attr_name="lambda_")
 
 
 class MLLibLinearRegressionSettings(PredictionAlgorithmSettings):
