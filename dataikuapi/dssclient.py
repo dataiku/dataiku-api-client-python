@@ -989,7 +989,7 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
-    def set_offline_license(self, license):
+    def set_license(self, license):
         """
         Sets a new licence for DSS
 
@@ -997,7 +997,7 @@ class DSSClient(object):
         :return: None
         """
         self._perform_empty(
-            "POST", "/admin/licensing/set-offline-license", params={"license": license})
+            "POST", "/admin/licensing/license", params={"license": license})
 
 
     ########################################################
