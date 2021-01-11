@@ -820,7 +820,7 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
         :param values: list of values to enable, all other values will be disabled
         :type values: list of str
         """
-        assert isinstance(values, list) and not isinstance(values, string_types), \
+        assert isinstance(values, list), \
             "Invalid input type {} for categorical hyperparameter {}: must be a list of strings".format(type(values), self.name)
         all_possible_values = self.get_all_possible_values()
         for category in values:
