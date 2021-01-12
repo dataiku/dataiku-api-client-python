@@ -704,6 +704,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         if min is None and max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(self.name))
         else:
+            # Check all the Range parameters input before setting any of them
             if min is not None:
                 self._check_number_input(min)
                 limit_min = self._algo_settings[self.name]["limit"].get("min")
@@ -714,9 +715,12 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
                 limit_max = self._algo_settings[self.name]["limit"].get("max")
                 if limit_max is not None:
                     assert max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(max, self.name, limit_max)
+            if min is not None and max is not None:
+                assert min <= max, "Invalid Range: min {} is greater max {}".format(min, max)
             if nb_values is not None:
                 assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(self.name)
 
+            # Set the Range parameters after they have been checked
             if min is not None:
                 self._algo_settings[self.name]["range"]["min"] = min
             if max is not None:
