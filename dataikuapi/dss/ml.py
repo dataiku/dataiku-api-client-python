@@ -1120,7 +1120,7 @@ class LogitSettings(PredictionAlgorithmSettings):
         self.C = self._register_numerical_hyperparameter("C")
         self.penalty = self._register_categorical_hyperparameter("penalty")
         self.multi_class = self._register_single_category_hyperparameter("multi_class", accepted_values=["multinomial", "ovr"])
-        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
 
 
 class RidgeRegressionSettings(PredictionAlgorithmSettings):
