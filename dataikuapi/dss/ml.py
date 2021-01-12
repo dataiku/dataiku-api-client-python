@@ -998,14 +998,14 @@ class PredictionAlgorithmSettings(dict):
         return self._hyperparameters_registry[json_key]
 
     def _repr_html_(self):
-        res = "<pre>" + self.__class__.__name__ + "\n"
-        res += "\"enabled\": {}".format(self.enabled) + "\n"
+        res = "<pre>" + self.__class__.__name__ + "(\n"
+        res += "    \"enabled\": {}".format(self.enabled) + "\n"
         for name, hyperparam_settings in self._hyperparameters_registry.items():
             if isinstance(hyperparam_settings, HyperparameterSettings):
-                res += "\"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
+                res += "    \"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
             else:
-                res += "\"{}\": {}".format(name, hyperparam_settings) + "\n"
-        res += "</pre>"
+                res += "    \"{}\": {}".format(name, hyperparam_settings) + "\n"
+        res += ")</pre>"
         return res + "<details><pre>{}</pre></details>".format(self.__repr__())
 
     def __repr__(self):
