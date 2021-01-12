@@ -968,7 +968,7 @@ class PredictionAlgorithmSettings(dict):
                     self[json_key] = value  # update underlying dict value for key json_key
                     self._hyperparameters_registry[json_key] = value
             else:
-                # other cases (properties setter, new attribute...)
+                # other cases (properties setter, ...)
                 super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
 
     def _maybe_register_attr_json_mismatch(self, json_key, attr_name):
