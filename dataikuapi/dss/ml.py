@@ -975,32 +975,33 @@ class PredictionAlgorithmSettings(dict):
                 # other cases (properties setter, ...)
                 super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
 
-    def _maybe_register_attr_json_mismatch(self, json_key, attr_name):
+    def _register_numerical_hyperparameter(self, json_key, attr_name=None):
         if attr_name is not None:
             self._attr_to_json_remapping[attr_name] = json_key
-
-    def _register_numerical_hyperparameter(self, json_key, attr_name=None):
-        self._maybe_register_attr_json_mismatch(json_key, attr_name)
         self._hyperparameters_registry[json_key] = NumericalHyperparameterSettings(json_key, self)
         return self._hyperparameters_registry[json_key]
 
     def _register_categorical_hyperparameter(self, json_key, attr_name=None):
-        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
         self._hyperparameters_registry[json_key] = CategoricalHyperparameterSettings(json_key, self)
         return self._hyperparameters_registry[json_key]
 
     def _register_single_category_hyperparameter(self, json_key, accepted_values=None, attr_name=None):
-        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
         self._hyperparameters_registry[json_key] = SingleCategoryHyperparameterSettings(json_key, self, accepted_values=accepted_values)
         return self._hyperparameters_registry[json_key]
 
     def _register_single_value_hyperparameter(self, json_key, accepted_types=None, attr_name=None):
-        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
         self._hyperparameters_registry[json_key] = SingleValueHyperparameterSettings(json_key, self, accepted_types=accepted_types)
         return self._hyperparameters_registry[json_key]
 
     def _register_simple_parameter(self, json_key, attr_name=None):
-        self._maybe_register_attr_json_mismatch(json_key, attr_name)
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
         self._hyperparameters_registry[json_key] = self[json_key]
         return self._hyperparameters_registry[json_key]
 
