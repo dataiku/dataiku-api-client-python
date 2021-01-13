@@ -1355,6 +1355,20 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     def get_prediction_type(self):
         return self.mltask_settings['predictionType']
 
+    def get_enabled_algorithm_names(self):
+        """
+        :returns: the list of enabled algorithm names as a list of strings
+        :rtype: list of string
+        """
+        algos = self.__class__.algorithm_remap
+        if self.mltask_settings["predictionType"] == "REGRESSION":
+            excluded_name = {"XGBOOST_CLASSIFICATION"}
+        else:
+            excluded_name = {"XGBOOST_REGRESSION"}
+        algo_names = [algo_name for algo_name in algos.keys() if (self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]
+                                                                  and algo_name not in excluded_name)]
+        return algo_names
+
     def get_algorithm_settings(self, algorithm_name):
         """
         Gets the training settings for a particular algorithm. This returns a reference to the
