@@ -1361,6 +1361,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         :rtype: list of string
         """
         algos = self.__class__.algorithm_remap
+        # Hide either "XGBOOST_CLASSIFICATION" or "XGBOOST_REGRESSION" which point to the same key "xgboost"
         if self.mltask_settings["predictionType"] == "REGRESSION":
             excluded_name = {"XGBOOST_CLASSIFICATION"}
         else:
