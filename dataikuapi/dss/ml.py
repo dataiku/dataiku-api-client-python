@@ -602,28 +602,24 @@ class HyperparameterSettings(object):
 class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def _pretty_repr(self):
-        active_dict = self._get_active_settings_dict()
-        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(active_dict, indent=4))
+        raw_hyperparam = self._algo_settings[self.name]
+        pretty_hyperparam = dict()
+        if self._algo_settings.strategy == "GRID":
+            pretty_hyperparam["definition_mode"] = raw_hyperparam["gridMode"]
+        else:
+            # RANDOM and BAYESIAN strategies
+            pretty_hyperparam["definition_mode"] = raw_hyperparam["randomMode"]
+        if self.definition_mode == "EXPLICIT":
+            pretty_hyperparam["values"] = raw_hyperparam["values"]
+        else:
+            pretty_hyperparam["range"] = raw_hyperparam["range"]
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(pretty_hyperparam, indent=4))
 
     def __repr__(self):
         raw_dict = self._algo_settings[self.name]
         return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(raw_dict))
 
     __str__ = __repr__
-
-    def _get_active_settings_dict(self):
-        clean_hyperparam = dict()
-        raw_hyperparam = self._algo_settings[self.name]
-        if self.definition_mode == "EXPLICIT":
-            clean_hyperparam["values"] = raw_hyperparam["values"]
-        else:
-            clean_hyperparam["range"] = raw_hyperparam["range"]
-        if self._algo_settings.strategy == "GRID":
-            clean_hyperparam["gridMode"] = raw_hyperparam["gridMode"]
-        else:
-            # RANDOM and BAYESIAN strategies
-            clean_hyperparam["randomMode"] = raw_hyperparam["randomMode"]
-        return clean_hyperparam
 
     @property
     def definition_mode(self):
