@@ -1,10 +1,13 @@
 import re
+from six import string_types
 
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+
 import json, warnings
 import time
+
 from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 from .future import DSSFuture
@@ -130,6 +133,7 @@ class PredictionSplitParamsHandler(object):
     def set_time_ordering(self, feature_name, ascending=True):
         """
         Uses a variable to sort the data for train/test split and hyperparameter optimization by time
+
         :param str feature_name: Name of the variable to use
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
@@ -218,6 +222,7 @@ class DSSMLTaskSettings(object):
     def reject_feature(self, feature_name):
         """
         Marks a feature as rejected and not used for training
+
         :param str feature_name: Name of the feature to reject
         """
         self.get_feature_preprocessing(feature_name)["role"] = "REJECT"
@@ -225,33 +230,13 @@ class DSSMLTaskSettings(object):
     def use_feature(self, feature_name):
         """
         Marks a feature as input for training
+
         :param str feature_name: Name of the feature to reject
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
 
     def get_algorithm_settings(self, algorithm_name):
-        """
-        Gets the training settings for a particular algorithm. This returns a reference to the
-        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
-
-        This method returns a dictionary of the settings for this algorithm.
-        All algorithm dicts have at least an "enabled" key in the dictionary.
-        The 'enabled' key indicates whether this algorithm will be trained
-
-        Other settings are algorithm-dependent and are the various hyperparameters of the 
-        algorithm. The precise keys for each algorithm are not all documented. You can print
-        the returned dictionary to learn more about the settings of each particular algorithm
-
-        Please refer to the documentation for details on available algorithms.
-
-        :param str algorithm_name: Name (in capitals) of the algorithm.
-        :return: A dict of the settings for an algorithm
-        :rtype: dict 
-        """
-        if algorithm_name in self.__class__.algorithm_remap:
-            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
-
-        return self.mltask_settings["modeling"][algorithm_name.lower()]
+        raise NotImplementedError()
 
     def get_diagnostics_settings(self):
         """
@@ -309,9 +294,12 @@ class DSSMLTaskSettings(object):
 
     def disable_all_algorithms(self):
         """Disables all algorithms"""
-
-        for algorithm_name in self.__class__.algorithm_remap.keys():
-            key = self.__class__.algorithm_remap[algorithm_name]
+        for algorithm_key in self.__class__.algorithm_remap.keys():
+            algorithm_meta = self.__class__.algorithm_remap[algorithm_key]
+            if isinstance(algorithm_meta, PredictionAlgorithmMeta):
+                key = algorithm_meta.algorithm_name
+            else:
+                key = algorithm_meta
             if key in self.mltask_settings["modeling"]:
                 self.mltask_settings["modeling"][key]["enabled"] = False
 
@@ -334,7 +322,23 @@ class DSSMLTaskSettings(object):
         :returns: the list of algorithm names as a list of strings
         :rtype: list of string
         """
-        return self.__class__.algorithm_remap.keys()
+        return list(self.__class__.algorithm_remap.keys())
+
+    def get_enabled_algorithm_names(self):
+        """
+        :returns: the list of enabled algorithm names as a list of strings
+        :rtype: list of string
+        """
+        algos = self.__class__.algorithm_remap
+        algo_names = [algo_name for algo_name in algos.keys() if self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]]
+        return algo_names
+
+    def get_enabled_algorithm_settings(self):
+        """
+        :returns: the map of enabled algorithm names with their settings
+        :rtype: dict
+        """
+        return {key: self.get_algorithm_settings(key) for key in self.get_enabled_algorithm_names()}
 
     def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
         """
@@ -359,43 +363,1020 @@ class DSSMLTaskSettings(object):
                 "POST", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id),
                 body = self.mltask_settings)
 
+
+class HyperparameterSearchSettings(object):
+
+    def __init__(self, raw_settings):
+        self._raw_settings = raw_settings
+
+    def _key_repr(self, key):
+        if isinstance(self._raw_settings[key], string_types):
+            return "    \"{}\"=\"{}\"\n".format(key, self._raw_settings[key])
+        else:
+            return "    \"{}\"={}\n".format(key, self._raw_settings[key])
+
+    def _repr_html_(self):
+
+        res = "<pre>"
+        res += self.__class__.__name__ + "(\n"
+        res += "Search Strategy:\n"
+        res += self._key_repr("strategy")
+        if self._raw_settings["strategy"] == "BAYESIAN":
+            res += self._key_repr("bayesianOptimizer")
+
+        res += "Search Validation:\n"
+        res += self._key_repr("mode")
+        if self._raw_settings["mode"] in {"SHUFFLE", "TIME_SERIES_SINGLE_SPLIT"}:
+            res += self._key_repr("splitRatio")
+        elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
+            res += self._key_repr("nFolds")
+
+        res += self._key_repr("stratified")
+
+        res += "Execution Settings:\n"
+        if self._raw_settings.get("timeout", 0) > 0:
+            res += self._key_repr("timeout")
+        if self._raw_settings["strategy"] == "GRID":
+            res += self._key_repr("nIter")
+            res += self._key_repr("randomized")
+            if self._raw_settings.get("randomized", False):
+                res += self._key_repr("seed")
+        else:
+            # RANDOM and BAYESIAN search strategies
+            res += self._key_repr("nIterRandom")
+            res += self._key_repr("seed")
+
+        res += "Parallelism Settings:\n"
+        res += self._key_repr("nJobs")
+        res += self._key_repr("distributed")
+        if self._raw_settings.get("distributed", False):
+            res += self._key_repr("nContainers")
+        res += ")</pre>"
+        res += "<details><pre>{}</pre></details>".format(self.__repr__())
+        return res
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(settings={})".format(self._raw_settings)
+
+    __str__ = __repr__
+
+    def _set_seed(self, seed):
+        if seed is not None:
+            if not isinstance(seed, int):
+                warnings.warn("HyperparameterSearchSettings ignoring invalid input: seed")
+                warnings.warn("seed must be an integer")
+            else:
+                self._raw_settings["seed"] = seed
+
+    @property
+    def strategy(self):
+        """
+        :return: strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :rtype: str
+        """
+        return self._raw_settings["strategy"]
+
+    @strategy.setter
+    def strategy(self, strategy):
+        """
+        :param strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :type strategy: str
+        """
+        assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
+        self._raw_settings["strategy"] = strategy
+
+    def set_grid_search(self, shuffle=True, seed=0):
+        """
+        Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
+
+        :param shuffle: if True, iterate over a shuffled grid as opposed to the lexicographical
+        iteration over the cartesian product of the hyperparameters.
+        :type shuffle: bool
+        :param seed:
+        :type seed: int
+        """
+        self._raw_settings["strategy"] = "GRID"
+        if shuffle is not None:
+            if not isinstance(shuffle, bool):
+                warnings.warn("HyperparameterSearchSettings.set_grid_search ignoring invalid input: shuffle")
+                warnings.warn("shuffle must be a boolean")
+            else:
+                self._raw_settings["randomized"] = shuffle
+        self._set_seed(seed)
+
+    def set_random_search(self, seed=0):
+        """
+        Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
+
+        :param seed: defaults to 0
+        :type seed: int
+        """
+        self._raw_settings["strategy"] = "RANDOM"
+        self._set_seed(seed)
+
+    def set_bayesian_search(self, seed=0):
+        """
+        Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
+
+        :param seed: defaults to 0
+        :type seed: int
+        """
+        self._raw_settings["strategy"] = "BAYESIAN"
+        self._set_seed(seed)
+
+    @property
+    def validation_mode(self):
+        """
+        :return: mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :rtype: str
+        """
+        return self._raw_settings["mode"]
+
+    @validation_mode.setter
+    def validation_mode(self, mode):
+        """
+        :param mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :type mode: str
+        """
+        assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
+        self._raw_settings["mode"] = mode
+
+    def set_kfold_validation(self, n_folds=5, stratified=True):
+        """
+        Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
+        is enabled).
+
+        :param n_folds: the number of folds used for the hyperparameter search, defaults to 5
+        :type n_folds: int
+        :param stratified: if True, keep the same proportion of each target classes in all folds, defaults to True
+        :type stratified: bool
+        """
+        if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
+            self._raw_settings["mode"] = "TIME_SERIES_KFOLD"
+        else:
+            self._raw_settings["mode"] = "KFOLD"
+        if n_folds is not None:
+            if not (isinstance(n_folds, int) and n_folds > 0):
+                warnings.warn("HyperparameterSearchSettings.set_kfold_validation ignoring invalid input: n_folds")
+                warnings.warn("n_folds must be a positive integer")
+            else:
+                self._raw_settings["nFolds"] = n_folds
+        if stratified is not None:
+            if not isinstance(stratified, bool):
+                warnings.warn("HyperparameterSearchSettings.set_validation_mode_to_kfold ignoring invalid input: stratified")
+                warnings.warn("stratified must be a boolean")
+            else:
+                self._raw_settings["stratified"] = stratified
+
+    def set_single_split_validation(self, split_ratio=0.8, stratified=True):
+        """
+        Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
+        is enabled).
+
+        :param split_ratio: ratio of the data used for the train during hyperparameter search, defaults to 0.8
+        :type split_ratio: float
+        :param stratified: if True, keep the same proportion of each target classes in both splits, defaults to True
+        :type stratified: bool
+        """
+        if self._raw_settings["mode"] == "TIME_SERIES_KFOLD":
+            self._raw_settings["mode"] = "TIME_SERIES_SINGLE_SPLIT"
+        else:
+            self._raw_settings["mode"] = "SHUFFLE"
+        if split_ratio is not None:
+            if not (isinstance(split_ratio, float) and split_ratio > 0 and split_ratio < 1):
+                warnings.warn("HyperparameterSearchSettings.set_single_split_validation ignoring invalid input: split_ratio")
+                warnings.warn(" split_ratio must be float between 0 and 1")
+            else:
+                self._raw_settings["splitRatio"] = split_ratio
+        if stratified is not None:
+            if not isinstance(stratified, bool):
+                warnings.warn("HyperparameterSearchSettings.set_single_split_validation ignoring invalid input: stratified")
+                warnings.warn("stratified must be a boolean")
+            else:
+                self._raw_settings["stratified"] = stratified
+
+    def set_custom_validation(self, code=None):
+        """
+        Sets the validation mode to "CUSTOM".
+
+        :param code: definition of the validation
+        :type code: str
+        """
+        self._raw_settings["mode"] = "CUSTOM"
+        if code is not None:
+            if not isinstance(code, string_types):
+                warnings.warn("HyperparameterSearchSettings.set_custom_validation ignoring invalid input: code")
+                warnings.warn("code must be a Python interpretable string")
+            else:
+                self._raw_settings["code"] = code
+
+    def set_search_distribution(self, distributed=False, n_containers=4):
+        """
+        Sets the distribution parameters for the hyperparameter search execution.
+
+        :param distributed: if True, distribute search in the Kubernetes cluster selected
+        in the runtime environment's containerized execution configuration, defaults to False
+        :type distributed: bool
+        :param n_containers: number of containers to use for the distributed search, defaults to 4
+        :type n_containers: int
+        """
+        assert isinstance(distributed, bool)
+        if n_containers is not None:
+            assert isinstance(n_containers, int)
+            self._raw_settings["nContainers"] = n_containers
+        self._raw_settings["distributed"] = distributed
+
+    @property
+    def distributed(self):
+        return self._raw_settings["distributed"]
+
+    @distributed.setter
+    def distributed(self, distributed):
+        assert isinstance(distributed, bool)
+        self._raw_settings["distributed"] = distributed
+
+    @property
+    def timeout(self):
+        return self._raw_settings["timeout"]
+
+    @timeout.setter
+    def timeout(self, timeout):
+        assert isinstance(timeout, int)
+        self._raw_settings["timeout"] = timeout
+
+    @property
+    def n_iter(self):
+        if self._raw_settings["strategy"] == "GRID":
+            return self._raw_settings["nIter"]
+        else:
+            # RANDOM and BAYESIAN search strategies
+            return self._raw_settings["nIterRandom"]
+
+    @n_iter.setter
+    def n_iter(self, n_iter):
+        assert isinstance(n_iter, int)
+        if self._raw_settings["strategy"] == "GRID":
+            self._raw_settings["nIter"] = n_iter
+        else:
+            self._raw_settings["nIterRandom"] = n_iter
+
+    @property
+    def parallelism(self):
+        return self._raw_settings["nJobs"]
+
+    @parallelism.setter
+    def parallelism(self, n_jobs):
+        assert isinstance(n_jobs, int)
+        self._raw_settings["nJobs"] = n_jobs
+
+
+class HyperparameterSettings(object):
+
+    def __init__(self, name, algo_settings):
+        self.name = name
+        self._algo_settings = algo_settings
+
+    def _repr_html_(self):
+        return "<pre>" + self._pretty_repr() + "</pre><details><pre>{}</pre></details>".format(self.__repr__())
+
+    def _pretty_repr(self):
+        raise NotImplementedError()
+
+
+class NumericalHyperparameterSettings(HyperparameterSettings):
+
+    def _pretty_repr(self):
+        raw_hyperparam = self._algo_settings[self.name]
+        pretty_hyperparam = dict()
+        if self._algo_settings.strategy == "GRID":
+            pretty_hyperparam["definition_mode"] = raw_hyperparam["gridMode"]
+        else:
+            # RANDOM and BAYESIAN strategies
+            pretty_hyperparam["definition_mode"] = raw_hyperparam["randomMode"]
+        if self.definition_mode == "EXPLICIT":
+            pretty_hyperparam["values"] = raw_hyperparam["values"]
+        else:
+            pretty_hyperparam["range"] = raw_hyperparam["range"]
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(pretty_hyperparam, indent=4))
+
+    def __repr__(self):
+        raw_dict = self._algo_settings[self.name]
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(raw_dict))
+
+    __str__ = __repr__
+
+    @property
+    def definition_mode(self):
+        """
+        "EXPLICIT" means that the hyperparameter search is performed over a given set of values (default for grid search)
+        "RANGE" means that the hyperparameter search is performed over a range of values (default for random and Bayesian
+        searches)
+
+        :return: str mode: "EXPLICIT" | "RANGE"
+        """
+        if self._algo_settings.strategy == "GRID":
+            return self._algo_settings[self.name]["gridMode"]
+        else:
+            # RANDOM and BAYESIAN search strategies
+            return self._algo_settings[self.name]["randomMode"]
+
+    @definition_mode.setter
+    def definition_mode(self, mode):
+        """
+        :param mode: "EXPLICIT" | "RANGE"
+        :type mode: str
+        """
+        assert mode in ["EXPLICIT", "RANGE"], "Hyperparameter definition mode must be either \"EXPLICIT\" or \"RANGE\""
+        if self._algo_settings.strategy == "GRID":
+            self._algo_settings[self.name]["gridMode"] = mode
+        else:
+            # RANDOM and BAYESIAN search strategies
+            self._algo_settings[self.name]["randomMode"] = mode
+
+    def set_explicit_values(self, values):
+        """
+        Sets both:
+        - the explicit values to search over for the current numerical hyperparameter
+        - the definition mode of the current numerical hyperparameter to "EXPLICIT"
+
+        :param values: the explicit list of numerical values considered for this hyperparameter in the search
+        :type values: list of float | int
+        """
+        self.values = values
+        self.definition_mode = "EXPLICIT"
+
+    @property
+    def values(self):
+        """
+        :return: the explicit list of numerical values considered for this hyperparameter in the search
+        :rtype: list
+        """
+        return self._algo_settings[self.name]["values"]
+
+    @values.setter
+    def values(self, values):
+        """
+        :param values: the explicit list of numerical values considered for this hyperparameter in the search
+        :type values: list of float | int
+        """
+        error_message = "Invalid values input type for hyperparameter " \
+                        "\"{}\": ".format(self.name) + \
+                        " expecting a non-empty list of numbers"
+        assert values is not None and isinstance(values, list) and len(values) > 0, error_message
+        for val in values:
+            assert isinstance(val, int) or isinstance(val, float), error_message
+        limit_min = self._algo_settings[self.name]["limit"].get("min")
+        if limit_min is not None:
+            assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(self.name, limit_min)
+        limit_max = self._algo_settings[self.name]["limit"].get("max")
+        if limit_max is not None:
+            assert all(val <= limit_max for val in values), "Value(s) above hyperparameter \"{}\" limit {}".format(self.name, limit_max)
+        if len(set(values)) < len(values):
+            warnings.warn("Detected duplicates in provided values: " + str(sorted(values)))
+        self._algo_settings[self.name]["values"] = values
+
+    def _check_number_input(self, input):
+        assert isinstance(input, int) or isinstance(input, float), \
+            "Invalid input type for hyperparameter \"{}\": ".format(self.name) + \
+            "range bounds must be numbers"
+
+    def _set_range(self, min=None, max=None, nb_values=None):
+        if min is None and max is None and nb_values is None:
+            warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(self.name))
+        else:
+            # Check all the Range parameters input before setting any of them
+            if min is not None:
+                self._check_number_input(min)
+                limit_min = self._algo_settings[self.name]["limit"].get("min")
+                if limit_min is not None:
+                    assert limit_min <= min, "Range min {} is below hyperparameter \"{}\" limit {}".format(min, self.name, limit_min)
+            if max is not None:
+                self._check_number_input(max)
+                limit_max = self._algo_settings[self.name]["limit"].get("max")
+                if limit_max is not None:
+                    assert max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(max, self.name, limit_max)
+            if min is not None and max is not None:
+                assert min <= max, "Invalid Range: min {} is greater max {}".format(min, max)
+            if nb_values is not None:
+                assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(self.name)
+
+            # Set the Range parameters after they have been checked
+            if min is not None:
+                self._algo_settings[self.name]["range"]["min"] = min
+            if max is not None:
+                self._algo_settings[self.name]["range"]["max"] = max
+            if nb_values is not None:
+                self._algo_settings[self.name]["range"]["nbValues"] = nb_values
+
+    def set_range(self, min=None, max=None, nb_values=None):
+        """
+        Sets both:
+        - the Range parameters to search over for the current numerical hyperparameter
+        - the definition mode of the current numerical hyperparameter to "RANGE"
+
+        :param min: the lower bound of the Range for this hyperparameter
+        :type min: float | int
+        :param max: the upper bound of the Range for this hyperparameter
+        :type max: float | int
+        :param nb_values: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+        :type nb_values: int
+        """
+        self._set_range(min=min, max=max, nb_values=nb_values)
+        self.definition_mode = "RANGE"
+
+    @property
+    def range(self):
+        return Range(self)
+
+
+class Range(object):
+
+    def __init__(self, numerical_hyperparameter_settings):
+        self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
+        self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
+
+    def __repr__(self):
+        return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+
+    @property
+    def min(self):
+        """
+        :return: the lower bound of the Range for this hyperparameter
+        :rtype: float | int
+        """
+        return self._range_dict["min"]
+
+    @min.setter
+    def min(self, value):
+        """
+        :param value: the lower bound of the Range this hyperparameter
+        :type value: float | int
+        """
+        self._numerical_hyperparameter_settings._set_range(min=value)
+
+    @property
+    def max(self):
+        """
+        :return: the upper bound of the Range this hyperparameter
+        :rtype: float | int
+        """
+        return self._range_dict["max"]
+
+    @max.setter
+    def max(self, value):
+        """
+        :param value: the upper bound of the Range for this hyperparameter
+        :type value: float | int
+        """
+        self._numerical_hyperparameter_settings._set_range(max=value)
+
+    @property
+    def nb_values(self):
+        """
+        :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+        :rtype: int
+        """
+        return self._range_dict["nbValues"]
+
+    @nb_values.setter
+    def nb_values(self, value):
+        """
+        :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+        :type value: int
+        """
+        self._numerical_hyperparameter_settings._set_range(nb_values=value)
+
+
+class CategoricalHyperparameterSettings(HyperparameterSettings):
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name]))
+
+    __str__ = __repr__
+
+    def _pretty_repr(self):
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", settings={})".format(self.name, json.dumps(self._algo_settings[self.name], indent=4))
+
+    def set_values(self, values):
+        """
+        Enables the search over listed values (categories).
+
+        :param values: list of values to enable, all other values will be disabled
+        :type values: list of str
+        """
+        assert isinstance(values, list), \
+            "Invalid input type {} for categorical hyperparameter {}: must be a list of strings".format(type(values), self.name)
+        all_possible_values = self.get_all_possible_values()
+        for category in values:
+            assert isinstance(category, string_types), \
+                "Invalid input type {} for categorical hyperparameter {}: must be a string".format(type(category), self.name)
+            assert category in all_possible_values, \
+                "Invalid input value \"{}\" for categorical hyperparameter {}: must be a member of {}".format(category, self.name, all_possible_values)
+
+        for category in all_possible_values:
+            if category in values:
+                self._algo_settings[self.name]["values"][category] = {"enabled": True}
+            else:
+                self._algo_settings[self.name]["values"][category] = {"enabled": False}
+
+    def get_values(self):
+        """
+        :return: list of enabled categories for this hyperparameter
+        :rtype: list of str
+        """
+        values_dict = self._algo_settings[self.name]["values"]
+        return [value for value in values_dict.keys() if values_dict[value]["enabled"]]
+
+    def get_all_possible_values(self):
+        """
+        :return: list of possible values for this hyperparameter
+        :rtype: list of str
+        """
+        return list(self._algo_settings[self.name]["values"].keys())
+
+
+class SingleValueHyperparameterSettings(HyperparameterSettings):
+
+    def __init__(self, name, algo_settings, accepted_types=None):
+        super(SingleValueHyperparameterSettings, self).__init__(name, algo_settings)
+        self.accepted_types = accepted_types
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(hyperparameter=\"{}\", value={})".format(self.name, self._algo_settings[self.name])
+
+    __str__ = __repr__
+
+    _pretty_repr = __repr__
+
+    def set_value(self, value):
+        """
+        :param value:
+        :type value: bool | int | float
+        """
+        if self.accepted_types is not None:
+            assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
+        self._algo_settings[self.name] = value
+
+    def get_value(self):
+        """
+        :return: current value
+        :rtype: bool | int | float
+        """
+        return self._algo_settings[self.name]
+
+    def get_accepted_types(self):
+        """
+        :return: valid types for this hyperparameter
+        """
+        return self.accepted_types
+
+
+class SingleCategoryHyperparameterSettings(HyperparameterSettings):
+
+    def __init__(self, name, algo_settings, accepted_values=None):
+        super(SingleCategoryHyperparameterSettings, self).__init__(name, algo_settings)
+        self.accepted_values = accepted_values
+
+    def __repr__(self):
+        if self.accepted_values is not None:
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\", accepted_values={})".format(self.name,
+                                                                                                            self._algo_settings[self.name],
+                                                                                                            self.accepted_values)
+        else:
+            return self.__class__.__name__ + "(hyperparameter=\"{}\", value=\"{}\")".format(self.name, self._algo_settings[self.name])
+
+    __str__ = __repr__
+
+    _pretty_repr = __repr__
+
+    def set_value(self, value):
+        """
+        :param value:
+        :type value: str
+        """
+        if self.accepted_values is not None:
+            assert value in self.accepted_values, "Invalid value for hyperparameter {}. Must be in {}".format(self.name, json.dumps(self.accepted_values))
+        self._algo_settings[self.name] = value
+
+    def get_value(self):
+        """
+        :return: current value
+        :rtype: str
+        """
+        return self._algo_settings[self.name]
+
+    def get_all_possible_values(self):
+        """
+        :return: list of possible values for this hyperparameter
+        :rtype: list of str
+        """
+        return self.accepted_values
+
+
+class PredictionAlgorithmSettings(dict):
+    """
+    Object to read and modify the settings of a prediction ML algorithm.
+
+    Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings` instead
+    """
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(PredictionAlgorithmSettings, self).__init__(raw_settings)
+        self._hyperparameter_search_params = hyperparameter_search_params
+        self._hyperparameters_registry = dict()
+        self._attr_to_json_remapping = dict()
+
+    def __setattr__(self, attr_name, value):
+        if not hasattr(self, attr_name):
+            # call from __init__
+            super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
+        else:
+            if attr_name in self._attr_to_json_remapping:
+                # attribute name and json key mismatch (e.g. "lambda", "alphaMode")
+                json_key = self._attr_to_json_remapping[attr_name]
+            else:
+                json_key = attr_name
+            if json_key in self._hyperparameters_registry:
+                # syntactic sugars
+                target = self._hyperparameters_registry[json_key]
+                if isinstance(target, (SingleValueHyperparameterSettings, SingleCategoryHyperparameterSettings)):
+                    target.set_value(value)
+                elif isinstance(target, CategoricalHyperparameterSettings):
+                    target.set_values(value)
+                elif isinstance(target, NumericalHyperparameterSettings):
+                    raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+                else:
+                    # simple parameter
+                    assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
+                    super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)  # update attribute value
+                    self[json_key] = value  # update underlying dict value for key json_key
+                    self._hyperparameters_registry[json_key] = value
+            else:
+                # other cases (properties setter, ...)
+                super(PredictionAlgorithmSettings, self).__setattr__(attr_name, value)
+
+    def _register_numerical_hyperparameter(self, json_key, attr_name=None):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
+        self._hyperparameters_registry[json_key] = NumericalHyperparameterSettings(json_key, self)
+        return self._hyperparameters_registry[json_key]
+
+    def _register_categorical_hyperparameter(self, json_key, attr_name=None):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
+        self._hyperparameters_registry[json_key] = CategoricalHyperparameterSettings(json_key, self)
+        return self._hyperparameters_registry[json_key]
+
+    def _register_single_category_hyperparameter(self, json_key, accepted_values=None, attr_name=None):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
+        self._hyperparameters_registry[json_key] = SingleCategoryHyperparameterSettings(json_key, self, accepted_values=accepted_values)
+        return self._hyperparameters_registry[json_key]
+
+    def _register_single_value_hyperparameter(self, json_key, accepted_types=None, attr_name=None):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
+        self._hyperparameters_registry[json_key] = SingleValueHyperparameterSettings(json_key, self, accepted_types=accepted_types)
+        return self._hyperparameters_registry[json_key]
+
+    def _register_simple_parameter(self, json_key, attr_name=None):
+        if attr_name is not None:
+            self._attr_to_json_remapping[attr_name] = json_key
+        self._hyperparameters_registry[json_key] = self[json_key]
+        return self._hyperparameters_registry[json_key]
+
+    def _repr_html_(self):
+        res = "<pre>" + self.__class__.__name__ + "(\n"
+        res += "    \"enabled\": {}".format(self.enabled) + "\n"
+        for name, hyperparam_settings in self._hyperparameters_registry.items():
+            if isinstance(hyperparam_settings, HyperparameterSettings):
+                res += "    \"{}\": {}".format(name, hyperparam_settings._pretty_repr()) + "\n"
+            else:
+                res += "    \"{}\": {}".format(name, hyperparam_settings) + "\n"
+        res += ")</pre>"
+        return res + "<details><pre>{}</pre></details>".format(self.__repr__())
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(values={})".format(dict.__repr__(self))
+
+    __str__ = __repr__
+
+    def _get_all_hyperparameter_names(self):
+        return list(self._hyperparameters_registry.keys())
+
+    @property
+    def enabled(self):
+        """
+        :rtype: bool
+        """
+        return self["enabled"]
+
+    @enabled.setter
+    def enabled(self, enabled):
+        """
+        :param enabled:
+        :type enabled: bool
+        """
+        assert isinstance(enabled, bool), "enabled property must be a boolean"
+        self["enabled"] = enabled
+
+    @property
+    def strategy(self):
+        return self._hyperparameter_search_params["strategy"]
+
+    @strategy.setter
+    def strategy(self, _):
+        raise AttributeError("The strategy must be set at the MLTask settings level.\n"
+                             "To update the search strategy, use <HyperparameterSearchSettings object>.strategy = ..., "
+                             "obtained with <DSSPredictionMLTaskSettings object>.get_hyperparameter_search_settings()")
+
+
+class RandomForestSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_tree_depth = self._register_numerical_hyperparameter("max_tree_depth")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.n_jobs = self._register_simple_parameter("n_jobs")
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+
+
+class XGBoostSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.gamma = self._register_numerical_hyperparameter("gamma")
+        self.min_child_weight = self._register_numerical_hyperparameter("min_child_weight")
+        self.max_delta_step = self._register_numerical_hyperparameter("max_delta_step")
+        self.subsample = self._register_numerical_hyperparameter("subsample")
+        self.colsample_bytree = self._register_numerical_hyperparameter("colsample_bytree")
+        self.colsample_bylevel = self._register_numerical_hyperparameter("colsample_bylevel")
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.lambda_ = self._register_numerical_hyperparameter("lambda", attr_name="lambda_")
+        self.booster = self._register_categorical_hyperparameter("booster")
+        self.objective = self._register_categorical_hyperparameter("objective")
+        self.n_estimators = self._register_single_value_hyperparameter("n_estimators", accepted_types=[int])
+        self.nthread = self._register_simple_parameter("nthread")
+        self.scale_pos_weight = self._register_single_value_hyperparameter("scale_pos_weight", accepted_types=[int, float])
+        self.base_score = self._register_single_value_hyperparameter("base_score", accepted_types=[int, float])
+        self.impute_missing = self._register_single_value_hyperparameter("impute_missing", accepted_types=[bool])
+        self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
+        self.cpu_tree_method = self._register_single_category_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
+        self.gpu_tree_method = self._register_single_category_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
+        self.enable_cuda = self._register_simple_parameter("enable_cuda")
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+
+
+class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GradientBoostedTreesSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.loss = self._register_categorical_hyperparameter("loss")
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+
+
+class DecisionTreeSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(DecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.criterion = self._register_categorical_hyperparameter("criterion")
+        self.splitter = self._register_categorical_hyperparameter("splitter")
+
+
+class LogitSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.C = self._register_numerical_hyperparameter("C")
+        self.penalty = self._register_categorical_hyperparameter("penalty")
+        self.multi_class = self._register_single_category_hyperparameter("multi_class", accepted_values=["multinomial", "ovr"])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
+
+
+class RidgeRegressionSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(RidgeRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO"], attr_name="alpha_mode")
+
+
+class LassoRegressionSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LassoRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.alpha_mode = self._register_single_category_hyperparameter("alphaMode", accepted_values=["MANUAL", "AUTO_CV", "AUTO_IC"], attr_name="alpha_mode")
+
+
+class OLSSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(OLSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_jobs = self._register_simple_parameter("n_jobs")
+
+
+class LARSSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LARSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_features = self._register_single_value_hyperparameter("max_features", accepted_types=[int])
+        self.K = self._register_single_value_hyperparameter("K", accepted_types=[int])
+
+
+class SGDSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SGDSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.loss = self._register_categorical_hyperparameter("loss")
+        self.penalty = self._register_categorical_hyperparameter("penalty")
+        self.l1_ratio = self._register_single_value_hyperparameter("l1_ratio", accepted_types=[int, float])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
+
+
+class KNNSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(KNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.k = self._register_numerical_hyperparameter("k")
+        self.algorithm = self._register_single_category_hyperparameter("algorithm", accepted_values=["auto", "kd_tree", "ball_tree", "brute"])
+        self.distance_weighting = self._register_single_value_hyperparameter("distance_weighting", accepted_types=[bool])
+        self.p = self._register_single_value_hyperparameter("p", accepted_types=[int])
+        self.leaf_size = self._register_single_value_hyperparameter("leaf_size", accepted_types=[int])
+
+
+class SVMSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SVMSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.custom_gamma = self._register_numerical_hyperparameter("custom_gamma")
+        self.C = self._register_numerical_hyperparameter("C")
+        self.gamma = self._register_categorical_hyperparameter("gamma")
+        self.kernel = self._register_categorical_hyperparameter("kernel")
+        self.coef0 = self._register_single_value_hyperparameter("coef0", accepted_types=[int, float])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+
+
+class MLPSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.layer_sizes = self._register_numerical_hyperparameter("layer_sizes")
+        self.activation = self._register_single_category_hyperparameter("activation", accepted_values=["relu", "identity", "logistic", "tanh"])
+        self.solver = self._register_single_category_hyperparameter("solver", accepted_values=["adam", "sgd"])
+        self.alpha = self._register_single_value_hyperparameter("alpha", accepted_types=[int, float])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.auto_batch = self._register_single_value_hyperparameter("auto_batch", accepted_types=[bool])
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.tol = self._register_single_value_hyperparameter("tol", accepted_types=[int, float])
+        self.early_stopping = self._register_single_value_hyperparameter("early_stopping", accepted_types=[bool])
+        self.validation_fraction = self._register_single_value_hyperparameter("validation_fraction", accepted_types=[int, float])
+        self.beta_1 = self._register_single_value_hyperparameter("beta_1", accepted_types=[int, float])
+        self.beta_2 = self._register_single_value_hyperparameter("beta_2", accepted_types=[int, float])
+        self.epsilon = self._register_single_value_hyperparameter("epsilon", accepted_types=[int, float])
+        self.learning_rate = self._register_single_category_hyperparameter("learning_rate", accepted_values=["constant", "invscaling", "adaptive"])
+        self.power_t = self._register_single_value_hyperparameter("power_t", accepted_types=[int, float])
+        self.momentum = self._register_single_value_hyperparameter("momentum", accepted_types=[int, float])
+        self.nesterovs_momentum = self._register_single_value_hyperparameter("nesterovs_momentum", accepted_types=[bool])
+        self.shuffle = self._register_single_value_hyperparameter("shuffle", accepted_types=[bool])
+        self.learning_rate_init = self._register_single_value_hyperparameter("learning_rate_init", accepted_types=[int, float])
+
+
+class MLLibLogitSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibLogitSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.reg_param = self._register_numerical_hyperparameter("reg_param")
+        self.enet_param = self._register_numerical_hyperparameter("enet_param")
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+
+
+class MLLibNaiveBayesSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibNaiveBayesSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.lambda_ = self._register_numerical_hyperparameter("lambda", attr_name="lambda_")
+
+
+class MLLibLinearRegressionSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibLinearRegressionSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.reg_param = self._register_numerical_hyperparameter("reg_param")
+        self.enet_param = self._register_numerical_hyperparameter("enet_param")
+        self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
+
+
+class MLLibDecisionTreeSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibDecisionTreeSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.cache_node_ids = self._register_simple_parameter("cache_node_ids")
+        self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self._register_simple_parameter("max_memory_mb")
+        self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
+
+
+class _MLLibTreeEnsembleSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(_MLLibTreeEnsembleSettings, self).__init__(raw_settings, hyperparameter_search_params)
+
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.num_trees = self._register_numerical_hyperparameter("num_trees")
+
+        self.cache_node_ids = self._register_simple_parameter("cache_node_ids")
+        self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
+        self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
+        self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
+        self.max_memory_mb = self._register_simple_parameter("max_memory_mb")
+        self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
+        self.min_instance_per_node = self._register_single_value_hyperparameter("min_instance_per_node", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.subsampling_rate = self._register_single_value_hyperparameter("subsampling_rate", accepted_types=[int, float])
+
+
+class MLLibRandomForestSettings(_MLLibTreeEnsembleSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibRandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])
+        self.subset_strategy = self._register_single_category_hyperparameter("subset_strategy", accepted_values=["auto", "all", "onethird", "sqrt", "log2"])
+
+
+class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(MLLibGBTSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.step_size = self._register_numerical_hyperparameter("step_size")
+
+
+class PredictionAlgorithmMeta:
+    def __init__(self, algorithm_name, algorithm_settings_class=PredictionAlgorithmSettings):
+        self.algorithm_name = algorithm_name
+        self.algorithm_settings_class = algorithm_settings_class
+
+
 class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
-            "RANDOM_FOREST_CLASSIFICATION": "random_forest_classification",
-            "RANDOM_FOREST_REGRESSION" : "random_forest_regression",
-            "EXTRA_TREES": "extra_trees",
-            "GBT_CLASSIFICATION" : "gbt_classification",
-            "GBT_REGRESSION" : "gbt_regression",
-            "DECISION_TREE_CLASSIFICATION" : "decision_tree_classification",
-            "DECISION_TREE_REGRESSION" : "decision_tree_regression",
-            "RIDGE_REGRESSION": "ridge_regression",
-            "LASSO_REGRESSION" : "lasso_regression",
-            "LEASTSQUARE_REGRESSION": "leastsquare_regression",
-            "SGD_REGRESSION" : "sgd_regression",
-            "KNN": "knn",
-            "LOGISTIC_REGRESSION" : "logistic_regression",
-            "NEURAL_NETWORK" :"neural_network",
-            "SVC_CLASSIFICATION" : "svc_classifier",
-            "SVM_REGRESSION" : "svm_regression",
-            "SGD_CLASSIFICATION" : "sgd_classifier",
-            "LARS" : "lars_params",
-            "XGBOOST_CLASSIFICATION" : "xgboost",
-            "XGBOOST_REGRESSION" : "xgboost",
-            "SPARKLING_DEEP_LEARNING" : "deep_learning_sparkling",
-            "SPARKLING_GBM" : "gbm_sparkling",
-            "SPARKLING_RF" : "rf_sparkling",
-            "SPARKLING_GLM" : "glm_sparkling",
-            "SPARKLING_NB" : "nb_sparkling",
-            "MLLIB_LOGISTIC_REGRESSION" : "mllib_logit",
-            "MLLIB_NAIVE_BAYES" : "mllib_naive_bayes",
-            "MLLIB_LINEAR_REGRESSION" : "mllib_linreg",
-            "MLLIB_RANDOM_FOREST" : "mllib_rf",
-            "MLLIB_GBT": "mllib_gbt",
-            "MLLIB_DECISION_TREE" : "mllib_dt",
-            "VERTICA_LINEAR_REGRESSION" : "vertica_linear_regression",
-            "VERTICA_LOGISTIC_REGRESSION" : "vertica_logistic_regression",
-            "KERAS_CODE" : "keras"
+            "RANDOM_FOREST_CLASSIFICATION": PredictionAlgorithmMeta("random_forest_classification", RandomForestSettings),
+            "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
+            "EXTRA_TREES": PredictionAlgorithmMeta("extra_trees", RandomForestSettings),
+            "GBT_CLASSIFICATION": PredictionAlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
+            "GBT_REGRESSION": PredictionAlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
+            "DECISION_TREE_CLASSIFICATION": PredictionAlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
+            "DECISION_TREE_REGRESSION": PredictionAlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
+            "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+            "LASSO_REGRESSION": PredictionAlgorithmMeta("lasso_regression", LassoRegressionSettings),
+            "LEASTSQUARE_REGRESSION": PredictionAlgorithmMeta("leastsquare_regression", OLSSettings),
+            "SGD_REGRESSION": PredictionAlgorithmMeta("sgd_regression", SGDSettings),
+            "KNN": PredictionAlgorithmMeta("knn", KNNSettings),
+            "LOGISTIC_REGRESSION": PredictionAlgorithmMeta("logistic_regression", LogitSettings),
+            "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", MLPSettings),
+            "SVC_CLASSIFICATION": PredictionAlgorithmMeta("svc_classifier", SVMSettings),
+            "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
+            "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
+            "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
+            "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+            "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+            "SPARKLING_DEEP_LEARNING": PredictionAlgorithmMeta("deep_learning_sparkling"),
+            "SPARKLING_GBM": PredictionAlgorithmMeta("gbm_sparkling"),
+            "SPARKLING_RF": PredictionAlgorithmMeta("rf_sparkling"),
+            "SPARKLING_GLM": PredictionAlgorithmMeta("glm_sparkling"),
+            "SPARKLING_NB": PredictionAlgorithmMeta("nb_sparkling"),
+            "MLLIB_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("mllib_logit", MLLibLogitSettings),
+            "MLLIB_NAIVE_BAYES": PredictionAlgorithmMeta("mllib_naive_bayes", MLLibNaiveBayesSettings),
+            "MLLIB_LINEAR_REGRESSION": PredictionAlgorithmMeta("mllib_linreg", MLLibLinearRegressionSettings),
+            "MLLIB_RANDOM_FOREST": PredictionAlgorithmMeta("mllib_rf", MLLibRandomForestSettings),
+            "MLLIB_GBT": PredictionAlgorithmMeta("mllib_gbt", MLLibGBTSettings),
+            "MLLIB_DECISION_TREE": PredictionAlgorithmMeta("mllib_dt", MLLibDecisionTreeSettings),
+            "VERTICA_LINEAR_REGRESSION": PredictionAlgorithmMeta("vertica_linear_regression"),
+            "VERTICA_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("vertica_logistic_regression"),
+            "KERAS_CODE": PredictionAlgorithmMeta("keras")
         }
 
     class PredictionTypes:
@@ -413,6 +1394,67 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def get_prediction_type(self):
         return self.mltask_settings['predictionType']
+
+    def get_enabled_algorithm_names(self):
+        """
+        :returns: the list of enabled algorithm names as a list of strings
+        :rtype: list of string
+        """
+        algos = self.__class__.algorithm_remap
+        # Hide either "XGBOOST_CLASSIFICATION" or "XGBOOST_REGRESSION" which point to the same key "xgboost"
+        if self.mltask_settings["predictionType"] == "REGRESSION":
+            excluded_name = {"XGBOOST_CLASSIFICATION"}
+        else:
+            excluded_name = {"XGBOOST_REGRESSION"}
+        algo_names = [algo_name for algo_name in algos.keys() if (self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]
+                                                                  and algo_name not in excluded_name)]
+        return algo_names
+
+    def get_algorithm_settings(self, algorithm_name):
+        """
+        Gets the training settings for a particular algorithm. This returns a reference to the
+        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns the settings for this algorithm as an PredictionAlgorithmSettings (extended dict).
+        All algorithm dicts have at least an "enabled" property/key in the settings.
+        The "enabled" property/key indicates whether this algorithm will be trained.
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the
+        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
+        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
+
+        Please refer to the documentation for details on available algorithms.
+
+        :param algorithm_name: Name (in capitals) of the algorithm.
+        :type algorithm_name: str
+        :return: A PredictionAlgorithmSettings (extended dict) for one of the built-in prediction algorithms
+        :rtype: PredictionAlgorithmSettings
+        """
+        if algorithm_name in self.__class__.algorithm_remap:
+            algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
+            algorithm_name = algorithm_meta.algorithm_name
+            algorithm_settings_class = algorithm_meta.algorithm_settings_class
+
+            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
+            if not isinstance(algorithm_settings, PredictionAlgorithmSettings):
+                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
+                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
+                # Subsequent calls get the same object
+                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        else:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
+    def get_hyperparameter_search_settings(self):
+        """
+        Gets the hyperparameter search parameters of the current DSSPredictionMLTaskSettings instance as a
+        HyperparameterSearchSettings object. This object can be used to both get and set properties relevant to
+        hyperparameter search, such as search strategy, cross-validation method, execution limits and parallelism.
+
+        :return: A HyperparameterSearchSettings
+        :rtype: :class:`HyperparameterSearchSettings`
+        """
+        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
 
     @property
     def split_params(self):
@@ -470,7 +1512,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 
         If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
 
-        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name), 
+        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name),
                         CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
         :param str feature_name: Name of the feature to use as sample weight
         """
@@ -526,6 +1568,30 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
             "DBSCAN" : "db_scan_clustering",
         }
 
+    def get_algorithm_settings(self, algorithm_name):
+        """
+        Gets the training settings for a particular algorithm. This returns a reference to the
+        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns a dictionary of the settings for this algorithm.
+        All algorithm dicts have at least an "enabled" key in the dictionary.
+        The 'enabled' key indicates whether this algorithm will be trained
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the
+        algorithm. The precise keys for each algorithm are not all documented. You can print
+        the returned dictionary to learn more about the settings of each particular algorithm
+
+        Please refer to the documentation for details on available algorithms.
+
+        :param: algorithm_name: Name of the algorithm (uppercase).
+        :type: algorithm_name: str
+        :return: A dict of the settings for an algorithm
+        :rtype: dict
+        """
+        if algorithm_name in self.__class__.algorithm_remap:
+            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
+
+        return self.mltask_settings["modeling"][algorithm_name.lower()]
 
 
 class DSSTrainedModelDetails(object):
@@ -2251,6 +3317,7 @@ class DSSMLTask(object):
     def guess(self, prediction_type=None, reguess_level=None):
         """
         Guess the feature handling and the algorithms.
+
         :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
         :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
         """
