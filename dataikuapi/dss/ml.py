@@ -340,8 +340,8 @@ class DSSMLTaskSettings(object):
         :returns: the list of custom models names
         :rtype: list of string
         """
-        return [algo["name"] for algo in self.mltask_settings["modeling"]["custom_mllib"]]\
-               + [algo["name"] for algo in self.mltask_settings["modeling"]["custom_python"]]
+        return ([algo["name"] for algo in self.mltask_settings["modeling"]["custom_mllib"]]
+                + [algo["name"] for algo in self.mltask_settings["modeling"]["custom_python"]])
 
     def get_enabled_algorithm_names(self):
         """
