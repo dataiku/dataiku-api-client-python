@@ -335,7 +335,7 @@ class DSSMLTaskSettings(object):
 
     def _get_custom_algorithm_names(self):
         """
-        Returns the list of names of defined custom models (python & mllib)
+        Returns the list of names of defined custom models (Python & MLlib backends)
 
         :returns: the list of custom models names
         :rtype: list of string
@@ -388,7 +388,7 @@ class DSSMLTaskSettings(object):
 
     def add_custom_mllib_model(self, name="Custom  MLlib Model", code=""):
         """
-        Adds a new custom mllib model
+        Adds a new custom MLlib model
 
         :param str name: name of the custom model
         :param str code: code of the custom model
