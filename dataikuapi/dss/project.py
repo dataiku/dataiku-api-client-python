@@ -532,9 +532,9 @@ class DSSProject(object):
         return ret
 
     def create_clustering_ml_task(self, input_dataset,
-                                   ml_backend_type = "PY_MEMORY",
-                                   guess_policy = "KMEANS"):
-
+                                  ml_backend_type = "PY_MEMORY",
+                                  guess_policy = "KMEANS",
+                                  wait_guess_complete=True):
 
         """Creates a new clustering task in a new visual analysis lab
         for a dataset.
@@ -549,6 +549,10 @@ class DSSProject(object):
 
         :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
         :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
         """
 
         obj = {
@@ -559,7 +563,11 @@ class DSSProject(object):
         }
 
         ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
-        return DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+        mltask = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            mltask.wait_guess_complete()
+        return mltask
 
     def list_ml_tasks(self):
         """
