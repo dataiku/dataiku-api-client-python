@@ -1632,8 +1632,18 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
-            "DBSCAN" : "db_scan_clustering",
-        }
+        "DBSCAN": "db_scan_clustering",
+        "SPECTRAL": "spectral_clustering",
+        "WARD": "ward_clustering",
+        "KMEANS": "kmeans_clustering",
+        "MINIBATCH_KMEANS": "mini_batch_kmeans_clustering",
+        "GAUSSIAN_MIXTURE": "gmm_clustering",
+        "TWO_STEP": "two_step",
+        "ISOLATION_FOREST": "isolation_forest",
+        "MLLIB_KMEANS": "mllib_kmeans_clustering",
+        "MLLIB_GAUSSIAN_MIXTURE": "mllib_gaussian_mixture_clustering",
+        "H20_KMEANS": "h2o_kmeans"
+    }
 
     def get_algorithm_settings(self, algorithm_name):
         """
