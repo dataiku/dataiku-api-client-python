@@ -386,7 +386,7 @@ class DSSMLTaskSettings(object):
             "enabled": True
         })
 
-    def add_custom_mllib_model(self, name="Custom  MLlib Model", code=""):
+    def add_custom_mllib_model(self, name="Custom MLlib Model", code=""):
         """
         Adds a new custom MLlib model
 
@@ -1451,7 +1451,7 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         return super(DSSPredictionMLTaskSettings, self).get_all_possible_algorithm_names() + self._get_plugin_algorithm_names()
 
     def _get_plugin_algorithm_names(self):
-        return self.mltask_settings["modeling"]["plugin_python"].keys()
+        return list(self.mltask_settings["modeling"]["plugin_python"].keys())
 
     def _get_plugin_algorithm_settings(self, algorithm_name):
         if algorithm_name in self.mltask_settings["modeling"]["plugin_python"]:
