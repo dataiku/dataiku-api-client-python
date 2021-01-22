@@ -238,6 +238,16 @@ class DSSMLTaskSettings(object):
     def get_algorithm_settings(self, algorithm_name):
         raise NotImplementedError()
 
+    def _get_custom_algorithm_settings(self, algorithm_name):
+        # returns the first algorithm with this name
+        for algo in self.mltask_settings["modeling"]["custom_mllib"]:
+            if algorithm_name == algo["name"]:
+                return algo
+        for algo in self.mltask_settings["modeling"]["custom_python"]:
+            if algorithm_name == algo["name"]:
+                return algo
+        raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
     def get_diagnostics_settings(self):
         """
         Gets the diagnostics settings for a mltask. This returns a reference to the
@@ -307,7 +317,7 @@ class DSSMLTaskSettings(object):
             custom_mllib["enabled"] = False
         for custom_python in self.mltask_settings["modeling"]["custom_python"]:
             custom_python["enabled"] = False
-        for plugin in self.mltask_settings["modeling"]["plugin_python"].values():
+        for plugin in self.mltask_settings["modeling"].get("plugin_python", {}).values():
             plugin["enabled"] = False
 
     def get_all_possible_algorithm_names(self):
@@ -315,23 +325,30 @@ class DSSMLTaskSettings(object):
         Returns the list of possible algorithm names, i.e. the list of valid
         identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
 
-        This does not include Custom Python models, Custom MLLib models, plugin models.
         This includes all possible algorithms, regardless of the prediction kind (regression/classification)
         or engine, so some algorithms may be irrelevant
 
         :returns: the list of algorithm names as a list of strings
         :rtype: list of string
         """
-        return list(self.__class__.algorithm_remap.keys())
+        return list(self.__class__.algorithm_remap.keys()) + self._get_custom_algorithm_names()
+
+    def _get_custom_algorithm_names(self):
+        """
+        Returns the list of names of defined custom models (Python & MLlib backends)
+
+        :returns: the list of custom models names
+        :rtype: list of string
+        """
+        return ([algo["name"] for algo in self.mltask_settings["modeling"]["custom_mllib"]]
+                + [algo["name"] for algo in self.mltask_settings["modeling"]["custom_python"]])
 
     def get_enabled_algorithm_names(self):
         """
         :returns: the list of enabled algorithm names as a list of strings
         :rtype: list of string
         """
-        algos = self.__class__.algorithm_remap
-        algo_names = [algo_name for algo_name in algos.keys() if self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]]
-        return algo_names
+        return [algo_name for algo_name in self.get_all_possible_algorithm_names() if self.get_algorithm_settings(algo_name).get("enabled", False)]
 
     def get_enabled_algorithm_settings(self):
         """
@@ -355,6 +372,32 @@ class DSSMLTaskSettings(object):
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricCode"] = custom_metric
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
         self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
+
+    def add_custom_python_model(self, name="Custom Python Model", code=""):
+        """
+        Adds a new custom python model
+
+        :param str name: name of the custom model
+        :param str code: code of the custom model
+        """
+        self.mltask_settings["modeling"]["custom_python"].append({
+            "name": name,
+            "code": code,
+            "enabled": True
+        })
+
+    def add_custom_mllib_model(self, name="Custom MLlib Model", code=""):
+        """
+        Adds a new custom MLlib model
+
+        :param str name: name of the custom model
+        :param str code: code of the custom model
+        """
+        self.mltask_settings["modeling"]["custom_mllib"].append({
+            "name": name,
+            "initializationCode": code,
+            "enabled": True
+        })
 
     def save(self):
         """Saves back these settings to the ML Task"""
@@ -1310,7 +1353,6 @@ class _MLLibTreeEnsembleSettings(PredictionAlgorithmSettings):
 
         self.cache_node_ids = self._register_simple_parameter("cache_node_ids")
         self.checkpoint_interval = self._register_single_value_hyperparameter("checkpoint_interval", accepted_types=[int])
-        self.impurity = self._register_single_category_hyperparameter("impurity", accepted_values=["gini", "entropy", "variance"])  # TODO: distinguish between regression and classif
         self.max_bins = self._register_single_value_hyperparameter("max_bins", accepted_types=[int])
         self.max_memory_mb = self._register_simple_parameter("max_memory_mb")
         self.min_info_gain = self._register_single_value_hyperparameter("min_info_gain", accepted_types=[int, float])
@@ -1395,20 +1437,41 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     def get_prediction_type(self):
         return self.mltask_settings['predictionType']
 
+    def get_all_possible_algorithm_names(self):
+        """
+        Returns the list of possible algorithm names, i.e. the list of valid
+        identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
+
+        This includes all possible algorithms, regardless of the prediction kind (regression/classification)
+        or engine, so some algorithms may be irrelevant
+
+        :returns: the list of algorithm names as a list of strings
+        :rtype: list of string
+        """
+        return super(DSSPredictionMLTaskSettings, self).get_all_possible_algorithm_names() + self._get_plugin_algorithm_names()
+
+    def _get_plugin_algorithm_names(self):
+        return list(self.mltask_settings["modeling"]["plugin_python"].keys())
+
+    def _get_plugin_algorithm_settings(self, algorithm_name):
+        if algorithm_name in self.mltask_settings["modeling"]["plugin_python"]:
+                return self.mltask_settings["modeling"]["plugin_python"][algorithm_name]
+        raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
     def get_enabled_algorithm_names(self):
         """
         :returns: the list of enabled algorithm names as a list of strings
         :rtype: list of string
         """
-        algos = self.__class__.algorithm_remap
+        algo_names = super(DSSPredictionMLTaskSettings, self).get_enabled_algorithm_names()
+
         # Hide either "XGBOOST_CLASSIFICATION" or "XGBOOST_REGRESSION" which point to the same key "xgboost"
         if self.mltask_settings["predictionType"] == "REGRESSION":
-            excluded_name = {"XGBOOST_CLASSIFICATION"}
+            excluded_names = {"XGBOOST_CLASSIFICATION"}
         else:
-            excluded_name = {"XGBOOST_REGRESSION"}
-        algo_names = [algo_name for algo_name in algos.keys() if (self.mltask_settings["modeling"][algos[algo_name].algorithm_name.lower()]["enabled"]
-                                                                  and algo_name not in excluded_name)]
-        return algo_names
+            excluded_names = {"XGBOOST_REGRESSION"}
+
+        return [algo_name for algo_name in algo_names if algo_name not in excluded_names]
 
     def get_algorithm_settings(self, algorithm_name):
         """
@@ -1442,6 +1505,10 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
                 # Subsequent calls get the same object
                 self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
             return self.mltask_settings["modeling"][algorithm_name.lower()]
+        elif algorithm_name in self._get_custom_algorithm_names():
+            return self._get_custom_algorithm_settings(algorithm_name)
+        elif algorithm_name in self._get_plugin_algorithm_names():
+            return self._get_plugin_algorithm_settings(algorithm_name)
         else:
             raise ValueError("Unknown algorithm: {}".format(algorithm_name))
 
@@ -1590,8 +1657,11 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
         """
         if algorithm_name in self.__class__.algorithm_remap:
             algorithm_name = self.__class__.algorithm_remap[algorithm_name]
-
-        return self.mltask_settings["modeling"][algorithm_name.lower()]
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        elif algorithm_name in self._get_custom_algorithm_names():
+            return self._get_custom_algorithm_settings(algorithm_name)
+        else:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
 
 
 class DSSTrainedModelDetails(object):
