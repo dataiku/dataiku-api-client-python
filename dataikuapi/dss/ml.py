@@ -829,17 +829,28 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @property
     def range(self):
-        return Range(self)
+        return RangeSettings(self)
 
 
 class Range(object):
+
+    def __init__(self, min, max, nb_values=3):
+        self.min = min
+        self.max = max
+        self.nb_values = nb_values
+
+    def __repr__(self):
+        return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+
+
+class RangeSettings(object):
 
     def __init__(self, numerical_hyperparameter_settings):
         self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
         self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
 
     def __repr__(self):
-        return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+        return "RangeSettings(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
 
     @property
     def min(self):
@@ -1047,7 +1058,10 @@ class PredictionAlgorithmSettings(dict):
                 elif isinstance(target, CategoricalHyperparameterSettings):
                     target.set_values(value)
                 elif isinstance(target, NumericalHyperparameterSettings):
-                    raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+                    if isinstance(value, list):
+                        target.set_explicit_values(values=value)
+                    elif isinstance(value, Range):
+                        target.set_range(min=value.min, max=value.max, nb_values=value.nb_values)
                 else:
                     # simple parameter
                     assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
