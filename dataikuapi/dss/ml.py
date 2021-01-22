@@ -1429,8 +1429,9 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
         DSSMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
 
-        if self.get_prediction_type() not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
-            raise ValueError("Unknown prediction type: {}".format(self.prediction_type))
+        prediction_type = self.get_prediction_type()
+        if prediction_type not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
+            raise ValueError("Unknown prediction type: {}".format(prediction_type))
 
         self.classification_prediction_types = [self.PredictionTypes.BINARY, self.PredictionTypes.MULTICLASS]
 
