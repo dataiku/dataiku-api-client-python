@@ -811,6 +811,63 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             if nb_values is not None:
                 self._algo_settings[self.name]["range"]["nbValues"] = nb_values
 
+    class Range(object):
+
+        def __init__(self, numerical_hyperparameter_settings):
+            self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
+            self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
+
+        def __repr__(self):
+            return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+
+        @property
+        def min(self):
+            """
+            :return: the lower bound of the Range for this hyperparameter
+            :rtype: float | int
+            """
+            return self._range_dict["min"]
+
+        @min.setter
+        def min(self, value):
+            """
+            :param value: the lower bound of the Range this hyperparameter
+            :type value: float | int
+            """
+            self._numerical_hyperparameter_settings._set_range(min=value)
+
+        @property
+        def max(self):
+            """
+            :return: the upper bound of the Range this hyperparameter
+            :rtype: float | int
+            """
+            return self._range_dict["max"]
+
+        @max.setter
+        def max(self, value):
+            """
+            :param value: the upper bound of the Range for this hyperparameter
+            :type value: float | int
+            """
+            self._numerical_hyperparameter_settings._set_range(max=value)
+
+        @property
+        def nb_values(self):
+            """
+            :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+            :rtype: int
+            """
+            return self._range_dict["nbValues"]
+
+        @nb_values.setter
+        def nb_values(self, value):
+            """
+            :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+            :type value: int
+            """
+            self._numerical_hyperparameter_settings._set_range(nb_values=value)
+
     def set_range(self, min=None, max=None, nb_values=None):
         """
         Sets both:
@@ -829,7 +886,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @property
     def range(self):
-        return RangeSettings(self)
+        return NumericalHyperparameterSettings.Range(self)
 
 
 class Range(object):
@@ -841,64 +898,6 @@ class Range(object):
 
     def __repr__(self):
         return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
-
-
-class RangeSettings(object):
-
-    def __init__(self, numerical_hyperparameter_settings):
-        self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
-        self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
-
-    def __repr__(self):
-        return "RangeSettings(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
-
-    @property
-    def min(self):
-        """
-        :return: the lower bound of the Range for this hyperparameter
-        :rtype: float | int
-        """
-        return self._range_dict["min"]
-
-    @min.setter
-    def min(self, value):
-        """
-        :param value: the lower bound of the Range this hyperparameter
-        :type value: float | int
-        """
-        self._numerical_hyperparameter_settings._set_range(min=value)
-
-    @property
-    def max(self):
-        """
-        :return: the upper bound of the Range this hyperparameter
-        :rtype: float | int
-        """
-        return self._range_dict["max"]
-
-    @max.setter
-    def max(self, value):
-        """
-        :param value: the upper bound of the Range for this hyperparameter
-        :type value: float | int
-        """
-        self._numerical_hyperparameter_settings._set_range(max=value)
-
-    @property
-    def nb_values(self):
-        """
-        :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
-        :rtype: int
-        """
-        return self._range_dict["nbValues"]
-
-    @nb_values.setter
-    def nb_values(self, value):
-        """
-        :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
-        :type value: int
-        """
-        self._numerical_hyperparameter_settings._set_range(nb_values=value)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
