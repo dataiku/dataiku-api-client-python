@@ -997,7 +997,7 @@ class DSSClient(object):
         :return: None
         """
         self._perform_empty(
-            "POST", "/admin/licensing/license", params={"license": license})
+            "POST", "/admin/licensing/license", raw_body=license)
 
 
     ########################################################
