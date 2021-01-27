@@ -818,7 +818,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
 
         def __repr__(self):
-            return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+            return "NumericalHyperparameterSettings.Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
 
         @property
         def min(self):
