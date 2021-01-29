@@ -811,19 +811,19 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             if nb_values is not None:
                 self._algo_settings[self.name]["range"]["nbValues"] = nb_values
 
-    class Range(object):
+    class RangeSettings(object):
 
         def __init__(self, numerical_hyperparameter_settings):
             self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
             self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
 
         def __repr__(self):
-            return "NumericalHyperparameterSettings.Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+            return "RangeSettings(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
 
         @property
         def min(self):
             """
-            :return: the lower bound of the Range for this hyperparameter
+            :return: the lower bound of the range for this hyperparameter
             :rtype: float | int
             """
             return self._range_dict["min"]
@@ -831,7 +831,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         @min.setter
         def min(self, value):
             """
-            :param value: the lower bound of the Range this hyperparameter
+            :param value: the lower bound of the range for this hyperparameter
             :type value: float | int
             """
             self._numerical_hyperparameter_settings._set_range(min=value)
@@ -839,7 +839,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         @property
         def max(self):
             """
-            :return: the upper bound of the Range this hyperparameter
+            :return: the upper bound of the range for this hyperparameter
             :rtype: float | int
             """
             return self._range_dict["max"]
@@ -847,7 +847,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         @max.setter
         def max(self, value):
             """
-            :param value: the upper bound of the Range for this hyperparameter
+            :param value: the upper bound of the range for this hyperparameter
             :type value: float | int
             """
             self._numerical_hyperparameter_settings._set_range(max=value)
@@ -871,12 +871,12 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     def set_range(self, min=None, max=None, nb_values=None):
         """
         Sets both:
-        - the Range parameters to search over for the current numerical hyperparameter
+        - the range parameters to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "RANGE"
 
-        :param min: the lower bound of the Range for this hyperparameter
+        :param min: the lower bound of the range for this hyperparameter
         :type min: float | int
-        :param max: the upper bound of the Range for this hyperparameter
+        :param max: the upper bound of the range for this hyperparameter
         :type max: float | int
         :param nb_values: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
         :type nb_values: int
@@ -886,7 +886,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @property
     def range(self):
-        return NumericalHyperparameterSettings.Range(self)
+        return NumericalHyperparameterSettings.RangeSettings(self)
 
 
 class Range(object):
