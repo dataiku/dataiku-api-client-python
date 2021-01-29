@@ -891,7 +891,13 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
 class Range(object):
 
-    def __init__(self, min, max, nb_values=3):
+    def _check_input(self, value):
+        assert isinstance(value, (int, float)), "Invalid input type for Range: {}".format(type(value))
+
+    def __init__(self, min, max, nb_values=None):
+        self._check_input(min)
+        self._check_input(max)
+        assert min <= max, "Invalid Range: min must be lower than max"
         self.min = min
         self.max = max
         self.nb_values = nb_values
