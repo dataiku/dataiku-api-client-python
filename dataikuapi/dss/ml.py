@@ -433,7 +433,7 @@ class HyperparameterSearchSettings(object):
             res += self._key_repr("splitRatio")
         elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
             res += self._key_repr("nFolds")
-
+        res += self._key_repr("cvSeed")
         res += self._key_repr("stratified")
 
         res += "Execution Settings:\n"
@@ -470,6 +470,14 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("seed must be an integer")
             else:
                 self._raw_settings["seed"] = seed
+
+    def _set_cv_seed(self, seed):
+        if seed is not None:
+            if not isinstance(seed, int):
+                warnings.warn("HyperparameterSearchSettings ignoring invalid input: seed")
+                warnings.warn("seed must be an integer")
+            else:
+                self._raw_settings["cvSeed"] = seed
 
     @property
     def strategy(self):
@@ -544,7 +552,24 @@ class HyperparameterSearchSettings(object):
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
 
-    def set_kfold_validation(self, n_folds=5, stratified=True):
+    @property
+    def cv_seed(self):
+        """
+        :return: cross-validation seed for splitting the data during hyperparameter search
+        :rtype: int
+        """
+        return self._raw_settings["cvSeed"]
+
+    @cv_seed.setter
+    def cv_seed(self, seed):
+        """
+        :param seed: cross-validation seed for splitting the data during hyperparameter search
+        :type seed: int
+        """
+        assert isinstance(seed, int)
+        self._raw_settings["cvSeed"] = seed
+
+    def set_kfold_validation(self, n_folds=5, stratified=True, cv_seed=0):
         """
         Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
         is enabled).
@@ -570,8 +595,10 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        if cv_seed is not None:
+            self._set_cv_seed(cv_seed)
 
-    def set_single_split_validation(self, split_ratio=0.8, stratified=True):
+    def set_single_split_validation(self, split_ratio=0.8, stratified=True, cv_seed=0):
         """
         Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
         is enabled).
@@ -597,6 +624,8 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        if cv_seed is not None:
+            self._set_cv_seed(cv_seed)
 
     def set_custom_validation(self, code=None):
         """
