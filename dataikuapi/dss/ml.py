@@ -1067,6 +1067,9 @@ class PredictionAlgorithmSettings(dict):
                         target.set_explicit_values(values=value)
                     elif isinstance(value, Range):
                         target.set_range(min=value.min, max=value.max, nb_values=value.nb_values)
+                    else:
+                        raise TypeError(("Invalid type for NumericalHyperparameterSettings {}\n" +
+                                        "Expecting either a list or a Range").format(attr_name))
                 else:
                     # simple parameter
                     assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
