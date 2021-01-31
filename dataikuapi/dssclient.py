@@ -990,6 +990,17 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/licensing/status")
 
+    def set_license(self, license):
+        """
+        Sets a new licence for DSS
+
+        :param license: license (content of license file)
+        :return: None
+        """
+        self._perform_empty(
+            "POST", "/admin/licensing/license", raw_body=license)
+
+
     ########################################################
     # Internal Request handling
     ########################################################
