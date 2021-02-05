@@ -41,6 +41,7 @@ class DSSNotebook(object):
         for notebook in notebook_list:
             if notebook.get("name") == self.notebook_name:
                     self.state = notebook
+                    return self.state
         return self.state
 
     def get_sessions(self):

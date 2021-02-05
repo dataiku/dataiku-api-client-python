@@ -844,7 +844,7 @@ class DSSProject(object):
         notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key,
                                          params={"active": active})
         if as_objects:
-            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], content=notebook) for notebook in notebooks]
+            return [DSSNotebook(self.client, notebook_state['projectKey'], notebook_state['name'], state=notebook_state) for notebook_state in notebooks]
         else:
             return notebooks
 
