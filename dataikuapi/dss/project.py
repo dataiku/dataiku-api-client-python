@@ -844,7 +844,7 @@ class DSSProject(object):
         notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key,
                                          params={"active": active})
         if as_objects:
-            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in notebooks]
+            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], content=notebook) for notebook in notebooks]
         else:
             return notebooks
 
@@ -858,7 +858,7 @@ class DSSProject(object):
         """
         notebook_content = self.client._perform_json("GET",
                                              "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name))
-        return DSSNotebook(self.client, self.project_key, notebook_name, None, notebook_content)
+        return DSSNotebook(self.client, self.project_key, notebook_name, content=notebook_content)
 
     def create_jupyter_notebook(self, notebook_name, notebook_content):
         """
