@@ -16,44 +16,46 @@ class DSSNotebook(object):
         """
         Stop this Jupyter notebook and release its resources
         """
-        state = self.get_state()
-        if state is None:
+        sessions = self.get_sessions()
+        if sessions is None:
             raise Exception("Notebook isn't running")
-        if state.get('activeSessions', None) is None:
-            raise Exception("Notebook isn't running")
-        if len(state['activeSessions']) == 0:
+        if len(sessions) == 0:
             raise Exception("Notebook isn't running")
         if session_id is None:
-            if len(state['activeSessions']) > 1:
+            if len(sessions) > 1:
                 raise Exception("Several sessions of the notebook are running, choose one")
             else:
-                session_id = state['activeSessions'][0].get('sessionId', None)
+                session_id = sessions[0].get('sessionId', None)
         return self.client._perform_json("DELETE",
                                          "/projects/%s/jupyter-notebooks/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
 
-    def get_state(self):
+    def get_state(self, refresh=False):
         """
         Get the status of this Jupyter notebook
+
+        :param bool refresh: if True, get the status of the notebook from the backend
         """
         notebook_states = self.client._perform_json("GET",
-                                                 "/projects/%s/jupyter-notebooks/" % self.project_key,
-                                                 params={"active": False})
-        for notebook in notebook_states:
-            if notebook.get("name") == self.notebook_name:
-                    self.state = notebook
+                                                    "/projects/%s/jupyter-notebooks/" % self.project_key,
+                                                    params={"active": False})
+        if self.state is None or refresh:
+            for state in notebook_states:
+                if state.get("name") == self.notebook_name:
+                    self.state = state
                     return self.state
         return self.state
 
     def get_sessions(self):
         """
-        Get the list of the running sessions of this Jupyter notebook
+        Get the list of running sessions of this Jupyter notebook
         """
-        state = self.get_state()
-        if state is None:
-            raise Exception("Notebook isn't running")
-        if state.get('activeSessions', None) is None:
-            raise Exception("Notebook isn't running")
-        return state['activeSessions']
+
+        if self.state is None:
+            self.state = {}
+        sessions = self.client._perform_json("GET",
+                                             "/projects/%s/jupyter-notebooks/%s/sessions" % (self.project_key, self.notebook_name))
+        self.state["activeSessions"] = sessions
+        return sessions
 
     def get_content(self):
         """
