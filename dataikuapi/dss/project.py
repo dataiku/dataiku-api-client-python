@@ -871,10 +871,10 @@ class DSSProject(object):
         :returns: A handle to interact with the newly created jupyter notebook
         :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
-        self.client._perform_json("POST",
+        created_notebook_content = self.client._perform_json("POST",
                                   "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
                                   body=notebook_content)
-        return DSSNotebook(self.client, self.project_key, notebook_name, content=notebook_content)
+        return DSSNotebook(self.client, self.project_key, notebook_name, content=created_notebook_content)
 
     ########################################################
     # Continuous activities
