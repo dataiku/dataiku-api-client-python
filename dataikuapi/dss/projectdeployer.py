@@ -471,7 +471,8 @@ class DSSProjectDeployerProjectSettings(object):
 
 
 class DSSProjectDeployerProjectStatus(object):
-    """The status of a published project.
+    """
+    The status of a published project.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerProject.get_status`
     """
@@ -479,6 +480,20 @@ class DSSProjectDeployerProjectStatus(object):
         self.client = client
         self.project_key = project_key
         self.light_status = light_status
+
+    def list_deployments(self, infra_id=None):
+        """
+        Returns the deployments that have been created from this published project
+
+        :param str infra_id: Identifier of an infra, allows to only keep in the returned list the deployments on this infra.
+        If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
+
+        :returns: a list of deployments
+        :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
+        """
+        if infra_id is None:
+            return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
+        return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"] if infra_id == deployment.infraId]
 
     def get_bundles(self):
         """
