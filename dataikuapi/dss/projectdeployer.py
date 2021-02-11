@@ -152,6 +152,23 @@ class DSSProjectDeployer(object):
         """
         return DSSProjectDeployerProject(self.client, project_key)
 
+    def upload_bundle(self, fp, project_key=None):
+        """
+        Uploads a new version for a project from a file-like object pointing
+        to a bundle Zip file.
+        :param string fp: A file-like object pointing to a bundle Zip file
+        :param string project_key: The key of the published project where the bundle will be uploaded. If the project does not exist, it is created.
+        If not set, the key of the bundle's source project is used.
+
+        """
+        if project_key is None:
+            params = None
+        else:
+            params = {
+                "projectKey": project_key,
+            }
+        return self.client._perform_empty("POST",
+                "/project-deployer/projects/bundles", params=params, files={"file":fp})
 
 ###############################################
 # Infrastructures
@@ -374,24 +391,6 @@ class DSSProjectDeployerProject(object):
         """
         light = self.client._perform_json("GET", "/project-deployer/projects/%s" % (self.project_key))
         return DSSProjectDeployerProjectStatus(self.client, self.project_key, light)
-
-    def import_bundle(self, fp, design_node_url=None, design_node_id=None):
-        """
-        Imports a new version for a project from a file-like object pointing
-        to a bundle Zip file.
-        :param string fp: A file-like object pointing to a bundle Zip file
-        :param string design_node_url: The URL of the Design node where the bundle was created
-        :param design_node_id: The identifier of the Design node where the bundle was created
-        """
-        if design_node_url is None and design_node_id is None:
-            params = None
-        else:
-            params = {
-                "designNodeId": design_node_id,
-                "designNodeUrl": design_node_url
-            }
-        return self.client._perform_empty("POST",
-                "/project-deployer/projects/%s/bundles" % (self.project_key), params=params, files={"file":fp})
 
     def get_settings(self):
         """
