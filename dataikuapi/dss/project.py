@@ -936,7 +936,7 @@ class DSSProject(object):
         return DSSAPIService(self.client, self.project_key, service_id)
 
     ########################################################
-    # Bundles / Export (Design node)
+    # Bundles / Export and Publish (Design node)
     ########################################################
 
     def list_exported_bundles(self):
@@ -971,6 +971,18 @@ class DSSProject(object):
                     f.flush()
         stream.close()
 
+    def publish_bundle(self, bundle_id, published_project_key=None):
+        """
+        Publish a bundle on the Project Deployer.
+        :param string bundle_id: The identifier of the bundle
+        :param string published_project_key: The key of the project on the Project Deployer where the bundle will be published.
+            A new published project will be created if none matches the key.
+            If the parameter is not set, the key from the current :class:`DSSProject` is used.
+        """
+        params = None
+        if published_project_key is not None:
+            params = {"publishedProjectKey": published_project_key}
+        return self.client._perform_json("GET", "/projects/%s/bundles/%s/publish" % (self.project_key, bundle_id), params=params)
 
     ########################################################
     # Bundles / Import (Automation node)
