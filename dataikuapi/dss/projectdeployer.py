@@ -319,8 +319,28 @@ class DSSProjectDeployerDeploymentSettings(object):
         """
         return self.settings
 
+    def get_bundle_id(self):
+        """
+        Gets the bundle id currently used by this deployment.
+
+        :rtype: str
+        """
+        return self.settings["bundleId"]
+
+    def set_bundle_id(self, new_bundle_id):
+        """
+        Sets a new bundle id for this deployment. You need to call :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment.get_settings`
+        afterwards for the change to be effective.
+
+        :param str new_bundle_id: Identifier of the bundle to be set
+        """
+        self.settings["bundleId"] = new_bundle_id
+
+
     def save(self):
-        """Saves back these settings to the deployment"""
+        """
+        Saves back these settings to the deployment
+        """
         self.client._perform_empty(
                 "PUT", "/project-deployer/deployments/%s/settings" % (self.deployment_id),
                 body = self.settings)
