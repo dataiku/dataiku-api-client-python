@@ -152,7 +152,7 @@ class DSSAPIDeployer(object):
 
 class DSSAPIDeployerInfra(object):
     """
-    A Deployment infrastructure on the API Deployer
+    An API Deployer infrastructure.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployer.get_infra`
     """
@@ -162,6 +162,16 @@ class DSSAPIDeployerInfra(object):
 
     def id(self):
         return self.infra_id
+
+    def get_status(self):
+        """
+        Returns status information about this infrastructure
+
+        :rtype: a :class:`dataikuapi.dss.apideployer.DSSAPIDeployerInfraStatus`
+        """
+        light = self.client._perform_json("GET", "/api-deployer/infras/%s" % (self.infra_id))
+
+        return DSSAPIDeployerInfraStatus(self.client, self.infra_id, light)
 
     def get_settings(self):
         """
@@ -186,7 +196,8 @@ class DSSAPIDeployerInfra(object):
 
 
 class DSSAPIDeployerInfraSettings(object):
-    """The settings of an API Deployer Infra. 
+    """
+    The settings of an API Deployer infrastructure
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerInfra.get_settings`
     """
@@ -236,6 +247,34 @@ class DSSAPIDeployerInfraSettings(object):
         self.client._perform_empty(
                 "PUT", "/api-deployer/infras/%s/settings" % (self.infra_id),
                 body = self.settings)
+
+
+class DSSAPIDeployerInfraStatus(object):
+    """
+    The status of an API Deployer infrastructure.
+
+    Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerInfra.get_status`
+    """
+    def __init__(self, client, infra_id, light_status):
+        self.client = client
+        self.infra_id = infra_id
+        self.light_status = light_status
+
+    def list_deployments(self):
+        """
+        Returns the deployments that are deployed on this infrastructure
+
+        :returns: a list of deployments
+        :rtype: list of :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeployment`
+        """
+        return [DSSAPIDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
+
+    def get_raw(self):
+        """
+        Gets the raw status information. This returns a dictionary with various information about the infrastructure
+        :rtype: dict
+        """
+        return self.light_status
 
 
 ###############################################

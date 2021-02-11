@@ -177,7 +177,7 @@ class DSSProjectDeployer(object):
 
 class DSSProjectDeployerInfra(object):
     """
-    A Deployment infrastructure on the Project Deployer
+    An Automation infrastructure on the Project Deployer
 
     Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployer.get_infra`
     """
@@ -187,6 +187,16 @@ class DSSProjectDeployerInfra(object):
 
     def id(self):
         return self.infra_id
+
+    def get_status(self):
+        """
+        Returns status information about this infrastructure
+
+        :rtype: a :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraStatus`
+        """
+        light = self.client._perform_json("GET", "/project-deployer/infras/%s" % (self.infra_id))
+
+        return DSSProjectDeployerInfraStatus(self.client, self.infra_id, light)
 
     def get_settings(self):
         """
@@ -211,7 +221,8 @@ class DSSProjectDeployerInfra(object):
 
 
 class DSSProjectDeployerInfraSettings(object):
-    """The settings of a Project Deployer Infra.
+    """
+    The settings of an Automation infrastructure.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerInfra.get_settings`
     """
@@ -235,6 +246,33 @@ class DSSProjectDeployerInfraSettings(object):
                 "PUT", "/project-deployer/infras/%s/settings" % (self.infra_id),
                 body = self.settings)
 
+
+class DSSProjectDeployerInfraStatus(object):
+    """
+    The status of an Automation infrastructure.
+
+    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerInfra.get_status`
+    """
+    def __init__(self, client, infra_id, light_status):
+        self.client = client
+        self.infra_id = infra_id
+        self.light_status = light_status
+
+    def list_deployments(self):
+        """
+        Returns the deployments that are deployed on this infrastructure
+
+        :returns: a list of deployments
+        :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
+        """
+        return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
+
+    def get_raw(self):
+        """
+        Gets the raw status information. This returns a dictionary with various information about the infrastructure
+        :rtype: dict
+        """
+        return self.light_status
 
 ###############################################
 # Deployments
@@ -443,6 +481,7 @@ class DSSProjectDeployerProject(object):
         """
         return self.client._perform_empty(
             "DELETE", "/project-deployer/projects/%s" % (self.project_key))
+
 
 class DSSProjectDeployerProjectSettings(object):
     """The settings of a published project.
