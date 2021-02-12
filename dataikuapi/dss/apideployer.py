@@ -267,7 +267,7 @@ class DSSAPIDeployerInfraStatus(object):
         :returns: a list of deployments
         :rtype: list of :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeployment`
         """
-        return [DSSAPIDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
+        return [DSSAPIDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
 
     def get_raw(self):
         """

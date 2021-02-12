@@ -265,7 +265,7 @@ class DSSProjectDeployerInfraStatus(object):
         :returns: a list of deployments
         :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
         """
-        return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
+        return [DSSProjectDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
 
     def get_raw(self):
         """
@@ -531,8 +531,8 @@ class DSSProjectDeployerProjectStatus(object):
         :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
         """
         if infra_id is None:
-            return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"]]
-        return [DSSProjectDeployerDeployment(self.client, deployment.id) for deployment in self.light_status["deployments"] if infra_id == deployment.infraId]
+            return [DSSProjectDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
+        return [DSSProjectDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"] if infra_id == deployment.infraId]
 
     def get_bundles(self):
         """
