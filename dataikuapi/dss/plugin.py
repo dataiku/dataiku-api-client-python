@@ -65,12 +65,12 @@ class DSSPlugin(object):
 
     def update_code_env(self):
         """
-        Starts an update of the code env of the plugin
+        Updates the code env of the plugin
 
-        :return: a :class:`dataikuapi.dss.future.DSSFuture` 
+        :returns: A report containing any error or warning messages that occurred during the update
+        :rtype: dict
         """
-        ret = self.client._perform_json("POST", "/plugins/%s/code-env/actions/update" % (self.plugin_id))
-        return self.client.get_future(ret["jobId"])
+        return self.client._perform_json("POST", "/plugins/%s/code-env/actions/update" % (self.plugin_id))
 
 
     ########################################################
