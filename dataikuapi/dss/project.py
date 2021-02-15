@@ -826,6 +826,57 @@ class DSSProject(object):
         return JobDefinitionBuilder(self, job_type)
 
     ########################################################
+    # Jupyter Notebooks
+    ########################################################
+    
+    def list_jupyter_notebooks(self, as_objects=True, active=False):
+        """
+        List the jupyter notebooks of a project.
+
+        :param bool as_objects: if True, return the jupyter notebooks as a :class:`dataikuapi.dss.notebook.DSSNotebook`
+                        notebook handles instead of raw JSON
+        :param bool active: if True, only return currently running jupyter notebooks.
+
+
+        :returns: The list of the notebooks - see as_objects for more information
+        :rtype: list
+        """
+        notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key,
+                                         params={"active": active})
+        if as_objects:
+            return [DSSNotebook(self.client, notebook_state['projectKey'], notebook_state['name'], state=notebook_state) for notebook_state in notebooks]
+        else:
+            return notebooks
+
+    def get_jupyter_notebook(self, notebook_name):
+        """
+        Get a handle to interact with a specific jupyter notebook
+
+        :param str notebook_name: The name of the jupyter notebook to retrieve
+        :returns: A handle to interact with this jupyter notebook
+        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
+        """
+        notebook_content = self.client._perform_json("GET",
+                                             "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name))
+        return DSSNotebook(self.client, self.project_key, notebook_name, content=notebook_content)
+
+    def create_jupyter_notebook(self, notebook_name, notebook_content):
+        """
+        Create a new jupyter notebook and get a handle to interact with it
+
+        :param str notebook_name: the name of the notebook to create
+        :param dict notebook_content: the data of the notebook to create, as a dict.
+            The data will be converted to a JSON string internally.
+            Use ``get_content()`` on a similar existing ``DSSNotebook`` object in order to get a sample definition object
+        :returns: A handle to interact with the newly created jupyter notebook
+        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
+        """
+        created_notebook_content = self.client._perform_json("POST",
+                                  "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
+                                  body=notebook_content)
+        return DSSNotebook(self.client, self.project_key, notebook_name, content=created_notebook_content)
+
+    ########################################################
     # Continuous activities
     ########################################################
 

@@ -4,49 +4,82 @@ class DSSNotebook(object):
     """
     A Python/R/Scala notebook on the DSS instance
     """
-    def __init__(self, client, project_key, notebook_name, state=None):
+    def __init__(self, client, project_key, notebook_name, state=None, content=None):
        self.client = client
        self.project_key = project_key
        self.notebook_name = notebook_name
        self.state = state
+       self.content = content
        self.state_is_peek = True
 
     def unload(self, session_id=None):
         """
-        Stop the notebook and release its resources
+        Stop this Jupyter notebook and release its resources
         """
-        state = self.get_state()
-        if state is None:
+        sessions = self.get_sessions()
+        if sessions is None:
             raise Exception("Notebook isn't running")
-        if state.get('activeSessions', None) is None:
-            raise Exception("Notebook isn't running")
-        if len(state['activeSessions']) == 0:
+        if len(sessions) == 0:
             raise Exception("Notebook isn't running")
         if session_id is None:
-            if len(state['activeSessions']) > 1:
+            if len(sessions) > 1:
                 raise Exception("Several sessions of the notebook are running, choose one")
             else:
-                session_id = state['activeSessions'][0].get('sessionId', None)
-        return self.client._perform_json("DELETE", "/projects/%s/notebooks/" % self.project_key, params={'notebookName' : self.notebook_name, 'sessionId' : session_id})
+                session_id = sessions[0].get('sessionId', None)
+        return self.client._perform_json("DELETE",
+                                         "/projects/%s/jupyter-notebooks/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
 
-    def get_state(self):
+    def get_state(self, refresh=False):
         """
-        Get the status of the notebook
+        Get the status of this Jupyter notebook
+
+        :param bool refresh: if True, get the status of the notebook from the backend
         """
-        if self.state is None:
-            self.state = self.client._perform_json("GET", "/projects/%s/notebooks/" % self.project_key, params={'notebookName' : self.notebook_name})
+        notebook_states = self.client._perform_json("GET",
+                                                    "/projects/%s/jupyter-notebooks/" % self.project_key,
+                                                    params={"active": False})
+        if self.state is None or refresh:
+            for notebook_state in notebook_states:
+                if notebook_state.get("name") == self.notebook_name:
+                    self.state = notebook_state
+                    break
         return self.state
 
     def get_sessions(self):
         """
-        Get the list of the running sessions of this notebook
+        Get the list of running sessions of this Jupyter notebook
         """
-        state = self.get_state()
-        if state is None:
-            raise Exception("Notebook isn't running")
-        if state.get('activeSessions', None) is None:
-            raise Exception("Notebook isn't running")
-        return state['activeSessions']
+
+        if self.state is None:
+            self.state = {}
+        sessions = self.client._perform_json("GET",
+                                             "/projects/%s/jupyter-notebooks/%s/sessions" % (self.project_key, self.notebook_name))
+        self.state["activeSessions"] = sessions
+        return sessions
+
+    def get_content(self):
+        """
+        Get the content of this Jupyter notebook (metadata, cells, nbformat)
+        """
+        if self.content is None:
+            self.content = self.client._perform_json("GET",
+                                                     "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
+        return self.content
+
+    def save(self):
+        """
+        Save the content of this Jupyter notebook
+        """
+        return self.client._perform_json("PUT",
+                                         "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name),
+                                         body=self.content)
+
+    def delete(self):
+        """
+        Delete this Jupyter notebook and stop all of its active sessions.
+        """
+        return self.client._perform_json("DELETE",
+                                         "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
 
     ########################################################
     # Discussions
