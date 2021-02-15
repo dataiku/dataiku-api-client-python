@@ -867,7 +867,7 @@ class DSSProject(object):
         :param str notebook_name: the name of the notebook to create
         :param dict notebook_content: the data of the notebook to create, as a dict.
             The data will be converted to a JSON string internally.
-            Use ``get_state()`` on a similar existing ``DSSNotebook`` object in order to get a sample definition object
+            Use ``get_content()`` on a similar existing ``DSSNotebook`` object in order to get a sample definition object
         :returns: A handle to interact with the newly created jupyter notebook
         :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
