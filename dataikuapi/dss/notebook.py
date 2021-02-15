@@ -39,10 +39,10 @@ class DSSNotebook(object):
                                                     "/projects/%s/jupyter-notebooks/" % self.project_key,
                                                     params={"active": False})
         if self.state is None or refresh:
-            for state in notebook_states:
-                if state.get("name") == self.notebook_name:
-                    self.state = state
-                    return self.state
+            for notebook_state in notebook_states:
+                if notebook_state.get("name") == self.notebook_name:
+                    self.state = notebook_state
+                    break
         return self.state
 
     def get_sessions(self):
