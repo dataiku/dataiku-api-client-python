@@ -980,6 +980,10 @@ class DSSProject(object):
         :param string published_project_key: The key of the project on the Project Deployer where the bundle will be published.
             A new published project will be created if none matches the key.
             If the parameter is not set, the key from the current :class:`DSSProject` is used.
+
+        :rtype: dict
+        :return: a dict with info on the bundle state once published. It contains the keys "publishedOn" for the date on which the publication was done,
+        "publishedBy" for the user whom performed it, "publishedProjectKey" for the key of the Project Deployer project used.
         """
         params = None
         if published_project_key is not None:
