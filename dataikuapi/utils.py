@@ -94,3 +94,10 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+
+class CallableStr(str):
+    def __init__(self, val):
+        self.val = val
+
+    def __call__(self):
+        return self.val

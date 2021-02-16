@@ -1,6 +1,6 @@
 import json
 from .future import DSSFuture
-
+from ..utils import CallableStr
 
 class DSSAPIDeployer(object):
     """
@@ -160,8 +160,9 @@ class DSSAPIDeployerInfra(object):
         self.client = client
         self.infra_id = infra_id
 
+    @property
     def id(self):
-        return self.infra_id
+        return CallableStr(self.infra_id)
 
     def get_status(self):
         """
@@ -292,8 +293,9 @@ class DSSAPIDeployerDeployment(object):
         self.client = client
         self.deployment_id = deployment_id
 
+    @property
     def id(self):
-        return self.deployment_id
+        return CallableStr(self.deployment_id)
 
     def get_status(self):
         """
@@ -462,8 +464,9 @@ class DSSAPIDeployerService(object):
         self.client = client
         self.service_id = service_id
 
+    @property
     def id(self):
-        return self.service_id
+        return CallableStr(self.service_id)
 
     def get_status(self):
         """
