@@ -262,7 +262,7 @@ class DSSProjectDeployerInfraStatus(object):
         self.infra_id = infra_id
         self.light_status = light_status
 
-    def list_deployments(self):
+    def get_deployments(self):
         """
         Returns the deployments that are deployed on this infrastructure
 
@@ -526,7 +526,7 @@ class DSSProjectDeployerProjectStatus(object):
         self.project_key = project_key
         self.light_status = light_status
 
-    def list_deployments(self, infra_id=None):
+    def get_deployments(self, infra_id=None):
         """
         Returns the deployments that have been created from this published project
 

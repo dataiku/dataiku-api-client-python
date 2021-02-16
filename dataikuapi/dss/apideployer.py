@@ -260,7 +260,7 @@ class DSSAPIDeployerInfraStatus(object):
         self.infra_id = infra_id
         self.light_status = light_status
 
-    def list_deployments(self):
+    def get_deployments(self):
         """
         Returns the deployments that are deployed on this infrastructure
 
@@ -558,6 +558,20 @@ class DSSAPIDeployerServiceStatus(object):
         self.client = client
         self.service_id = service_id
         self.light_status = light_status
+
+    def get_deployments(self, infra_id=None):
+        """
+        Returns the deployments that have been created from this published project
+
+        :param str infra_id: Identifier of an infra, allows to only keep in the returned list the deployments on this infra.
+        If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
+
+        :returns: a list of deployments
+        :rtype: list of :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeployment`
+        """
+        if infra_id is None:
+            return [DSSAPIDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
+        return [DSSAPIDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"] if infra_id == deployment["infraId"]]
 
     def get_versions(self):
         """
