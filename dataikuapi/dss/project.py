@@ -982,8 +982,8 @@ class DSSProject(object):
             If the parameter is not set, the key from the current :class:`DSSProject` is used.
 
         :rtype: dict
-        :return: a dict with info on the bundle state once published. It contains the keys "publishedOn" for the date on which the publication was done,
-        "publishedBy" for the user whom performed it, "publishedProjectKey" for the key of the Project Deployer project used.
+        :return: a dict with info on the bundle state once published. It contains the keys "publishedOn" for the publish date,
+        "publishedBy" for the user who published the bundle, and "publishedProjectKey" for the key of the Project Deployer project used.
         """
         params = None
         if published_project_key is not None:
