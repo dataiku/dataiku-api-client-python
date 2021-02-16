@@ -958,7 +958,8 @@ class DSSProject(object):
     def download_exported_bundle_archive_to_file(self, bundle_id, path):
         """
         Download a bundle archive that can be deployed in a DSS automation Node into the given output file.
-        @param path if "-", will write to /dev/stdout
+        
+        :param path if "-", will write to /dev/stdout
         """
         if path == "-":
             path= "/dev/stdout"
@@ -974,6 +975,7 @@ class DSSProject(object):
     def publish_bundle(self, bundle_id, published_project_key=None):
         """
         Publish a bundle on the Project Deployer.
+
         :param string bundle_id: The identifier of the bundle
         :param string published_project_key: The key of the project on the Project Deployer where the bundle will be published.
             A new published project will be created if none matches the key.

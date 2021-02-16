@@ -60,7 +60,7 @@ class DSSAPIDeployer(object):
         """
         Lists infrastructure stages of the API Deployer
 
-        :rtype: a list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
+        :rtype: list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
         :rtype: list
         """
         return self.client._perform_json("GET", "/api-deployer/stages")
@@ -167,7 +167,7 @@ class DSSAPIDeployerInfra(object):
         """
         Returns status information about this infrastructure
 
-        :rtype: a :class:`dataikuapi.dss.apideployer.DSSAPIDeployerInfraStatus`
+        :rtype: :class:`dataikuapi.dss.apideployer.DSSAPIDeployerInfraStatus`
         """
         light = self.client._perform_json("GET", "/api-deployer/infras/%s" % (self.infra_id))
 
@@ -272,6 +272,7 @@ class DSSAPIDeployerInfraStatus(object):
     def get_raw(self):
         """
         Gets the raw status information. This returns a dictionary with various information about the infrastructure
+
         :rtype: dict
         """
         return self.light_status
@@ -295,7 +296,8 @@ class DSSAPIDeployerDeployment(object):
         return self.deployment_id
 
     def get_status(self):
-        """Returns status information about this deployment
+        """
+        Returns status information about this deployment
 
         :rtype: dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentStatus
         """
@@ -341,7 +343,8 @@ class DSSAPIDeployerDeployment(object):
 
 
 class DSSAPIDeployerDeploymentSettings(object):
-    """The settings of an API Deployer deployment. 
+    """
+    The settings of an API Deployer deployment. 
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_settings`
     """
@@ -360,7 +363,9 @@ class DSSAPIDeployerDeploymentSettings(object):
         return self.settings
 
     def set_enabled(self, enabled):
-        """Enables or disables this deployment"""
+        """
+        Enables or disables this deployment
+        """
         self.settings["enabled"] = enabled
 
     def set_single_version(self, version):
@@ -375,14 +380,17 @@ class DSSAPIDeployerDeploymentSettings(object):
         }
         
     def save(self):
-        """Saves back these settings to the deployment"""
+        """
+        Saves back these settings to the deployment
+        """
         self.client._perform_empty(
                 "PUT", "/api-deployer/deployments/%s/settings" % (self.deployment_id),
                 body = self.settings)
 
 
 class DSSAPIDeployerDeploymentStatus(object):
-    """The status of an API Deployer deployment. 
+    """
+    The status of an API Deployer deployment. 
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_status`
     """
@@ -404,12 +412,15 @@ class DSSAPIDeployerDeploymentStatus(object):
     def get_heavy(self):
         """
         Gets the 'heavy' (full) status. This returns a dictionary with various information about the deployment
+
         :rtype: dict
         """
         return self.heavy_status
 
     def get_service_urls(self):
-        """Returns service-level URLs for this deployment (ie without the enpdoint-specific suffix)"""
+        """
+        Returns service-level URLs for this deployment (ie without the enpdoint-specific suffix)
+        """
 
         if "deployedServiceId" in self.light_status["deploymentBasicInfo"]:
             service_id = self.light_status["deploymentBasicInfo"]["deployedServiceId"]
@@ -424,7 +435,8 @@ class DSSAPIDeployerDeploymentStatus(object):
             raise ValueError("PublicURL not available for this deployment. It might still be initializing")
 
     def get_health(self):
-        """Returns the health of this deployment as a string
+        """
+        Returns the health of this deployment as a string
 
         :returns: HEALTHY if the deployment is working properly, various other status otherwise
         :rtype: string
@@ -491,6 +503,7 @@ class DSSAPIDeployerService(object):
     def delete_version(self, version):
         """
         Deletes a version from this service
+
         :param string version: The version to delete
         """
         self.client._perform_empty(
@@ -507,7 +520,8 @@ class DSSAPIDeployerService(object):
 
 
 class DSSAPIDeployerServiceSettings(object):
-    """The settings of an API Deployer Service. 
+    """
+    The settings of an API Deployer Service. 
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerService.get_settings`
     """
@@ -526,14 +540,17 @@ class DSSAPIDeployerServiceSettings(object):
         return self.settings
 
     def save(self):
-        """Saves back these settings to the API service"""
+        """
+        Saves back these settings to the API service
+        """
         self.client._perform_empty(
                 "PUT", "/api-deployer/services/%s/settings" % (self.service_id),
                 body = self.settings)
 
 
 class DSSAPIDeployerServiceStatus(object):
-    """The status of an API Deployer Service. 
+    """
+    The status of an API Deployer Service. 
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerService.get_status`
     """
@@ -556,6 +573,7 @@ class DSSAPIDeployerServiceStatus(object):
     def get_raw(self):
         """
         Gets the raw status information. This returns a dictionary with various information about the service,
+
         :rtype: dict
         """
         return self.light_status

@@ -69,7 +69,7 @@ class DSSProjectDeployer(object):
         """
         Lists infrastructure stages of the Project Deployer
 
-        :rtype: a list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
+        :rtype: list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
         :rtype: list
         """
         return self.client._perform_json("GET", "/project-deployer/stages")
@@ -156,6 +156,7 @@ class DSSProjectDeployer(object):
         """
         Uploads a new version for a project from a file-like object pointing
         to a bundle Zip file.
+
         :param string fp: A file-like object pointing to a bundle Zip file
         :param string project_key: The key of the published project where the bundle will be uploaded. If the project does not exist, it is created.
         If not set, the key of the bundle's source project is used.
@@ -193,7 +194,7 @@ class DSSProjectDeployerInfra(object):
         """
         Returns status information about this infrastructure
 
-        :rtype: a :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraStatus`
+        :rtype: :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraStatus`
         """
         light = self.client._perform_json("GET", "/project-deployer/infras/%s" % (self.infra_id))
 
@@ -242,7 +243,9 @@ class DSSProjectDeployerInfraSettings(object):
         return self.settings
 
     def save(self):
-        """Saves back these settings to the infra"""
+        """
+        Saves back these settings to the infra
+        """
         self.client._perform_empty(
                 "PUT", "/project-deployer/infras/%s/settings" % (self.infra_id),
                 body = self.settings)
@@ -271,6 +274,7 @@ class DSSProjectDeployerInfraStatus(object):
     def get_raw(self):
         """
         Gets the raw status information. This returns a dictionary with various information about the infrastructure
+
         :rtype: dict
         """
         return self.light_status
@@ -295,7 +299,8 @@ class DSSProjectDeployerDeployment(object):
         return self.deployment_id
 
     def get_status(self):
-        """Returns status information about this deployment
+        """
+        Returns status information about this deployment
 
         :rtype: dataikuapi.dss.apideployer.DSSProjectDeployerDeploymentStatus
         """
@@ -400,12 +405,14 @@ class DSSProjectDeployerDeploymentStatus(object):
     def get_heavy(self):
         """
         Gets the 'heavy' (full) status. This returns a dictionary with various information about the deployment
+
         :rtype: dict
         """
         return self.heavy_status
 
     def get_health(self):
-        """Returns the health of this deployment as a string
+        """
+        Returns the health of this deployment as a string
 
         :returns: HEALTHY if the deployment is working properly, various other status otherwise
         :rtype: string
@@ -413,7 +420,9 @@ class DSSProjectDeployerDeploymentStatus(object):
         return self.heavy_status["health"]
 
     def get_health_messages(self):
-        """Returns messages about the health of this deployment"""
+        """
+        Returns messages about the health of this deployment
+        """
         return self.heavy_status["healthMessages"]
 
 ###############################################
@@ -462,6 +471,7 @@ class DSSProjectDeployerProject(object):
     def delete_bundle(self, bundle_id):
         """
         Deletes a bundle from this project
+
         :param string bundle_id: The identifier of the bundle to delete
         """
         self.client._perform_empty(
@@ -497,7 +507,9 @@ class DSSProjectDeployerProjectSettings(object):
         return self.settings
 
     def save(self):
-        """Saves back these settings to the project"""
+        """
+        Saves back these settings to the project
+        """
         self.client._perform_empty(
                 "PUT", "/project-deployer/projects/%s/settings" % (self.project_key),
                 body = self.settings)
@@ -542,6 +554,7 @@ class DSSProjectDeployerProjectStatus(object):
     def get_raw(self):
         """
         Gets the raw status information. This returns a dictionary with various information about the project
+
         :rtype: dict
         """
         return self.light_status
