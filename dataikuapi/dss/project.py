@@ -831,6 +831,8 @@ class DSSProject(object):
     
     def list_jupyter_notebooks(self, as_objects=True, active=False):
         """
+        WARNING: This API is temporary and subject to changes
+
         List the jupyter notebooks of a project.
 
         :param bool as_objects: if True, return the jupyter notebooks as a :class:`dataikuapi.dss.notebook.DSSNotebook`
@@ -850,6 +852,8 @@ class DSSProject(object):
 
     def get_jupyter_notebook(self, notebook_name):
         """
+        WARNING: This API is temporary and subject to changes
+
         Get a handle to interact with a specific jupyter notebook
 
         :param str notebook_name: The name of the jupyter notebook to retrieve
@@ -862,6 +866,8 @@ class DSSProject(object):
 
     def create_jupyter_notebook(self, notebook_name, notebook_content):
         """
+        WARNING: This API is temporary and subject to changes
+
         Create a new jupyter notebook and get a handle to interact with it
 
         :param str notebook_name: the name of the notebook to create
