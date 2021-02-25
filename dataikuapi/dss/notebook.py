@@ -29,20 +29,13 @@ class DSSNotebook(object):
         return self.client._perform_json("DELETE",
                                          "/projects/%s/jupyter-notebooks/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
 
-    def get_state(self, refresh=False):
+    def get_state(self):
         """
-        Get the status of this Jupyter notebook
-
-        :param bool refresh: if True, get the status of the notebook from the backend
+        Get the metadata associated to this Jupyter notebook
         """
-        notebook_states = self.client._perform_json("GET",
-                                                    "/projects/%s/jupyter-notebooks/" % self.project_key,
-                                                    params={"active": False})
-        if self.state is None or refresh:
-            for notebook_state in notebook_states:
-                if notebook_state.get("name") == self.notebook_name:
-                    self.state = notebook_state
-                    break
+        self.state = self.client._perform_json("GET",
+                                               "/projects/%s/jupyter-notebook-states/%s" % (self.project_key, self.notebook_name),
+                                               params={"active": False})
         return self.state
 
     def get_sessions(self):
