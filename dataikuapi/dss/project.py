@@ -841,8 +841,7 @@ class DSSProject(object):
         :returns: The list of the notebooks - see as_objects for more information
         :rtype: list
         """
-        notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebook-states/" % self.project_key,
-                                         params={"active": active})
+        notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebook-states/" % self.project_key)
         if as_objects:
             return [DSSNotebook(self.client, notebook_state['projectKey'], notebook_state['name'], state=notebook_state) for notebook_state in notebooks]
         else:

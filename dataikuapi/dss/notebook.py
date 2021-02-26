@@ -27,15 +27,14 @@ class DSSNotebook(object):
             else:
                 session_id = sessions[0].get('sessionId', None)
         return self.client._perform_json("DELETE",
-                                         "/projects/%s/jupyter-notebooks/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
+                                         "/projects/%s/jupyter-notebook-states/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
 
     def get_state(self):
         """
         Get the metadata associated to this Jupyter notebook
         """
         self.state = self.client._perform_json("GET",
-                                               "/projects/%s/jupyter-notebook-states/%s" % (self.project_key, self.notebook_name),
-                                               params={"active": False})
+                                               "/projects/%s/jupyter-notebook-states/%s" % (self.project_key, self.notebook_name))
         return self.state
 
     def get_sessions(self):
@@ -46,7 +45,7 @@ class DSSNotebook(object):
         if self.state is None:
             self.state = {}
         sessions = self.client._perform_json("GET",
-                                             "/projects/%s/jupyter-notebooks/%s/sessions" % (self.project_key, self.notebook_name))
+                                             "/projects/%s/jupyter-notebook-states/%s/sessions" % (self.project_key, self.notebook_name))
         self.state["activeSessions"] = sessions
         return sessions
 
