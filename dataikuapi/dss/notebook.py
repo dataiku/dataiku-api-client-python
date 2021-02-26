@@ -62,6 +62,8 @@ class DSSNotebook(object):
         """
         Save the content of this Jupyter notebook
         """
+        if self.content is None:
+            raise ValueError("Notebook content is empty, use \"get_content()\" or manually set the content of the notebook before saving")
         return self.client._perform_json("PUT",
                                          "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name),
                                          body=self.content)
