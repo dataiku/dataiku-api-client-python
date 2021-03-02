@@ -1,5 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .notebookcontent import DSSNotebookContent
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
@@ -841,7 +842,10 @@ class DSSProject(object):
         :returns: The list of the notebooks - see as_objects for more information
         :rtype: list
         """
-        notebooks = self.client._perform_json("GET", "/projects/%s/jupyter-notebook-states/" % self.project_key)
+        notebook_names = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key)
+        notebooks = []
+        for notebook_name in notebook_names:
+            notebooks.append(self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name)))
         if as_objects:
             return [DSSNotebook(self.client, notebook_state['projectKey'], notebook_state['name'], state=notebook_state) for notebook_state in notebooks]
         else:
@@ -853,11 +857,10 @@ class DSSProject(object):
 
         :param str notebook_name: The name of the jupyter notebook to retrieve
         :returns: A handle to interact with this jupyter notebook
-        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
+        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebookContent` jupyter notebook handle
         """
-        notebook_content = self.client._perform_json("GET",
-                                             "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name))
-        return DSSNotebook(self.client, self.project_key, notebook_name, content=notebook_content)
+        notebook_state = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name))
+        return DSSNotebook(self.client, self.project_key, notebook_name, state=notebook_state)
 
     def create_jupyter_notebook(self, notebook_name, notebook_content):
         """
@@ -873,7 +876,10 @@ class DSSProject(object):
         created_notebook_content = self.client._perform_json("POST",
                                   "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
                                   body=notebook_content)
-        return DSSNotebook(self.client, self.project_key, notebook_name, content=created_notebook_content)
+        # Retrieve back the metadata after creation
+        notebook_state = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name))
+        return DSSNotebook(self.client, self.project_key, notebook_name, state=notebook_state,
+                           content=DSSNotebookContent(self.client, self.project_key, notebook_name, created_notebook_content))
 
     ########################################################
     # Continuous activities

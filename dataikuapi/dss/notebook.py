@@ -1,4 +1,5 @@
 from .discussion import DSSObjectDiscussions
+from .notebookcontent import DSSNotebookContent
 
 class DSSNotebook(object):
     """
@@ -9,8 +10,10 @@ class DSSNotebook(object):
        self.project_key = project_key
        self.notebook_name = notebook_name
        self.state = state
-       self.content = content
-       self.state_is_peek = True
+       if content:
+           self.content = content
+       else:
+           self.content = DSSNotebookContent(self.client, self.project_key, self.notebook_name)
 
     def unload(self, session_id=None):
         """
@@ -27,14 +30,17 @@ class DSSNotebook(object):
             else:
                 session_id = sessions[0].get('sessionId', None)
         return self.client._perform_json("DELETE",
-                                         "/projects/%s/jupyter-notebook-states/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
+                                         "/projects/%s/jupyter-notebooks/%s/sessions/%s" % (self.project_key, self.notebook_name, session_id))
 
     def get_state(self):
         """
+        Deprecated. Use self.get_content().get_metadata()
         Get the metadata associated to this Jupyter notebook
         """
+        import warnings
+        warnings.warn("Use self.get_content().get_metadata()", DeprecationWarning)
         self.state = self.client._perform_json("GET",
-                                               "/projects/%s/jupyter-notebook-states/%s" % (self.project_key, self.notebook_name))
+                                               "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, self.notebook_name))
         return self.state
 
     def get_sessions(self):
@@ -45,7 +51,7 @@ class DSSNotebook(object):
         if self.state is None:
             self.state = {}
         sessions = self.client._perform_json("GET",
-                                             "/projects/%s/jupyter-notebook-states/%s/sessions" % (self.project_key, self.notebook_name))
+                                             "/projects/%s/jupyter-notebooks/%s/sessions" % (self.project_key, self.notebook_name))
         self.state["activeSessions"] = sessions
         return sessions
 
@@ -53,20 +59,7 @@ class DSSNotebook(object):
         """
         Get the content of this Jupyter notebook (metadata, cells, nbformat)
         """
-        if self.content is None:
-            self.content = self.client._perform_json("GET",
-                                                     "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
         return self.content
-
-    def save(self):
-        """
-        Save the content of this Jupyter notebook
-        """
-        if self.content is None:
-            raise ValueError("Notebook content is empty, use \"get_content()\" or manually set the content of the notebook before saving")
-        return self.client._perform_json("PUT",
-                                         "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name),
-                                         body=self.content)
 
     def delete(self):
         """
