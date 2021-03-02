@@ -857,7 +857,7 @@ class DSSProject(object):
 
         :param str notebook_name: The name of the jupyter notebook to retrieve
         :returns: A handle to interact with this jupyter notebook
-        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebookContent` jupyter notebook handle
+        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
         notebook_state = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name))
         return DSSNotebook(self.client, self.project_key, notebook_name, state=notebook_state)
