@@ -1752,6 +1752,84 @@ class DSSTrainedModelDetails(object):
         diagnostics = self.details.get("trainDiagnostics", {})
         return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
 
+    def export_documentation(self, folder_id=None, path=None):
+        """
+        Start the export of the model documentation from a template docx file in a managed folder,
+        or from the default template if no folder id and path are specified.
+
+        :param folder_id: (optional) the id of the managed folder
+        :param path: (optional) the path to the file from the root of the folder
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        if bool(folder_id) != bool(path):
+            raise ValueError("Both folder id and path arguments are required to use a template from folder. Use without argument to export using the default template")
+
+        export_mode_url = "default-template" if folder_id is None and path is None else "template-in-folder"
+
+        if self.mltask is not None:
+            f = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/export-documentation-from-%s" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id, export_mode_url),
+                params={"folderId": folder_id, "path": path})
+            return DSSFuture(self.mltask.client, f["jobId"])
+        else:
+            f = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/export-documentation-from-%s" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version, export_mode_url),
+                params={"folderId": folder_id, "path": path})
+            return DSSFuture(self.saved_model.client, job_id=f["jobId"])
+
+    def export_documentation_from_custom_template(self, fp):
+        """
+        Start the export of the model documentation from a docx template (as a file object).
+
+        :param object fp: A file-like object pointing to a template docx file
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        files = {'file': fp}
+        if self.mltask is not None:
+            f = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/model-document/export-documentation-from-custom-template" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                files=files)
+            return DSSFuture(self.mltask.client, f["jobId"])
+        else:
+            f = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/export-documentation-from-custom-template" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                files=files)
+            return DSSFuture(self.saved_model.client, job_id=f["jobId"])
+
+    def download_documentation_stream(self, export_id):
+        """
+        Download a exported model documentation, as a binary stream.
+
+        Warning: this stream will monopolize the DSSClient until closed.
+
+        :param exportId: the template id of the generated model documentation returned as the result of the future
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/download-documentation/%s" % (self.mltask.project_key, export_id))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/download-documentation/%s" % (self.saved_model.project_key, export_id))
+
+    def download_documentation_to_file(self, export_id, path):
+        """
+        Download an exported model documentation into the given output file.
+
+        :param export_id: the template id of the generated model documentation returned as the result of the future
+        :param path: the path where to download the model documentation
+        :return: None
+        """
+        stream = self.download_documentation_stream(export_id)
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
 
 class DSSMLDiagnostic(object):
     """
@@ -2461,6 +2539,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             return self.saved_model.client._perform_raw(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-pmml" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+
 
     ## Post-train computations
 
