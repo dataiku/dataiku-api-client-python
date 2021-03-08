@@ -473,11 +473,8 @@ class HyperparameterSearchSettings(object):
 
     def _set_cv_seed(self, seed):
         if seed is not None:
-            if not isinstance(seed, int):
-                warnings.warn("HyperparameterSearchSettings ignoring invalid input: seed")
-                warnings.warn("seed must be an integer")
-            else:
-                self._raw_settings["cvSeed"] = seed
+            assert isinstance(seed, int), "HyperparameterSearchSettings invalid input: cvSeed must be an integer"
+            self._raw_settings["cvSeed"] = seed
 
     @property
     def strategy(self):
@@ -566,8 +563,7 @@ class HyperparameterSearchSettings(object):
         :param seed: cross-validation seed for splitting the data during hyperparameter search
         :type seed: int
         """
-        assert isinstance(seed, int)
-        self._raw_settings["cvSeed"] = seed
+        self._set_cv_seed(seed)
 
     def set_kfold_validation(self, n_folds=5, stratified=True, cv_seed=0):
         """
@@ -595,8 +591,7 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
-        if cv_seed is not None:
-            self._set_cv_seed(cv_seed)
+        self._set_cv_seed(cv_seed)
 
     def set_single_split_validation(self, split_ratio=0.8, stratified=True, cv_seed=0):
         """
@@ -624,8 +619,7 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
-        if cv_seed is not None:
-            self._set_cv_seed(cv_seed)
+        self._set_cv_seed(cv_seed)
 
     def set_custom_validation(self, code=None):
         """
