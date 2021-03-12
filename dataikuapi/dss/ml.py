@@ -1065,7 +1065,7 @@ class PredictionAlgorithmSettings(dict):
                 elif isinstance(target, NumericalHyperparameterSettings):
                     if isinstance(value, list):
                         # algo.hyperparam = [x, y, z]
-                        target.set_explicit_values(values=1)
+                        target.set_explicit_values(values=value)
                     elif isinstance(value, Range):
                         # algo.hyperparam = Range(min=x, max=y, nb_values=z)
                         target.set_range(min=value.min, max=value.max, nb_values=value.nb_values)
