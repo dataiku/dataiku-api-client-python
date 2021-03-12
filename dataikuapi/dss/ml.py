@@ -743,7 +743,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         - the definition mode of the current numerical hyperparameter to "EXPLICIT"
 
         :param values: the explicit list of numerical values considered for this hyperparameter in the search
-        :type values: list of float | int
+        :type values: list of float | list of int
         """
         self.values = values
         self.definition_mode = "EXPLICIT"
@@ -760,7 +760,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     def values(self, values):
         """
         :param values: the explicit list of numerical values considered for this hyperparameter in the search
-        :type values: list of float | int
+        :type values: list of float | list of int
         """
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(self.name) + \
@@ -1064,12 +1064,19 @@ class PredictionAlgorithmSettings(dict):
                     target.set_values(value)
                 elif isinstance(target, NumericalHyperparameterSettings):
                     if isinstance(value, list):
-                        target.set_explicit_values(values=value)
+                        # algo.hyperparam = [x, y, z]
+                        target.set_explicit_values(values=1)
                     elif isinstance(value, Range):
+                        # algo.hyperparam = Range(min=x, max=y, nb_values=z)
                         target.set_range(min=value.min, max=value.max, nb_values=value.nb_values)
+                    elif isinstance(value, NumericalHyperparameterSettings):
+                        # algo.hyperparam = other_algo.other_hyperparam
+                        target.set_range(min=value.range.min, max=value.range.max, nb_values=value.range.nb_values)
+                        target.set_explicit_values(values=value.values.copy())
+                        target.definition_mode = value.definition_mode
                     else:
                         raise TypeError(("Invalid type for NumericalHyperparameterSettings {}\n" +
-                                        "Expecting either a list or a Range").format(attr_name))
+                                        "Expecting either list, Range or NumericalHyperparameterSettings").format(attr_name))
                 else:
                     # simple parameter
                     assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
