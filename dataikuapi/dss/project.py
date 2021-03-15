@@ -1,6 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
-from .notebookcontent import DSSNotebookContent
+from .jupyternootebook import DSSJupyterNotebook, DSSNotebookContent
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
@@ -12,7 +12,6 @@ from .scenario import DSSScenario, DSSScenarioListItem
 from .continuousactivity import DSSContinuousActivity
 from .apiservice import DSSAPIService
 from .future import DSSFuture
-from .notebook import DSSNotebook
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
@@ -20,7 +19,6 @@ from .ml import DSSMLTask
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-from ..utils import DataikuException
 
 
 class DSSProject(object):
@@ -842,14 +840,11 @@ class DSSProject(object):
         :returns: The list of the notebooks - see as_objects for more information
         :rtype: list
         """
-        notebook_names = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key)
-        notebooks = []
-        for notebook_name in notebook_names:
-            notebooks.append(self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name)))
+        notebook_names = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
         if as_objects:
-            return [DSSNotebook(self.client, notebook_state['projectKey'], notebook_state['name'], state=notebook_state) for notebook_state in notebooks]
+            return [DSSJupyterNotebook(self.client, self.project_key, notebook_name) for notebook_name in notebook_names]
         else:
-            return notebooks
+            return notebook_names
 
     def get_jupyter_notebook(self, notebook_name):
         """
@@ -859,8 +854,10 @@ class DSSProject(object):
         :returns: A handle to interact with this jupyter notebook
         :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
-        notebook_state = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name))
-        return DSSNotebook(self.client, self.project_key, notebook_name, state=notebook_state)
+        notebook = DSSJupyterNotebook(self.client, self.project_key, notebook_name)
+        # Force content download
+        notebook.get_content()
+        return notebook
 
     def create_jupyter_notebook(self, notebook_name, notebook_content):
         """
@@ -876,10 +873,8 @@ class DSSProject(object):
         created_notebook_content = self.client._perform_json("POST",
                                   "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
                                   body=notebook_content)
-        # Retrieve back the metadata after creation
-        notebook_state = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s/metadata" % (self.project_key, notebook_name))
-        return DSSNotebook(self.client, self.project_key, notebook_name, state=notebook_state,
-                           content=DSSNotebookContent(self.client, self.project_key, notebook_name, created_notebook_content))
+        return DSSJupyterNotebook(self.client, self.project_key, notebook_name,
+                                  content=DSSNotebookContent(self.client, self.project_key, notebook_name, created_notebook_content))
 
     ########################################################
     # Continuous activities
@@ -1288,7 +1283,7 @@ class DSSProject(object):
         """
         list = self.client._perform_json("GET", "/projects/%s/notebooks/active" % self.project_key)
         if as_objects:
-            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+            return [DSSJupyterNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
         else:
             return list
 

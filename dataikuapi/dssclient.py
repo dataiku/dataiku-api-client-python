@@ -3,6 +3,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from dataikuapi.dss.jupyternootebook import DSSJupyterNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
@@ -11,7 +12,6 @@ from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
-from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
@@ -95,14 +95,14 @@ class DSSClient(object):
         """
         List the currently-running Jupyter notebooks
 
-        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSNotebook`
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
 
-        :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
-        :rtype: list of :class:`dataikuapi.dss.notebook.DSSNotebook` or list of dict
+        :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
+        :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of dict
         """
         list = self._perform_json("GET", "/admin/notebooks/")
         if as_objects:
-            return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+            return [DSSJupyterNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
         else:
             return list
 
