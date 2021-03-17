@@ -4,11 +4,10 @@ class DSSJupyterNotebook(object):
     """
     A Python/R/Scala notebook on the DSS instance
     """
-    def __init__(self, client, project_key, notebook_name, content=None):
+    def __init__(self, client, project_key, notebook_name):
        self.client = client
        self.project_key = project_key
        self.notebook_name = notebook_name
-       self.content = content
 
     def unload(self, session_id=None):
         """
@@ -39,10 +38,8 @@ class DSSJupyterNotebook(object):
         """
         Get the content of this Jupyter notebook (metadata, cells, nbformat)
         """
-        if self.content is None:
-            raw_content = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
-            self.content = DSSNotebookContent(self.client, self.project_key, self.notebook_name, raw_content)
-        return self.content
+        raw_content = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
+        return DSSNotebookContent(self.client, self.project_key, self.notebook_name, raw_content)
 
     def delete(self):
         """
@@ -65,13 +62,13 @@ class DSSJupyterNotebook(object):
 
 class DSSNotebookContent(object):
     """
-    Settings of a download recipe. Do not create this directly, use :meth:`DSSJupyterNotebook.get_content`
+    Content of a Jupyter Notebook. Do not create this directly, use :meth:`DSSJupyterNotebook.get_content`
     """
 
     """
     A Python/R/Scala notebook on the DSS instance
     """
-    def __init__(self, client, project_key, notebook_name, content=None):
+    def __init__(self, client, project_key, notebook_name, content):
         self.client = client
         self.project_key = project_key
         self.notebook_name = notebook_name
@@ -80,9 +77,16 @@ class DSSNotebookContent(object):
     def get_raw(self):
         """
         Get the content of this Jupyter notebook (metadata, cells, nbformat)
-        :rtype: a list containing the full content of a notebook
+        :rtype: a dict containing the full content of a notebook
         """
         return self.content
+
+    def get_metadata(self):
+        """
+        Get the metadata associated to this Jupyter notebook
+        :rtype: dict with metadata
+        """
+        return self.content["metadata"]
 
     def get_cells(self):
         """

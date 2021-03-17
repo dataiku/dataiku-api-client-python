@@ -1,6 +1,7 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .jupyternootebook import DSSJupyterNotebook, DSSNotebookContent
+from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
@@ -870,11 +871,8 @@ class DSSProject(object):
         :returns: A handle to interact with the newly created jupyter notebook
         :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
-        created_notebook_content = self.client._perform_json("POST",
-                                  "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
-                                  body=notebook_content)
-        return DSSJupyterNotebook(self.client, self.project_key, notebook_name,
-                                  content=DSSNotebookContent(self.client, self.project_key, notebook_name, created_notebook_content))
+        self.client._perform_json("POST", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name), body=notebook_content)
+        return self.get_jupyter_notebook(notebook_name)
 
     ########################################################
     # Continuous activities
@@ -1273,19 +1271,20 @@ class DSSProject(object):
     ########################################################
     # Notebooks
     ########################################################
-            
+
     def list_running_notebooks(self, as_objects=True):
         """
+        Deprecated. Use :meth:`DSSProject.list_jupyter_notebooks`
         List the currently-running notebooks
 
         Returns:
             list of notebooks. Each object contains at least a 'name' field
         """
-        list = self.client._perform_json("GET", "/projects/%s/notebooks/active" % self.project_key)
+        notebook_list = self.client._perform_json("GET", "/projects/%s/notebooks/active" % self.project_key)
         if as_objects:
-            return [DSSJupyterNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+            return [DSSNotebook(self.client, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
         else:
-            return list
+            return notebook_list
 
     ########################################################
     # Tags
