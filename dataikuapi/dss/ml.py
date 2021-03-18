@@ -170,6 +170,26 @@ class PredictionSplitParamsHandler(object):
 
         return self
 
+    def get_time_ordering_variable(self):
+        """
+        :return: the name of the variable
+        :rtype: str
+        """
+        if 'time' in self.mltask_settings and self.mltask_settings['time']['enabled']:
+            return self.mltask_settings['time']['timeVariable']
+        else:
+            warnings.warn("Time-based ordering is disabled in the current MLTask")
+
+    def is_time_ordering_ascending(self):
+        """
+        :return: True if the ordering is set to be ascending with respect to the time-ordering variable
+        :rtype: bool
+        """
+        if 'time' in self.mltask_settings and self.mltask_settings['time']['enabled']:
+            return self.mltask_settings['time']['ascending']
+        else:
+            warnings.warn("Time-based ordering is disabled in the current MLTask")
+
 
 class DSSMLTaskSettings(object):
     """
