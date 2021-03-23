@@ -591,10 +591,12 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
         
         """
-        definition = {}
-        definition['name'] = cluster_name
-        definition['type'] = cluster_type
-        definition['params'] = params if params is not None else {}
+        definition = {
+            'name': cluster_name,
+            'type': cluster_type,
+            'params': params if params is not None else {},
+        }
+
         resp = self._perform_json(
                "POST", "/admin/clusters/", body=definition)
         if resp is None:
@@ -705,7 +707,7 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
         """
         def make_entry(v):
-            if isinstance(v, str) or isinstance(v, unicode):
+            if isinstance(v, (str, unicode)):
                 return {'value':v}
             else:
                 return v
