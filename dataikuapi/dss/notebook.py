@@ -7,7 +7,6 @@ class DSSNotebook(object):
     A Python/R/Scala notebook on the DSS instance
     """
     def __init__(self, client, project_key, notebook_name, state=None):
-        warnings.warn("Use DSSJupyterNotebook", DeprecationWarning)
         self.client = client
         self.project_key = project_key
         self.notebook_name = notebook_name

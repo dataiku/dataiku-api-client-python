@@ -855,10 +855,7 @@ class DSSProject(object):
         :returns: A handle to interact with this jupyter notebook
         :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
-        notebook = DSSJupyterNotebook(self.client, self.project_key, notebook_name)
-        # Force content download
-        notebook.get_content()
-        return notebook
+        return DSSJupyterNotebook(self.client, self.project_key, notebook_name)
 
     def create_jupyter_notebook(self, notebook_name, notebook_content):
         """
