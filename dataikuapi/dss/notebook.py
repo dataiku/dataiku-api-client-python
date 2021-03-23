@@ -1,5 +1,4 @@
 from .discussion import DSSObjectDiscussions
-import warnings
 
 class DSSNotebook(object):
     """
@@ -18,7 +17,6 @@ class DSSNotebook(object):
         Deprecated. Use DSSJupyterNotebook
         Stop this Jupyter notebook and release its resources
         """
-        warnings.warn("Use DSSJupyterNotebook", DeprecationWarning)
         state = self.get_state()
         if state is None:
             raise Exception("Notebook isn't running")
@@ -39,7 +37,6 @@ class DSSNotebook(object):
         Deprecated. Use DSSJupyterNotebook
         Get the metadata associated to this Jupyter notebook
         """
-        warnings.warn("Use DSSJupyterNotebook", DeprecationWarning)
         if self.state is None:
             self.state = self.client._perform_json("GET", "/projects/%s/notebooks/" % self.project_key, params={'notebookName' : self.notebook_name})
         return self.state
@@ -49,7 +46,6 @@ class DSSNotebook(object):
         Deprecated. Use DSSJupyterNotebook
         Get the list of running sessions of this Jupyter notebook
         """
-        warnings.warn("Use DSSJupyterNotebook", DeprecationWarning)
         state = self.get_state()
         if state is None:
             raise Exception("Notebook isn't running")
@@ -68,5 +64,4 @@ class DSSNotebook(object):
         :returns: the handle to manage discussions
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
-        warnings.warn("Use DSSJupyterNotebook", DeprecationWarning)
         return DSSObjectDiscussions(self.client, self.project_key, "JUPYTER_NOTEBOOK", self.notebook_name)
