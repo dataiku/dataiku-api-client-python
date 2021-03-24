@@ -1,6 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
-from .jupyternootebook import DSSJupyterNotebook, DSSNotebookContent
+from .jupyternotebook import DSSJupyterNotebook, DSSNotebookContent
 from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
