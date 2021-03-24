@@ -5,7 +5,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
-from dataikuapi.dss.jupyternootebook import DSSJupyterNotebook
+from dataikuapi.dss.jupyternotebook import DSSJupyterNotebook
 from dataikuapi.dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
