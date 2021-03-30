@@ -453,7 +453,7 @@ class HyperparameterSearchSettings(object):
             res += self._key_repr("splitRatio")
         elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
             res += self._key_repr("nFolds")
-
+        res += self._key_repr("cvSeed")
         res += self._key_repr("stratified")
 
         res += "Execution Settings:\n"
@@ -491,6 +491,11 @@ class HyperparameterSearchSettings(object):
             else:
                 self._raw_settings["seed"] = seed
 
+    def _set_cv_seed(self, seed):
+        if seed is not None:
+            assert isinstance(seed, int), "HyperparameterSearchSettings invalid input: cvSeed must be an integer"
+            self._raw_settings["cvSeed"] = seed
+
     @property
     def strategy(self):
         """
@@ -508,7 +513,7 @@ class HyperparameterSearchSettings(object):
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
         self._raw_settings["strategy"] = strategy
 
-    def set_grid_search(self, shuffle=True, seed=0):
+    def set_grid_search(self, shuffle=True, seed=1337):
         """
         Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
 
@@ -527,7 +532,7 @@ class HyperparameterSearchSettings(object):
                 self._raw_settings["randomized"] = shuffle
         self._set_seed(seed)
 
-    def set_random_search(self, seed=0):
+    def set_random_search(self, seed=1337):
         """
         Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
 
@@ -537,7 +542,7 @@ class HyperparameterSearchSettings(object):
         self._raw_settings["strategy"] = "RANDOM"
         self._set_seed(seed)
 
-    def set_bayesian_search(self, seed=0):
+    def set_bayesian_search(self, seed=1337):
         """
         Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
 
@@ -564,7 +569,23 @@ class HyperparameterSearchSettings(object):
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
 
-    def set_kfold_validation(self, n_folds=5, stratified=True):
+    @property
+    def cv_seed(self):
+        """
+        :return: cross-validation seed for splitting the data during hyperparameter search
+        :rtype: int
+        """
+        return self._raw_settings["cvSeed"]
+
+    @cv_seed.setter
+    def cv_seed(self, seed):
+        """
+        :param seed: cross-validation seed for splitting the data during hyperparameter search
+        :type seed: int
+        """
+        self._set_cv_seed(seed)
+
+    def set_kfold_validation(self, n_folds=5, stratified=True, cv_seed=1337):
         """
         Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
         is enabled).
@@ -590,8 +611,9 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        self._set_cv_seed(cv_seed)
 
-    def set_single_split_validation(self, split_ratio=0.8, stratified=True):
+    def set_single_split_validation(self, split_ratio=0.8, stratified=True, cv_seed=1337):
         """
         Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
         is enabled).
@@ -617,6 +639,7 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        self._set_cv_seed(cv_seed)
 
     def set_custom_validation(self, code=None):
         """
