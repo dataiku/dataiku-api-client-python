@@ -96,7 +96,6 @@ class DSSClient(object):
 
     def list_running_notebooks(self, as_objects=True):
         """
-        Deprecated. Use :meth:`DSSClient.list_jupyter_notebooks`
         List the currently-running Jupyter notebooks
 
         :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSNotebook`
@@ -104,7 +103,6 @@ class DSSClient(object):
         :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSNotebook` or list of dict
         """
-        warnings.warn("Use DSSClient.list_jupyter_notebooks", DeprecationWarning)
         notebook_list = self._perform_json("GET", "/admin/notebooks/")
         if as_objects:
             return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
