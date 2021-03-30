@@ -94,31 +94,8 @@ class DSSClient(object):
     # Notebooks
     ########################################################
 
-
-    def list_jupyter_notebooks(self, active=False, as_objects=True):
-        """
-        List the Jupyter notebooks for every projects
-
-        :param boolean active: if True, only the active notebooks
-        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
-
-        :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
-        :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of dict
-        """
-        project_keys = self.list_project_keys()
-        output = []
-        for project_key in project_keys:
-            notebook_names = self._perform_json("GET", "/projects/%s/jupyter-notebooks/" % project_key, params={"active": active})
-            if as_objects:
-                output += [DSSJupyterNotebook(self, project_key, notebook_name) for notebook_name in notebook_names]
-            else:
-                for notebook_name in notebook_names:
-                    output.append({u"projectKey": project_key, u"name": notebook_name})
-        return output
-
     def list_running_notebooks(self, as_objects=True):
         """
-        Deprecated. Use :meth:`DSSClient.list_jupyter_notebooks`
         List the currently-running Jupyter notebooks
 
         :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.notebook.DSSNotebook`
@@ -126,7 +103,6 @@ class DSSClient(object):
         :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSNotebook` or list of dict
         """
-        warnings.warn("Use DSSClient.list_jupyter_notebooks", DeprecationWarning)
         notebook_list = self._perform_json("GET", "/admin/notebooks/")
         if as_objects:
             return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
