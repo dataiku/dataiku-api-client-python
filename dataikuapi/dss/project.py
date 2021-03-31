@@ -1,6 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
-from .jupyternotebook import DSSJupyterNotebook, DSSNotebookContent
+from .jupyternotebook import DSSJupyterNotebook
 from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
@@ -829,23 +829,24 @@ class DSSProject(object):
     # Jupyter Notebooks
     ########################################################
     
-    def list_jupyter_notebooks(self, as_objects=True, active=False):
+    def list_jupyter_notebooks(self, active=False, as_type="object"):
         """
         List the jupyter notebooks of a project.
 
-        :param bool as_objects: if True, return the jupyter notebooks as a :class:`dataikuapi.dss.notebook.DSSNotebook`
-                        notebook handles instead of raw JSON
+        :param bool as_type: How to return the list. Supported values are "names" and "objects".
         :param bool active: if True, only return currently running jupyter notebooks.
 
-
-        :returns: The list of the notebooks - see as_objects for more information
-        :rtype: list
+        :returns: The list of the notebooks. If "as_type" is "names", each one as a string, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
+        :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of String
         """
         notebook_names = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
-        if as_objects:
+        if as_type == "names" or as_type == "name":
+            return notebook_names
+        elif as_type == "objects" or as_type == "object":
             return [DSSJupyterNotebook(self.client, self.project_key, notebook_name) for notebook_name in notebook_names]
         else:
-            return notebook_names
+            raise ValueError("Unknown as_type")
+
 
     def get_jupyter_notebook(self, notebook_name):
         """
