@@ -1,6 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
-from .jupyternotebook import DSSJupyterNotebook
+from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
@@ -839,11 +839,11 @@ class DSSProject(object):
         :returns: The list of the notebooks. If "as_type" is "names", each one as a string, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of String
         """
-        notebook_names = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
-        if as_type == "names" or as_type == "name":
-            return notebook_names
+        notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJupyterNotebookListItem(self.client, notebook_item) for notebook_item in notebook_items]
         elif as_type == "objects" or as_type == "object":
-            return [DSSJupyterNotebook(self.client, self.project_key, notebook_name) for notebook_name in notebook_names]
+            return [DSSJupyterNotebook(self.client, self.project_key, notebook_item["name"]) for notebook_item in notebook_items]
         else:
             raise ValueError("Unknown as_type")
 

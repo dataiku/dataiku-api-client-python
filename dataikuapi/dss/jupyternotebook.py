@@ -1,4 +1,25 @@
 from .discussion import DSSObjectDiscussions
+from .utils import DSSTaggableObjectListItem
+
+class DSSJupyterNotebookListItem(DSSTaggableObjectListItem):
+    """An item in a list of Jupyter notebooks. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_jupyter_notebooks`"""
+    def __init__(self, client, data):
+        super(DSSJupyterNotebookListItem, self).__init__(data)
+        self.client = client
+
+    def to_notebook(self):
+        """Gets the :class:`DSSJupyterNotebook` corresponding to this notebook"""
+        return DSSJupyterNotebook(self.client, self._data["projectKey"], self._data["name"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def language(self):
+        return self._data["language"]
+    @property
+    def kernel_spec(self):
+        return self._data["kernelSpec"]
 
 class DSSJupyterNotebook(object):
     def __init__(self, client, project_key, notebook_name):
