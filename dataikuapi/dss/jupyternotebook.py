@@ -38,12 +38,12 @@ class DSSJupyterNotebook(object):
         else:
             return sessions
 
-    def get_contents(self):
+    def get_content(self):
         """
         Get the content of this Jupyter notebook (metadata, cells, nbformat)
         """
-        raw_contents = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
-        return DSSNotebookContents(self.client, self.project_key, self.notebook_name, raw_contents)
+        raw_content = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
+        return DSSNotebookContent(self.client, self.project_key, self.notebook_name, raw_content)
 
     def delete(self):
         """
@@ -64,48 +64,48 @@ class DSSJupyterNotebook(object):
         """
         return DSSObjectDiscussions(self.client, self.project_key, "JUPYTER_NOTEBOOK", self.notebook_name)
 
-class DSSNotebookContents(object):
+class DSSNotebookContent(object):
     """
-    Contents of a Jupyter Notebook. Do not create this directly, use :meth:`DSSJupyterNotebook.get_contents`
+    Content of a Jupyter Notebook. Do not create this directly, use :meth:`DSSJupyterNotebook.get_content`
     """
 
     """
     A Python/R/Scala notebook on the DSS instance
     """
-    def __init__(self, client, project_key, notebook_name, contents):
+    def __init__(self, client, project_key, notebook_name, content):
         self.client = client
         self.project_key = project_key
         self.notebook_name = notebook_name
-        self.contents = contents
+        self.content = content
 
     def get_raw(self):
         """
-        Get the contents of this Jupyter notebook (metadata, cells, nbformat)
-        :rtype: a dict containing the full contents of a notebook
+        Get the content of this Jupyter notebook (metadata, cells, nbformat)
+        :rtype: a dict containing the full content of a notebook
         """
-        return self.contents
+        return self.content
 
     def get_metadata(self):
         """
         Get the metadata associated to this Jupyter notebook
         :rtype: dict with metadata
         """
-        return self.contents["metadata"]
+        return self.content["metadata"]
 
     def get_cells(self):
         """
         Get the cells associated to this Jupyter notebook
         :rtype: list of cells
         """
-        return self.contents["cells"]
+        return self.content["cells"]
 
     def save(self):
         """
-        Save the contents of this Jupyter notebook
+        Save the content of this Jupyter notebook
         """
         return self.client._perform_json("PUT",
                                          "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name),
-                                         body=self.contents)
+                                         body=self.content)
 
 class DSSNotebookSession(object):
     """
