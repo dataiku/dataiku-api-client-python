@@ -106,7 +106,7 @@ class DSSAPIService(object):
                     f.write(chunk)
                     f.flush()
 
-    def publish_package(self, package_id, published_service_id):
+    def publish_package(self, package_id, published_service_id=None):
         """
         Publish a package on the API Deployer.
 
