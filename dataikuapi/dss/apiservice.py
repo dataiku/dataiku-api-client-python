@@ -117,5 +117,5 @@ class DSSAPIService(object):
         """
         params = None
         if published_service_id is not None:
-            params = {"publishedProjectKey": published_service_id}
-        return self.client._perform_json("POST", "/projects/%s/apiservices/%s/packages/%s/publish" % (self.project_key, self.service_id, package_id), params=params)
+            params = {"publishedServiceId": published_service_id}
+        self.client._perform_empty("POST", "/projects/%s/apiservices/%s/packages/%s/publish" % (self.project_key, self.service_id, package_id), params=params)
