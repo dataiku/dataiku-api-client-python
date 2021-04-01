@@ -106,3 +106,16 @@ class DSSAPIService(object):
                     f.write(chunk)
                     f.flush()
 
+    def publish_package(self, package_id, published_service_id):
+        """
+        Publish a package on the API Deployer.
+
+        :param string package_id: The identifier of the package
+        :param string published_service_id: The identifier of the API service on the API Deployer where the package will be published.
+            A new published API service will be created if none matches the identifier.
+            If the parameter is not set, the identifier from the current :class:`DSSAPIService` is used.
+        """
+        params = None
+        if published_service_id is not None:
+            params = {"publishedProjectKey": published_service_id}
+        return self.client._perform_json("POST", "/projects/%s/apiservices/%s/packages/%s/publish" % (self.project_key, self.service_id, package_id), params=params)
