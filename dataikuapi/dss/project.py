@@ -833,11 +833,12 @@ class DSSProject(object):
         """
         List the jupyter notebooks of a project.
 
-        :param bool as_type: How to return the list. Supported values are "names" and "objects".
+        :param bool as_type: How to return the list. Supported values are "listitems" and "objects".
         :param bool active: if True, only return currently running jupyter notebooks.
 
-        :returns: The list of the notebooks. If "as_type" is "names", each one as a string, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
-        :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of String
+        :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`,
+        if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
+        :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`
         """
         notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
         if as_type == "listitems" or as_type == "listitem":
