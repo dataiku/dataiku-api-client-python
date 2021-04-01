@@ -193,8 +193,9 @@ class DSSProject(object):
         if target_project_folder is not None:
             obj["targetProjectFolderId"] = target_project_folder.project_folder_id
 
-        ref = self.client._perform_json("POST", "/projects/%s/duplicate/" % self.project_key, body = obj)
-        return ref
+        return self.client._perform_json(
+            "POST", "/projects/%s/duplicate/" % self.project_key, body=obj
+        )
 
     ########################################################
     # Project infos
@@ -263,9 +264,9 @@ class DSSProject(object):
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/datasets/" % self.project_key)
-        if as_type == "listitems" or as_type == "listitem":
+        if as_type in ["listitems", "listitem"]:
             return [DSSDatasetListItem(self.client, item) for item in items]
-        elif as_type == "objects" or as_type == "object":
+        elif as_type in ["objects", "object"]:
             return [DSSDataset(self.client, self.project_key, item["name"]) for item in items]
         else:
             raise ValueError("Unknown as_type")
@@ -403,9 +404,9 @@ class DSSProject(object):
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/streamingendpoints/" % self.project_key)
-        if as_type == "listitems" or as_type == "listitem":
+        if as_type in ["listitems", "listitem"]:
             return [DSSStreamingEndpointListItem(self.client, item) for item in items]
-        elif as_type == "objects" or as_type == "object":
+        elif as_type in ["objects", "object"]:
             return [DSSStreamingEndpoint(self.client, self.project_key, item["id"]) for item in items]
         else:
             raise ValueError("Unknown as_type")
@@ -715,7 +716,7 @@ class DSSProject(object):
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
-        if as_type == "objects" or as_type == "object":
+        if as_type in ["objects", "object"]:
             return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
         else:
             return items
@@ -840,9 +841,9 @@ class DSSProject(object):
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of String
         """
         notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
-        if as_type == "listitems" or as_type == "listitem":
+        if as_type in ["listitems", "listitem"]:
             return [DSSJupyterNotebookListItem(self.client, notebook_item) for notebook_item in notebook_items]
-        elif as_type == "objects" or as_type == "object":
+        elif as_type in ["objects", "object"]:
             return [DSSJupyterNotebook(self.client, self.project_key, notebook_item["name"]) for notebook_item in notebook_items]
         else:
             raise ValueError("Unknown as_type")
@@ -922,9 +923,9 @@ class DSSProject(object):
 
         @param dict obj: must be a modified version of the object returned by get_variables
         """
-        if not "standard" in obj:
+        if "standard" not in obj:
             raise ValueError("Missing 'standard' key in argument")
-        if not "local" in obj:
+        if "local" not in obj:
             raise ValueError("Missing 'local' key in argument")
 
         self.client._perform_empty(
@@ -1141,9 +1142,9 @@ class DSSProject(object):
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/recipes/" % self.project_key)
-        if as_type == "listitems" or as_type == "listitem":
+        if as_type in ["listitems", "listitem"]:
             return [DSSRecipeListItem(self.client, item) for item in items]
-        elif as_type == "objects" or as_type == "object":
+        elif as_type in ["objects", "object"]:
             return [DSSRecipe(self.client, self.project_key, item["name"]) for item in items]
         else:
             raise ValueError("Unknown as_type")
@@ -1229,7 +1230,7 @@ class DSSProject(object):
             return recipe.SamplingRecipeCreator(name, self)
         elif type == "split":
             return recipe.SplitRecipeCreator(name, self)
-        elif type == "prepare" or type == "shaker":
+        elif type in ["prepare", "shaker"]:
             return recipe.PrepareRecipeCreator(name, self)
         elif type == "prediction_scoring":
             return recipe.PredictionScoringRecipeCreator(name, self)
@@ -1588,11 +1589,9 @@ class DSSProjectSettings(object):
             found_eo = {"type" : object_type, "localName" : object_id, "rules" : []}
             self.settings["exposedObjects"]["objects"].append(found_eo)
 
-        already_exists = False
-        for rule in found_eo["rules"]:
-            if rule["targetProject"] == target_project:
-                already_exists = True
-                break
+        already_exists = any(
+            rule["targetProject"] == target_project for rule in found_eo["rules"]
+        )
 
         if not already_exists:
             found_eo["rules"].append({"targetProject": target_project})
