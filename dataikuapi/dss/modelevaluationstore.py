@@ -170,6 +170,14 @@ class DSSModelEvaluationStore(object):
         run_id = res['id']
         return DSSModelEvaluation(self, run_id)
 
+    def get_latest_metrics(self):
+        """
+        Get the metrics of the latest model evaluation built
+
+        :return: the metrics, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/metrics" % (self.project_key, self.mes_id))
 
 class DSSModelEvaluationStoreSettings:
     """
@@ -270,6 +278,15 @@ class DSSModelEvaluation:
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/contents/%s" % (self.project_key, self.mes_id, self.run_id, utils.quote(path)),
                 "", f)
+
+    def get_metrics(self):
+        """
+        Get the metrics for this model evaluation
+
+        :return: the metrics, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
 
 class DSSModelEvaluationSettings:
     """
