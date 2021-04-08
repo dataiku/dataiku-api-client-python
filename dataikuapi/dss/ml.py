@@ -138,7 +138,10 @@ class PredictionSplitParamsHandler(object):
         :param bool ascending: True iff the test set is expected to have larger time values than the train set
         """
         self.unset_time_ordering()
-        if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+        if (
+            feature_name
+            not in self.mltask_settings["preprocessing"]["per_feature"]
+        ):
             raise ValueError("Feature %s doesn't exist in this ML task, can't use as time" % feature_name)
         self.mltask_settings['time']['enabled'] = True
         self.mltask_settings['time']['timeVariable'] = feature_name
@@ -286,7 +289,7 @@ class DSSMLTaskSettings(object):
         """
         settings = self.get_diagnostics_settings()["settings"]
         diagnostic = [h for h in settings if h["type"] == diagnostic_type]
-        if len(diagnostic) == 0:
+        if not diagnostic:
             raise ValueError("Diagnostic type '{}' not found in settings".format(diagnostic_type))
         if len(diagnostic) > 1:
             raise ValueError("Should not happen: multiple diagnostic types '{}' found in settings".format(diagnostic_type))
@@ -690,7 +693,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     def _pretty_repr(self):
         raw_hyperparam = self._algo_settings[self.name]
-        pretty_hyperparam = dict()
+        pretty_hyperparam = {}
         if self._algo_settings.strategy == "GRID":
             pretty_hyperparam["definition_mode"] = raw_hyperparam["gridMode"]
         else:
@@ -767,7 +770,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
                         " expecting a non-empty list of numbers"
         assert values is not None and isinstance(values, list) and len(values) > 0, error_message
         for val in values:
-            assert isinstance(val, int) or isinstance(val, float), error_message
+            assert isinstance(val, (int, float)), error_message
         limit_min = self._algo_settings[self.name]["limit"].get("min")
         if limit_min is not None:
             assert all(limit_min <= val for val in values), "Value(s) below hyperparameter \"{}\" limit {}".format(self.name, limit_min)
@@ -779,37 +782,37 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         self._algo_settings[self.name]["values"] = values
 
     def _check_number_input(self, input):
-        assert isinstance(input, int) or isinstance(input, float), \
-            "Invalid input type for hyperparameter \"{}\": ".format(self.name) + \
-            "range bounds must be numbers"
+        assert isinstance(input, (int, float)), (
+            "Invalid input type for hyperparameter \"{}\": ".format(self.name)
+            + "range bounds must be numbers"
+        )
 
     def _set_range(self, min=None, max=None, nb_values=None):
         if min is None and max is None and nb_values is None:
             warnings.warn("Numerical range for hyperparameter \"{}\" not modified".format(self.name))
-        else:
-            # Check all the Range parameters input before setting any of them
-            if min is not None:
-                self._check_number_input(min)
-                limit_min = self._algo_settings[self.name]["limit"].get("min")
-                if limit_min is not None:
-                    assert limit_min <= min, "Range min {} is below hyperparameter \"{}\" limit {}".format(min, self.name, limit_min)
-            if max is not None:
-                self._check_number_input(max)
-                limit_max = self._algo_settings[self.name]["limit"].get("max")
-                if limit_max is not None:
-                    assert max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(max, self.name, limit_max)
-            if min is not None and max is not None:
-                assert min <= max, "Invalid Range: min {} is greater max {}".format(min, max)
-            if nb_values is not None:
-                assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(self.name)
+        # Check all the Range parameters input before setting any of them
+        if min is not None:
+            self._check_number_input(min)
+            limit_min = self._algo_settings[self.name]["limit"].get("min")
+            if limit_min is not None:
+                assert limit_min <= min, "Range min {} is below hyperparameter \"{}\" limit {}".format(min, self.name, limit_min)
+        if max is not None:
+            self._check_number_input(max)
+            limit_max = self._algo_settings[self.name]["limit"].get("max")
+            if limit_max is not None:
+                assert max <= limit_max, "Range max {} is above hyperparameter \"{}\" limit {}".format(max, self.name, limit_max)
+        if min is not None and max is not None:
+            assert min <= max, "Invalid Range: min {} is greater max {}".format(min, max)
+        if nb_values is not None:
+            assert isinstance(nb_values, int) and nb_values >= 2, "Range number of values for hyperparameter \"{}\" must be an integer and >= 2".format(self.name)
 
-            # Set the Range parameters after they have been checked
-            if min is not None:
-                self._algo_settings[self.name]["range"]["min"] = min
-            if max is not None:
-                self._algo_settings[self.name]["range"]["max"] = max
-            if nb_values is not None:
-                self._algo_settings[self.name]["range"]["nbValues"] = nb_values
+        # Set the Range parameters after they have been checked
+        if min is not None:
+            self._algo_settings[self.name]["range"]["min"] = min
+        if max is not None:
+            self._algo_settings[self.name]["range"]["max"] = max
+        if nb_values is not None:
+            self._algo_settings[self.name]["range"]["nbValues"] = nb_values
 
     class RangeSettings(object):
         """
@@ -1051,7 +1054,7 @@ class PredictionAlgorithmSettings(dict):
         super(PredictionAlgorithmSettings, self).__init__(raw_settings)
         self._hyperparameter_search_params = hyperparameter_search_params
         self._hyperparameters_registry = dict()
-        self._attr_to_json_remapping = dict()
+        self._attr_to_json_remapping = {}
 
     def __setattr__(self, attr_name, value):
         if not hasattr(self, attr_name):
@@ -1630,7 +1633,10 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             self.mltask_settings['weight']['weightMethod'] = method
 
         elif method == "SAMPLE_WEIGHT":
-            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            if (
+                feature_name
+                not in self.mltask_settings["preprocessing"]["per_feature"]
+            ):
                 raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
 
             self.mltask_settings['weight']['weightMethod'] = method
@@ -1646,9 +1652,12 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         elif method == "CLASS_AND_SAMPLE_WEIGHT":
             if self.get_prediction_type() not in self.classification_prediction_types:
                 raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
-            if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
+            if (
+                feature_name
+                not in self.mltask_settings["preprocessing"]["per_feature"]
+            ):
                 raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
-            
+
             self.mltask_settings['weight']['weightMethod'] = method
             self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
             self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
@@ -1761,12 +1770,11 @@ class DSSTrainedModelDetails(object):
         """
         if self.saved_model is None:
             return self
-        else:
-            fmi = self.get_raw().get("smOrigin", {}).get("fullModelId")
-            if fmi is not None:
-                origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
-                                                              project_key=self.saved_model.project_key)
-                return origin_ml_task.get_trained_model_details(fmi)
+        fmi = self.get_raw().get("smOrigin", {}).get("fullModelId")
+        if fmi is not None:
+            origin_ml_task = DSSMLTask.from_full_model_id(self.saved_model.client, fmi,
+                                                          project_key=self.saved_model.project_key)
+            return origin_ml_task.get_trained_model_details(fmi)
 
     def get_diagnostics(self):
         """
@@ -2292,7 +2300,7 @@ class DSSCoefficientPaths(object):
         i = self.paths['features'].index(feature)
         if i >= 0 and i < len(self.paths['path'][0][class_index]):
             n = len(self.paths['path'])
-            return [self.paths['path'][j][class_index][i] for j in range(0, n)]
+            return [self.paths['path'][j][class_index][i] for j in range(n)]
         else:
             return None
 
@@ -2306,15 +2314,15 @@ class DSSScatterPlots(object):
 
     def get_feature_names(self):
         """Get the feature names (after dummification)"""
-        feature_names = []
-        for k in self.scatters['features']:
-            feature_names.append(k)
-        return feature_names
+        return [k for k in self.scatters['features']]
 
     def get_scatter_plot(self, feature_x, feature_y):
         """Get the scatter plot between feature_x and feature_y"""
-        ret = {'cluster':self.scatters['cluster'], 'x':self.scatters['features'].get(feature_x, None), 'y':self.scatters['features'].get(feature_x, None)}
-        return ret
+        return {
+            'cluster': self.scatters['cluster'],
+            'x': self.scatters['features'].get(feature_x, None),
+            'y': self.scatters['features'].get(feature_x, None),
+        }
 
 class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
@@ -2385,7 +2393,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                as the params of the best parameters
         """
 
-        if not "gridCells" in self.details["iperf"]:
+        if "gridCells" not in self.details["iperf"]:
             raise ValueError("No hyperparameter search result, maybe this model did not perform hyperparameter optimization")
         return self.details["iperf"]["gridCells"]
 
@@ -2773,20 +2781,15 @@ class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefiniti
     def __repr__(self):
         if self.missing_values:
             return "DSSSubpopulationNumericModalityDefinition(missing_values)"
+        if self.gt is not None:
+            repr_gt = "%s<" % self.gt
+        elif self.gte is not None:
+            repr_gt = "%s<=" % self.gte
         else:
-            if self.gt is not None:
-                repr_gt = "%s<" % self.gt
-            elif self.gte is not None:
-                repr_gt = "%s<=" % self.gte
-            else:
-                repr_gt = ""
+            repr_gt = ""
 
-            if self.lte is not None:
-                repr_lt = "<=%s" % self.lte
-            else:
-                repr_lt = ""
-
-            return "DSSSubpopulationNumericModalityDefinition(%s%s%s)" % (repr_gt, self.feature_name, repr_lt)
+        repr_lt = "<=%s" % self.lte if self.lte is not None else ""
+        return "DSSSubpopulationNumericModalityDefinition(%s%s%s)" % (repr_gt, self.feature_name, repr_lt)
 
 class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinition):
 
@@ -2870,10 +2873,10 @@ class DSSSubpopulationAnalysis(object):
 
         if isinstance(definition, DSSSubpopulationModalityDefinition):
             modality_candidates = [m for m in self.modalities if m.definition.index == definition.index]
-            if len(modality_candidates) == 0:
+            if not modality_candidates:
                 raise ValueError("Modality with index '%s' not found" % definition.index)
             return modality_candidates[0]
-        
+
         for m in self.modalities:
             if m.definition.contains(definition):
                 return m
@@ -3123,10 +3126,9 @@ class DSSMLTask(object):
         match = re.match(r"^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
         if match is None:
             return DataikuException("Invalid model id: {}".format(fmi))
-        else:
-            if project_key is None:
-                project_key = match.group(1)
-            return DSSMLTask(client, project_key, match.group(2), match.group(3))
+        if project_key is None:
+            project_key = match.group(1)
+        return DSSMLTask(client, project_key, match.group(2), match.group(3))
 
     """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
