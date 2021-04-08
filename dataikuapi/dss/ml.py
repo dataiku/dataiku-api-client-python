@@ -813,7 +813,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     class RangeSettings(object):
         """
-        Class designed to represent the range of a numerical hyperparameter by pointing to the algorithm settings
+        [Internal] Range of a numerical hyperparameter (points to the algorithm settings)
         Should not be used directly by end users of the API
         """
 
@@ -895,8 +895,8 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
 class Range(object):
     """
-    Class designed to represent the range of a numerical hyperparameter by storing its attributes (min, max, nb_values)
-    End users should use this class to define explicitly the parameters of the range of a numerical hyperparameter
+    Range of a numerical hyperparameter (min, max, nb_values)
+    Use this class to define explicitly the parameters of the range of a numerical hyperparameter
     """
 
     def _check_input(self, value):
