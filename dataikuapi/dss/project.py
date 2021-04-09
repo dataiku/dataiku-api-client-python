@@ -251,10 +251,10 @@ class DSSProject(object):
 
     def get_interest(self):
         """
-        Get the interest of this project. The interest means the number of watchers and the number of star.
+        Get the interest of this project. The interest means the number of watchers and the number of stars.
 
         :returns: a dict object containing the interest of the project with two fields:
-           - starCount: number of star for this project
+           - starCount: number of stars for this project
            - watchCount: number of users watching this project
         :rtype: dict
         """
