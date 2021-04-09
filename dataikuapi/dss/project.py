@@ -262,7 +262,7 @@ class DSSProject(object):
 
     def get_timeline(self, itemCount=100):
         """
-        Get a timeline of this project. The timeline consists of information about the creation of this project
+        Get the timeline of this project. The timeline consists of information about the creation of this project
         (by whom, and when), the last modification of this project (by whom and when), a list of contributors,
         and a list of modifications. This list of modifications contains a maximum of itemCount elements (default: 100).
         If itemCount is greater than the real number of modification, itemCount is adjusted.
