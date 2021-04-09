@@ -249,6 +249,37 @@ class DSSProject(object):
         return self.client._perform_empty(
             "PUT", "/projects/%s/permissions" % self.project_key, body = permissions)
 
+    def get_interest(self):
+        """
+        Get the interest of this project. The interest means the number of watchers and the number of stars.
+
+        :returns: a dict object containing the interest of the project with two fields:
+           - starCount: number of stars for this project
+           - watchCount: number of users watching this project
+        :rtype: dict
+        """
+        return self.client._perform_json("GET","/projects/%s/interest" % self.project_key)
+
+    def get_timeline(self, itemCount=100):
+        """
+        Get the timeline of this project. The timeline consists of information about the creation of this project
+        (by whom, and when), the last modification of this project (by whom and when), a list of contributors,
+        and a list of modifications. This list of modifications contains a maximum of itemCount elements (default: 100).
+        If itemCount is greater than the real number of modification, itemCount is adjusted.
+
+        :return: a dict object containing a timeline where the top-level fields are :
+          - allContributors: all contributors who have been involve in this project
+          - items: a history of the modifications of the project
+          - createdBy: who created this project
+          - createdOn: when the project was created
+          - lastModifiedBy: who modified this project for the last time
+          - lastModifiedBy: when this modification took place
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/timeline" % self.project_key, params = {
+            "itemCount": itemCount
+        })
+
     ########################################################
     # Datasets
     ########################################################
