@@ -173,6 +173,7 @@ class DSSModelEvaluationStore(object):
         run_id = res['id']
         return DSSModelEvaluation(self, run_id)
 
+
     ########################################################
     # Metrics
     ########################################################
@@ -199,6 +200,24 @@ class DSSModelEvaluationStore(object):
             "GET", "/projects/%s/modelevaluationstores/%s/metrics/history" % (self.project_key, self.mes_id),
             params={'metricLookup': metric if isinstance(metric, str)or isinstance(metric, unicode)
                                            else json.dumps(metric)})
+
+    def compute_metrics(self, metric_ids=None, probes=None):
+        """
+        Compute metrics on this managed folder. If the metrics are not specified, the metrics
+        setup on the managed folder are used.
+        """
+        url = "/projects/%s/modelevaluationstores/%s/actions" % (self.project_key, self.mes_id)
+        if metric_ids is not None:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetricsFromIds" % url,
+                body={"metricIds" : metric_ids})
+        elif probes is not None:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetrics" % url,
+                body=probes)
+        else:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetrics" % url)
 
 
 
