@@ -1,3 +1,6 @@
+import json
+
+from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 
 from requests import utils
@@ -170,14 +173,34 @@ class DSSModelEvaluationStore(object):
         run_id = res['id']
         return DSSModelEvaluation(self, run_id)
 
-    def get_latest_metrics(self):
+    ########################################################
+    # Metrics
+    ########################################################
+
+    def get_last_metric_values(self):
         """
         Get the metrics of the latest model evaluation built
 
-        :return: the metrics, as a JSON object
+        Returns:
+            a list of metric objects and their value
+        """
+        return ComputedMetrics(self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/metrics/last" % (self.project_key, self.mes_id)))
+
+
+    def get_metric_history(self, metric):
+        """
+        Get the history of the values of the metric on this dataset
+
+        Returns:
+            an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/modelevaluationstores/%s/metrics" % (self.project_key, self.mes_id))
+            "GET", "/projects/%s/modelevaluationstores/%s/metrics/history" % (self.project_key, self.mes_id),
+            params={'metricLookup': metric if isinstance(metric, str)or isinstance(metric, unicode)
+                                           else json.dumps(metric)})
+
+
 
 class DSSModelEvaluationStoreSettings:
     """
