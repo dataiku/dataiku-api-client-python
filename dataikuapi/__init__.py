@@ -1,4 +1,5 @@
 from .dssclient import DSSClient
+from .fmclient import FMClient
 
 from .apinode_client import APINodeClient
 from .apinode_admin_client import APINodeAdminClient
