@@ -1789,7 +1789,7 @@ class DSSTrainedModelDetails(object):
         files = {'file': fp}
         if self.mltask is not None:
             f = self.mltask.client._perform_json(
-                "POST", "/projects/%s/models/lab/%s/%s/models/%s/model-document/export-documentation-from-custom-template" %
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/export-documentation-from-custom-template" %
                         (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
                 files=files)
             return DSSFuture(self.mltask.client, f["jobId"])
