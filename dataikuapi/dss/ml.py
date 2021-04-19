@@ -1811,10 +1811,10 @@ class DSSTrainedModelDetails(object):
         """
         if self.mltask is not None:
             return self.mltask.client._perform_raw(
-                "GET", "/projects/%s/models/lab/download-documentation/%s" % (self.mltask.project_key, export_id))
+                "GET", "/projects/%s/models/lab/documentations/%s" % (self.mltask.project_key, export_id))
         else:
             return self.saved_model.client._perform_raw(
-                "GET", "/projects/%s/savedmodels/download-documentation/%s" % (self.saved_model.project_key, export_id))
+                "GET", "/projects/%s/savedmodels/documentations/%s" % (self.saved_model.project_key, export_id))
 
     def download_documentation_to_file(self, export_id, path):
         """
