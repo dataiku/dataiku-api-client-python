@@ -260,12 +260,12 @@ class DSSProject(object):
         """
         return self.client._perform_json("GET","/projects/%s/interest" % self.project_key)
 
-    def get_timeline(self, itemCount=100):
+    def get_timeline(self, item_count=100):
         """
         Get the timeline of this project. The timeline consists of information about the creation of this project
         (by whom, and when), the last modification of this project (by whom and when), a list of contributors,
-        and a list of modifications. This list of modifications contains a maximum of itemCount elements (default: 100).
-        If itemCount is greater than the real number of modification, itemCount is adjusted.
+        and a list of modifications. This list of modifications contains a maximum of `item_count` elements (default: 100).
+        If `item_count` is greater than the real number of modification, `item_count` is adjusted.
 
         :return: a dict object containing a timeline where the top-level fields are :
           - allContributors: all contributors who have been involve in this project
@@ -277,7 +277,7 @@ class DSSProject(object):
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/timeline" % self.project_key, params = {
-            "itemCount": itemCount
+            "itemCount": item_count
         })
 
     ########################################################
