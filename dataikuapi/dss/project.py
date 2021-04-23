@@ -652,6 +652,21 @@ class DSSProject(object):
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
+    def create_mlflow_pyfunc_model(self, id):
+        """Starts creation of a new external saved model for storing 3rd party models
+
+        :param string id: 
+        """
+        if len(id) != 8:
+            raise ValueError("model id must be 8 characters long")
+        model = {
+            "projectKey" : self.project_key,
+            "id": id,
+            "savedModelType" : "MLFLOW_PYFUNC"
+        }
+        self.client._perform_empty("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)
+        return self.get_saved_model(id)
+
     ########################################################
     # Managed folders
     ########################################################

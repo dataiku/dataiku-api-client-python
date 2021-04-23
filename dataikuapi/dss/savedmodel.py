@@ -117,6 +117,13 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
+    def import_version_from_folder(self, version_id, folder):
+        import shutil
+        shutil.make_archive("tmpmodel", "zip", folder) #[, root_dir[, base_dir[, verbose[, dry_run[, owner[, group[, logger]]]]]]])
+        
+        with open("tmpmodel.zip", "rb") as fp:
+            self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s" % (self.project_key, self.sm_id, version_id),
+                files={"file":("tmpmodel.zip", fp)})
 
     ########################################################
     # Metrics
