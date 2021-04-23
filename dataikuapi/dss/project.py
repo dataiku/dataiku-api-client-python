@@ -412,10 +412,25 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def new_managed_dataset_creation_helper(self, dataset_name):
-        """
-        Creates a helper class to create a managed dataset in the project
+        """Deprecated. Please use :meth:`new_managed_dataset`"""
+        warnings.warn("new_managed_dataset_creation_helper is deprecated, please use new_managed_dataset", DeprecationWarning)
+        return DSSManagedDatasetCreationHelper(self, dataset_name)
 
-        :param string dataset_name: Name of the new dataset - must be unique in the project
+    def new_managed_dataset(self, dataset_name):
+        """
+        Initializes the creation of a new managed dataset. Returns a :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper`
+        or one of its subclasses to complete the creation of the managed dataset.
+
+        Usage example:
+
+        .. code-block:: python
+
+            builder = project.new_managed_dataset("my_dataset")
+            builder.with_store_into("target_connection")
+            dataset = builder.create()
+
+        :param str dataset_name: Name of the dataset to create
+        :rtype: :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper`
         :return: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
         """
         return DSSManagedDatasetCreationHelper(self, dataset_name)
@@ -510,9 +525,10 @@ class DSSProject(object):
                        body = obj)
         return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
 
-    def new_managed_streaming_endpoint_creation_helper(self, streaming_endpoint_name, streaming_endpoint_type=None):
+    def new_managed_streaming_endpoint(self, streaming_endpoint_name, streaming_endpoint_type=None):
         """
-        Creates a helper class to create a managed streaming endpoint in the project
+        Initializes the creation of a new streaming endpoint. Returns a :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper`
+        to complete the creation of the streaming endpoint
 
         :param string streaming_endpoint_name: Name of the new streaming endpoint - must be unique in the project
         :param string streaming_endpoint_type: Type of the new streaming endpoint (optional if it can be inferred from a connection type)
