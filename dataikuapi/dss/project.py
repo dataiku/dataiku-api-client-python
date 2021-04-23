@@ -1067,7 +1067,7 @@ class DSSProject(object):
         params = None
         if published_project_key is not None:
             params = {"publishedProjectKey": published_project_key}
-        return self.client._perform_json("GET", "/projects/%s/bundles/%s/publish" % (self.project_key, bundle_id), params=params)
+        return self.client._perform_json("POST", "/projects/%s/bundles/%s/publish" % (self.project_key, bundle_id), params=params)
 
     ########################################################
     # Bundles / Import (Automation node)
