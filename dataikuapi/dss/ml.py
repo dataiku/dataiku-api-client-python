@@ -3328,6 +3328,16 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "DELETE", "/projects/%s/models/lab/%s/%s/models/%s" % (self.project_key, self.analysis_id, self.mltask_id, model_id))
 
+    def resume_queue(self):
+        """
+        Resumes a paused queue
+
+        :return: A dict including the sessionID of the resumed queue
+        :rtype dict
+        """
+        return self.client._perform_json(
+            "POST", "/projects/%s/models/lab/%s/%s/actions/resumeQueue" % (self.project_key, self.analysis_id, self.mltask_id))
+
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
         Deploys a trained model from this ML Task to a saved model + train recipe in the Flow.

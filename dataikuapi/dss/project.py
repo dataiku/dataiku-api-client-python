@@ -591,6 +591,14 @@ class DSSProject(object):
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
+    def list_mltask_queues(self):
+        """
+        List all paused ML task queues in this project
+        
+        Returns:
+            the list of the paused ML task queues, each one as a JSON object
+        """
+        return self.client._perform_json("GET", "/projects/%s/models/lab/mltask-queues" % self.project_key)
 
     def create_analysis(self, input_dataset):
         """
