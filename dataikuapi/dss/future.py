@@ -72,7 +72,8 @@ class DSSFuture(object):
         """
         Wait and get the future result
         """
-        if self.state.get('hasResult', False):
+        if self.state is not None and self.state.get('hasResult', False):
+            # no future created in backend, result already in the state
             return self.result_wrapper(self.state.get('result', None))
         if self.state is None or not self.state.get('hasResult', False) or self.state_is_peek:
             self.get_state()
