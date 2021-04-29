@@ -3,6 +3,7 @@ import time, warnings
 from ..utils import DataikuException
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
+from dateutil.tz import tzlocal
 
 class DSSScenario(object):
     """
@@ -338,31 +339,58 @@ class DSSScenarioSettings(object):
 
     def add_periodic_trigger(self, every_minutes=5):
         """Adds a trigger that runs the scenario every X minutes"""
-        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Minutely", "count": every_minutes}}
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Minutely", "repeatFrequency": every_minutes }}
         self.raw_triggers.append(trigger)
 
-    def add_hourly_trigger(self, minute_of_hour=0):
+    def add_hourly_trigger(self, minute_of_hour=0, year=None, month=None, day=None, starting_hour=0, repeat_every=1, timezone="SERVER"):
         """Adds a trigger that runs the scenario each hour on a predefined minute"""
-        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Hourly", "minute":  minute_of_hour}}
+        starting_date =self.__get_starting_date__(year=year, month=month, day=day)
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Hourly", "hour": starting_hour, "minute": minute_of_hour,
+                                                                   "startingFrom": starting_date, "repeatFrequency": repeat_every, "timezone": timezone }}
         self.raw_triggers.append(trigger)
 
-    def add_daily_trigger(self, hour=2, minute=0, days=None):
+    def add_daily_trigger(self, hour=2, minute=0, days=None, year=None, month=None, day=None, repeat_every=1, timezone="SERVER"):
         """
         Adds a trigger that runs the scenario each day on a predefined time.
 
         :param day list: if not None, only runs on given days. Day must be given as english names with capitals
         """
+        starting_date =self.__get_starting_date__(year=year, month=month, day=day)
         if days is None:
-            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Daily", "hour": hour, "minute":  minute}}
+            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Daily", "hour": hour, "minute": minute, "startingFrom": starting_date,
+                                                                       "repeatFrequency": repeat_every, "timezone": timezone }}
         else:
-            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Weekly", "hour": hour, "minute":  minute,
-                            "daysOfWeek": days}}
+            trigger = {"active": True, "type": "temporal", "params": { "frequency": "Weekly", "hour": hour, "minute": minute, "startingFrom": starting_date,
+                                                                       "daysOfWeek": days, "repeatFrequency": repeat_every, "timezone": timezone }}
         self.raw_triggers.append(trigger)
 
-    def add_monthly_trigger(self, day=1, hour=2, minute=0):
+    def add_monthly_trigger(self, day=1, hour=2, minute=0, year=None, month=None, run_on="ON_THE_DAY", repeat_every=1, timezone="SERVER"):
         """Adds a trigger that runs the scenario once per month"""
-        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Monthly", "dayOfMonth": day, "hour": hour, "minute": minute}}
+        # We want the default value to be the First of January is nothing was set.
+        starting_date = self.__get_starting_date__(year=year, month=month, day=day, default_is_today=False)
+        trigger = {"active": True, "type": "temporal", "params": { "frequency": "Monthly", "startingFrom": starting_date, "hour": hour, "minute": minute,
+                                                                   "monthlyRunOn": run_on, "repeatFrequency": repeat_every, "timezone": timezone }}
         self.raw_triggers.append(trigger)
+
+    def __get_starting_date__(self, year, month, day, default_is_today=True):
+        today = datetime.now(tzlocal())
+        if day is None or not isinstance(day, int) or day < 1 or day > 31:
+            if default_is_today:
+                day = today.day
+            else:
+                # Will be use to avoid Monthly trigger on the 31 of February if the day is not set
+                day = 1
+        if month is None or not isinstance(month, int) or month < 1 or month > 12:
+            if default_is_today:
+                month = today.month
+            else:
+                # Will be use to avoid Monthly trigger on the 31 of February if the month is not set
+                month = 1
+        if year is None or not isinstance(year, int):
+            year = today.year
+        start_date = today.replace(year=year, month=month, day=day, hour=0, minute=0, second=0, microsecond=0)
+        return start_date.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + start_date.strftime('%z')
+
 
     def save(self):
         """Saves the settings to the scenario"""
