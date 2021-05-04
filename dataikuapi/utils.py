@@ -101,3 +101,15 @@ class CallableStr(str):
 
     def __call__(self):
         return self.val
+
+
+if sys.version_info >= (3, 0):
+    import urllib.parse
+    _dku_quote_fn = urllib.parse.quote
+else:
+    import urllib
+    _dku_quote_fn = urllib.quote
+
+
+def dku_quote(s):
+    return _dku_quote_fn(s)
