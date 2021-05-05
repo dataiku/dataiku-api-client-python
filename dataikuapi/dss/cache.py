@@ -39,3 +39,16 @@ class DSSCache(object):
         Deletes the entry
         """
         self.client._perform_raw("DELETE", "/projects/%s/cache/%s" % (self.project.project_key, dku_quote(key)))
+
+    def delete_cache(self, key):
+        """
+        Deletes the entry
+        """
+        self.client._perform_raw("DELETE", "/projects/%s/cache" % self.project.project_key)
+
+    def get_keys(self):
+        """
+        Gets all entry keys
+        Returns a list of entry keys
+        """
+        return self.client._perform_json("GET", "/projects/%s/cache" % self.project.project_key)
