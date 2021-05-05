@@ -1,4 +1,5 @@
 import time, warnings, sys, os.path as osp
+from .cache import DSSCache
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
@@ -1430,6 +1431,18 @@ class DSSProject(object):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
+    ########################################################
+    # Project cache
+    ########################################################
+
+    def get_cache(self):
+        """
+        Get the Cache
+
+        :returns: the cache associated to the project
+        :rtype: :class:`dataikuapi.dss.cache.DSSCache`
+        """
+        return DSSCache(self.client, self.project_key)
 
 class TablesImportDefinition(object):
     """
