@@ -28,8 +28,8 @@ class DSSCache(object):
         Sets the cache entry with an optional ttl (defaults to infinite)
         """
         if ttl > 0:
-            self.client._perform_raw("POST", "/projects/%s/cache/%s?ttl=%s" % (self.project.project_key, dku_quote(key), ttl),
-                                      body={value})
+            self.client._perform_raw("POST", "/projects/%s/cache/%s" % (self.project.project_key, dku_quote(key)),
+                                     params={"ttl": ttl}, body={value})
         else:
             self.client._perform_raw("POST", "/projects/%s/cache/%s" % (self.project.project_key, dku_quote(key)),
                                       body={value})
