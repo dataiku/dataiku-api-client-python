@@ -9,7 +9,7 @@ class DSSCache(object):
     def _entries_to_dict(self, entries):
         entries_dict = {}
         for entry in entries:
-            entries_dict[entry['key']['second']] = entry['value']
+            entries_dict[entry['key']['second']] = json.loads(entry['value'])
         return entries_dict
 
     def get_entry(self, key):
@@ -23,7 +23,7 @@ class DSSCache(object):
             try:
                 return resp.json()
             except:
-                Exception("DSS response has not the right form")
+                raise Exception("DSS response has not the right form")
         elif resp.status_code == 204:
             # cache miss
             raise KeyError
