@@ -11,7 +11,7 @@ class DSSCache(object):
     def _entries_to_dict(self, entries):
         entries_dict = {}
         for entry in entries:
-            entries_dict[entry['key']['second']] = json.loads(entry['value'])
+            entries_dict[entry['key']['second']] = None if entry['value'] == 'None' else json.loads(entry['value'])
         return entries_dict
 
     def get_entry(self, key):
@@ -46,6 +46,16 @@ class DSSCache(object):
         else:
             self.client._perform_raw("POST", "/projects/%s/cache/%s" % (self.project_key, dku_quote(key)),
                                       body=value)
+
+    def set_entry_batch(self, dict, ttl=0):
+        """
+        Sets the cache entry with an optional ttl (defaults to infinite)
+        """
+        if ttl > 0:
+            body = [{'key': entry, 'value': str(dict[entry]), 'ttl': ttl} for entry in dict]
+        else:
+            body = [{'key': entry, 'value': str(dict[entry])} for entry in dict]
+        self.client._perform_raw("POST", "/projects/%s/cache/" % (self.project_key), body=body)
 
     def delete_entry(self, key):
         """
