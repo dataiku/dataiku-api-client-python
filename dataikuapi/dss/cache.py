@@ -6,6 +6,12 @@ class DSSCache(object):
         self.client = client
         self.project_key = project_key
 
+    def _entries_to_dict(self, entries):
+        entries_dict = {}
+        for entry in entries:
+            entries_dict[entry['key']['second']] = entry['value']
+        return entries_dict
+
     def get_entry(self, key):
         """
         Gets the cache entry if it exists
@@ -14,17 +20,19 @@ class DSSCache(object):
         resp = self.client._perform_raw("GET", "/projects/%s/cache/%s" % (self.project_key, dku_quote(key)))
         if resp.status_code == 200:
             # cache hit
-            return {
-                "cache_hit": True,
-                "value": resp.json(),
-            }
+            try:
+                return resp.json()
+            except:
+                Exception("DSS response has not the right form")
         elif resp.status_code == 204:
             # cache miss
-            return {"cache_hit": False}
-        raise Exception("WTF")
+            raise KeyError
+        raise Exception("Unknown error")
 
     def get_batch(self, keys):
-        resp = self.client._perform_json("POST", "/projects/%s/cache/get_batch")
+        resp = self.client._perform_json("GET", "/projects/%s/cache/" % self.project_key, body=keys)
+        resp['hits'] = self._entries_to_dict(resp['hits'])
+        return resp
 
     def set_entry(self, key, value, ttl=0):
         """
