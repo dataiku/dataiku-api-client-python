@@ -1,4 +1,5 @@
 import json
+import functools
 
 from dataikuapi.utils import dku_quote
 
@@ -69,9 +70,33 @@ class DSSCache(object):
         """
         self.client._perform_raw("DELETE", "/projects/%s/cache" % self.project_key)
 
-    def get_keys(self):
+    def cached(self, function_id=None):
         """
-        Gets all entry keys
-        Returns a list of entry keys
+        example:
+        @dss_cache.cached()
+        def double(n):
+            return 2*
+
+        or with a custom key prefix
+        @dss_cache.cached(function_id='double_val')
         """
-        return self.client._perform_json("GET", "/projects/%s/cache" % self.project_key)
+
+        dss_cache = self
+        def inner(fun):
+            @functools.wraps(fun)
+            def inner_inner(*args, **kwargs):
+                if (function_id is not None):
+                    key = function_id + str(args)
+                else:
+                    key = fun.__name__ + str(args)
+                try:
+                    res = dss_cache.get_entry(key)
+                    print("got cache hit for: ", key, "\nvalue is : ", res)
+                    return res
+                except:
+                    res = fun(*args, **kwargs)
+                    dss_cache.set_entry(key, res)
+                    print("writing in cache: ", key, "\nvalue : ", res)
+                    return res
+            return inner_inner
+        return inner
