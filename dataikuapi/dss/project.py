@@ -26,7 +26,7 @@ class DSSProject(object):
     """
     A handle to interact with a project on the DSS instance.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project``
+    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project`
     """
     def __init__(self, client, project_key):
        self.client = client
@@ -205,7 +205,7 @@ class DSSProject(object):
         Get the metadata attached to this project. The metadata contains label, description
         checklists, tags and custom metadata of the project.
 
-        For more information on available metadata, please see https://doc.dataiku.com/dss/api/6.0/rest/
+        For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest/rest/
         
         :returns: a dict object containing the project metadata.
         :rtype: dict
@@ -823,14 +823,14 @@ class DSSProject(object):
         """
         Create a new job, and return a handle to interact with it
         
-        Args:
-            definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
-            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build.
-            Optionally, a refreshHiveMetastore field can specify whether to re-synchronize the Hive metastore for recomputed
+        :param: dict definition: The definition should contain 
+            
+            * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
+            * a list of outputs to build (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
+            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
             HDFS datasets.
         
-        Returns:
-            A :class:`dataikuapi.dss.job.DSSJob` job handle
+        :returns: A :class:`dataikuapi.dss.job.DSSJob` job handle
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
@@ -839,10 +839,11 @@ class DSSProject(object):
         """
         Starts a new job and waits for it to complete.
         
-        Args:
-            definition: the definition for the job to create. The definition must contain the type of job (RECURSIVE_BUILD, 
-            NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) and a list of outputs to build.
-            Optionally, a refreshHiveMetastore field can specify whether to re-synchronize the Hive metastore for recomputed
+        :param: dict definition: The definition should contain:
+            
+            * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
+            * a list of outputs to build (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
+            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
             HDFS datasets.
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
@@ -1090,15 +1091,32 @@ class DSSProject(object):
     ########################################################
 
     def list_imported_bundles(self):
+        """
+        Returns a list of imported bundles for a project. 
+        """
         return self.client._perform_json("GET",
                 "/projects/%s/bundles/imported" % self.project_key)
 
     def import_bundle_from_archive(self, archive_path):
+        """
+        Imports a bundle from a path to a zip bundle archive.
+        
+        :param archive_path: A full path to a zip archive, for example `/home/dataiku/DKU_HAIKU_STARTER_v1.zip`
+        """
         return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
                  params = { "archivePath" : osp.abspath(archive_path) })
 
     def import_bundle_from_stream(self, fp):
+        """
+        Imports a bundle from a file stream 
+        
+        :param fp: pointer to a file stream For example: 
+        
+            ```
+            with open()
+            ```
+        """
         files = {'file': fp}
         return self.client._perform_empty("POST",
                 "/projects/%s/bundles/imported/actions/importFromStream" % (self.project_key),
@@ -1120,6 +1138,9 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id), body=options)
 
     def preload_bundle(self, bundle_id):
+        """
+        Preloads a bundle 
+        """
         return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
@@ -1681,6 +1702,11 @@ class JobDefinitionBuilder(object):
     def with_output(self, name, object_type=None, object_project_key=None, partition=None):
         """
         Adds an item to build in this job
+        
+        :param name: name of the output object
+        :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT
+        :param object_project_key: PROJECT_KEY for the project that contains the object to build 
+        :param partition: specify partition to build
         """
         self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
         return self
