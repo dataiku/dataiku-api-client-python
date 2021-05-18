@@ -205,7 +205,7 @@ class DSSProject(object):
         Get the metadata attached to this project. The metadata contains label, description
         checklists, tags and custom metadata of the project.
 
-        For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest/rest/
+        For more information on available metadata, please see https://doc.dataiku.com/dss/api/6.0/rest/
         
         :returns: a dict object containing the project metadata.
         :rtype: dict
@@ -823,10 +823,10 @@ class DSSProject(object):
         """
         Create a new job, and return a handle to interact with it
         
-        :param: dict definition: The definition should contain 
+        :param: dict definition: The definition should contain: 
             
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
-            * a list of outputs to build (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
+            * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
             HDFS datasets.
         
@@ -842,7 +842,7 @@ class DSSProject(object):
         :param: dict definition: The definition should contain:
             
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
-            * a list of outputs to build (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
+            * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
             HDFS datasets.
         """
