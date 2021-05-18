@@ -1055,7 +1055,13 @@ class DSSProject(object):
         
         .. warning::
             
-            this stream will monopolize the DSSClient until closed.
+            this stream will monopolize the DSSClient until closed, so the stream must be closed after use or used within a ``with`` statement. For example:
+            
+            .. code-block:: python 
+        
+                    with project.get_exported_bundle_archive_stream('v1') as fp:
+                        # use fp 
+                    
         """
         return self.client._perform_raw("GET",
                 "/projects/%s/bundles/exported/%s/archive" % (self.project_key, bundle_id))
