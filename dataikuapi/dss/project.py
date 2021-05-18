@@ -69,7 +69,7 @@ class DSSProject(object):
     def move_to_folder(self, folder):
         """
         Moves this project to a project folder
-        :param folder :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
+        :param folder :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         current_folder = self.get_project_folder()
         current_folder.move_project_to(self.project_key, folder)
@@ -823,12 +823,11 @@ class DSSProject(object):
         """
         Create a new job, and return a handle to interact with it
         
-        :param: dict definition: The definition should contain: 
+        :param dict definition: The definition should contain: 
             
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
-            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
-            HDFS datasets.
+            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
         
         :returns: A :class:`dataikuapi.dss.job.DSSJob` job handle
         """
@@ -839,12 +838,11 @@ class DSSProject(object):
         """
         Starts a new job and waits for it to complete.
         
-        :param: dict definition: The definition should contain:
+        :param dict definition: The definition should contain:
             
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
-            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed
-            HDFS datasets.
+            * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         job = DSSJob(self.client, self.project_key, job_def['id'])
@@ -884,8 +882,8 @@ class DSSProject(object):
         :param bool as_type: How to return the list. Supported values are "listitems" and "objects".
         :param bool active: if True, only return currently running jupyter notebooks.
 
-        :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`,
-        if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
+        :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
+        
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`
         """
         notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
@@ -969,7 +967,7 @@ class DSSProject(object):
         WARNING: if executed from a python recipe, the changes made by `set_variables` will not be "seen" in that recipe.
                  Use the internal API dataiku.get_custom_variables() instead if this behavior is needed
 
-        @param dict obj: must be a modified version of the object returned by get_variables
+        :param dict obj: must be a modified version of the object returned by get_variables
         """
         if not "standard" in obj:
             raise ValueError("Missing 'standard' key in argument")
@@ -1036,17 +1034,28 @@ class DSSProject(object):
     ########################################################
 
     def list_exported_bundles(self):
+        """
+        :returns: A dictionary of all bundles for a project on the Design node.
+        """
         return self.client._perform_json("GET",
                 "/projects/%s/bundles/exported" % self.project_key)
 
     def export_bundle(self, bundle_id):
+        """
+        Creates a new project bundle on the Design node 
+        
+        :param str bundle_id: bundle id tag 
+        """
         return self.client._perform_json("PUT",
                 "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
 
     def get_exported_bundle_archive_stream(self, bundle_id):
         """
         Download a bundle archive that can be deployed in a DSS automation Node, as a binary stream.
-        Warning: this stream will monopolize the DSSClient until closed.
+        
+        .. warning::
+            
+            this stream will monopolize the DSSClient until closed.
         """
         return self.client._perform_raw("GET",
                 "/projects/%s/bundles/exported/%s/archive" % (self.project_key, bundle_id))
@@ -1055,7 +1064,7 @@ class DSSProject(object):
         """
         Download a bundle archive that can be deployed in a DSS automation Node into the given output file.
         
-        :param path if "-", will write to /dev/stdout
+        :param string path: if "-", will write to /dev/stdout
         """
         if path == "-":
             path= "/dev/stdout"
@@ -1092,14 +1101,14 @@ class DSSProject(object):
 
     def list_imported_bundles(self):
         """
-        :returns: a dict of bundles objects for the project.
+        :returns: a dict containing bundle imports for a project, on the Automation node.
         """
         return self.client._perform_json("GET",
                 "/projects/%s/bundles/imported" % self.project_key)
 
     def import_bundle_from_archive(self, archive_path):
         """
-        Imports a bundle from a path to a zip bundle archive.
+        Imports a bundle from a zip archive path on the Automation node.
         
         :param str archive_path: A full path to a zip archive, for example `/home/dataiku/my-bundle-v1.zip`
         """
@@ -1109,7 +1118,7 @@ class DSSProject(object):
 
     def import_bundle_from_stream(self, fp):
         """
-        Imports a bundle from a file stream 
+        Imports a bundle from a file stream, on the Automation node. 
         
         :param file-like fp: file handler. Usage example: 
         
@@ -1140,6 +1149,11 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id), body=options)
 
     def preload_bundle(self, bundle_id):
+        """
+        Preloads a bundle that has been imported on the Automation node 
+        
+        :param str bundle_id: the bundle_id for an existing imported bundle
+        """
         return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
@@ -1220,8 +1234,9 @@ class DSSProject(object):
     def get_recipe(self, recipe_name):
         """
         Gets a :class:`dataikuapi.dss.recipe.DSSRecipe` handle to interact with a recipe
+        
         :param str recipe_name: The name of the recipe
-        :rtype :class:`dataikuapi.dss.recipe.DSSRecipe`
+        :rtype: :class:`dataikuapi.dss.recipe.DSSRecipe`
         """
         return DSSRecipe(self.client, self.project_key, recipe_name)
 
@@ -1315,6 +1330,9 @@ class DSSProject(object):
     ########################################################
 
     def get_flow(self):
+        """
+        :rtype: A :class:`dataikuapi.dss.flow.DSSProjectFlow`
+        """
         return DSSProjectFlow(self.client, self)
 
     ########################################################
