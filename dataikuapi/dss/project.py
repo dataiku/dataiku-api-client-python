@@ -1092,7 +1092,7 @@ class DSSProject(object):
 
     def list_imported_bundles(self):
         """
-        Returns a list of imported bundles for a project. 
+        :returns: a dict of bundles objects for the project.
         """
         return self.client._perform_json("GET",
                 "/projects/%s/bundles/imported" % self.project_key)
@@ -1101,7 +1101,7 @@ class DSSProject(object):
         """
         Imports a bundle from a path to a zip bundle archive.
         
-        :param archive_path: A full path to a zip archive, for example `/home/dataiku/DKU_HAIKU_STARTER_v1.zip`
+        :param str archive_path: A full path to a zip archive, for example `/home/dataiku/my-bundle-v1.zip`
         """
         return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/actions/importFromArchive" % (self.project_key),
@@ -1111,11 +1111,13 @@ class DSSProject(object):
         """
         Imports a bundle from a file stream 
         
-        :param fp: pointer to a file stream For example: 
+        :param file-like fp: file handler. Usage example: 
         
-            ```
-            with open()
-            ```
+        .. code-block:: python
+
+            project = client.get_project('MY_PROJECT')
+            with open('/home/dataiku/my-bundle-v1.zip', 'rb') as f:
+                project.import_bundle_from_stream(f)
         """
         files = {'file': fp}
         return self.client._perform_empty("POST",
@@ -1138,9 +1140,6 @@ class DSSProject(object):
                 "/projects/%s/bundles/imported/%s/actions/activate" % (self.project_key, bundle_id), body=options)
 
     def preload_bundle(self, bundle_id):
-        """
-        Preloads a bundle 
-        """
         return self.client._perform_json("POST",
                 "/projects/%s/bundles/imported/%s/actions/preload" % (self.project_key, bundle_id))
 
