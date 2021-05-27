@@ -8,6 +8,7 @@ from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials
 from .fm.virtualnetworks import FMVirtualNetwork
+from .fm.instances import FMInstance, FMInstanceEncryptionMode
 from .fm.instancesettingstemplates import FMInstanceSettingsTemplate
 
 class FMClient(object):
@@ -105,6 +106,67 @@ class FMClient(object):
         return FMInstanceSettingsTemplate(self, template)
 
 
+    ########################################################
+    # Instance
+    ########################################################
+
+    def get_instances(self):
+        """
+        Get Instances
+
+        :return: list of instances
+        :rtype: list of :class:`dataikuapi.fm.tenant.FMInstance`
+        """
+        instances = self._perform_tenant_json("GET", "/instances")
+        return [ FMInstance(self, **x) for x in instances]
+
+    def get_instance(self, instance_id):
+        """
+        Get an Instance
+
+        :param str instance_id
+
+        :return: Instance
+        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        """
+        instance = self._perform_json("GET", "/instances/%s" % instance_id)
+        return FMInstance(self, **instance)
+
+    def create_instance(self, instance_settings_template, virtual_network, label,
+                        dss_node_type="design", image_id=None,
+                        cloud_instance_type=None, data_volume_type=None, data_volume_size=None,
+                        data_volume_size_max=None, data_volume_IOPS=None, data_volume_encryption=FMInstanceEncryptionMode.NONE,
+                        data_volume_encryption_key=None, aws_root_volume_size=None, aws_root_volume_type=None, aws_root_volume_IOPS=None,
+                        cloud_tags=None, fm_tags=None):
+        """
+        Create an Instance
+
+        :param str instance_id
+
+        :return: Instance
+        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        """
+        data = {
+            "virtualNetworkId": virtual_network.id,
+            "instanceSettingsTemplateId": instance_settings_template.id,
+            "label": label,
+            "dssNodeType": dss_node_type,
+            "imageId": image_id,
+            "cloudInstanceType": cloud_instance_type,
+            "dataVolumeType": data_volume_type,
+            "dataVolumeSizeGB": data_volume_size,
+            "dataVolumeSizeMaxGB": data_volume_size_max,
+            "dataVolumeIOPS": data_volume_IOPS,
+            "dataVolumeEncryption": str(data_volume_encryption),
+            "dataVolumeEncryptionKey": data_volume_encryption_key,
+            "awsRootVolumeSizeGB": aws_root_volume_size,
+            "awsRootVolumeType": aws_root_volume_type,
+            "awsRootVolumeIOPS": aws_root_volume_IOPS,
+            "cloudTags": cloud_tags,
+            "fmTags": fm_tags
+        }
+        instance = self._perform_tenant_json("POST", "/instances", body=data)
+        return FMInstance(self, instance)
 
 
     ########################################################
