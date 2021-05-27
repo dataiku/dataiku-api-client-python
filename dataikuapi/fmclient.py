@@ -7,12 +7,11 @@ import os.path as osp
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials
-from .fm.tenant import FMCloudTags
 
 class FMClient(object):
     """Entry point for the FM API client"""
 
-    def __init__(self, host, api_key_id, api_key_secret, extra_headers = None):
+    def __init__(self, host, api_key_id, api_key_secret, tenant_id, extra_headers = None):
         """
         Instantiate a new FM API client on the given host with the given API key.
 
@@ -23,6 +22,7 @@ class FMClient(object):
         self.api_key_id = api_key_id
         self.api_key_secret = api_key_secret
         self.host = host
+        self.__tenant_id = tenant_id
         self._session = Session()
 
         if self.api_key_id is not None and self.api_key_secret is not None:
@@ -37,17 +37,15 @@ class FMClient(object):
     # Tenant
     ########################################################
 
-    def get_cloud_credentials(self, tenant_id):
+    def get_cloud_credentials(self):
         """
-        Get Tenant's Cloud Credential
+        Get Cloud Credential
 
-        :param string tenant_id
-
-        :return: tenant's cloud credentials
+        :return: Cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
         """
-        creds = self._perform_json("GET", "/tenants/%s/cloud-credentials" % tenant_id)
-        return FMCloudCredentials(self, tenant_id, creds)
+        creds = self._perform_tenant_json("GET", "/cloud-credentials")
+        return FMCloudCredentials(self, creds)
 
     ########################################################
     # Internal Request handling
@@ -79,3 +77,9 @@ class FMClient(object):
 
     def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
         return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
+
+    def _perform_tenant_json(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_json(method, "/tenants/%s%s" % ( self.__tenant_id, path ), params=params, body=body, files=files, raw_body=raw_body)
+
+    def _perform_tenant_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
+        self._perform_empty(method, "/tenants/%s%s" % ( self.__tenant_id, path ), params=params, body=body, files=files, raw_body=raw_body)
