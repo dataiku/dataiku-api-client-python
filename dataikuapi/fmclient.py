@@ -7,6 +7,7 @@ import os.path as osp
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials
+from .fm.virtualnetworks import FMVirtualNetwork
 
 class FMClient(object):
     """Entry point for the FM API client"""
@@ -46,6 +47,34 @@ class FMClient(object):
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
         return FMCloudCredentials(self, creds)
+
+
+    ########################################################
+    # VirtualNetwork
+    ########################################################
+
+    def get_virtual_networks(self):
+        """
+        Get Virtual Networks
+
+        :return: list of virtual networks
+        :rtype: list of :class:`dataikuapi.fm.tenant.FMVirtualNetwork`
+        """
+        vns = self._perform_tenant_json("GET", "/virtual-networks")
+        return [ FMVirtualNetwork(self, x) for x in vns]
+
+    def get_virtual_network(self, virtual_network_id):
+        """
+        Get a Virtual Network
+
+        :param str virtual_network_id
+
+        :return: requested virtual network
+        :rtype: :class:`dataikuapi.fm.tenant.FMVirtualNetwork`
+        """
+        template = self._perform_tenant_json("GET", "/virtual-networks/%s" % virtual_network_id)
+        return FMVirtualNetwork(self, template)
+
 
     ########################################################
     # Internal Request handling
