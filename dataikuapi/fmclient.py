@@ -8,6 +8,7 @@ from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials
 from .fm.virtualnetworks import FMVirtualNetwork
+from .fm.instancesettingstemplates import FMInstanceSettingsTemplate
 
 class FMClient(object):
     """Entry point for the FM API client"""
@@ -33,6 +34,7 @@ class FMClient(object):
 
         if extra_headers is not None:
             self._session.headers.update(extra_headers)
+
 
     ########################################################
     # Tenant
@@ -74,6 +76,35 @@ class FMClient(object):
         """
         template = self._perform_tenant_json("GET", "/virtual-networks/%s" % virtual_network_id)
         return FMVirtualNetwork(self, template)
+
+
+    ########################################################
+    # Instance settings template
+    ########################################################
+
+    def get_instance_templates(self):
+        """
+        Get Instance Settings Templates
+
+        :return: list of instance settings template
+        :rtype: list of :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
+        """
+        templates = self._perform_tenant_json("GET", "/instance-settings-templates")
+        return [ FMInstanceSettingsTemplate(self, x) for x in templates]
+
+    def get_instance_template(self, template_id):
+        """
+        Get an Instance
+
+        :param str template_id
+
+        :return: requested instance settings template
+        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        """
+        template = self._perform_tenant_json("GET", "/instance-settings-templates/%s" % template_id)
+        return FMInstanceSettingsTemplate(self, template)
+
+
 
 
     ########################################################
