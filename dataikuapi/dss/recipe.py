@@ -201,7 +201,7 @@ class DSSRecipe(object):
     def set_metadata(self, metadata):
         """
         Set the metadata on this recipe.
-        :params dict metadata: the new state of the metadata for the recipe. You should only set a metadata object 
+        :params dict metadata: the new state of the metadata for the recipe. You should only set a metadata object
             that has been retrieved using the get_metadata call.
         """
         return self.client._perform_json(
@@ -225,7 +225,7 @@ class DSSRecipe(object):
         return DSSContinuousActivity(self.client, self.project_key, self.recipe_name)
 
 class DSSRecipeStatus(object):
-    """Status of a recipce. 
+    """Status of a recipce.
     Do not create that directly, use :meth:`DSSRecipe.get_status`"""
 
     def __init__(self, client, data):
@@ -269,7 +269,7 @@ class DSSRecipeStatus(object):
         """
         Returns status messages for this recipe.
 
-        :returns: a list of dict, for each status message. Each dict represents a single message, 
+        :returns: a list of dict, for each status message. Each dict represents a single message,
             and contains at least a "severity" field (SUCCESS, WARNING or ERROR)
             and a "message" field
         :rtype: list
@@ -612,7 +612,7 @@ class DSSRecipeCreator(object):
 
     def create(self):
         """
-        Creates the new recipe in the project, and return a handle to interact with it. 
+        Creates the new recipe in the project, and return a handle to interact with it.
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
@@ -787,7 +787,7 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
 
     def with_group_key(self, group_key):
         """
-        Set a column as the first grouping key. Only a single grouping key may be set 
+        Set a column as the first grouping key. Only a single grouping key may be set
         at recipe creation time. For additional groupings, get the recipe settings
 
         :param str group_key: name of a column in the input dataset
@@ -1030,6 +1030,13 @@ class FuzzyJoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'fuzzyjoin', name, project)
 
+class GeoJoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
+    """
+    Create a GeoJoin recipe
+    """
+    def __init__(self, name, project):
+        VirtualInputsSingleOutputRecipeCreator.__init__(self, 'geojoin', name, project)
+
 class StackRecipeSettings(DSSRecipeSettings):
     """
     Settings of a stack recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
@@ -1175,8 +1182,8 @@ class CodeRecipeCreator(DSSRecipeCreator):
         :param str connection_id: name of the connection to create the dataset on
         :param str type: type of dataset, for connection where the type could be ambiguous. Typically,
                                  this is SCP or SFTP, for SSH connection
-        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
-                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
+        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
                                      AVRO, ORC. If None, uses the default
         :param str copy_partitioning_from: Whether to copy the partitioning from another thing.
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
