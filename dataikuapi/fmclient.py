@@ -129,8 +129,8 @@ class FMClient(object):
         :return: Instance
         :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
         """
-        instance = self._perform_json("GET", "/instances/%s" % instance_id)
-        return FMInstance(self, **instance)
+        instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
+        return FMInstance(self, instance)
 
     def create_instance(self, instance_settings_template, virtual_network, label,
                         dss_node_type="design", image_id=None,
@@ -157,7 +157,7 @@ class FMClient(object):
             "dataVolumeSizeGB": data_volume_size,
             "dataVolumeSizeMaxGB": data_volume_size_max,
             "dataVolumeIOPS": data_volume_IOPS,
-            "dataVolumeEncryption": str(data_volume_encryption),
+            "dataVolumeEncryption": data_volume_encryption.value,
             "dataVolumeEncryptionKey": data_volume_encryption_key,
             "awsRootVolumeSizeGB": aws_root_volume_size,
             "awsRootVolumeType": aws_root_volume_type,
