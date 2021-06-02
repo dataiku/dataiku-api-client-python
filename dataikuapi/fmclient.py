@@ -100,9 +100,66 @@ class FMClient(object):
         :param str template_id
 
         :return: requested instance settings template
-        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        :rtype: :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
         """
         template = self._perform_tenant_json("GET", "/instance-settings-templates/%s" % template_id)
+        return FMInstanceSettingsTemplate(self, template)
+
+
+    def create_instance_template(self, label,
+                                 setupActions=None, license=None,
+                                 awsKeyPairName=None, startupInstanceProfileArn=None, runtimeInstanceProfileArn=None,
+                                 restrictAwsMetadataServerAccess=True, dataikuAwsAPIAccessMode="NONE", dataikuAwsKeypairStorageMode=None,
+                                 dataikuAwsAccessKeyId=None, dataikuAwsSecretAccessKey=None,
+                                 dataikuAwsSecretAccessKeyAwsSecretName=None, awsSecretsManagerRegion=None,
+                                 azureSshKey=None, startupManagedIdentity=None, runtimeManagedIdentity=None):
+        """
+        Create an Instance Template
+
+        :param str label: The label of the Instance Settings Template
+
+        :param list setupActions: Optional, a list of `:class: FMSetupAction` to be played on an instance
+        :param str license: Optional, overrides the license set in Cloud Setup
+
+        :param str awsKeyPairName: Optional, AWS Only, the name of an AWS key pair to add to the instance. Needed to get SSH access to the DSS instance, using the centos user.
+        :param str startupInstanceProfileArn: Optional, AWS Only, the ARN of the Instance profile assigned to the DSS instance at startup time
+        :param str runtimeInstanceProfileArn: Optional, AWS Only, the ARN of the Instance profile assigned to the DSS instance at runtime
+        :param boolean restrictAwsMetadataServerAccess: Optional, AWS Only, If true, restrict the access to the metadata server access. Defaults to true
+        :param str dataikuAwsAPIAccessMode: Optional, AWS Only, the access mode DSS is using to connect to the AWS API. If "NONE" DSS will use the Instance Profile, If "KEYPAIR", an AWS access key id and secret will be securely given to the dataiku account.
+        :param str dataikuAwsKeypairStorageMode: Optional, AWS Only, the storage mode of the AWS api key. Accepts "NONE", "INLINE_ENCRYPTED" or "AWS_SECRETS_MANAGER"
+        :param str dataikuAwsAccessKeyId: Optional, AWS Only, AWS Access Key ID. Only needed if dataikuAwsAPIAccessMode is "KEYPAIR"
+        :param str dataikuAwsSecretAccessKey: Optional, AWS Only, AWS Access Key Secret. Only needed if dataikuAwsAPIAccessMode is "KEYPAIR" and dataikuAwsKeypairStorageMode is "INLINE_ENCRYPTED"
+        :param str dataikuAwsSecretAccessKeyAwsSecretName: Optional, AWS Only, ASM secret name. Only needed if dataikuAwsAPIAccessMode is "KEYPAIR" and dataikuAwsKeypairStorageMode is "AWS_SECRET_MANAGER"
+        :param str awsSecretsManagerRegion: Optional, AWS Only
+
+        :param str azureSshKey: Optional, Azure Only, the ssh public key to add to the instance. Needed to get SSH access to the DSS instance, using the centos user.
+        :param str startupManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at startup time
+        :param str runtimeManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at runtime
+
+        :return: requested instance settings template
+        :rtype: :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
+        """
+
+        data = {
+            "label": label,
+            "setupActions": setupActions,
+            "license": license,
+            "awsKeyPairName": awsKeyPairName,
+            "startupInstanceProfileArn": startupInstanceProfileArn,
+            "runtimeInstanceProfileArn": runtimeInstanceProfileArn,
+            "restrictAwsMetadataServerAccess": restrictAwsMetadataServerAccess,
+            "dataikuAwsAPIAccessMode": "dataikuAwsAPIAccessMode",
+            "dataikuAwsKeypairStorageMode": dataikuAwsKeypairStorageMode,
+            "dataikuAwsAccessKeyId": dataikuAwsAccessKeyId,
+            "dataikuAwsSecretAccessKey": dataikuAwsSecretAccessKey,
+            "dataikuAwsSecretAccessKeyAwsSecretName": dataikuAwsSecretAccessKeyAwsSecretName,
+            "awsSecretsManagerRegion": awsSecretsManagerRegion,
+            "azureSshKey": azureSshKey,
+            "startupManagedIdentity": startupManagedIdentity,
+            "runtimeManagedIdentity": runtimeManagedIdentity
+        }
+
+        template = self._perform_tenant_json("POST", "/instance-settings-templates", body=data)
         return FMInstanceSettingsTemplate(self, template)
 
 
@@ -132,8 +189,8 @@ class FMClient(object):
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
         return FMInstance(self, instance)
 
-    def create_instance(self, instance_settings_template, virtual_network, label,
-                        dss_node_type="design", image_id=None,
+    def create_instance(self, instance_settings_template, virtual_network, label, image_id,
+                        dss_node_type="design",
                         cloud_instance_type=None, data_volume_type=None, data_volume_size=None,
                         data_volume_size_max=None, data_volume_IOPS=None, data_volume_encryption=FMInstanceEncryptionMode.NONE,
                         data_volume_encryption_key=None, aws_root_volume_size=None, aws_root_volume_type=None, aws_root_volume_IOPS=None,
@@ -141,7 +198,24 @@ class FMClient(object):
         """
         Create a DSS Instance
 
-        :param str instance_id
+        :param str instance_settings_template: The instance settings template id this instance should be based on
+        :param str virtual_network: The virtual network where the instance should be spawned
+        :param str label: The label of the instance
+        :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
+
+        :param str dss_node_type: Optional , the type of the dss node to create. Defaults to "design"
+        :param str cloud_instance_type: Optional, Machine type
+        :param str data_volume_type: Optional, Data volume type
+        :param int data_volume_size: Optional, Data volume initial size
+        :param int data_volume_size_max: Optional, Data volume maximum size
+        :param int data_volume_IOPS: Optional, Data volume IOPS
+        :param object data_volume_encryption: Optional, a :class:`FMInstanceEncryptionMode` setting the encryption mode of the data volume
+        :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
+        :param int aws_root_volume_size: Optional, the root volume size
+        :param str aws_root_volume_type: Optional, the root volume type
+        :param int aws_root_volume_IOPS: Optional, the root volume IOPS
+        :param dict cloud_tags: Optional, a key value dictionary of tags to be applied on the cloud resources
+        :param list fm_tags: Optional, list of tags to be applied on the instance in the Fleet Manager
 
         :return: Instance
         :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
@@ -178,7 +252,7 @@ class FMClient(object):
             body = json.dumps(body)
         if raw_body is not None:
             body = raw_body
-
+        print(body)
         try:
             http_res = self._session.request(
                     method, "%s/api/public%s" % (self.host, path),

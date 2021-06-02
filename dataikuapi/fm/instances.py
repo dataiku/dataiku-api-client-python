@@ -12,13 +12,13 @@ class FMInstance(object):
 
     def reprovision(self):
         """
-        Reprovision the DSS physical instance
+        Reprovision the physical DSS instance
         """
         self.client._perform_tenant_json("GET", "/instances/%s/actions/reprovision" % self.id)
 
     def deprovision(self):
         """
-        Deprovision the DSS physical instance
+        Deprovision the physical DSS instance
         """
         self.client._perform_tenant_json("GET", "/instances/%s/actions/deprovision" % self.id)
 
@@ -30,14 +30,15 @@ class FMInstance(object):
 
     def save(self):
         """
-        Update the DSS Instance.
+        Update the Instance.
         """
         self.client._perform_tenant_empty("PUT", "/instances/%s" % self.id, body=self.instance_data)
         self.instance_data = self.client._perform_tenant_json("GET", "/instances/%s" % self.id)
 
-
-
     def get_status(self):
+        """
+        Get the physical DSS instance's status
+        """
         status = self.client._perform_tenant_json("GET", "/instances/%s/status" % self.id)
         return FMInstanceStatus(status)
 
