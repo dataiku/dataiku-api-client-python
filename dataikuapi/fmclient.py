@@ -58,7 +58,7 @@ class FMClient(object):
 
     def get_virtual_networks(self):
         """
-        Get Virtual Networks
+        List all Virtual Networks
 
         :return: list of virtual networks
         :rtype: list of :class:`dataikuapi.fm.tenant.FMVirtualNetwork`
@@ -85,7 +85,7 @@ class FMClient(object):
 
     def get_instance_templates(self):
         """
-        Get Instance Settings Templates
+        List all Instance Settings Templates
 
         :return: list of instance settings template
         :rtype: list of :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
@@ -95,7 +95,7 @@ class FMClient(object):
 
     def get_instance_template(self, template_id):
         """
-        Get an Instance
+        Get an Instance Template
 
         :param str template_id
 
@@ -112,7 +112,7 @@ class FMClient(object):
 
     def get_instances(self):
         """
-        Get Instances
+        List all DSS Instances
 
         :return: list of instances
         :rtype: list of :class:`dataikuapi.fm.tenant.FMInstance`
@@ -122,7 +122,7 @@ class FMClient(object):
 
     def get_instance(self, instance_id):
         """
-        Get an Instance
+        Get a DSS Instance
 
         :param str instance_id
 
@@ -139,7 +139,7 @@ class FMClient(object):
                         data_volume_encryption_key=None, aws_root_volume_size=None, aws_root_volume_type=None, aws_root_volume_IOPS=None,
                         cloud_tags=None, fm_tags=None):
         """
-        Create an Instance
+        Create a DSS Instance
 
         :param str instance_id
 
