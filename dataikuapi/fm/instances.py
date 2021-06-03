@@ -55,6 +55,16 @@ class FMInstance(object):
         status = self.client._perform_tenant_json("GET", "/instances/%s/status" % self.id)
         return FMInstanceStatus(status)
 
+    def delete(self):
+        """
+        Delete the DSS instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/delete" % self.id)
+        return FMFuture.from_resp(self.client, future)
+
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
