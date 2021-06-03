@@ -65,6 +65,43 @@ class FMInstance(object):
         future = self.client._perform_tenant_json("GET", "/instances/%s/actions/delete" % self.id)
         return FMFuture.from_resp(self.client, future)
 
+    def set_automated_snapshots(self, enable, period, keep=0):
+        """
+        Set the automated snapshots policy for this instance
+
+        :param boolean enable: Enable the automated snapshots
+        :param int period: The time period between 2 snapshot in hours
+        :param int keep: Optional, the number of snapshot to keep. Use 0 to keep all snapshots. Defaults to 0.
+        """
+        self.instance_data['enableAutomatedSnapshot'] = enable
+        self.instance_data['automatedSnapshotPeriod'] = period
+        self.instance_data['automatedSnapshotRetention'] = keep
+        self.save()
+
+    def set_elastic_ip(self, enable, elasticip_allocation_id):
+        """
+        Set a public elastic ip for this instance
+
+        :param boolan enable: Enable the elastic ip allocation
+        :param str elaticip_allocation_id: The AWS ElasticIP allocation ID or the Azure Public IP ID
+        """
+        self.instance_data['awsAssignElasticIP'] = enable
+        self.instance_data['awsElasticIPAllocationId'] = elasticip_allocation_id
+        self.instance_data['azureAssignElasticIP'] = enable
+        self.instance_data['azurePublicIPId'] = elasticip_allocation_id
+        self.save()
+
+    def set_custom_certificate(self, pem_data):
+        """
+        Set the custom certificate for this instance
+
+        Only needed when Virtual Network HTTPS Strategy is set to Custom Certificate
+
+        param: str pem_data: The SSL certificate
+        """
+        self.instance_data['sslCertificatePEM'] = pem_data
+        self.save()
+
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
