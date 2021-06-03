@@ -61,7 +61,7 @@ class FMClient(object):
         List all Virtual Networks
 
         :return: list of virtual networks
-        :rtype: list of :class:`dataikuapi.fm.tenant.FMVirtualNetwork`
+        :rtype: list of :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
         """
         vns = self._perform_tenant_json("GET", "/virtual-networks")
         return [ FMVirtualNetwork(self, x) for x in vns]
@@ -73,7 +73,7 @@ class FMClient(object):
         :param str virtual_network_id
 
         :return: requested virtual network
-        :rtype: :class:`dataikuapi.fm.tenant.FMVirtualNetwork`
+        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
         """
         template = self._perform_tenant_json("GET", "/virtual-networks/%s" % virtual_network_id)
         return FMVirtualNetwork(self, template)
@@ -100,7 +100,7 @@ class FMClient(object):
         :param str template_id
 
         :return: requested instance settings template
-        :rtype: :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
         """
         template = self._perform_tenant_json("GET", "/instance-settings-templates/%s" % template_id)
         return FMInstanceSettingsTemplate(self, template)
@@ -118,7 +118,7 @@ class FMClient(object):
 
         :param str label: The label of the Instance Settings Template
 
-        :param list setupActions: Optional, a list of `:class: FMSetupAction` to be played on an instance
+        :param list setupActions: Optional, a list of :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction` to be played on an instance
         :param str license: Optional, overrides the license set in Cloud Setup
 
         :param str awsKeyPairName: Optional, AWS Only, the name of an AWS key pair to add to the instance. Needed to get SSH access to the DSS instance, using the centos user.
@@ -137,7 +137,7 @@ class FMClient(object):
         :param str runtimeManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at runtime
 
         :return: requested instance settings template
-        :rtype: :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
         """
 
         data = {
@@ -172,7 +172,7 @@ class FMClient(object):
         List all DSS Instances
 
         :return: list of instances
-        :rtype: list of :class:`dataikuapi.fm.tenant.FMInstance`
+        :rtype: list of :class:`dataikuapi.fm.instances.FMInstance`
         """
         instances = self._perform_tenant_json("GET", "/instances")
         return [ FMInstance(self, **x) for x in instances]
@@ -184,7 +184,7 @@ class FMClient(object):
         :param str instance_id
 
         :return: Instance
-        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        :rtype: :class:`dataikuapi.fm.instances.FMInstance`
         """
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
         return FMInstance(self, instance)
@@ -209,7 +209,7 @@ class FMClient(object):
         :param int data_volume_size: Optional, Data volume initial size
         :param int data_volume_size_max: Optional, Data volume maximum size
         :param int data_volume_IOPS: Optional, Data volume IOPS
-        :param object data_volume_encryption: Optional, a :class:`FMInstanceEncryptionMode` setting the encryption mode of the data volume
+        :param object data_volume_encryption: Optional, a :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode` setting the encryption mode of the data volume
         :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
         :param int aws_root_volume_size: Optional, the root volume size
         :param str aws_root_volume_type: Optional, the root volume type
@@ -218,7 +218,7 @@ class FMClient(object):
         :param list fm_tags: Optional, list of tags to be applied on the instance in the Fleet Manager
 
         :return: Instance
-        :rtype: :class:`dataikuapi.fm.tenant.FMInstance`
+        :rtype: :class:`dataikuapi.fm.instances.FMInstance`
         """
         data = {
             "virtualNetworkId": virtual_network.id,

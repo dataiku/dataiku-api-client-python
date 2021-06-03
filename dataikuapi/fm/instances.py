@@ -1,4 +1,5 @@
 from enum import Enum
+from .future import FMFuture
 
 class FMInstance(object):
     """
@@ -13,20 +14,32 @@ class FMInstance(object):
     def reprovision(self):
         """
         Reprovision the physical DSS instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        self.client._perform_tenant_json("GET", "/instances/%s/actions/reprovision" % self.id)
+        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/reprovision" % self.id)
+        return FMFuture.from_resp(self.client, future)
 
     def deprovision(self):
         """
         Deprovision the physical DSS instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deprovision process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        self.client._perform_tenant_json("GET", "/instances/%s/actions/deprovision" % self.id)
+        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/deprovision" % self.id)
+        return FMFuture.from_resp(self.client, future)
 
     def restart_dss(self):
         """
         Restart the DSS running on the physical instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the restart process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        self.client._perform_tenant_json("GET", "/instances/%s/actions/restart-dss" % self.id)
+        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/restart-dss" % self.id)
+        return FMFuture.from_resp(self.client, future)
 
     def save(self):
         """
