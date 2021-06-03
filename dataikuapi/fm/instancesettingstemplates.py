@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+from dataikuapi.fm.future import FMFuture
 
 class FMInstanceSettingsTemplate(object):
     def __init__(self, client, ist_data):
@@ -13,6 +14,16 @@ class FMInstanceSettingsTemplate(object):
         """
         self.client._perform_tenant_empty("PUT", "/instance-settings-templates/%s" % self.id, body=self.ist_data)
         self.ist_data = self.client._perform_tenant_json("GET", "/instance-settings-templates/%s" % self.id)
+
+    def delete(self):
+        """
+        Delete the DSS Instance Settings Template.
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json("DELETE", "/instance-settings-templates/%s" % self.id)
+        return FMFuture.from_resp(self.client, future)
 
 class FMSetupAction(dict):
     def __init__(self, setupActionType, params=None):
