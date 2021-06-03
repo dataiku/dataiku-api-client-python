@@ -252,7 +252,6 @@ class FMClient(object):
             body = json.dumps(body)
         if raw_body is not None:
             body = raw_body
-        print(body)
         try:
             http_res = self._session.request(
                     method, "%s/api/public%s" % (self.host, path),
