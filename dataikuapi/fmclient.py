@@ -75,8 +75,54 @@ class FMClient(object):
         :return: requested virtual network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
         """
-        template = self._perform_tenant_json("GET", "/virtual-networks/%s" % virtual_network_id)
-        return FMVirtualNetwork(self, template)
+        vn = self._perform_tenant_json("GET", "/virtual-networks/%s" % virtual_network_id)
+        return FMVirtualNetwork(self, vn)
+
+    def create_virtual_network(self,
+                               label,
+                               awsVpcId=None,
+                               awsSubnetId=None,
+                               awsAutoCreateSecurityGroups=False,
+                               awsSecurityGroups=None,
+                               azureVnId=None,
+                               azureSubnetId=None,
+                               azureAutoUpdateSecurityGroups=None,
+                               internetAccessMode = "YES"):
+        """
+        Create a Virtual Network
+
+        :param str label: The label of the Virtual Network
+
+        :param str awsVpcId: AWS Only, ID of the VPC to use
+        :param str awsSubnetId: AWS Only, ID of the subnet to use
+        :param boolean awsAutoCreateSecurityGroups: Optional, AWS Only, If false, do not create security groups automatically. Defaults to false
+        :param list awsSecurityGroups: Optional, AWS Only, A list of up to 5 security group ids to assign to the instances created in this virtual network. Ignored if awsAutoCreateSecurityGroups is true
+
+        :param str azureVnId: Azure Only, ID of the Azure Virtual Network to use
+        :param str azureSubnetId: Azure Only, ID of the subnet to use
+        :param boolean azureAutoUpdateSecurityGroups: Azure Only, Auto update the subnet security group
+
+        :param str internetAccessMode: Optional, The internet access mode of the instances created in this virtual network. Accepts "YES", "NO", "EGRESS_ONLY". Defaults to "YES"
+
+        :return: requested instance settings template
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        """
+
+        data = {
+            "label": label,
+            "awsVpcId": awsVpcId,
+            "awsSubnetId": awsSubnetId,
+            "awsAutoCreateSecurityGroups": awsAutoCreateSecurityGroups,
+            "awsSecurityGroups": awsSecurityGroups,
+            "azureVnId": azureVnId,
+            "azureSubnetId": azureSubnetId,
+            "azureAutoUpdateSecurityGroups": azureAutoUpdateSecurityGroups,
+            "internetAccessMode": internetAccessMode,
+            "mode": "EXISTING_MONOTENANT"
+        }
+
+        vn = self._perform_tenant_json("POST", "/virtual-networks", body=data)
+        return FMVirtualNetwork(self, vn)
 
 
     ########################################################
