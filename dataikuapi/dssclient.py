@@ -17,7 +17,7 @@ from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
-from .utils import DataikuException
+from .utils import DataikuException, dku_basestring_type
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -679,7 +679,7 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
         """
         def make_entry(v):
-            if isinstance(v, str) or isinstance(v, unicode):
+            if isinstance(v, dku_basestring_type):
                 return {'value':v}
             else:
                 return v
