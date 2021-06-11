@@ -191,7 +191,7 @@ class DSSModelEvaluationStore(object):
 
     def get_metric_history(self, metric):
         """
-        Get the history of the values of the metric on this dataset
+        Get the history of the values of the metric on this model evaluation store
 
         Returns:
             an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
@@ -203,8 +203,8 @@ class DSSModelEvaluationStore(object):
 
     def compute_metrics(self, metric_ids=None, probes=None):
         """
-        Compute metrics on this managed folder. If the metrics are not specified, the metrics
-        setup on the managed folder are used.
+        Compute metrics on this model evaluation store. If the metrics are not specified, the metrics
+        setup on the model evaluation store are used.
         """
         url = "/projects/%s/modelevaluationstores/%s/actions" % (self.project_key, self.mes_id)
         if metric_ids is not None:
