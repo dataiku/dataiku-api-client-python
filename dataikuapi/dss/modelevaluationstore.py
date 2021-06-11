@@ -1,3 +1,6 @@
+import json
+
+from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 
 from requests import utils
@@ -118,7 +121,7 @@ class DSSModelEvaluationStore(object):
         :rtype: list
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        if as_type == "objects" or as_type == "object":
+        if as_type in ["objects", "object"]:
             return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
         else:
             return items
@@ -169,6 +172,53 @@ class DSSModelEvaluationStore(object):
                                             body = obj)
         run_id = res['id']
         return DSSModelEvaluation(self, run_id)
+
+
+    ########################################################
+    # Metrics
+    ########################################################
+
+    def get_last_metric_values(self):
+        """
+        Get the metrics of the latest model evaluation built
+
+        Returns:
+            a list of metric objects and their value
+        """
+        return ComputedMetrics(self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/metrics/last" % (self.project_key, self.mes_id)))
+
+
+    def get_metric_history(self, metric):
+        """
+        Get the history of the values of the metric on this model evaluation store
+
+        Returns:
+            an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/metrics/history" % (self.project_key, self.mes_id),
+            params={'metricLookup': metric if isinstance(metric, str)or isinstance(metric, unicode)
+                                           else json.dumps(metric)})
+
+    def compute_metrics(self, metric_ids=None, probes=None):
+        """
+        Compute metrics on this model evaluation store. If the metrics are not specified, the metrics
+        setup on the model evaluation store are used.
+        """
+        url = "/projects/%s/modelevaluationstores/%s/actions" % (self.project_key, self.mes_id)
+        if metric_ids is not None:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetricsFromIds" % url,
+                body={"metricIds" : metric_ids})
+        elif probes is not None:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetrics" % url,
+                body=probes)
+        else:
+            return self.client._perform_json(
+                "POST" , "%s/computeMetrics" % url)
+
 
 
 class DSSModelEvaluationStoreSettings:
@@ -270,6 +320,15 @@ class DSSModelEvaluation:
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/contents/%s" % (self.project_key, self.mes_id, self.run_id, utils.quote(path)),
                 "", f)
+
+    def get_metrics(self):
+        """
+        Get the metrics for this model evaluation
+
+        :return: the metrics, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
 
 class DSSModelEvaluationSettings:
     """
