@@ -1130,7 +1130,7 @@ class PredictionAlgorithmSettings(dict):
                     elif isinstance(value, NumericalHyperparameterSettings):
                         # algo.hyperparam = other_algo.other_hyperparam
                         target.set_range(min=value.range.min, max=value.range.max, nb_values=value.range.nb_values)
-                        target.set_explicit_values(values=value.values.copy())
+                        target.set_explicit_values(values=list(value.values))
                         target.definition_mode = value.definition_mode
                     else:
                         raise TypeError(("Invalid type for NumericalHyperparameterSettings {}\n" +
