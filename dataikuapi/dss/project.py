@@ -593,10 +593,10 @@ class DSSProject(object):
 
     def list_mltask_queues(self):
         """
-        List all paused ML task queues in this project
+        List all ML task queues in this project
         
         Returns:
-            the list of the paused ML task queues, each one as a JSON object
+            the list of the ML task queues, each one as a JSON object
         """
         return self.client._perform_json("GET", "/projects/%s/models/lab/mltask-queues" % self.project_key)
 
