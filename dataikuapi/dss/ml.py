@@ -3328,15 +3328,15 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "DELETE", "/projects/%s/models/lab/%s/%s/models/%s" % (self.project_key, self.analysis_id, self.mltask_id, model_id))
 
-    def resume_queue(self):
+    def train_queue(self):
         """
-        Resumes a paused queue
+        Trains a queue
 
-        :return: A dict including the sessionID of the resumed queue
+        :return: A dict including the next sessionID to be trained in the queue
         :rtype dict
         """
         return self.client._perform_json(
-            "POST", "/projects/%s/models/lab/%s/%s/actions/resumeQueue" % (self.project_key, self.analysis_id, self.mltask_id))
+            "POST", "/projects/%s/models/lab/%s/%s/actions/trainQueue" % (self.project_key, self.analysis_id, self.mltask_id))
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
