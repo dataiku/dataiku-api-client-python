@@ -81,19 +81,21 @@ class DSSAPIDeployer(object):
         else:
             return l
 
-    def create_infra(self, infra_id, stage, type):
+    def create_infra(self, infra_id, stage, type, govern_check_policy="NO_CHECK"):
         """
         Creates a new infrastructure on the API Deployer and returns the handle to interact with it.
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
         :param str type: STATIC or KUBERNETES
+        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """
         settings = {
             "id": infra_id,
             "stage": stage,
             "type": type,
+            "govern_check_policy": govern_check_policy,
         }
         self.client._perform_json("POST", "/api-deployer/infras", body=settings)
         return self.get_infra(infra_id)
