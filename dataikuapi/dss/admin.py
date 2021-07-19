@@ -747,6 +747,15 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
+    def list_usages(self):
+        """
+        List usages of the code env in the instance
+
+        :return: a list of objects where the code env is used
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/usages" % (self.env_lang, self.env_name))
+
 
 class DSSGlobalApiKey(object):
     """
