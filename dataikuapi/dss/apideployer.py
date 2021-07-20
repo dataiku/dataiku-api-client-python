@@ -36,7 +36,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, service_id, infra_id, version):
+    def create_deployment(self, deployment_id, service_id, infra_id, version, ignore_warnings=False):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
@@ -45,6 +45,7 @@ class DSSAPIDeployer(object):
         :param str service_id: Identifier of the API Service to target
         :param str infra_id: Identifier of the deployment infrastructure to use
         :param str version_id: Identifier of the API Service version to deploy
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         settings = {
@@ -53,7 +54,7 @@ class DSSAPIDeployer(object):
             "infraId" : infra_id,
             "version" : version
         }
-        self.client._perform_json("POST", "/api-deployer/deployments", body=settings)
+        self.client._perform_json("POST", "/api-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
 
     def list_stages(self):
@@ -310,6 +311,16 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSAPIDeployerDeploymentStatus(self.client, self.deployment_id, light, heavy)
 
+    def get_governance_status(self, version=""):
+        """
+        Returns the governance status about this deployment if applicable
+        It covers all the embedded model versions
+
+        :param str version: (Optional) The specific package version of the published service to get status from. If empty, consider all the versions used in the deployment generation mapping.
+        :rtype: dict InforMessages containing the governance status
+        """
+        return self.client._perform_json("POST", "/api-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "version": version })
+
     def get_settings(self):
         """
         Gets the settings of this deployment. If you want to modify the settings, you need to
@@ -383,12 +394,15 @@ class DSSAPIDeployerDeploymentSettings(object):
             "generation": version
         }
         
-    def save(self):
+    def save(self, ignore_warnings=False):
         """
         Saves back these settings to the deployment
+
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         """
         self.client._perform_empty(
                 "PUT", "/api-deployer/deployments/%s/settings" % (self.deployment_id),
+                params = { "ignoreWarnings" : ignore_warnings },
                 body = self.settings)
 
 
