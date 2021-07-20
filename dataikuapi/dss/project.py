@@ -1055,12 +1055,17 @@ class DSSProject(object):
         
         .. warning::
             
-            this stream will monopolize the DSSClient until closed, so the stream must be closed after use or used within a ``with`` statement. For example:
+            The stream must be closed after use. Use a ``with`` statement to handle closing the stream at the end of the block by default. For example:
             
             .. code-block:: python 
         
                     with project.get_exported_bundle_archive_stream('v1') as fp:
                         # use fp 
+                    
+                    # or explicitly close the stream after use
+                    fp = project.get_exported_bundle_archive_stream('v1')
+                    # use fp, then close 
+                    fp.close()
                     
         """
         return self.client._perform_raw("GET",
