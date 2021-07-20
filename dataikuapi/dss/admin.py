@@ -710,7 +710,19 @@ class DSSCodeEnv(object):
         """
         return self.client._perform_json(
             "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=env)
-    
+
+    def get_version_for_project(self, project_key):
+        """
+        Resolve the code env version for a given project
+
+        Note: version will only be non-empty for versioned code envs actually used by the project
+
+        :returns: the code env reference, with a version field
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/%s/version" % (self.env_lang, self.env_name, project_key))
+
+   
     ########################################################
     # Code env actions
     ########################################################
@@ -747,14 +759,51 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def list_usages(self):
+    def update_images(self, env_version=None):
+        """
+        Rebuild the docker image of the code env
+        
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/images" % (self.env_lang, self.env_name),
+            params={"envVersion": env_version})
+        if resp is None:
+            raise Exception('Env image build returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env image build failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+    def list_usages(self, env_version=None):
         """
         List usages of the code env in the instance
 
         :return: a list of objects where the code env is used
         """
         return self.client._perform_json(
-            "GET", "/admin/code-envs/%s/%s/usages" % (self.env_lang, self.env_name))
+            "GET", "/admin/code-envs/%s/%s/usages" % (self.env_lang, self.env_name), params={"envVersion": env_version})
+
+    def list_logs(self, env_version=None):
+        """
+        List logs of the code env in the instance
+
+        :return: a list of log descriptions
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/logs" % (self.env_lang, self.env_name), params={"envVersion": env_version})
+
+    def get_log(self, log_name):
+        """
+        Get the logs of the code env
+        
+        Args:
+            log_name: name of the log to fetch
+            
+           Returns:
+               the log, as a string
+        """
+        return self.client._perform_text(
+            "GET", "/admin/code-envs/%s/%s/logs/%s" % (self.env_lang, self.env_name, log_name))
 
 
 class DSSGlobalApiKey(object):
