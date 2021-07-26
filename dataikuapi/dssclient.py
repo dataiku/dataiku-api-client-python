@@ -743,6 +743,19 @@ class DSSClient(object):
             body = custom_params)
 
     ########################################################
+    # Monitoring
+    ########################################################
+
+    def get_global_usage_summary(self, with_per_project=False):
+        """
+        Summarize the contents of the instance
+
+        :returns: a summary object
+        """
+        return self._perform_json(
+            "GET", "/admin/monitoring/global-usage-summary", params={'withPerProject':with_per_project})
+
+   ########################################################
     # Variables
     ########################################################
 
