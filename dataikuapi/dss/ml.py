@@ -1147,6 +1147,31 @@ class RandomForestSettings(PredictionAlgorithmSettings):
         self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
 
 
+class LightGBMSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LightGBMSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.boosting_type = self._register_categorical_hyperparameter("boosting_type")
+        self.num_leaves = self._register_numerical_hyperparameter("num_leaves")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.min_split_gain = self._register_numerical_hyperparameter("min_split_gain")
+        self.min_child_weight = self._register_numerical_hyperparameter("min_child_weight")
+        self.min_child_samples = self._register_numerical_hyperparameter("min_child_samples")
+        self.colsample_bytree = self._register_numerical_hyperparameter("colsample_bytree")
+        self.reg_alpha = self._register_numerical_hyperparameter("reg_alpha")
+        self.reg_lambda = self._register_numerical_hyperparameter("reg_lambda")
+
+        self.early_stopping = self._register_single_value_hyperparameter("early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+        self.random_state = self._register_single_value_hyperparameter("random_state", accepted_types=[int])
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
+        self.max_depth = self._register_single_value_hyperparameter("max_depth", accepted_types=[int])
+        self.subsample = self._register_single_value_hyperparameter("subsample", accepted_types=[float])
+        self.subsample_freq = self._register_single_value_hyperparameter("subsample_freq", accepted_types=[int])
+        self.use_bagging = self._register_single_value_hyperparameter("use_bagging", accepted_types=[bool])
+
+
 class XGBoostSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -1403,6 +1428,8 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
             "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
             "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
+            "LIGHTGBM_CLASSIFICATION": PredictionAlgorithmMeta("lightgbm_classification", LightGBMSettings),
+            "LIGHTGBM_REGRESSION": PredictionAlgorithmMeta("lightgbm_regression", LightGBMSettings),
             "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
             "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
             "SPARKLING_DEEP_LEARNING": PredictionAlgorithmMeta("deep_learning_sparkling"),
