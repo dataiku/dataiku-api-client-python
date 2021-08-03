@@ -367,11 +367,15 @@ class DSSProjectDeployerDeploymentSettings(object):
     @property
     def bundle_id(self):
         """
-        Gets the bundle id currently used by this deployment.
-
-        :rtype: str
+        Gets or sets the bundle id currently used by this deployment. When setting, you need to call
+        :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentSettings.save` afterward for the change to be
+        effective.
         """
         return self.settings["bundleId"]
+
+    @bundle_id.setter
+    def bundle_id(self, new_bundle_id):
+        self.settings["bundleId"] = new_bundle_id
 
     def save(self):
         """
