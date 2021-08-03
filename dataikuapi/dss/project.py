@@ -1,5 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .modelcomparator import DSSModelComparator
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
 from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
@@ -730,17 +731,15 @@ class DSSProject(object):
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
-    def create_model_evaluation_store(self, name, mes_id=None):
+    def create_model_evaluation_store(self, name):
         """
         Create a new model evaluation store in the project, and return a handle to interact with it.
         
         :param string name: the name for the new model evaluation store
-        :param string mes_id optional: the id for the new model evaluation store
-        
+
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
         """
         obj = {
-            "id" : mes_id,
             "projectKey" : self.project_key,
             "name" : name
         }
@@ -748,6 +747,54 @@ class DSSProject(object):
                        body = obj)
         mes_id = res['id']
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
+
+    ########################################################
+    # Model comparators
+    ########################################################
+
+    def list_model_comparators(self, as_type=None):
+        """
+        List the model comparators in this project.
+
+        :returns: The list of the model comparators
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/modelcomparators/" % self.project_key)
+        if as_type == "objects" or as_type == "object":
+            return [DSSModelComparator(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            return items
+
+    def get_model_comparator(self, mec_id):
+        """
+        Get a handle to interact with a specific model comparator
+
+        :param string mec_id: the id of the desired model comparator
+
+        :returns: A :class:`dataikuapi.dss.modelcomparator.DSSModelComparator` model comparator handle
+        :rtype: :class:`dataikuapi.dss.modelcomparator.DSSModelComparator`
+        """
+        return DSSModelComparator(self.client, self.project_key, mec_id)
+
+    def create_model_comparator(self, name, prediction_type):
+        """
+        Create a new model comparator in the project, and return a handle to interact with it.
+
+        :param string name: the name for the new model comparator
+        :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
+
+        :returns: A :class:`dataikuapi.dss.modelcomparator.DSSModelComparator` model comparator handle
+        :rtype: :class:`dataikuapi.dss.modelcomparator.DSSModelComparator`
+        """
+        obj = {
+            "projectKey": self.project_key,
+            "displayName": name,
+            "predictionType": prediction_type
+        }
+        res = self.client._perform_json("POST", "/projects/%s/modelcomparators/" % self.project_key,
+                                        body = obj)
+        mec_id = res['id']
+        return DSSModelComparator(self.client, self.project_key, mec_id)
 
     ########################################################
     # Jobs

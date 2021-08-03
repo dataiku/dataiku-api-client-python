@@ -270,6 +270,9 @@ class DSSModelEvaluation:
                 "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/settings" % (self.project_key, self.mes_id, self.run_id))
         return DSSModelEvaluationSettings(self, data)
 
+    def get_full_id(self):
+        return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.run_id)
+
     def delete(self):
         """
         Remove this model evaluation
