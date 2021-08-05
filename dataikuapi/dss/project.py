@@ -15,7 +15,7 @@ from .notebook import DSSNotebook
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask
+from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
@@ -593,12 +593,13 @@ class DSSProject(object):
 
     def list_mltask_queues(self):
         """
-        List all ML task queues in this project
+        List ML task queues in this project 
         
-        Returns:
-            the list of the ML task queues, each one as a JSON object
-        """
-        return self.client._perform_json("GET", "/projects/%s/models/lab/mltask-queues" % self.project_key)
+        :returns: a :class:`DSSMLTaskQueues` object containing a list of queues as dicts
+        :rtype: :class:`DSSMLTaskQueues`
+        """ 
+        ref = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
+        return DSSMLTaskQueues(ref["queues"])
 
     def create_analysis(self, input_dataset):
         """

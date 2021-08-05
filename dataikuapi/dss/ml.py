@@ -3423,3 +3423,14 @@ class DSSMLTask(object):
             "PUT",
             "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
             params = obj)
+
+
+class DSSMLTaskQueues(object):
+    """
+    Object containing a list of MLTask queues
+    """
+    def __init__(self, queues):
+        self.queues = queues
+
+    def __iter__(self):
+        return self.queues.__iter__()
