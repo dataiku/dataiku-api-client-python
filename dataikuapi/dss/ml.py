@@ -3427,10 +3427,13 @@ class DSSMLTask(object):
 
 class DSSMLTaskQueues(object):
     """
-    Object containing a list of MLTask queues
+    Iterable listing of MLTask queues
     """
-    def __init__(self, queues):
-        self.queues = queues
+    def __init__(self, data):
+        self.data = data
 
     def __iter__(self):
-        return self.queues.__iter__()
+        return self.data["queues"].__iter__()
+
+    def get_raw(self):
+        return self.data

@@ -593,13 +593,13 @@ class DSSProject(object):
 
     def list_mltask_queues(self):
         """
-        List ML task queues in this project 
+        List non-empty ML task queues in this project 
         
-        :returns: a :class:`DSSMLTaskQueues` object containing a list of queues as dicts
+        :returns: an iterable :class:`DSSMLTaskQueues` listing of MLTask queues (each a dict)
         :rtype: :class:`DSSMLTaskQueues`
         """ 
-        ref = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
-        return DSSMLTaskQueues(ref["queues"])
+        data = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
+        return DSSMLTaskQueues(data)
 
     def create_analysis(self, input_dataset):
         """
