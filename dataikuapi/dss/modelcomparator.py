@@ -26,7 +26,7 @@ class DSSModelComparator(object):
         :rtype: DSSModelComparatorSettings
         """
         data = self.client._perform_json(
-            "GET", "/projects/%s/modelcomparators/%s" % (self.project_key, self.mec_id))
+            "GET", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
         return DSSModelComparatorSettings(self, data)
 
     def get_object_discussions(self):
@@ -36,7 +36,7 @@ class DSSModelComparator(object):
         :returns: the handle to manage discussions
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
-        return DSSObjectDiscussions(self.client, self.project_key, "MODEL_EVALUATION_COMPARATOR", self.mec_id)
+        return DSSObjectDiscussions(self.client, self.project_key, "MODEL_COMPARISON", self.mec_id)
 
     ########################################################
     # Deletion
@@ -47,7 +47,7 @@ class DSSModelComparator(object):
         Delete the model evaluation store
 
         """
-        return self.client._perform_empty("DELETE", "/projects/%s/modelcomparators/%s" % (self.project_key, self.mec_id))
+        return self.client._perform_empty("DELETE", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
 
 
 class DSSModelComparatorSettings:
@@ -158,6 +158,6 @@ class DSSModelComparatorSettings:
         Save settings modifications
         """
         self.model_comparator.client._perform_empty(
-            "PUT", "/projects/%s/modelcomparators/%s" % (self.model_comparator.project_key, self.model_comparator.mec_id),
+            "PUT", "/projects/%s/modelcomparisons/%s" % (self.model_comparator.project_key, self.model_comparator.mec_id),
             body=self.settings)
 

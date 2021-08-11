@@ -806,7 +806,7 @@ class DSSProject(object):
         :returns: The list of the model comparators
         :rtype: list
         """
-        items = self.client._perform_json("GET", "/projects/%s/modelcomparators/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/modelcomparisons/" % self.project_key)
         if as_type == "objects" or as_type == "object":
             return [DSSModelComparator(self.client, self.project_key, item["id"]) for item in items]
         else:
@@ -838,7 +838,7 @@ class DSSProject(object):
             "displayName": name,
             "predictionType": prediction_type
         }
-        res = self.client._perform_json("POST", "/projects/%s/modelcomparators/" % self.project_key,
+        res = self.client._perform_json("POST", "/projects/%s/modelcomparisons/" % self.project_key,
                                         body = obj)
         mec_id = res['id']
         return DSSModelComparator(self.client, self.project_key, mec_id)
