@@ -1,4 +1,4 @@
-import json
+import json, warnings
 
 from requests import Session
 from requests import exceptions
@@ -761,10 +761,17 @@ class DSSClient(object):
 
     def get_variables(self):
         """
+        Deprecated. Use get_global_variables
+        """
+        warnings.warn("get_variables is deprecated, please use get_global_variables", DeprecationWarning)
+        return self.get_global_variables()
+
+    def get_global_variables(self):
+        """
         Get the DSS instance's variables, as a Python dictionary
 
         This call requires an API key with admin rights
-        
+
         :returns: a Python dictionary of the instance-level variables
         """
         return self._perform_json(
