@@ -48,7 +48,7 @@ class DSSClient(object):
     ########################################################
     # Futures
     ########################################################
-            
+
     def list_futures(self, as_objects=False, all_users=False):
         """
         List the currently-running long tasks (a.k.a futures)
@@ -777,6 +777,24 @@ class DSSClient(object):
         return self._perform_json(
             "GET", "/admin/variables/")
 
+    def get_resolved_variables(self, project_key=None, typed=False):
+        """
+        Get a dictionary of resolved variables for a project.
+
+        :param str project_key: the project key, defaults to the current default project
+        :param bool typed: if True, the variable values will be typed in the returned dict, defaults to False
+        :return: a dictionary with instance and project variables merged
+
+        :returns: a Python dictionary of the resolved project variables
+        """
+        import dataiku
+        return self._perform_json(
+            "GET",
+            "/projects/%s/variables-resolved" % dataiku.default_project_key() if project_key is None else project_key,
+            params={
+                "typed": "true" if typed else "false"
+            })
+
     def set_variables(self, variables):
         """
         Updates the DSS instance's variables
@@ -952,7 +970,7 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
-        
+
     def get_ticket_from_browser_headers(self, headers_dict):
          """
          Returns a ticket for the DSS user authenticated by the dictionary of
