@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSInstanceVariables
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -772,10 +772,10 @@ class DSSClient(object):
 
         This call requires an API key with admin rights
 
-        :returns: a Python dictionary of the instance-level variables
+        :returns: A :class:`dataikuapi.dss.admin.DSSInstanceVariables` handle
         """
-        return self._perform_json(
-            "GET", "/admin/variables/")
+        variables = self._perform_json("GET", "/admin/variables/")
+        return DSSInstanceVariables(self, variables)
 
     def get_resolved_variables(self, project_key=None, typed=False):
         """
@@ -797,6 +797,8 @@ class DSSClient(object):
 
     def set_variables(self, variables):
         """
+        Deprecated. Use get_global_variables().save()
+
         Updates the DSS instance's variables
 
         This call requires an API key with admin rights
@@ -807,6 +809,7 @@ class DSSClient(object):
         :param dict variables: the new dictionary of all variables of the instance
 
         """
+        warnings.warn("set_variables is deprecated, please use get_global_variables().save()", DeprecationWarning)
         return self._perform_empty(
             "PUT", "/admin/variables/", body=variables)
 

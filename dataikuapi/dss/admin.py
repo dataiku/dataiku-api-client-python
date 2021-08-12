@@ -946,3 +946,24 @@ class DSSClusterStatus(object):
         Gets the whole status as a raw dictionary.
         """
         return self.status
+
+
+class DSSInstanceVariables(dict):
+    """
+    Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its `save` method.
+
+    Do not create this directly, use :meth:`dataikuapi.dssclient.DSSClient.get_global_variables`
+    """
+
+    def __init__(self, client, variables):
+        super().__init__()
+        self.update(variables)
+        self.client = client
+
+    def save(self):
+        """
+        Save the changes made to the instance variables.
+
+        Note: this call requires an API key with admin rights.
+        """
+        return self.client._perform_empty("PUT", "/admin/variables/", body=self)
