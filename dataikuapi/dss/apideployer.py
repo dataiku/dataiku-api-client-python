@@ -319,7 +319,7 @@ class DSSAPIDeployerDeployment(object):
         :param str version: (Optional) The specific package version of the published service to get status from. If empty, consider all the versions used in the deployment generation mapping.
         :rtype: dict InforMessages containing the governance status
         """
-        return self.client._perform_json("POST", "/api-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "version": version })
+        return self.client._perform_json("GET", "/api-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "version": version })
 
     def get_settings(self):
         """
