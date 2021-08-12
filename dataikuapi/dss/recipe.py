@@ -89,6 +89,7 @@ class DSSRecipe(object):
             "COMPUTABLE_FOLDER": "MANAGED_FOLDER",
             "COMPUTABLE_SAVED_MODEL": "SAVED_MODEL",
             "COMPUTABLE_STREAMING_ENDPOINT": "STREAMING_ENDPOINT",
+            "COMPUTABLE_MODEL_EVALUATION_STORE": "MODEL_EVALUATION_STORE"
         }
         if first_output["type"] in object_type_map:
             jd = project.new_job(job_type)
@@ -1312,6 +1313,60 @@ class PredictionScoringRecipeCreator(SingleOutputRecipeCreator):
         """Sets the input model"""
         return self._with_input(model_id, self.project.project_key, "model")
 
+
+class EvaluationRecipeCreator(DSSRecipeCreator):
+    """
+    Builder for the creation of a new "Evaluate" recipe, from an
+    input dataset, with an input saved model identifier
+
+    .. code-block:: python
+
+        # Create a new prediction scoring recipe outputing to a new dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = EvaluationRecipeCreator("my_scoring_recipe", project)
+        builder.with_input_model(saved_model_id)
+        builder.with_input("dataset_to_evaluate")
+
+        builder.with_output("output_scored")
+        builder.with_output_metrics("output_metrics")
+        builder.with_output_evaluation_store(evaluation_store_id)
+
+        new_recipe = builder.build()
+    
+    Outputs can be created with
+
+    .. code-block:: python
+
+        builder = project.new_managed_dataset("output_scored")
+        builder.with_store_into(connection)
+        dataset = builder.create()
+
+        builder = project.new_managed_dataset("output_scored")
+        builder.with_store_into(connection)
+        dataset = builder.create()
+
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").id
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'evaluation', name, project)
+
+    def with_input_model(self, model_id):
+        """Sets the input model"""
+        return self._with_input(model_id, self.project.project_key, "model")
+
+    def with_ouput(self, name):
+        """Sets the ouput dataset containing the scored input"""
+        return self._with_output(name, role="main")
+
+    def with_output_metrics(self, name):
+        """Sets the output dataset containing the metrics"""
+        return self._with_output(name, role="metrics")
+
+    def with_output_evaluation_store(self, name):
+        """Sets the output dataset containing the metrics"""
+        return self._with_output(name, role="evalutationStore")
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     """
