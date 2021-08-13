@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSPersonalApiKey
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -581,7 +581,7 @@ class DSSClient(object):
     # Global API Keys
     ########################################################
 
-    def list_global_api_keys(self):
+    def list_global_api_keys(self, as_type='dict'):
         """
         List all global API keys set up on the DSS instance
 
@@ -589,19 +589,38 @@ class DSSClient(object):
 
         :returns: All global API keys, as a list of dicts
         """
-        return self._perform_json(
-            "GET", "/admin/globalAPIKeys/")
+        resp = self._perform_json(
+            "GET", "/admin/global-api-keys/")
+        if as_type == 'objects':
+            return [DSSGlobalApiKey(self, item.id) for item in resp]
+        elif as_type == 'dict':
+            return resp
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_global_api_key(self, key):
         """
+        deprecated, use get_global_api_key_by_id
         Get a handle to interact with a specific Global API key
 
         :param str key: the secret key of the desired API key
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
-        return DSSGlobalApiKey(self, key)
+        resp = self._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % key)
+        return DSSGlobalApiKey(self, resp.id)
 
-    def create_global_api_key(self, label=None, description=None, admin=False):
+    def get_global_api_key_by_id(self, id_):
+        """
+        Get a handle to interact with a specific Global API key
+
+        :param str id_: the id the desired API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+
+        return DSSGlobalApiKey(self, id_)
+
+    def create_global_api_key(self, label=None, description=None, admin=False, as_type='object'):
         """
         Create a Global API key, and return a handle to interact with it
 
@@ -610,10 +629,12 @@ class DSSClient(object):
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str admin: has the new API key admin rights (True or False)
+        :param str as_type: 'object' or 'dict'
+
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         resp = self._perform_json(
-            "POST", "/admin/globalAPIKeys/", body={
+            "POST", "/admin/global-api-keys/", body={
                 "label" : label,
                 "description" : description,
                 "globalPermissions": {
@@ -626,8 +647,73 @@ class DSSClient(object):
             raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
-        key = resp.get('key', '')
-        return DSSGlobalApiKey(self, key)
+
+        if as_type == 'object':
+            return DSSGlobalApiKey(self, resp.get('id', ''))
+        elif as_type == 'dict':
+            return resp
+        else:
+            raise ValueError("Unknown as_type")
+    ########################################################
+    # Personal API Keys
+    ########################################################
+
+    def list_personal_api_keys(self, as_type='dict'):
+        """
+        List all personal API keys:
+            - not admin: only the keys belonging to the owner of the key
+            - admin: All the personal keys
+
+        :param str as_type: 'objects' or 'dict'
+
+        :returns: All personal API keys
+        """
+
+        resp = self._perform_json(
+            "GET", "/personal-api-keys/")
+        if as_type == 'objects':
+            return [DSSPersonalApiKey(self, item.id) for item in resp]
+        elif as_type == 'dict':
+            return resp
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_personal_api_key(self, id_):
+        """
+        Get a specific API key from the user doing the request
+
+        :param str id_: the id the desired API key
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key
+        """
+        return DSSPersonalApiKey(self, id_)
+
+    def create_personal_api_key(self, label="", description="", as_type='dict', on_behalf=""):
+        """
+        Create a Personal API key corresponding to the user doing the request, and return a handle to interact with it
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str as_type: 'object' or 'dict'
+        :param str on_behalf: The user id to impersonate (optional and for admin only)
+
+        :returns: The new personal API key
+        """
+        resp = self._perform_json(
+            "POST", "/personal-api-keys/", body={"onBehalf": on_behalf, "label": label, "description": description})
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+
+        if as_type == 'object':
+            return DSSPersonalApiKey(self, resp["id"])
+        elif as_type == 'dict':
+            return resp
+        else:
+            raise ValueError("Unknown as_type")
 
     ########################################################
     # Meanings
@@ -652,6 +738,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
 
         :param str id: the ID of the desired meaning
+
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
         """
         return DSSMeaning(self, id)
@@ -960,19 +1047,6 @@ class DSSClient(object):
          :rtype: string
          """
          return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
-
-    def create_personal_api_key(self, label):
-        """
-        Creates a personal API key corresponding to the user doing the request.
-        This can be called if the DSSClient was initialized with an internal
-        ticket or with a personal API key
-
-        :param: label string: Label for the new API key
-        :returns: a dict of the new API key, containing at least "secret", i.e. the actual secret API key
-        :rtype: dict
-        """
-        return self._perform_json("POST", "/auth/personal-api-keys",
-                params={"label": label})
 
     ########################################################
     # Container execution

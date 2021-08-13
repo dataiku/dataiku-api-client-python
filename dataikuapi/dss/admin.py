@@ -752,9 +752,9 @@ class DSSGlobalApiKey(object):
     """
     A global API key on the DSS instance
     """
-    def __init__(self, client, key):
+    def __init__(self, client, id_):
         self.client = client
-        self.key = key
+        self.id_ = id_
 
     ########################################################
     # Key deletion
@@ -767,7 +767,7 @@ class DSSGlobalApiKey(object):
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
-            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+            "DELETE", "/admin/global-api-keys/%s" % self.id_)
 
     ########################################################
     # Key description
@@ -779,11 +779,10 @@ class DSSGlobalApiKey(object):
 
         Note: this call requires an API key with admin rights
 
-        Returns:
-            the code env definition, as a JSON object
+        :returns: the code env definition, as a JSON object
         """
         return self.client._perform_json(
-            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+            "GET", "/admin/global-api-keys/%s" % (self.id_))
 
     def set_definition(self, definition):
         """
@@ -791,13 +790,57 @@ class DSSGlobalApiKey(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            definition: the definition for the API key, as a JSON object.                        
+        :param str definition: the definition for the API key, as a JSON object.
+
         """
         return self.client._perform_empty(
-            "PUT", "/admin/globalAPIKeys/%s" % self.key,
+            "PUT", "/admin/global-api-keys/%s" % self.id_,
             body = definition)
 
+
+class DSSPersonalApiKey(object):
+    """
+    A personal API key on the DSS instance
+    """
+    def __init__(self, client, id_):
+        self.client = client
+        self.id_ = id_
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the api key
+        """
+        return self.client._perform_empty(
+            "DELETE", "/personal-api-keys/%s" % self.id_)
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+
+        :returns: the personal API key definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/personal-api-keys/%s" % (self.id_))
+
+    def update(self, label="", description=""):
+        """
+        Get the API key's definition
+
+        :param str label: Label for the API key (optional)
+        :param str description: Description for the API key (optional)
+
+        :returns: the personal API key definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "PATCH", "/personal-api-keys/%s" % (self.id_), body={"label": label, "description": description})
 
 class DSSCluster(object):
     """
