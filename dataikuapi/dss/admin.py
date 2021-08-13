@@ -798,6 +798,39 @@ class DSSGlobalApiKey(object):
             "PUT", "/admin/globalAPIKeys/%s" % self.key,
             body = definition)
 
+class DSSPersonalApiKey(object):
+    """
+    A personal API key on the DSS instance
+    """
+    def __init__(self, client, key):
+        self.client = client
+        self.key = key
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the api key
+        """
+        return self.client._perform_empty(
+            "DELETE", "/personal-api-keys/%s" % self.key)
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+
+        Returns:
+            the personal API key definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/personal-api-keys/%s" % (self.key))
+
 
 class DSSCluster(object):
     """
