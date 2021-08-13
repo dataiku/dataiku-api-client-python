@@ -1350,7 +1350,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
     """
 
     def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'evaluation', name, project)
+        DSSRecipeCreator.__init__(self, 'evaluation', name, project)
 
     def with_input_model(self, model_id):
         """Sets the input model"""
@@ -1366,7 +1366,8 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
 
     def with_output_evaluation_store(self, name):
         """Sets the output dataset containing the metrics"""
-        return self._with_output(name, role="evalutationStore")
+        return self._with_output(name, role="evaluationStore")
+
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     """
