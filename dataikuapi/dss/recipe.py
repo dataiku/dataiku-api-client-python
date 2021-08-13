@@ -1334,7 +1334,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
 
         new_recipe = builder.build()
     
-    Outputs can be created with
+    Outputs must exists. They can be created using the following:
 
     .. code-block:: python
 
