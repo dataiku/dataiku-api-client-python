@@ -1,8 +1,10 @@
 import json
+
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from dataikuapi.dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
@@ -11,12 +13,11 @@ from .dss.plugin import DSSPlugin
 from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
-from .dss.notebook import DSSNotebook
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
-from .utils import DataikuException
+from .utils import DataikuException, dku_basestring_type
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
@@ -90,7 +91,7 @@ class DSSClient(object):
     ########################################################
     # Notebooks
     ########################################################
-            
+
     def list_running_notebooks(self, as_objects=True):
         """
         List the currently-running Jupyter notebooks
@@ -100,11 +101,11 @@ class DSSClient(object):
         :return: list of notebooks. if as_objects is True, each entry in the list is a :class:`dataikuapi.dss.notebook.DSSNotebook`. Else, each item in the list is a dict which contains at least a "name" field.
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSNotebook` or list of dict
         """
-        list = self._perform_json("GET", "/admin/notebooks/")
+        notebook_list = self._perform_json("GET", "/admin/notebooks/")
         if as_objects:
-            return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in list]
+            return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
         else:
-            return list
+            return notebook_list
 
     ########################################################
     # Project folders
@@ -678,7 +679,7 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning handle
         """
         def make_entry(v):
-            if isinstance(v, str) or isinstance(v, unicode):
+            if isinstance(v, dku_basestring_type):
                 return {'value':v}
             else:
                 return v
@@ -742,6 +743,19 @@ class DSSClient(object):
             body = custom_params)
 
     ########################################################
+    # Monitoring
+    ########################################################
+
+    def get_global_usage_summary(self, with_per_project=False):
+        """
+        Summarize the contents of the instance
+
+        :returns: a summary object
+        """
+        return self._perform_json(
+            "GET", "/admin/monitoring/global-usage-summary", params={'withPerProject':with_per_project})
+
+   ########################################################
     # Variables
     ########################################################
 
@@ -998,7 +1012,7 @@ class DSSClient(object):
         :return: None
         """
         self._perform_empty(
-            "POST", "/admin/licensing/license", raw_body=license)
+            "POST", "/admin/licensing/license", body=json.loads(license))
 
 
     ########################################################

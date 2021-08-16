@@ -170,6 +170,33 @@ class PredictionSplitParamsHandler(object):
 
         return self
 
+    def has_time_ordering(self):
+        """
+        :return: whether the splitting uses time ordering
+        :rtype: bool
+        """
+        return 'time' in self.mltask_settings and self.mltask_settings['time']['enabled']
+
+    def get_time_ordering_variable(self):
+        """
+        :return: the name of the variable
+        :rtype: str
+        """
+        if self.has_time_ordering():
+            return self.mltask_settings['time']['timeVariable']
+        else:
+            warnings.warn("Time-based ordering is disabled in the current MLTask")
+
+    def is_time_ordering_ascending(self):
+        """
+        :return: True if the ordering is set to be ascending with respect to the time-ordering variable
+        :rtype: bool
+        """
+        if self.has_time_ordering():
+            return self.mltask_settings['time']['ascending']
+        else:
+            warnings.warn("Time-based ordering is disabled in the current MLTask")
+
 
 class DSSMLTaskSettings(object):
     """
@@ -433,7 +460,7 @@ class HyperparameterSearchSettings(object):
             res += self._key_repr("splitRatio")
         elif self._raw_settings["mode"] in {"KFOLD", "TIME_SERIES_KFOLD"}:
             res += self._key_repr("nFolds")
-
+        res += self._key_repr("cvSeed")
         res += self._key_repr("stratified")
 
         res += "Execution Settings:\n"
@@ -471,6 +498,11 @@ class HyperparameterSearchSettings(object):
             else:
                 self._raw_settings["seed"] = seed
 
+    def _set_cv_seed(self, seed):
+        if seed is not None:
+            assert isinstance(seed, int), "HyperparameterSearchSettings invalid input: cvSeed must be an integer"
+            self._raw_settings["cvSeed"] = seed
+
     @property
     def strategy(self):
         """
@@ -488,7 +520,7 @@ class HyperparameterSearchSettings(object):
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
         self._raw_settings["strategy"] = strategy
 
-    def set_grid_search(self, shuffle=True, seed=0):
+    def set_grid_search(self, shuffle=True, seed=1337):
         """
         Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
 
@@ -507,7 +539,7 @@ class HyperparameterSearchSettings(object):
                 self._raw_settings["randomized"] = shuffle
         self._set_seed(seed)
 
-    def set_random_search(self, seed=0):
+    def set_random_search(self, seed=1337):
         """
         Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
 
@@ -517,7 +549,7 @@ class HyperparameterSearchSettings(object):
         self._raw_settings["strategy"] = "RANDOM"
         self._set_seed(seed)
 
-    def set_bayesian_search(self, seed=0):
+    def set_bayesian_search(self, seed=1337):
         """
         Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
 
@@ -544,7 +576,23 @@ class HyperparameterSearchSettings(object):
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
 
-    def set_kfold_validation(self, n_folds=5, stratified=True):
+    @property
+    def cv_seed(self):
+        """
+        :return: cross-validation seed for splitting the data during hyperparameter search
+        :rtype: int
+        """
+        return self._raw_settings["cvSeed"]
+
+    @cv_seed.setter
+    def cv_seed(self, seed):
+        """
+        :param seed: cross-validation seed for splitting the data during hyperparameter search
+        :type seed: int
+        """
+        self._set_cv_seed(seed)
+
+    def set_kfold_validation(self, n_folds=5, stratified=True, cv_seed=1337):
         """
         Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
         is enabled).
@@ -570,8 +618,9 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        self._set_cv_seed(cv_seed)
 
-    def set_single_split_validation(self, split_ratio=0.8, stratified=True):
+    def set_single_split_validation(self, split_ratio=0.8, stratified=True, cv_seed=1337):
         """
         Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
         is enabled).
@@ -597,6 +646,7 @@ class HyperparameterSearchSettings(object):
                 warnings.warn("stratified must be a boolean")
             else:
                 self._raw_settings["stratified"] = stratified
+        self._set_cv_seed(cv_seed)
 
     def set_custom_validation(self, code=None):
         """
@@ -743,7 +793,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
         - the definition mode of the current numerical hyperparameter to "EXPLICIT"
 
         :param values: the explicit list of numerical values considered for this hyperparameter in the search
-        :type values: list of float | int
+        :type values: list of float | list of int
         """
         self.values = values
         self.definition_mode = "EXPLICIT"
@@ -760,7 +810,7 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
     def values(self, values):
         """
         :param values: the explicit list of numerical values considered for this hyperparameter in the search
-        :type values: list of float | int
+        :type values: list of float | list of int
         """
         error_message = "Invalid values input type for hyperparameter " \
                         "\"{}\": ".format(self.name) + \
@@ -811,15 +861,76 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
             if nb_values is not None:
                 self._algo_settings[self.name]["range"]["nbValues"] = nb_values
 
+    class RangeSettings(object):
+        """
+        [Internal] Range of a numerical hyperparameter (points to the algorithm settings)
+        Should not be used directly by end users of the API
+        """
+
+        def __init__(self, numerical_hyperparameter_settings):
+            self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
+            self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
+
+        def __repr__(self):
+            return "RangeSettings(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
+
+        @property
+        def min(self):
+            """
+            :return: the lower bound of the range for this hyperparameter
+            :rtype: float | int
+            """
+            return self._range_dict["min"]
+
+        @min.setter
+        def min(self, value):
+            """
+            :param value: the lower bound of the range for this hyperparameter
+            :type value: float | int
+            """
+            self._numerical_hyperparameter_settings._set_range(min=value)
+
+        @property
+        def max(self):
+            """
+            :return: the upper bound of the range for this hyperparameter
+            :rtype: float | int
+            """
+            return self._range_dict["max"]
+
+        @max.setter
+        def max(self, value):
+            """
+            :param value: the upper bound of the range for this hyperparameter
+            :type value: float | int
+            """
+            self._numerical_hyperparameter_settings._set_range(max=value)
+
+        @property
+        def nb_values(self):
+            """
+            :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+            :rtype: int
+            """
+            return self._range_dict["nbValues"]
+
+        @nb_values.setter
+        def nb_values(self, value):
+            """
+            :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
+            :type value: int
+            """
+            self._numerical_hyperparameter_settings._set_range(nb_values=value)
+
     def set_range(self, min=None, max=None, nb_values=None):
         """
         Sets both:
-        - the Range parameters to search over for the current numerical hyperparameter
+        - the range parameters to search over for the current numerical hyperparameter
         - the definition mode of the current numerical hyperparameter to "RANGE"
 
-        :param min: the lower bound of the Range for this hyperparameter
+        :param min: the lower bound of the range for this hyperparameter
         :type min: float | int
-        :param max: the upper bound of the Range for this hyperparameter
+        :param max: the upper bound of the range for this hyperparameter
         :type max: float | int
         :param nb_values: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
         :type nb_values: int
@@ -829,65 +940,28 @@ class NumericalHyperparameterSettings(HyperparameterSettings):
 
     @property
     def range(self):
-        return Range(self)
+        return NumericalHyperparameterSettings.RangeSettings(self)
 
 
 class Range(object):
+    """
+    Range of a numerical hyperparameter (min, max, nb_values)
+    Use this class to define explicitly the parameters of the range of a numerical hyperparameter
+    """
 
-    def __init__(self, numerical_hyperparameter_settings):
-        self._numerical_hyperparameter_settings = numerical_hyperparameter_settings
-        self._range_dict = self._numerical_hyperparameter_settings._algo_settings[numerical_hyperparameter_settings.name]["range"]
+    def _check_input(self, value):
+        assert isinstance(value, (int, float)), "Invalid input type for Range: {}".format(type(value))
+
+    def __init__(self, min, max, nb_values=None):
+        self._check_input(min)
+        self._check_input(max)
+        assert min <= max, "Invalid Range: min must be lower than max"
+        self.min = min
+        self.max = max
+        self.nb_values = nb_values
 
     def __repr__(self):
         return "Range(min={}, max={}, nb_values={})".format(self.min, self.max, self.nb_values)
-
-    @property
-    def min(self):
-        """
-        :return: the lower bound of the Range for this hyperparameter
-        :rtype: float | int
-        """
-        return self._range_dict["min"]
-
-    @min.setter
-    def min(self, value):
-        """
-        :param value: the lower bound of the Range this hyperparameter
-        :type value: float | int
-        """
-        self._numerical_hyperparameter_settings._set_range(min=value)
-
-    @property
-    def max(self):
-        """
-        :return: the upper bound of the Range this hyperparameter
-        :rtype: float | int
-        """
-        return self._range_dict["max"]
-
-    @max.setter
-    def max(self, value):
-        """
-        :param value: the upper bound of the Range for this hyperparameter
-        :type value: float | int
-        """
-        self._numerical_hyperparameter_settings._set_range(max=value)
-
-    @property
-    def nb_values(self):
-        """
-        :return: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
-        :rtype: int
-        """
-        return self._range_dict["nbValues"]
-
-    @nb_values.setter
-    def nb_values(self, value):
-        """
-        :param value: for grid-search ("GRID" strategy) only, the number of values between min and max to consider
-        :type value: int
-        """
-        self._numerical_hyperparameter_settings._set_range(nb_values=value)
 
 
 class CategoricalHyperparameterSettings(HyperparameterSettings):
@@ -1047,7 +1121,20 @@ class PredictionAlgorithmSettings(dict):
                 elif isinstance(target, CategoricalHyperparameterSettings):
                     target.set_values(value)
                 elif isinstance(target, NumericalHyperparameterSettings):
-                    raise Exception("Invalid assignment of a NumericalHyperparameterSettings object")
+                    if isinstance(value, list):
+                        # algo.hyperparam = [x, y, z]
+                        target.set_explicit_values(values=value)
+                    elif isinstance(value, Range):
+                        # algo.hyperparam = Range(min=x, max=y, nb_values=z)
+                        target.set_range(min=value.min, max=value.max, nb_values=value.nb_values)
+                    elif isinstance(value, NumericalHyperparameterSettings):
+                        # algo.hyperparam = other_algo.other_hyperparam
+                        target.set_range(min=value.range.min, max=value.range.max, nb_values=value.range.nb_values)
+                        target.set_explicit_values(values=list(value.values))
+                        target.definition_mode = value.definition_mode
+                    else:
+                        raise TypeError(("Invalid type for NumericalHyperparameterSettings {}\n" +
+                                        "Expecting either list, Range or NumericalHyperparameterSettings").format(attr_name))
                 else:
                     # simple parameter
                     assert isinstance(value, type(target)), "Invalid type {} for parameter {}: expected {}".format(type(value), attr_name, type(target))
@@ -1752,6 +1839,84 @@ class DSSTrainedModelDetails(object):
         diagnostics = self.details.get("trainDiagnostics", {})
         return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
 
+    def generate_documentation(self, folder_id=None, path=None):
+        """
+        Start the model document generation from a template docx file in a managed folder,
+        or from the default template if no folder id and path are specified.
+
+        :param folder_id: (optional) the id of the managed folder
+        :param path: (optional) the path to the file from the root of the folder
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        if bool(folder_id) != bool(path):
+            raise ValueError("Both folder id and path arguments are required to use a template from folder. Use without argument to generate the model documentation using the default template")
+
+        template_mode_url = "default-template" if folder_id is None and path is None else "template-in-folder"
+
+        if self.mltask is not None:
+            f = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/generate-documentation-from-%s" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id, template_mode_url),
+                params={"folderId": folder_id, "path": path})
+            return DSSFuture(self.mltask.client, f["jobId"])
+        else:
+            f = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/generate-documentation-from-%s" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version, template_mode_url),
+                params={"folderId": folder_id, "path": path})
+            return DSSFuture(self.saved_model.client, job_id=f["jobId"])
+
+    def generate_documentation_from_custom_template(self, fp):
+        """
+        Start the model document generation from a docx template (as a file object).
+
+        :param object fp: A file-like object pointing to a template docx file
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        files = {'file': fp}
+        if self.mltask is not None:
+            f = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/generate-documentation-from-custom-template" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                files=files)
+            return DSSFuture(self.mltask.client, f["jobId"])
+        else:
+            f = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/generate-documentation-from-custom-template" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                files=files)
+            return DSSFuture(self.saved_model.client, job_id=f["jobId"])
+
+    def download_documentation_stream(self, export_id):
+        """
+        Download a model documentation, as a binary stream.
+
+        Warning: this stream will monopolize the DSSClient until closed.
+
+        :param export_id: the id of the generated model documentation returned as the result of the future
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the model document generation process
+        """
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/documentations/%s" % (self.mltask.project_key, export_id))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/documentations/%s" % (self.saved_model.project_key, export_id))
+
+    def download_documentation_to_file(self, export_id, path):
+        """
+        Download a model documentation into the given output file.
+
+        :param export_id: the id of the generated model documentation returned as the result of the future
+        :param path: the path where to download the model documentation
+        :return: None
+        """
+        stream = self.download_documentation_stream(export_id)
+        with open(path, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=10000):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
 
 class DSSMLDiagnostic(object):
     """
@@ -2461,6 +2626,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             return self.saved_model.client._perform_raw(
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-pmml" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+
 
     ## Post-train computations
 

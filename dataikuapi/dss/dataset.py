@@ -608,6 +608,11 @@ class DSSDataset(object):
         elif settings.type in self.__class__._SQL_TYPES:
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
+        
+        elif settings.type == "ElasticSearch":
+            return self.client._perform_json("POST",
+                "/projects/%s/datasets/%s/actions/testAndDetectSettings/elasticsearch"% (self.project_key, self.dataset_name))
+
         else:
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
@@ -635,6 +640,15 @@ class DSSDataset(object):
             return settings
 
         elif settings.type in self.__class__._SQL_TYPES:
+            result = self.test_and_detect()
+
+            if not "schemaDetection" in result:
+                raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["schema"] = result["schemaDetection"]["newSchema"]
+            return settings
+        
+        elif settings.type == "ElasticSearch":
             result = self.test_and_detect()
 
             if not "schemaDetection" in result:
