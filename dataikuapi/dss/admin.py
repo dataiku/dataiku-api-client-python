@@ -956,7 +956,7 @@ class DSSInstanceVariables(dict):
     """
 
     def __init__(self, client, variables):
-        super().__init__()
+        super(dict, self).__init__()
         self.update(variables)
         self.client = client
 
