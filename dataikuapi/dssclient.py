@@ -792,8 +792,7 @@ class DSSClient(object):
 
         """
         warnings.warn("set_variables is deprecated, please use get_global_variables().save()", DeprecationWarning)
-        return self._perform_empty(
-            "PUT", "/admin/variables/", body=variables)
+        return DSSInstanceVariables(self, variables).save()
 
 
     ########################################################
