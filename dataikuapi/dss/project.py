@@ -966,9 +966,7 @@ class DSSProject(object):
         Get a dictionary of resolved variables of this project.
 
         :param bool typed: if True, the variable values will be typed in the returned dict, defaults to False
-        :return: a dictionary with instance and project variables merged
-
-        :returns: a dictionary of the resolved project variables
+        :returns: a dictionary with instance and project variables merged
         """
         return self.client._perform_json(
             "GET",
