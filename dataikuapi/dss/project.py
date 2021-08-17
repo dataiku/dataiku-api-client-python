@@ -961,6 +961,22 @@ class DSSProject(object):
         return self.client._perform_json(
             "GET", "/projects/%s/variables/" % self.project_key)
 
+    def get_resolved_variables(self, typed=False):
+        """
+        Get a dictionary of resolved variables of this project.
+
+        :param bool typed: if True, the variable values will be typed in the returned dict, defaults to False
+        :return: a dictionary with instance and project variables merged
+
+        :returns: a dictionary of the resolved project variables
+        """
+        return self.client._perform_json(
+            "GET",
+            "/projects/%s/variables-resolved" % self.project_key,
+            params={
+                "typed": "true" if typed else "false"
+            })
+
     def set_variables(self, obj):
         """
         Sets the variables of this project.
