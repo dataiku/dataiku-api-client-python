@@ -950,9 +950,9 @@ class DSSClusterStatus(object):
 
 class DSSInstanceVariables(dict):
     """
-    Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its `save` method.
+    Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its :meth:`save` method.
 
-    Do not create this directly, use :meth:`dataikuapi.dssclient.DSSClient.get_global_variables`
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_global_variables`
     """
 
     def __init__(self, client, variables):

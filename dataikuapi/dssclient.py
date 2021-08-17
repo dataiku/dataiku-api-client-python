@@ -761,7 +761,7 @@ class DSSClient(object):
 
     def get_variables(self):
         """
-        Deprecated. Use get_global_variables
+        Deprecated. Use :meth:`get_global_variables`
         """
         warnings.warn("get_variables is deprecated, please use get_global_variables", DeprecationWarning)
         return self.get_global_variables()
@@ -779,7 +779,7 @@ class DSSClient(object):
 
     def set_variables(self, variables):
         """
-        Deprecated. Use get_global_variables().save()
+        Deprecated. Use :meth:`get_global_variables` and :meth:`dataikuapi.dss.admin.DSSInstanceVariables.save`
 
         Updates the DSS instance's variables
 
