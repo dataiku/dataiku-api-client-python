@@ -334,15 +334,29 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
-    def delete(self):
+    def delete(self, force=False):
         """
-        Deletes this deployment
+        Deletes this deployment.
+
+        :param boolean force: If True, automatically disables deployment before deletion
 
         You may only delete a deployment if it is disabled and has been updated after disabling it.
         """
-        return self.client._perform_empty(
-            "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
 
+        # Check is the deployment is disabled
+        is_enabled = self.get_status().light_status.get("deploymentBasicInfo").get("enabled")
+        if (is_enabled and force) or (not is_enabled):
+            if force:
+                settings = self.get_settings()
+                settings.set_enabled(enabled=False)
+                settings.save()
+            return self.client._perform_empty(
+                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
+        else:
+            raise Exception("Deployment {} deletion failed: deployment must be disabled first.".format(self.deployment_id))
+
+                
+            
 
 class DSSAPIDeployerDeploymentSettings(object):
     """
