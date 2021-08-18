@@ -339,8 +339,8 @@ class DSSAPIDeployerDeployment(object):
         Deletes this deployment. The disable_first flag automatically disables the deployment
         before its deletion.
 
-        :param boolean disable_first: If True, automatically disables deployment.
-        If False, attempting to delete an enabled deployment will raise an Exception.
+        :param boolean disable_first: If True, automatically disables this deployment before deleting it.
+        If False, will raise an Exception if this deployment is enabled.
 
         """
 
@@ -352,7 +352,7 @@ class DSSAPIDeployerDeployment(object):
             settings = self.get_settings()
             settings.set_enabled(enabled=False)
             settings.save()
-        return self.client._perform_empty(
+        self.client._perform_empty(
                 "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
 
                 
@@ -532,7 +532,7 @@ class DSSAPIDeployerService(object):
 
         You may only delete a service if it has no deployments on it anymore.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/api-deployer/services/%s" % (self.service_id))
 
 
