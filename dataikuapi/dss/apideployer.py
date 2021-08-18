@@ -334,15 +334,29 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
-    def delete(self):
+    def delete(self, disable_first=False):
         """
-        Deletes this deployment
+        Deletes this deployment. The disable_first flag automatically disables the deployment
+        before its deletion.
 
-        You may only delete a deployment if it is disabled and has been updated after disabling it.
+        :param boolean disable_first: If True, automatically disables this deployment before deleting it.
+        If False, will raise an Exception if this deployment is enabled.
+
         """
-        return self.client._perform_empty(
-            "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
 
+        # Check if the deployment is disabled
+        is_enabled = self.get_status().light_status["deploymentBasicInfo"].get("enabled")
+        if is_enabled and not disable_first:
+            raise Exception("Deployment {} deletion failed: deployment must be disabled first.".format(self.deployment_id))
+        if is_enabled:
+            settings = self.get_settings()
+            settings.set_enabled(enabled=False)
+            settings.save()
+        self.client._perform_empty(
+                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
+
+                
+            
 
 class DSSAPIDeployerDeploymentSettings(object):
     """
@@ -518,7 +532,7 @@ class DSSAPIDeployerService(object):
 
         You may only delete a service if it has no deployments on it anymore.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/api-deployer/services/%s" % (self.service_id))
 
 
