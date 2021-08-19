@@ -344,7 +344,7 @@ class DSSAPIDeployerDeployment(object):
 
         """
 
-        # Check if the deployment is disabled
+        # Check if the deployment is disabled
         is_enabled = self.get_status().light_status["deploymentBasicInfo"].get("enabled")
         if is_enabled and not disable_first:
             raise Exception("Deployment {} deletion failed: deployment must be disabled first.".format(self.deployment_id))
