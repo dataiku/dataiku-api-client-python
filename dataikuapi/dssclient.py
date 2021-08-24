@@ -114,7 +114,7 @@ class DSSClient(object):
         """
         Get a handle to interact with the root project folder.
 
-        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with this project folder
         """
         return self.get_project_folder("ROOT")
 
@@ -123,7 +123,7 @@ class DSSClient(object):
         Get a handle to interact with a project folder.
 
         :param str project_folder_id: the project folder ID of the desired project folder
-        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`to interact with this project folder
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with this project folder
         """
         data = self._perform_json("GET", "/project-folders/%s" % project_folder_id)
         return DSSProjectFolder(self, data)
@@ -179,7 +179,7 @@ class DSSClient(object):
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
         
-        :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
+        :returns: A :class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
         params = {}
         if project_folder_id is not None:
