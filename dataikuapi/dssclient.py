@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSPersonalApiKey
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -630,48 +630,6 @@ class DSSClient(object):
         return DSSGlobalApiKey(self, key)
 
     ########################################################
-    # Personal API Keys
-    ########################################################
-
-    def list_personal_api_keys(self):
-        """
-        List all personal API keys:
-            - not admin: only the keys belonging to the owner of the key
-            - admin: All the personal keys
-
-        :returns: All personal API keys, as a list of dicts
-        """
-        return self._perform_json(
-            "GET", "/personal-api-keys/")
-
-    def get_personal_api_key(self, key):
-        """
-        Get a specific API key from the user doing the request
-
-        :param str key: the secret key of the desired API key
-        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
-        """
-        return DSSPersonalApiKey(self, key)
-
-    def create_personal_api_key(self, label=""):
-        """
-        Create a Personal API key corresponding to the user doing the request, and return a handle to interact with it
-
-        :param: label string (optional): Label for the new API key
-        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
-        """
-        resp = self._perform_json(
-            "POST", "/personal-api-keys/", body={"label": label})
-        if resp is None:
-            raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-        if not resp.get('id', False):
-            raise Exception('API key creation returned no key')
-        key = resp.get('key', '')
-        return DSSPersonalApiKey(self, key)
-
-    ########################################################
     # Meanings
     ########################################################
 
@@ -1002,6 +960,19 @@ class DSSClient(object):
          :rtype: string
          """
          return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
+
+    def create_personal_api_key(self, label):
+        """
+        Creates a personal API key corresponding to the user doing the request.
+        This can be called if the DSSClient was initialized with an internal
+        ticket or with a personal API key
+
+        :param: label string: Label for the new API key
+        :returns: a dict of the new API key, containing at least "secret", i.e. the actual secret API key
+        :rtype: dict
+        """
+        return self._perform_json("POST", "/auth/personal-api-keys",
+                params={"label": label})
 
     ########################################################
     # Container execution
