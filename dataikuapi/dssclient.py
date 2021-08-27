@@ -528,6 +528,15 @@ class DSSClient(object):
             raise Exception('Env creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return DSSCodeEnv(self, env_lang, env_name)
 
+    def list_code_env_usages(self):
+        """
+        List all usages of a code env in the instance
+
+        :return: a list of objects where the code env is used
+        """
+        return self._perform_json("GET", "/admin/code-envs/usages")
+
+
     ########################################################
     # Clusters
     ########################################################
