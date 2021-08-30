@@ -3336,7 +3336,7 @@ class DSSMLTask(object):
         :rtype dict
         """
         return self.client._perform_json(
-            "POST", "/projects/%s/models/lab/%s/%s/actions/trainQueue" % (self.project_key, self.analysis_id, self.mltask_id))
+            "POST", "/projects/%s/models/lab/%s/%s/actions/train-queue" % (self.project_key, self.analysis_id, self.mltask_id))
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
