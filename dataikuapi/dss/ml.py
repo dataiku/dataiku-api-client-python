@@ -3330,7 +3330,7 @@ class DSSMLTask(object):
 
     def train_queue(self):
         """
-        Trains a queue
+        Trains this MLTask's queue
 
         :return: A dict including the next sessionID to be trained in the queue
         :rtype dict
