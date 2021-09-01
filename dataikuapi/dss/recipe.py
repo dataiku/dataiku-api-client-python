@@ -1357,7 +1357,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         """Sets the input model"""
         return self._with_input(model_id, self.project.project_key, "model")
 
-    def with_ouput(self, name):
+    def with_output(self, name):
         """Sets the ouput dataset containing the scored input"""
         return self._with_output(name, role="main")
 
