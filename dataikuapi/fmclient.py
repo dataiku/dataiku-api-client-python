@@ -14,7 +14,7 @@ from .fm.instancesettingstemplates import FMInstanceSettingsTemplate
 class FMClient(object):
     """Entry point for the FM API client"""
 
-    def __init__(self, host, api_key_id, api_key_secret, tenant_id, extra_headers = None):
+    def __init__(self, host, api_key_id, api_key_secret, tenant_id="main", extra_headers=None):
         """
         Instantiate a new FM API client on the given host with the given API key.
 
@@ -43,7 +43,7 @@ class FMClient(object):
 
     def get_cloud_credentials(self):
         """
-        Get Cloud Credential
+        Get Cloud Credentials
 
         :return: Cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
@@ -56,7 +56,7 @@ class FMClient(object):
     # VirtualNetwork
     ########################################################
 
-    def get_virtual_networks(self):
+    def list_virtual_networks(self):
         """
         List all Virtual Networks
 
@@ -129,7 +129,7 @@ class FMClient(object):
     # Instance settings template
     ########################################################
 
-    def get_instance_templates(self):
+    def list_instance_templates(self):
         """
         List all Instance Settings Templates
 
@@ -213,7 +213,7 @@ class FMClient(object):
     # Instance
     ########################################################
 
-    def get_instances(self):
+    def list_instances(self):
         """
         List all DSS Instances
 
