@@ -9,6 +9,7 @@ class FMCloudCredentials(object):
 
     def set_cmk_key(self, cmk_key_id):
         self.cloud_credentials['awsCMKId'] = cmk_key_id
+        self.save()
 
     def set_static_license(self, license_file=None, license_string=None):
         """
@@ -28,6 +29,7 @@ class FMCloudCredentials(object):
             raise ValueError("a valid license_file or license_string needs to be provided")
         self.cloud_credentials['licenseMode'] = 'STATIC'
         self.cloud_credentials['license'] = json.dumps(license, indent=2)
+        self.save()
 
     def set_automatically_updated_license(self, license_token):
         """
@@ -39,6 +41,16 @@ class FMCloudCredentials(object):
             raise ValueError("a valid license_token needs to be provided")
         self.cloud_credentials['licenseMode'] = 'AUTO_UPDATE'
         self.cloud_credentials['licenseToken'] = license_token
+        self.save()
+
+    def set_authentication(self, authentication):
+        """
+        Set the authentication for the tenant
+
+        :param object: a :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
+        """
+        self.cloud_credentials.update(authentication)
+        self.save()
 
     def save(self):
         """Saves back the settings to the project"""
@@ -46,3 +58,60 @@ class FMCloudCredentials(object):
         self.client._perform_tenant_empty("PUT", "/cloud-credentials",
                                    body = self.cloud_credentials)
 
+
+class FMCloudAuthentication(dict):
+    def __init__(self, data):
+        """
+        A class holding the Cloud Authentication information
+
+        Do not create this directly, use:
+            - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_same_as_fm` to use the same authentication as Fleet Manager
+            - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_iam_role` to use a custom IAM Role
+            - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_keypair` to use a AWS Access key ID and AWS Secret Access Key pair
+        """
+        super(FMCloudAuthentication, self).__init__(data)
+
+    @staticmethod
+    def aws_same_as_fm():
+        """
+        AWS Only: Use the same authentication as Fleet Manager
+        """
+        return FMCloudAuthentication({"awsAuthenticationMode": "SAME_AS_FM"})
+
+    @staticmethod
+    def aws_iam_role(role_arn):
+        """
+        AWS Only: Use an IAM Role
+
+        params: str role_arn: ARN of the IAM Role
+        """
+        return FMCloudAuthentication({"awsAuthenticationMode": "IAM_ROLE", "awsIAMRoleARN": role_arn})
+
+    @staticmethod
+    def aws_keypair(access_key_id, secret_access_key):
+        """
+        AWS Only: Use an AWS Access Key
+
+        :param str access_key_id: AWS Access Key ID
+        :param str secret_access_key: AWS Secret Access Key
+        """
+        return FMCloudAuthentication({"awsAuthenticationMode": "KEYPAIR", "awsAccessKeyId": access_key_id, "awsSecretAccessKey": secret_access_key})
+
+    @staticmethod
+    def azure(subscription, tenant_id, environment, client_id):
+        """
+        Azure Only
+
+        :param str subscription: Azure Subscription
+        :param str tenant_id: Azure Tenant Id
+        :param str environment: Azure Environment
+        :param str client_id: Azure Client Id
+        """
+        data = {
+            "azureSubscription": subscription,
+            "azureTenantId": tenant_id,
+            "azureEnvironment": environment,
+            "azureFMAppClientId": client_id
+        }
+
+        return FMCloudAuthentication(data)
