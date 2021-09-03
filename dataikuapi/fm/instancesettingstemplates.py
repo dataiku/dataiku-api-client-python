@@ -25,11 +25,24 @@ class FMInstanceSettingsTemplate(object):
         future = self.client._perform_tenant_json("DELETE", "/instance-settings-templates/%s" % self.id)
         return FMFuture.from_resp(self.client, future)
 
+    def add_setup_action(self, setup_action):
+        """
+        Add a setup_action
+
+        :param object setup_action: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
+        """
+        self.ist_data['setupActions'].append(setup_action)
+        self.save()
+
+
 class FMSetupAction(dict):
     def __init__(self, setupActionType, params=None):
         """
-        param: object setupActionType: the type (`:class: FMSetupActionType`) of the SetupAction
-        param: str params: the parameters of the SetupAction in a json-encoded string
+        A class representing a SetupAction
+
+        Do not create this directly, use:
+            - :meth:`dataikuapi.fm.instancesettingstemplates.FMSetupAction.add_authorized_key`
+
         """
         data = {
             "type": setupActionType.value,
@@ -39,9 +52,31 @@ class FMSetupAction(dict):
 
         super(FMSetupAction, self).__init__(data)
 
-class FMSetupActionAddAuthorizedKey(FMSetupAction):
-    def __init__(self, ssh_key):
-        super(FMSetupActionAddAuthorizedKey, self).__init__(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key })
+    @staticmethod
+    def add_authorized_key(ssh_key):
+        """
+        Return a ADD_AUTHORIZED_KEY SetupAction
+        """
+        return FMSetupAction(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key })
+
+    @staticmethod
+    def run_ansible_task(stage, yaml_string):
+        """
+        Return a RUN_ANSIBLE_TASK SetupAction
+
+        :params object stage: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
+        :params str yaml_string: a yaml encoded string defining the ansibles tasks to run
+        """
+        return FMSetupAction(FMSetupActionType.RUN_ANSIBLE_TASKS, {"stage": stage.value, "ansibleTasks": yaml_string })
+
+    @staticmethod
+    def install_system_packages(packages):
+        """
+        Return an INSTALL_SYSTEM_PACKAGES SetupAction
+
+        :params list packages: List of packages to install
+        """
+        return FMSetupAction(FMSetupActionType.INSTALL_SYSTEM_PACKAGES, {"packages": packages })
 
 class FMSetupActionType(Enum):
     RUN_ANSIBLE_TASKS="RUN_ANSIBLE_TASKS"
@@ -56,3 +91,8 @@ class FMSetupActionType(Enum):
     ADD_AUTHORIZED_KEY="ADD_AUTHORIZED_KEY"
     INSTALL_JDBC_DRIVER="INSTALL_JDBC_DRIVER"
     SETUP_ADVANCED_SECURITY="SETUP_ADVANCED_SECURITY"
+
+class FMSetupActionStage(Enum):
+    after_dss_startup="after_dss_startup"
+    after_install="after_install"
+    before_install="before_install"
