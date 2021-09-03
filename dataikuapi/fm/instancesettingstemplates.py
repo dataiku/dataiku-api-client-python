@@ -103,6 +103,13 @@ class FMSetupAction(dict):
         """
         return FMSetupAction(FMSetupActionType.INSTALL_JDBC_DRIVER, {"url": url, "dbType": database_type.value, "pathsInArchive": paths_in_archive, "headers": http_headers, "username": http_username, "password": http_password, "subpathInDatadir": datadir_subdirectory})
 
+    @staticmethod
+    def setup_k8s_and_spark():
+        """
+        Return a SETUP_K8S_AND_SPARK FMSetupAction
+        """
+        return FMSetupAction(FMSetupActionType.SETUP_K8S_AND_SPARK)
+
 class FMSetupActionType(Enum):
     RUN_ANSIBLE_TASKS="RUN_ANSIBLE_TASKS"
     INSTALL_SYSTEM_PACKAGES="INSTALL_SYSTEM_PACKAGES"
