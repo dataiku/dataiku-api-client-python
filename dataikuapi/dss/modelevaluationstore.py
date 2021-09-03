@@ -21,7 +21,7 @@ class DSSModelEvaluationStore(object):
         self.project = client.get_project(project_key)
         self.project_key = project_key
         self.mes_id = mes_id
-  
+
     @property
     def id(self):
         return self.mes_id
@@ -36,7 +36,7 @@ class DSSModelEvaluationStore(object):
             "GET", "/projects/%s/modelevaluationstores/%s" % (self.project_key, self.mes_id))
         return DSSModelEvaluationStoreSettings(self, data)
 
-                
+
     ########################################################
     # Misc
     ########################################################
@@ -113,21 +113,16 @@ class DSSModelEvaluationStore(object):
     # Model evaluations
     ########################################################
 
-    def list_model_evaluations(self, as_type="objects"):
+    def list_model_evaluations(self):
         """
         List the model evaluations in this model evaluation store. The list is sorted
         by ME creation date.
 
-        :param string as_type: if set to "objects" or "object", the method will return a list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
-                else a list of dict
         :returns: The list of the model evaluations
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        if as_type in ["objects", "object"]:
-            return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
-        else:
-            return items
+        return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
 
     def get_model_evaluation(self, run_id):
         """
