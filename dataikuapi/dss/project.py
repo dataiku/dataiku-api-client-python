@@ -754,10 +754,12 @@ class DSSProject(object):
     # Model evaluation stores
     ########################################################
 
-    def list_model_evaluation_stores(self, as_type=None):
+    def list_model_evaluation_stores(self, as_type="objects"):
         """
         List the model evaluation stores in this project.
 
+        :param string as_type: if set to "objects" or "object", the method returns a list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
+                else a list of dict.
         :returns: The list of the model evaluation stores
         :rtype: list
         """

@@ -113,11 +113,13 @@ class DSSModelEvaluationStore(object):
     # Model evaluations
     ########################################################
 
-    def list_model_evaluations(self, as_type=None):
+    def list_model_evaluations(self, as_type="objects"):
         """
         List the model evaluations in this model evaluation store. The list is sorted
         by ME creation date.
 
+        :param string as_type: if set to "objects" or "object", the method will return a list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
+                else a list of dict
         :returns: The list of the model evaluations
         :rtype: list
         """
@@ -164,7 +166,6 @@ class DSSModelEvaluationStore(object):
         self.client._perform_json(
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id, self.run_id), body=obj)
 
-
     def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True, no_fail=False):
         """
         Starts a new job to build this Model Evaluation Store and wait for it to complete.
@@ -176,16 +177,17 @@ class DSSModelEvaluationStore(object):
             print("Job %s done" % job.id)
 
         :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
-        :param no_fail: if True, does not raise if the job failed.
+        :param wait: wait for the build to finish before returning
+        :param no_fail: if True, does not raise if the job failed. Valid only when wait is True
         :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
         jd = self.project.new_job(job_type)
         jd.with_output(self.mes_id, object_type="MODEL_EVALUATION_STORE")
         if wait:
-            return jd.start_and_wait()
+            return jd.start_and_wait(no_fail)
         else:
-            return jd.start()
+            return jd.start(allowFail=not no_fail)
 
 
     ########################################################
@@ -328,10 +330,10 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["labels"]
 
-    def get_evaluated_model_info(self):
+    def get_evaluation_parameters(self):
         """
-        Get info on the evaluated model. Most noticeably, the fullId entry
-        of the dict if the full model id of the evaluated model
+        Get info on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field
+        of the returned dict)
 
         :return: a dict
         """
