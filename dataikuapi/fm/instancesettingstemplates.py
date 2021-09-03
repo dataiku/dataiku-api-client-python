@@ -64,8 +64,8 @@ class FMSetupAction(dict):
         """
         Return a RUN_ANSIBLE_TASK SetupAction
 
-        :params object stage: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
-        :params str yaml_string: a yaml encoded string defining the ansibles tasks to run
+        :param object stage: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
+        :param str yaml_string: a yaml encoded string defining the ansibles tasks to run
         """
         return FMSetupAction(FMSetupActionType.RUN_ANSIBLE_TASKS, {"stage": stage.value, "ansibleTasks": yaml_string })
 
@@ -74,9 +74,19 @@ class FMSetupAction(dict):
         """
         Return an INSTALL_SYSTEM_PACKAGES SetupAction
 
-        :params list packages: List of packages to install
+        :param list packages: List of packages to install
         """
         return FMSetupAction(FMSetupActionType.INSTALL_SYSTEM_PACKAGES, {"packages": packages })
+
+    @staticmethod
+    def setup_advanced_security(basic_headers = True, hsts = False):
+        """
+        Return an SETUP_ADVANCED_SECURITY SetupAction
+
+        :param boolean basic_headers: Optional, Prevent browsers to render Web content served by DSS to be embedded into a frame, iframe, embed or object tag. Defaults to True
+        :param boolean hsts: Optional,  Enforce HTTP Strict Transport Security. Defaults to False
+        """
+        return FMSetupAction(FMSetupActionType.SETUP_ADVANCED_SECURITY, {"basic_headers": basic_headers, "hsts": hsts})
 
 class FMSetupActionType(Enum):
     RUN_ANSIBLE_TASKS="RUN_ANSIBLE_TASKS"
