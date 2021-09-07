@@ -2,8 +2,9 @@ import json
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
-
 import os.path as osp
+
+from enum import Enum
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials
@@ -14,17 +15,23 @@ from .fm.instancesettingstemplates import FMInstanceSettingsTemplate
 class FMClient(object):
     """Entry point for the FM API client"""
 
-    def __init__(self, host, api_key_id, api_key_secret, tenant_id="main", extra_headers=None):
+    def __init__(self, host, api_key_id, api_key_secret, cloud, tenant_id="main", extra_headers=None):
         """
         Instantiate a new FM API client on the given host with the given API key.
 
         API keys can be managed in FM on the project page or in the global settings.
 
         The API key will define which operations are allowed for the client.
+
+        :param str host: Full url of the FM
+
         """
         self.api_key_id = api_key_id
         self.api_key_secret = api_key_secret
         self.host = host
+        if cloud not in ["AWS", "Azure"]:
+            raise ValueError("cloud should be either \"AWS\" or \"Azure\"")
+        self.cloud = cloud
         self.__tenant_id = tenant_id
         self._session = Session()
 
