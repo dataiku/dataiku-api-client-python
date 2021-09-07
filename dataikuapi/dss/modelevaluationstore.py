@@ -126,7 +126,7 @@ class DSSModelEvaluationStore(object):
         :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        return [DSSModelEvaluation(self, item["ref"]["runId"], item["created"]) for item in items]
+        return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
 
     def get_model_evaluation(self, run_id):
         """
@@ -264,14 +264,13 @@ class DSSModelEvaluation:
     Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluationStore.get_model_evaluation`
     """
 
-    def __init__(self, model_evaluation_store, run_id, creation_date):
+    def __init__(self, model_evaluation_store, run_id):
         self.model_evaluation_store = model_evaluation_store
         self.client = model_evaluation_store.client
         # unpack some fields
         self.run_id = run_id
         self.project_key = model_evaluation_store.project_key
         self.mes_id = model_evaluation_store.mes_id
-        self.creation_date = creation_date
 
     def get_full_info(self):
         """
@@ -297,14 +296,6 @@ class DSSModelEvaluation:
         """
         return self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
-
-    def get_creation_date(self):
-        """
-        Get the creation date, as an epoch
-
-        :return: the creation date, as an epoch
-        """
-        return self.creation_date
 
     def get_sample_df(self):
         """
