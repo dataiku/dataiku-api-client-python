@@ -1,4 +1,6 @@
 import json
+from io import BytesIO
+
 import pandas as pd
 
 from dataikuapi.dss.metrics import ComputedMetrics
@@ -10,6 +12,7 @@ try:
     basestring
 except NameError:
     basestring = str
+
 
 class DSSModelEvaluationStore(object):
     """
@@ -200,7 +203,6 @@ class DSSModelEvaluationStore(object):
         return ComputedMetrics(self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/metrics/last" % (self.project_key, self.mes_id)))
 
-
     def get_metric_history(self, metric):
         """
         Get the history of the values of the metric on this model evaluation store
@@ -230,7 +232,6 @@ class DSSModelEvaluationStore(object):
         else:
             return self.client._perform_json(
                 "POST" , "%s/computeMetrics" % url)
-
 
 
 class DSSModelEvaluationStoreSettings:
