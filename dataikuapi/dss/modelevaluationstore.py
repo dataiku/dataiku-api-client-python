@@ -144,10 +144,13 @@ class DSSModelEvaluationStore(object):
 
 
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
+            if the store is not empty, else None
         """
 
         latest_run_id = self.client._perform_text(
             "GET", "/projects/%s/modelevaluationstores/%s/latestRunId" % (self.project_key, self.mes_id))
+        if not latest_run_id:
+            return None
         return DSSModelEvaluation(self, latest_run_id)
 
     def delete_model_evaluations(self, evaluations):
