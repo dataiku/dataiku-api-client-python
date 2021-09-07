@@ -3155,7 +3155,7 @@ class DSSMLTask(object):
         else:
             return DSSClusteringMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
 
-    def train(self, session_name=None, session_description=None):
+    def train(self, session_name=None, session_description=None, run_queue=False):
         """
         Trains models for this ML Task
         
@@ -3173,7 +3173,7 @@ class DSSMLTask(object):
         :return: A list of model identifiers
         :rtype: list of strings
         """
-        train_ret = self.start_train(session_name, session_description)
+        train_ret = self.start_train(session_name, session_description, run_queue)
         self.wait_train_complete()
         return self.get_trained_models_ids(session_id = train_ret["sessionId"])
 
@@ -3202,7 +3202,7 @@ class DSSMLTask(object):
         return train_ret
 
 
-    def start_train(self, session_name=None, session_description=None):
+    def start_train(self, session_name=None, session_description=None, run_queue=False):
         """
         Starts asynchronously a new train session for this ML Task.
 
@@ -3213,7 +3213,8 @@ class DSSMLTask(object):
         """
         session_info = {
                             "sessionName" : session_name,
-                            "sessionDescription" : session_description
+                            "sessionDescription" : session_description,
+                            "runQueue": run_queue
                         }
 
         return self.client._perform_json(
