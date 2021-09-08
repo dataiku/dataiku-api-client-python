@@ -16,7 +16,7 @@ from .future import DSSFuture
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask
+from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
@@ -638,6 +638,15 @@ class DSSProject(object):
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
+    def list_mltask_queues(self):
+        """
+        List non-empty ML task queues in this project 
+        
+        :returns: an iterable :class:`DSSMLTaskQueues` listing of MLTask queues (each a dict)
+        :rtype: :class:`DSSMLTaskQueues`
+        """ 
+        data = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
+        return DSSMLTaskQueues(data)
 
     def create_analysis(self, input_dataset):
         """
