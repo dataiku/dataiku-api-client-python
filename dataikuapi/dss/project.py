@@ -754,18 +754,15 @@ class DSSProject(object):
     # Model evaluation stores
     ########################################################
 
-    def list_model_evaluation_stores(self, as_type=None):
+    def list_model_evaluation_stores(self):
         """
         List the model evaluation stores in this project.
 
         :returns: The list of the model evaluation stores
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
-        if as_type == "objects" or as_type == "object":
-            return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
-        else:
-            return items
+        return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
 
     def get_model_evaluation_store(self, mes_id):
         """
