@@ -11,6 +11,7 @@ from .fm.tenant import FMCloudCredentials
 from .fm.virtualnetworks import FMVirtualNetwork
 from .fm.instances import FMInstance, FMInstanceEncryptionMode
 from .fm.instancesettingstemplates import FMInstanceSettingsTemplate
+from dataikuapi.fm.instances import FMAWSInstanceCreator, FMAzureInstanceCreator
 
 class FMClient(object):
     """Entry point for the FM API client"""
@@ -242,58 +243,19 @@ class FMClient(object):
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
         return FMInstance(self, instance)
 
-    def create_instance(self, instance_settings_template, virtual_network, label, image_id,
-                        dss_node_type="design",
-                        cloud_instance_type=None, data_volume_type=None, data_volume_size=None,
-                        data_volume_size_max=None, data_volume_IOPS=None, data_volume_encryption=FMInstanceEncryptionMode.NONE,
-                        data_volume_encryption_key=None, aws_root_volume_size=None, aws_root_volume_type=None, aws_root_volume_IOPS=None,
-                        cloud_tags=None, fm_tags=None):
+    def new_instance_creator(self, label, instance_settings_template_id, virtual_network_id, image_id):
         """
-        Create a DSS Instance
+        Instantiate a new instance creator
 
+        :param str label: The label of the instance
         :param str instance_settings_template: The instance settings template id this instance should be based on
         :param str virtual_network: The virtual network where the instance should be spawned
-        :param str label: The label of the instance
         :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
-
-        :param str dss_node_type: Optional , the type of the dss node to create. Defaults to "design"
-        :param str cloud_instance_type: Optional, Machine type
-        :param str data_volume_type: Optional, Data volume type
-        :param int data_volume_size: Optional, Data volume initial size
-        :param int data_volume_size_max: Optional, Data volume maximum size
-        :param int data_volume_IOPS: Optional, Data volume IOPS
-        :param object data_volume_encryption: Optional, a :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode` setting the encryption mode of the data volume
-        :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
-        :param int aws_root_volume_size: Optional, the root volume size
-        :param str aws_root_volume_type: Optional, the root volume type
-        :param int aws_root_volume_IOPS: Optional, the root volume IOPS
-        :param dict cloud_tags: Optional, a key value dictionary of tags to be applied on the cloud resources
-        :param list fm_tags: Optional, list of tags to be applied on the instance in the Fleet Manager
-
-        :return: Instance
-        :rtype: :class:`dataikuapi.fm.instances.FMInstance`
         """
-        data = {
-            "virtualNetworkId": virtual_network.id,
-            "instanceSettingsTemplateId": instance_settings_template.id,
-            "label": label,
-            "dssNodeType": dss_node_type,
-            "imageId": image_id,
-            "cloudInstanceType": cloud_instance_type,
-            "dataVolumeType": data_volume_type,
-            "dataVolumeSizeGB": data_volume_size,
-            "dataVolumeSizeMaxGB": data_volume_size_max,
-            "dataVolumeIOPS": data_volume_IOPS,
-            "dataVolumeEncryption": data_volume_encryption.value,
-            "dataVolumeEncryptionKey": data_volume_encryption_key,
-            "awsRootVolumeSizeGB": aws_root_volume_size,
-            "awsRootVolumeType": aws_root_volume_type,
-            "awsRootVolumeIOPS": aws_root_volume_IOPS,
-            "cloudTags": cloud_tags,
-            "fmTags": fm_tags
-        }
-        instance = self._perform_tenant_json("POST", "/instances", body=data)
-        return FMInstance(self, instance)
+        if self.cloud == "AWS":
+            return FMAWSInstanceCreator(self, label, instance_settings_template_id, virtual_network_id, image_id)
+        elif self.cloud == "Azure":
+            return FMAzureInstanceCreator(self, label, instance_settings_template_id, virtual_network_id, image_id)
 
 
     ########################################################
