@@ -5,6 +5,7 @@ import pandas as pd
 
 from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
+from .future import DSSFuture
 
 from requests import utils
 
@@ -287,6 +288,15 @@ class DSSModelEvaluation:
         obj = [self.run_id]
         self.client._perform_json(
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
+
+    def compute_data_drift(self, reference_id=None, data_drift_params=None):
+        future_response = self.client._perform_json(
+            "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
+            body={
+                "referenceId": reference_id,
+                "dataDriftParams": data_drift_params
+            })
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
     def get_metrics(self):
         """
