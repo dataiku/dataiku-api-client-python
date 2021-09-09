@@ -36,7 +36,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, service_id, infra_id, version):
+    def create_deployment(self, deployment_id, service_id, infra_id, version, ignore_warnings=False):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
@@ -45,6 +45,7 @@ class DSSAPIDeployer(object):
         :param str service_id: Identifier of the API Service to target
         :param str infra_id: Identifier of the deployment infrastructure to use
         :param str version_id: Identifier of the API Service version to deploy
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         settings = {
@@ -53,7 +54,7 @@ class DSSAPIDeployer(object):
             "infraId" : infra_id,
             "version" : version
         }
-        self.client._perform_json("POST", "/api-deployer/deployments", body=settings)
+        self.client._perform_json("POST", "/api-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
 
     def list_stages(self):
@@ -81,19 +82,21 @@ class DSSAPIDeployer(object):
         else:
             return l
 
-    def create_infra(self, infra_id, stage, type):
+    def create_infra(self, infra_id, stage, type, govern_check_policy="NO_CHECK"):
         """
         Creates a new infrastructure on the API Deployer and returns the handle to interact with it.
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
         :param str type: STATIC or KUBERNETES
+        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """
         settings = {
             "id": infra_id,
             "stage": stage,
             "type": type,
+            "govern_check_policy": govern_check_policy,
         }
         self.client._perform_json("POST", "/api-deployer/infras", body=settings)
         return self.get_infra(infra_id)
@@ -308,6 +311,16 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSAPIDeployerDeploymentStatus(self.client, self.deployment_id, light, heavy)
 
+    def get_governance_status(self, version=""):
+        """
+        Returns the governance status about this deployment if applicable
+        It covers all the embedded model versions
+
+        :param str version: (Optional) The specific package version of the published service to get status from. If empty, consider all the versions used in the deployment generation mapping.
+        :rtype: dict InforMessages containing the governance status
+        """
+        return self.client._perform_json("GET", "/api-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "version": version })
+
     def get_settings(self):
         """
         Gets the settings of this deployment. If you want to modify the settings, you need to
@@ -381,12 +394,15 @@ class DSSAPIDeployerDeploymentSettings(object):
             "generation": version
         }
         
-    def save(self):
+    def save(self, ignore_warnings=False):
         """
         Saves back these settings to the deployment
+
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         """
         self.client._perform_empty(
                 "PUT", "/api-deployer/deployments/%s/settings" % (self.deployment_id),
+                params = { "ignoreWarnings" : ignore_warnings },
                 body = self.settings)
 
 
