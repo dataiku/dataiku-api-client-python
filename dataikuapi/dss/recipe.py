@@ -1372,7 +1372,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         return self._with_output(name, role="metrics")
 
     def with_output_evaluation_store(self, name):
-        """Sets the output dataset containing the metrics"""
+        """Sets the output model evaluation store"""
         return self._with_output(name, role="evaluationStore")
 
 
