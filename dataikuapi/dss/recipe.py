@@ -1340,8 +1340,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_output_evaluation_store(evaluation_store_id)
 
         new_recipe = builder.build()
-
-
+    
     Outputs must exist. They can be created using the following:
 
     .. code-block:: python
@@ -1407,3 +1406,44 @@ class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     def with_input_model(self, model_id):
         """Sets the input model"""
         return self._with_input(model_id, self.project.project_key, "model")
+
+
+class DownloadRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Download recipe
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'download', name, project)
+
+
+class RequiredSchemaUpdates(object):
+    """
+    Representation of the updates required to the schema of the outputs of a recipe.
+    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_updates`
+    """
+
+    def __init__(self, recipe, data):
+        self.recipe = recipe
+        self.data = data
+        self.drop_and_recreate = True
+        self.synchronize_metastore = True
+
+    def any_action_required(self):
+        return self.data["totalIncompatibilities"] > 0
+
+    def apply(self):
+        results  = []
+        for computable in self.data["computables"]:
+            osu = {
+                "computableType": computable["type"],
+                # dirty
+                "computableId": computable["type"] == "DATASET" and computable["datasetName"] or computable["id"],
+                "newSchema": computable["newSchema"],
+                "dropAndRecreate": self.drop_and_recreate,
+                "synchronizeMetastore" : self.synchronize_metastore
+            }
+
+            results.append(self.recipe.client._perform_json("POST",
+                    "/projects/%s/recipes/%s/actions/updateOutputSchema" % (self.recipe.project_key, self.recipe.recipe_name),
+                    body=osu))
+        return results
