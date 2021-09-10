@@ -1,4 +1,7 @@
 import json
+from io import BytesIO
+
+import pandas as pd
 
 from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -293,6 +296,26 @@ class DSSModelEvaluation:
         """
         return self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
+
+    def get_sample_df(self):
+        """
+        Get the sample of the evaluation dataset on which the evaluation was performed
+
+        :return:
+            the sample content, as a :class:`pandas.DataFrame`
+        """
+        buf = BytesIO()
+        with self.client._perform_raw(
+                "GET",
+                "/projects/%s/modelevaluationstores/%s/runs/%s/sample" % (self.project_key, self.mes_id, self.run_id)
+        ).raw as f:
+            buf.write(f.read())
+        schema_txt = self.client._perform_raw(
+            "GET",
+            "/projects/%s/modelevaluationstores/%s/runs/%s/schema" % (self.project_key, self.mes_id, self.run_id)
+        ).text
+        schema = json.loads(schema_txt)
+        return pd.read_csv(BytesIO(buf.getvalue()), compression='gzip', sep='\t', header=None, names=[c["name"] for c in schema["columns"]])
 
 
 class DSSModelEvaluationFullInfo:
