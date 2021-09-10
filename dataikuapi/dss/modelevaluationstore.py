@@ -290,6 +290,13 @@ class DSSModelEvaluation:
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
 
     def compute_data_drift(self, reference_id=None, data_drift_params=None):
+        """
+        Compute input data drift against a reference model or model evaluation. The reference is determined automatically unless specified.
+
+        :param reference_id: model ID or model evaluation ID (optional)
+        :param data_drift_params: input drift computation settings (optional)
+        :return: input drift analysis results, as a JSON object
+        """
         future_response = self.client._perform_json(
             "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
             body={
