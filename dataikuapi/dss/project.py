@@ -1333,6 +1333,8 @@ class DSSProject(object):
             return recipe.PrepareRecipeCreator(name, self)
         elif type == "prediction_scoring":
             return recipe.PredictionScoringRecipeCreator(name, self)
+        elif type == "evaluation":
+            return recipe.EvaluationRecipeCreator(name, self)
         elif type == "clustering_scoring":
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":
