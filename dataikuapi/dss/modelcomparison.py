@@ -23,7 +23,7 @@ class DSSModelComparison(object):
         """
         Returns the settings of this model comparison.
 
-        :rtype: DSSModelComparisonSettings
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparisonSettings`
         """
         data = self.client._perform_json(
             "GET", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
@@ -50,7 +50,7 @@ class DSSModelComparison(object):
         return self.client._perform_empty("DELETE", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
 
 
-class DSSModelComparisonSettings:
+class DSSModelComparisonSettings(object):
     """
     A handle on the settings of a model comparison
 
@@ -120,7 +120,8 @@ class DSSModelComparisonSettings:
             return []
         return map(lambda x: x["refId"], self.settings["comparedModels"])
 
-    def get_prediction_type(self):
+    @property
+    def prediction_type(self):
         """
         Gets the prediction type of this comparison
 
@@ -128,7 +129,8 @@ class DSSModelComparisonSettings:
         """
         return self.settings["predictionType"]
 
-    def set_prediction_type(self, prediction_type):
+    @prediction_type.setter
+    def prediction_type(self, prediction_type):
         """
         Sets the prediction type of this comparison. Must be consistent
         with the prediction types of compared items.
@@ -137,7 +139,8 @@ class DSSModelComparisonSettings:
         """
         self.settings["predictionType"] = prediction_type
 
-    def get_display_name(self):
+    @property
+    def display_name(self):
         """
         Human readable name of this comparison
 
@@ -145,7 +148,8 @@ class DSSModelComparisonSettings:
         """
         return self.settings["displayName"]
 
-    def set_display_name(self, display_name):
+    @display_name.setter
+    def display_name(self, display_name):
         """
         Set the human readable name of this comparison
 
