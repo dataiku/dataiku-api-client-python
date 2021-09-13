@@ -17,7 +17,7 @@ from .future import DSSFuture
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask
+from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
@@ -639,6 +639,15 @@ class DSSProject(object):
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
+    def list_mltask_queues(self):
+        """
+        List non-empty ML task queues in this project 
+        
+        :returns: an iterable :class:`DSSMLTaskQueues` listing of MLTask queues (each a dict)
+        :rtype: :class:`DSSMLTaskQueues`
+        """ 
+        data = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
+        return DSSMLTaskQueues(data)
 
     def create_analysis(self, input_dataset):
         """
@@ -755,18 +764,15 @@ class DSSProject(object):
     # Model evaluation stores
     ########################################################
 
-    def list_model_evaluation_stores(self, as_type=None):
+    def list_model_evaluation_stores(self):
         """
         List the model evaluation stores in this project.
 
         :returns: The list of the model evaluation stores
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
-        if as_type == "objects" or as_type == "object":
-            return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
-        else:
-            return items
+        return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
 
     def get_model_evaluation_store(self, mes_id):
         """
@@ -1374,6 +1380,8 @@ class DSSProject(object):
             return recipe.PrepareRecipeCreator(name, self)
         elif type == "prediction_scoring":
             return recipe.PredictionScoringRecipeCreator(name, self)
+        elif type == "evaluation":
+            return recipe.EvaluationRecipeCreator(name, self)
         elif type == "clustering_scoring":
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":

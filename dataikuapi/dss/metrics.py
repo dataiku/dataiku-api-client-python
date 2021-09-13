@@ -4,6 +4,9 @@ class ComputedMetrics(object):
     def __init__(self, raw):
         self.raw = raw
 
+    def get_raw(self):
+        return self.raw
+
     def get_metric_by_id(self, id):
         all_ids = []
         for metric in self.raw["metrics"]:

@@ -1,4 +1,5 @@
 import json
+from io import BytesIO
 
 from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -9,6 +10,7 @@ try:
     basestring
 except NameError:
     basestring = str
+
 
 class DSSModelEvaluationStore(object):
     """
@@ -21,7 +23,7 @@ class DSSModelEvaluationStore(object):
         self.project = client.get_project(project_key)
         self.project_key = project_key
         self.mes_id = mes_id
-  
+
     @property
     def id(self):
         return self.mes_id
@@ -36,7 +38,7 @@ class DSSModelEvaluationStore(object):
             "GET", "/projects/%s/modelevaluationstores/%s" % (self.project_key, self.mes_id))
         return DSSModelEvaluationStoreSettings(self, data)
 
-                
+
     ########################################################
     # Misc
     ########################################################
@@ -110,31 +112,44 @@ class DSSModelEvaluationStore(object):
 
 
     ########################################################
-    # Runs
+    # Model evaluations
     ########################################################
 
-    def list_model_evaluations(self, as_type=None):
+    def list_model_evaluations(self):
         """
-        List the model evaluations in this model evaluation store.
+        List the model evaluations in this model evaluation store. The list is sorted
+        by ME creation date.
 
         :returns: The list of the model evaluations
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        if as_type in ["objects", "object"]:
-            return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
-        else:
-            return items
+        return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
 
     def get_model_evaluation(self, run_id):
         """
-        Get a handle to interact with a specific model evaluations
+        Get a handle to interact with a specific model evaluation
        
         :param string run_id: the id of the desired model evaluation
         
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
         """
         return DSSModelEvaluation(self, run_id)
+
+    def get_latest_model_evaluation(self):
+        """
+        Get a handle to interact with the latest model evaluation computed
+
+
+        :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
+            if the store is not empty, else None
+        """
+
+        latest_run_id = self.client._perform_text(
+            "GET", "/projects/%s/modelevaluationstores/%s/latestRunId" % (self.project_key, self.mes_id))
+        if not latest_run_id:
+            return None
+        return DSSModelEvaluation(self, latest_run_id)
 
     def delete_model_evaluations(self, evaluations):
         """
@@ -148,30 +163,31 @@ class DSSModelEvaluationStore(object):
                 obj.append(evaluation['run_id'])
             else:
                 obj.append(evaluation)
-        self.model_evaluation_store.client._perform_json(
+        self.client._perform_json(
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id, self.run_id), body=obj)
 
+    def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True, no_fail=False):
+        """
+        Starts a new job to build this Model Evaluation Store and wait for it to complete.
+        Raises if the job failed.
 
-    def create_model_evaluation(self, labels=None, prediction_type=None, model_type=None, model_params=None, data_type=None, data_params=None, metric_params=None, active_classifier_threshold=None):
+        .. code-block:: python
+
+            job = mes.build()
+            print("Job %s done" % job.id)
+
+        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param wait: wait for the build to finish before returning
+        :param no_fail: if True, does not raise if the job failed. Valid only when wait is True
+        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
-        Create a new model evaluation in the model evaluation store, and return a handle to interact with it.
-        
-        :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
-        """
-        obj = {
-            "labels": labels,
-            "modelType": model_type,
-            "modelParams": model_params if model_params is not None else {},
-            "dataType": data_type,
-            "dataParams": data_params if data_params is not None else {},
-            "predictionType": prediction_type,
-            "activeClassifierThreshold": active_classifier_threshold,
-            "metricParams": metric_params if metric_params is not None else {}
-        }
-        res = self.client._perform_json("POST", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), 
-                                            body = obj)
-        run_id = res['id']
-        return DSSModelEvaluation(self, run_id)
+        jd = self.project.new_job(job_type)
+        jd.with_output(self.mes_id, object_type="MODEL_EVALUATION_STORE")
+        if wait:
+            return jd.start_and_wait(no_fail)
+        else:
+            return jd.start(allowFail=not no_fail)
 
 
     ########################################################
@@ -187,7 +203,6 @@ class DSSModelEvaluationStore(object):
         """
         return ComputedMetrics(self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/metrics/last" % (self.project_key, self.mes_id)))
-
 
     def get_metric_history(self, metric):
         """
@@ -220,7 +235,6 @@ class DSSModelEvaluationStore(object):
                 "POST" , "%s/computeMetrics" % url)
 
 
-
 class DSSModelEvaluationStoreSettings:
     """
     A handle on the settings of a model evaluation store
@@ -239,6 +253,7 @@ class DSSModelEvaluationStoreSettings:
         self.model_evaluation_store.client._perform_empty(
                 "PUT", "/projects/%s/modelevaluationstores/%s" % (self.model_evaluation_store.project_key, self.model_evaluation_store.mes_id),
                 body=self.settings)
+
 
 class DSSModelEvaluation:
     """
@@ -259,16 +274,9 @@ class DSSModelEvaluation:
         """
         Retrieve the model evaluation with its performance data
         """
-        return self.client._perform_json(
-                "GET", "/projects/%s/modelevaluationstores/%s/runs/%s" % (self.project_key, self.mes_id, self.run_id))
-
-    def get_settings(self):
-        """
-        Set the definition of this model evaluation
-        """
         data = self.client._perform_json(
-                "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/settings" % (self.project_key, self.mes_id, self.run_id))
-        return DSSModelEvaluationSettings(self, data)
+            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s" % (self.project_key, self.mes_id, self.run_id))
+        return DSSModelEvaluationFullInfo(self, data)
 
     def get_full_id(self):
         return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.run_id)
@@ -281,80 +289,82 @@ class DSSModelEvaluation:
         self.client._perform_json(
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
 
-    ########################################################
-    # Model evaluation contents
-    ########################################################
-    
-    def list_contents(self):
-        """
-        Get the list of files in the model evaluation
-        
-        Returns:
-            the list of files, as a JSON object
-        """
-        return self.client._perform_json(
-                "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/contents" % (self.project_key, self.mes_id, self.run_id))
-
-    def get_file(self, path):
-        """
-        Get a file from the model evaluation
-        
-        Returns:
-            the file's content, as a stream
-        """
-        return self.client._perform_raw(
-                "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/contents/%s" % (self.project_key, self.mes_id, self.run_id, utils.quote(path)))
-
-    def delete_file(self, path):
-        """
-        Delete a file from the model evaluation
-        """
-        return self.client._perform_empty(
-                "DELETE", "/projects/%s/modelevaluationstores/%s/runs/%s/contents/%s" % (self.project_key, self.mes_id, self.run_id, utils.quote(path)))
-
-    def put_file(self, path, f):
-        """
-        Upload the file to the model evaluation
-        
-        Args:
-            f: the file contents, as a stream
-            path: the path of the file
-        """
-        return self.client._perform_json_upload(
-                "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/contents/%s" % (self.project_key, self.mes_id, self.run_id, utils.quote(path)),
-                "", f)
-
     def get_metrics(self):
         """
-        Get the metrics for this model evaluation
+        Get the metrics for this model evaluation. Metrics must be understood here as Metrics in DSS Metrics & Checks
 
         :return: the metrics, as a JSON object
         """
         return self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
 
-class DSSModelEvaluationSettings:
-    """
-    A handle on the settings of a model evaluation
+    def get_sample_df(self):
+        """
+        Get the sample of the evaluation dataset on which the evaluation was performed
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_settings`
-    """
+        :return:
+            the sample content, as a :class:`pandas.DataFrame`
+        """
+        buf = BytesIO()
+        with self.client._perform_raw(
+                "GET",
+                "/projects/%s/modelevaluationstores/%s/runs/%s/sample" % (self.project_key, self.mes_id, self.run_id)
+        ).raw as f:
+            buf.write(f.read())
+        schema_txt = self.client._perform_raw(
+            "GET",
+            "/projects/%s/modelevaluationstores/%s/runs/%s/schema" % (self.project_key, self.mes_id, self.run_id)
+        ).text
+        schema = json.loads(schema_txt)
+        import pandas as pd
+        return pd.read_csv(BytesIO(buf.getvalue()), compression='gzip', sep='\t', header=None, names=[c["name"] for c in schema["columns"]])
 
-    def __init__(self, model_evaluation, settings):
+
+class DSSModelEvaluationFullInfo:
+    """
+    A handle on the full information on a model evaluation.
+
+    Includes information such as the full id of the evaluated model, the evaluation params,
+    the performance and drift metrics, if any, etc.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_full_info`
+    """
+    def __init__(self, model_evaluation, full_info):
         self.model_evaluation = model_evaluation
-        self.settings = settings
-        # unpack some fields
-        self.client = model_evaluation.client
-        self.run_id = model_evaluation.run_id
-        self.project_key = model_evaluation.project_key
-        self.mes_id = model_evaluation.mes_id
+        self.full_info = full_info
 
     def get_raw(self):
-        return self.settings
+        return self.full_info
 
-    def save(self):
-        return self.client._perform_json(
-                "PUT", "/projects/%s/modelevaluationstores/%s/runs/%s/settings" % (self.project_key, self.mes_id, self.run_id),
-                        body=self.settings)
+    def get_metrics(self):
+        """
+        Get the metrics evaluated, if any.
 
+        :return: a dict containing the performance and data drift metric, if any
+        """
+        return self.full_info["metrics"]
 
+    def get_labels(self):
+        """
+        Get the labels of the Model Evaluation
+
+        :return: a dict containing the labels
+        """
+        return self.full_info["evaluation"]["labels"]
+
+    def get_evaluation_parameters(self):
+        """
+        Get info on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field
+        of the returned dict)
+
+        :return: a dict
+        """
+        return self.full_info["evaluation"]["metricParams"]
+
+    def get_creation_date(self):
+        """
+        Return the date and time of the creation of the Model Evaluation
+
+        :return: the date and time, as an epoch
+        """
+        return self.full_info["evaluation"]["created"]
