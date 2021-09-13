@@ -65,9 +65,9 @@ class DSSModelComparisonSettings:
     - MULTICLASS
 
     The full ids are:
-    - the model id of a Lab Model, such as A-PROJECTKEY-LABID-MODELID-s1-pp1-m1 (visible on the summary tab of the model) ;
-    - the model id of a saved model version, such as S-PROJECTKEY-SMID-1234567891234 (visible on the summary tab of the model) ;
-    - the model evaluation id of a model evaluation, such as ME-PROJECTKEY-STOREID-MEID (visible on the summary tab of the model evaluation).
+    - the model id of a Lab Model,
+    - the model id of a saved model version,
+    - the model evaluation id of a model evaluation.
 
 
     Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelComparison.get_settings`
