@@ -1,5 +1,3 @@
-import json
-
 from dataikuapi.dss.discussion import DSSObjectDiscussions
 
 
