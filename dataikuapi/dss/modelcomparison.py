@@ -3,11 +3,11 @@ import json
 from dataikuapi.dss.discussion import DSSObjectDiscussions
 
 
-class DSSModelComparator(object):
+class DSSModelComparison(object):
     """
-    A handle to interact with a model comparator on the DSS instance.
+    A handle to interact with a model comparison on the DSS instance.
 
-    Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_model_comparator`
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_model_comparison`
     """
     def __init__(self, client, project_key, mec_id):
         self.client = client
@@ -21,17 +21,17 @@ class DSSModelComparator(object):
 
     def get_settings(self):
         """
-        Returns the settings of this model comparator.
+        Returns the settings of this model comparison.
 
-        :rtype: DSSModelComparatorSettings
+        :rtype: DSSModelComparisonSettings
         """
         data = self.client._perform_json(
             "GET", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
-        return DSSModelComparatorSettings(self, data)
+        return DSSModelComparisonSettings(self, data)
 
     def get_object_discussions(self):
         """
-        Get a handle to manage discussions on the model comparator
+        Get a handle to manage discussions on the model comparison
 
         :returns: the handle to manage discussions
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
@@ -44,17 +44,17 @@ class DSSModelComparator(object):
 
     def delete(self):
         """
-        Delete the model evaluation store
+        Delete the model comparison
 
         """
         return self.client._perform_empty("DELETE", "/projects/%s/modelcomparisons/%s" % (self.project_key, self.mec_id))
 
 
-class DSSModelComparatorSettings:
+class DSSModelComparisonSettings:
     """
-    A handle on the settings of a model comparator
+    A handle on the settings of a model comparison
 
-    A model comparator has:
+    A model comparison has:
     - a display name ;
     - a prediction type ;
     - a list of full ids of items to compare
@@ -70,18 +70,18 @@ class DSSModelComparatorSettings:
     - the model evaluation id of a model evaluation, such as ME-PROJECTKEY-STOREID-MEID (visible on the summary tab of the model evaluation).
 
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelComparator.get_settings`
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelComparison.get_settings`
     """
 
-    def __init__(self, model_comparator, settings):
-        self.model_comparator = model_comparator
+    def __init__(self, model_comparison, settings):
+        self.model_comparison = model_comparison
         self.settings = settings
 
     def get_raw(self):
         """
-        Gets raw settings of a model comparator
+        Gets raw settings of a model comparison
 
-        :return: the raw settings of comparator, as a dict. Modifications made to the returned object
+        :return: the raw settings of comparison, as a dict. Modifications made to the returned object
         are reflected when saving
         :rtype: dict
         """
@@ -111,7 +111,7 @@ class DSSModelComparatorSettings:
 
     def get_compared_items(self):
         """
-        Gets the full ids of items compared in this comparator instance
+        Gets the full ids of items compared in this comparison
 
         :return: the list of the full ids of compared items
         :rtype: list[str]
@@ -122,7 +122,7 @@ class DSSModelComparatorSettings:
 
     def get_prediction_type(self):
         """
-        Gets the prediction type of this comparator instance
+        Gets the prediction type of this comparison
 
         :return: str
         """
@@ -130,7 +130,7 @@ class DSSModelComparatorSettings:
 
     def set_prediction_type(self, prediction_type):
         """
-        Sets the prediction type of this comparator instance. Must be consistent
+        Sets the prediction type of this comparison. Must be consistent
         with the prediction types of compared items.
 
         :param prediction_type:
@@ -139,7 +139,7 @@ class DSSModelComparatorSettings:
 
     def get_display_name(self):
         """
-        Human readable name of this comparator instance
+        Human readable name of this comparison
 
         :return: str
         """
@@ -147,7 +147,7 @@ class DSSModelComparatorSettings:
 
     def set_display_name(self, display_name):
         """
-        Set the human readable name of this comparator instance
+        Set the human readable name of this comparison
 
         :param display_name:
         """
@@ -157,7 +157,7 @@ class DSSModelComparatorSettings:
         """
         Save settings modifications
         """
-        self.model_comparator.client._perform_empty(
-            "PUT", "/projects/%s/modelcomparisons/%s" % (self.model_comparator.project_key, self.model_comparator.mec_id),
+        self.model_comparison.client._perform_empty(
+            "PUT", "/projects/%s/modelcomparisons/%s" % (self.model_comparison.project_key, self.model_comparison.mec_id),
             body=self.settings)
 
