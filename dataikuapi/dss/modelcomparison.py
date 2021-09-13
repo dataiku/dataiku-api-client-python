@@ -3,7 +3,7 @@ from dataikuapi.dss.discussion import DSSObjectDiscussions
 
 class DSSModelComparison(object):
     """
-    A handle to interact with a model comparison on the DSS instance.
+    A handle to interact with a model comparison on the DSS instance
 
     Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_model_comparison`
     """
@@ -19,7 +19,7 @@ class DSSModelComparison(object):
 
     def get_settings(self):
         """
-        Returns the settings of this model comparison.
+        Returns the settings of this model comparison
 
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparisonSettings`
         """
@@ -70,14 +70,13 @@ class DSSModelComparisonSettings(object):
 
     Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelComparison.get_settings`
     """
-
     def __init__(self, model_comparison, settings):
         self.model_comparison = model_comparison
         self.settings = settings
 
     def get_raw(self):
         """
-        Gets raw settings of a model comparison
+        Get raw settings of a model comparison
 
         :return: the raw settings of comparison, as a dict. Modifications made to the returned object
         are reflected when saving
@@ -109,7 +108,7 @@ class DSSModelComparisonSettings(object):
 
     def get_compared_items(self):
         """
-        Gets the full ids of items compared in this comparison
+        Get the full ids of items compared in this comparison
 
         :return: the list of the full ids of compared items
         :rtype: list[str]
@@ -121,7 +120,7 @@ class DSSModelComparisonSettings(object):
     @property
     def prediction_type(self):
         """
-        Gets the prediction type of this comparison
+        Get the prediction type of this comparison
 
         :return: str
         """
@@ -130,7 +129,7 @@ class DSSModelComparisonSettings(object):
     @prediction_type.setter
     def prediction_type(self, prediction_type):
         """
-        Sets the prediction type of this comparison. Must be consistent
+        Set the prediction type of this comparison. Must be consistent
         with the prediction types of compared items.
 
         :param prediction_type:
