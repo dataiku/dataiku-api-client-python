@@ -115,7 +115,7 @@ class DSSModelComparisonSettings(object):
         """
         if not self.settings["comparedModels"]:
             return []
-        return map(lambda x: x["refId"], self.settings["comparedModels"])
+        return [x["refId"] for x in self.settings["comparedModels"]]
 
     @property
     def prediction_type(self):
