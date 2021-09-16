@@ -1,5 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
@@ -783,17 +784,15 @@ class DSSProject(object):
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
-    def create_model_evaluation_store(self, name, mes_id=None):
+    def create_model_evaluation_store(self, name):
         """
         Create a new model evaluation store in the project, and return a handle to interact with it.
         
         :param string name: the name for the new model evaluation store
-        :param string mes_id optional: the id for the new model evaluation store
-        
+
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
         """
         obj = {
-            "id" : mes_id,
             "projectKey" : self.project_key,
             "name" : name
         }
@@ -801,6 +800,51 @@ class DSSProject(object):
                        body = obj)
         mes_id = res['id']
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
+
+    ########################################################
+    # Model comparisons
+    ########################################################
+
+    def list_model_comparisons(self):
+        """
+        List the model comparisons in this project.
+
+        :returns: The list of the model comparisons
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/modelcomparisons/" % self.project_key)
+        return [DSSModelComparison(self.client, self.project_key, item["id"]) for item in items]
+
+    def get_model_comparison(self, mec_id):
+        """
+        Get a handle to interact with a specific model comparison
+
+        :param string mec_id: the id of the desired model comparison
+
+        :returns: A handle on a model comparison
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        """
+        return DSSModelComparison(self.client, self.project_key, mec_id)
+
+    def create_model_comparison(self, name, prediction_type):
+        """
+        Create a new model comparison in the project, and return a handle to interact with it.
+
+        :param string name: the name for the new model comparison
+        :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
+
+        :returns: A handle on a new model comparison
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        """
+        obj = {
+            "projectKey": self.project_key,
+            "displayName": name,
+            "predictionType": prediction_type
+        }
+        res = self.client._perform_json("POST", "/projects/%s/modelcomparisons/" % self.project_key,
+                                        body = obj)
+        mec_id = res['id']
+        return DSSModelComparison(self.client, self.project_key, mec_id)
 
     ########################################################
     # Jobs
