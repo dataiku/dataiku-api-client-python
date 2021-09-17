@@ -2,6 +2,151 @@ from enum import Enum
 import json
 from dataikuapi.fm.future import FMFuture
 
+class FMInstanceSettingsTemplateCreator(object):
+    def __init__(self, client, label):
+        """
+        Create an Instance Template
+
+        :param str azureSshKey: Optional, Azure Only, the ssh public key to add to the instance. Needed to get SSH access to the DSS instance, using the centos user.
+        :param str startupManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at startup time
+        :param str runtimeManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at runtime
+
+        :return: requested instance settings template
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        """
+
+        self.data = {}
+        self.data["label"] = label
+        self.client = client
+
+    def create(self):
+        template = self.client._perform_tenant_json("POST", "/instance-settings-templates", body=self.data)
+        return FMInstanceSettingsTemplate(self, template)
+
+    def with_setup_actions(self, setup_actions):
+        """
+        Add setup actions
+
+        :param list setup_actions: List of :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction` to be played on an instance
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplateCreator`
+        """
+        self.data["setupActions"] = setup_actions
+        return self
+
+    def with_license(self, license):
+        self.data["license"] = license
+        return self
+
+
+class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
+    def with_aws_keypair(self, aws_keypair_name):
+        """
+        Add an AWS Keypair to the DSS instance.
+        Needed to get SSH access to the DSS instance, using the centos user.
+
+        :param str aws_keypair_name: Name of an AWS key pair to add to the instance.
+        """
+        self.data["awsKeyPairName"] = aws_keypair_name
+        return self
+
+    def with_startup_instance_profile(self, startup_instance_profile_arn):
+        """
+        Add a Instance Profile to be assign to the DSS instance on startup
+
+        :param str startup_instance_profile_arn: ARN of the Instance profile assigned to the DSS instance at startup time
+        """
+        self.data["startupInstanceProfileArn"] = startup_instance_profile_arn
+        return self
+
+    def with_runtime_instance_profile(self, runtime_instance_profile_arn):
+        """
+        Add a Instance Profile to be assign to the DSS instance when running
+
+        :param str runtime_instance_profile_arn: ARN of the Instance profile assigned to the DSS instance during runtime
+        """
+        self.data["runtimeInstanceProfileArn"] = runtime_instance_profile_arn
+        return self
+
+    def with_restrict_aws_metadata_server_access(self, restrict_aws_metadata_server_access = True):
+        """
+        Restrict AWS metadata server access on the DSS instance.
+
+        :param boolean restrict_aws_metadata_server_access: Optional, If true, restrict the access to the metadata server access. Defaults to true
+        """
+        self.data["restrictAwsMetadataServerAccess"] = restrict_aws_metadata_server_access
+        return self
+
+    def with_default_aws_api_access_mode(self):
+        """
+        The DSS Instance will use the Runtime Instance Profile to access AWS API.
+        """
+        self.data["dataikuAwsAPIAccessMode"] = "NONE"
+        return self
+
+    def with_keypair_aws_api_access_mode(self, aws_access_key_id, aws_keypair_storage_mode="NONE", aws_secret_access_key=None, aws_secret_access_key_aws_secret_name=None, aws_secrets_manager_region=None):
+        """
+        DSS Instance will use an Access Key to authenticate against the AWS API.
+
+        :param str aws_access_key_id: AWS Access Key ID.
+        :param str aws_keypair_storage_mode: Optional, the storage mode of the AWS api key. Accepts "NONE", "INLINE_ENCRYPTED" or "AWS_SECRETS_MANAGER". Defaults to "NONE"
+        :param str aws_secret_access_key: Optional, AWS Access Key Secret. Only needed if keypair_storage_mode is "INLINE_ENCRYPTED"
+        :param str aws_secret_access_key_aws_secret_name: Optional, ASM secret name. Only needed if aws_keypair_storage_mode is "AWS_SECRET_MANAGER"
+        :param str aws_secrets_manager_region: Optional, Secret Manager region to use. Only needed if aws_keypair_storage_mode is "AWS_SECRET_MANAGER"
+        """
+        if aws_keypair_storage_mode not in ["NONE", "INLINE_ENCRYPTED", "AWS_SECRETS_MANAGER"]:
+            raise ValueError("aws_keypair_storage_mode should be either \"NONE\", \"INLINE_ENCRYPTED\" or \"AWS_SECRET_MANAGER\"")
+
+        self.data["dataikuAwsAPIAccessMode"] = "KEYPAIR"
+        self.data["dataikuAwsKeypairStorageMode"] = aws_keypair_storage_mode
+
+        if aws_keypair_storage_mode == "NONE":
+            return self
+
+        self.data["dataikuAwsAccessKeyId"] = aws_access_key_id
+
+        if aws_keypair_storage_mode == "INLINE_ENCRYPTED":
+            if aws_secret_access_key == None:
+                raise ValueError("When aws_keypair_storage_mode is \"INLINE_ENCRYPTED\", aws_secret_access_key should be provided")
+            self.data["dataikuAwsSecretAccessKey"] = aws_secret_access_key
+        elif aws_keypair_storage_mode == "AWS_SECRETS_MANAGER":
+            if aws_secret_access_key_aws_secret_name == None:
+                raise ValueError("When aws_keypair_storage_mode is \"AWS_SECRETS_MANAGER\", aws_secret_access_key_aws_secret_name should be provided")
+            self.data["dataikuAwsSecretAccessKeyAwsSecretName"] = aws_secret_access_key_aws_secret_name
+            self.data["awsSecretsManagerRegion"] = aws_secrets_manager_region
+
+        return self
+
+
+class FMAzureInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
+    def with_ssh_key(self, ssh_public_key):
+        """
+        Add an SSH public key to the DSS Instance.
+        Needed to access it through SSH, using the centos user.
+
+        :param str ssh_public_key: The content of the public key to add to the instance.
+        """
+        self.data["azureSshKey"] = ssh_public_key
+        return self
+
+    def with_startup_managed_identity(self, startup_managed_identity):
+        """
+        Add a managed identity to be assign to the DSS instance on startup
+
+        :param str startup_managed_identity: Managed Identity ID
+        """
+        self.data["startupManagedIdentity"] = startup_managed_identity
+        return self
+
+    def with_runtime_managed_identity(self, runtime_managed_identity):
+        """
+        Add a managed identity to be assign to the DSS instance when running
+
+        :param str runtime_managed_identity: Managed Identity ID
+        """
+        self.data["runtimeManagedIdentity"] = runtime_managed_identity
+        return self
+
+
 class FMInstanceSettingsTemplate(object):
     def __init__(self, client, ist_data):
         self.client  = client
