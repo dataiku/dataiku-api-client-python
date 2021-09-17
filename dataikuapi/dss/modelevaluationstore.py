@@ -289,18 +289,27 @@ class DSSModelEvaluation:
         self.client._perform_json(
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
 
-    def compute_data_drift(self, reference_id=None, data_drift_params=None):
+    @property
+    def _full_model_like_id(self):
+        return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.run_id)
+
+    def compute_data_drift(self, reference=None, data_drift_params=None):
         """
         Compute data drift against a reference model or model evaluation. The reference is determined automatically unless specified.
 
-        :param reference_id: model ID or model evaluation ID (optional)
+        :param reference: saved model version or model evaluation to use as reference (optional)
+        :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
         :param data_drift_params: data drift computation settings (optional)
         :return: data drift analysis results, as a JSON object
         """
+
+        if hasattr(reference, '_full_model_like_id'):
+            reference = reference._full_model_like_id
+
         future_response = self.client._perform_json(
             "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
             body={
-                "referenceId": reference_id,
+                "referenceId": reference,
                 "dataDriftParams": data_drift_params
             })
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)

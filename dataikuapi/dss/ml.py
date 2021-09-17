@@ -2499,6 +2499,10 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
         return roc
 
+    @property
+    def _full_model_like_id(self):
+        return self.details["fullModelId"]
+
     def get_performance_metrics(self):
         """
         Returns all performance metrics for this model.
