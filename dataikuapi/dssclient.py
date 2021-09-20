@@ -585,9 +585,11 @@ class DSSClient(object):
         """
         List all global API keys set up on the DSS instance
 
+        :param str as_type: 'object' or 'dict'
+
         Note: this call requires an API key with admin rights
 
-        :returns: All global API keys, as a list of dicts
+        :returns: All global API keys, as a list of dicts or objects
         """
         resp = self._perform_json(
             "GET", "/admin/global-api-keys/")
@@ -662,7 +664,7 @@ class DSSClient(object):
         """
         List all personal API keys:
             - not admin: only the keys belonging to the owner of the key
-            - admin: All the personal keys
+            - admin: all the personal keys
 
         :param str as_type: 'objects' or 'dict'
 
@@ -690,12 +692,12 @@ class DSSClient(object):
 
     def create_personal_api_key(self, label="", description="", as_type='dict', on_behalf=""):
         """
-        Create a Personal API key corresponding to the user doing the request, and return a handle to interact with it
+        Create a Personal API key belonging to the user doing the request, and return a handle to interact with it
 
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str as_type: 'object' or 'dict'
-        :param str on_behalf: The user id to impersonate (optional and for admin only)
+        :param str on_behalf: the id of the user to impersonate (optional and for admin only)
 
         :returns: The new personal API key
         """
