@@ -695,13 +695,14 @@ class DSSCodeEnv(object):
 
         * env.permissions, env.usableByAll, env.desc.owner
         * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
-          env.desc.installJupyterSupport, env.desc.yarnPythonBin
+          env.desc.corePackagesSet, env.desc.installJupyterSupport, env.desc.yarnPythonBin
 
         Fields that can be updated in automation node (where {version} is the updated version):
 
-        * env.permissions, env.usableByAll, env.owner
+        * env.permissions, env.usableByAll, env.owner, env.envSettings
         * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
-          env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
+          env.{version}.desc.installCorePackages, env.{version}.corePackagesSet, env.{version}.desc.installJupyterSupport
+          env.{version}.desc.yarnPythonBin, env.{version}.desc.yarnRBin
 
         Note: this call requires an API key with admin rights
         
