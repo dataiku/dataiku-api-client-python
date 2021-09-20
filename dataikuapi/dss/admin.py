@@ -695,14 +695,18 @@ class DSSCodeEnv(object):
 
         * env.permissions, env.usableByAll, env.desc.owner
         * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
-          env.desc.corePackagesSet, env.desc.installJupyterSupport, env.desc.yarnPythonBin
+          env.desc.corePackagesSet, env.desc.installJupyterSupport, env.desc.yarnPythonBin, env.desc.yarnRBin
+          env.desc.envSettings, env.desc.allContainerConfs, env.desc.containerConfs, 
+          env.desc.allSparkKubernetesConfs, env.desc.sparkKubernetesConfs
 
         Fields that can be updated in automation node (where {version} is the updated version):
 
         * env.permissions, env.usableByAll, env.owner, env.envSettings
         * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
           env.{version}.desc.installCorePackages, env.{version}.corePackagesSet, env.{version}.desc.installJupyterSupport
-          env.{version}.desc.yarnPythonBin, env.{version}.desc.yarnRBin
+          env.{version}.desc.yarnPythonBin, env.{version}.desc.yarnRBin, env.{version}.desc.allContainerConfs, 
+          env.{version}.desc.containerConfs, env.{version}.desc.allSparkKubernetesConfs, 
+          env.{version}.{version}.desc.sparkKubernetesConfs
 
         Note: this call requires an API key with admin rights
         
