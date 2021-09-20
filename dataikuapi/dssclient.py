@@ -486,7 +486,7 @@ class DSSClient(object):
     # Code envs
     ########################################################
 
-    def list_code_envs(self):
+    def list_code_envs(self, as_objects=False):
         """
         List all code envs setup on the DSS instance
 
@@ -494,8 +494,12 @@ class DSSClient(object):
         
         :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
-        return self._perform_json(
+        list = self._perform_json(
             "GET", "/admin/code-envs/")
+        if as_objects:
+            return [DSSCodeEnv(self, e.get("env_lang"), e.get("env_name")) for e in list]
+        else:
+            return list
 
     def get_code_env(self, env_lang, env_name):
         """
