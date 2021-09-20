@@ -501,7 +501,8 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific code env
         
-        :param str name: the name of the desired code env
+        :param env_lang: the language (PYTHON or R) of the new code env
+        :param env_name: the name of the new code env
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
         """
         return DSSCodeEnv(self, env_lang, env_name)
