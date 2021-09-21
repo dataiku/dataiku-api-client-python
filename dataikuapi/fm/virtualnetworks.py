@@ -69,7 +69,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
 
 
 class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
-    def with_virtual_network(self, azure_vn_id, azure_subnet_id):
+    def with_azure_virtual_network(self, azure_vn_id, azure_subnet_id):
         """
         Setup the Azure Virtual Network and Subnet to with the VirtualNetwork
 
