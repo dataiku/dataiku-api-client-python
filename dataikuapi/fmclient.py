@@ -7,7 +7,7 @@ import os.path as osp
 from enum import Enum
 from .utils import DataikuException
 
-from .fm.tenant import FMCloudCredentials
+from .fm.tenant import FMCloudCredentials, FMCloudTags
 from .fm.virtualnetworks import (
     FMVirtualNetwork,
     FMAWSVirtualNetworkCreator,
@@ -70,6 +70,18 @@ class FMClient(object):
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
         return FMCloudCredentials(self, creds)
+
+    def get_cloud_tags(self, tenant_id):
+        """
+        Get Tenant's Cloud Tags
+
+        :param string tenant_id
+
+        :return: tenant's cloud tags
+        :rtype: :class:`dataikuapi.fm.tenant.FMCloudTags`
+        """
+        tags = self._perform_json("GET", "/tenants/%s/cloud-tags" % tenant_id)
+        return FMCloudTags(self, tenant_id, tags)
 
     ########################################################
     # VirtualNetwork
