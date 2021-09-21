@@ -293,14 +293,16 @@ class DSSModelEvaluation:
     def full_id(self):
         return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.run_id)
 
-    def compute_data_drift(self, reference=None, data_drift_params=None):
+    def compute_data_drift(self, reference=None, data_drift_params=None, wait=True):
         """
         Compute data drift against a reference model or model evaluation. The reference is determined automatically unless specified.
 
-        :param reference: saved model version or model evaluation to use as reference (optional, accepts ID or Python object)
+        :param reference: saved model version (full ID or DSSTrainedPredictionModelDetails)
+                or model evaluation (full ID or DSSModelEvaluation) to use as reference (optional)
         :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
         :param data_drift_params: data drift computation settings (optional)
-        :return: data drift analysis results, as a JSON object
+        :param wait: data drift computation settings (optional)
+        :returns: a `dict` containing data drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         if hasattr(reference, 'full_id'):
@@ -312,7 +314,8 @@ class DSSModelEvaluation:
                 "referenceId": reference,
                 "dataDriftParams": data_drift_params
             })
-        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+        future = DSSFuture(self.client, future_response.get('jobId', None), future_response)
+        return future.wait_for_result() if wait else future
 
     def get_metrics(self):
         """
