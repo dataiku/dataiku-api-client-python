@@ -27,33 +27,25 @@ from .fm.instancesettingstemplates import (
 
 
 class FMClient(object):
-    """Entry point for the FM API client"""
-
     def __init__(
         self,
         host,
         api_key_id,
         api_key_secret,
-        cloud,
         tenant_id="main",
         extra_headers=None,
     ):
         """
-        Instantiate a new FM API client on the given host with the given API key.
-
-        API keys can be managed in FM on the project page or in the global settings.
-
-        The API key will define which operations are allowed for the client.
-
-        :param str host: Full url of the FM
-
+        Base class for the different FM Clients
+        Do not create this class, instead use :class:`dataikuapi.FMClientAWS` or :class:`dataikuapi.FMClientAzure`
         """
+        if self.cloud == None:
+            raise NotImplementedError(
+                "Do not use FMClient directly, instead use FMClientAWS or FMClientAzure"
+            )
         self.api_key_id = api_key_id
         self.api_key_secret = api_key_secret
         self.host = host
-        if cloud not in ["AWS", "Azure"]:
-            raise ValueError('cloud should be either "AWS" or "Azure"')
-        self.cloud = cloud
         self.__tenant_id = tenant_id
         self._session = Session()
 
@@ -107,18 +99,6 @@ class FMClient(object):
         )
         return FMVirtualNetwork(self, vn)
 
-    def new_virtual_network_creator(self, label):
-        """
-        Instantiate a new virtual network creator
-
-        :param str label: The label of the
-        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetworkCreator`
-        """
-        if self.cloud == "AWS":
-            return FMAWSVirtualNetworkCreator(self, label)
-        elif self.cloud == "Azure":
-            return FMAzureVirtualNetworkCreator(self, label)
-
     ########################################################
     # Instance settings template
     ########################################################
@@ -147,18 +127,6 @@ class FMClient(object):
         )
         return FMInstanceSettingsTemplate(self, template)
 
-    def new_instance_template_creator(self, label):
-        """
-        Instantiate a new instance template creator
-
-        :param str label: The label of the instance
-        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplateCreator`
-        """
-        if self.cloud == "AWS":
-            return FMAWSInstanceSettingsTemplateCreator(self, label)
-        elif self.cloud == "Azure":
-            return FMAzureInstanceSettingsTemplateCreator(self, label)
-
     ########################################################
     # Instance
     ########################################################
@@ -184,27 +152,6 @@ class FMClient(object):
         """
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
         return FMInstance(self, instance)
-
-    def new_instance_creator(
-        self, label, instance_settings_template_id, virtual_network_id, image_id
-    ):
-        """
-        Instantiate a new instance creator
-
-        :param str label: The label of the instance
-        :param str instance_settings_template: The instance settings template id this instance should be based on
-        :param str virtual_network: The virtual network where the instance should be spawned
-        :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
-        :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
-        """
-        if self.cloud == "AWS":
-            return FMAWSInstanceCreator(
-                self, label, instance_settings_template_id, virtual_network_id, image_id
-            )
-        elif self.cloud == "Azure":
-            return FMAzureInstanceCreator(
-                self, label, instance_settings_template_id, virtual_network_id, image_id
-            )
 
     ########################################################
     # Internal Request handling
@@ -296,4 +243,121 @@ class FMClient(object):
             body=body,
             files=files,
             raw_body=raw_body,
+        )
+
+
+class FMClientAWS(FMClient):
+    def __init__(
+        self,
+        host,
+        api_key_id,
+        api_key_secret,
+        tenant_id="main",
+        extra_headers=None,
+    ):
+        """
+        AWS Only - Instantiate a new FM API client on the given host with the given API key.
+
+        API keys can be managed in FM on the project page or in the global settings.
+
+        The API key will define which operations are allowed for the client.
+
+        :param str host: Full url of the FM
+
+        """
+        self.cloud = "AWS"
+        super(FMClientAWS, self).__init__(
+            host, api_key_id, api_key_secret, tenant_id, extra_headers
+        )
+
+    def new_virtual_network_creator(self, label):
+        """
+        Instantiate a new virtual network creator
+
+        :param str label: The label of the
+        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetworkCreator`
+        """
+        return FMAWSVirtualNetworkCreator(self, label)
+
+    def new_instance_template_creator(self, label):
+        """
+        Instantiate a new instance template creator
+
+        :param str label: The label of the instance
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMAWSInstanceSettingsTemplateCreator`
+        """
+        return FMAWSInstanceSettingsTemplateCreator(self, label)
+
+    def new_instance_creator(
+        self, label, instance_settings_template_id, virtual_network_id, image_id
+    ):
+        """
+        Instantiate a new instance creator
+
+        :param str label: The label of the instance
+        :param str instance_settings_template: The instance settings template id this instance should be based on
+        :param str virtual_network: The virtual network where the instance should be spawned
+        :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
+        :rtype: :class:`dataikuapi.fm.instances.FMAWSInstanceCreator`
+        """
+        return FMAWSInstanceCreator(
+            self, label, instance_settings_template_id, virtual_network_id, image_id
+        )
+
+
+class FMClientAzure(FMClient):
+    def __init__(
+        self,
+        host,
+        api_key_id,
+        api_key_secret,
+        tenant_id="main",
+        extra_headers=None,
+    ):
+        """
+        Azure Only - Instantiate a new FM API client on the given host with the given API key.
+
+        API keys can be managed in FM on the project page or in the global settings.
+
+        The API key will define which operations are allowed for the client.
+
+        :param str host: Full url of the FM
+        """
+        self.cloud = "Azure"
+        super(FMClientAWS, self).__init__(
+            host, api_key_id, api_key_secret, tenant_id, extra_headers
+        )
+
+    def new_virtual_network_creator(self, label):
+        """
+        Instantiate a new virtual network creator
+
+        :param str label: The label of the
+        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetworkCreator`
+        """
+        return FMAzureVirtualNetworkCreator(self, label)
+
+    def new_instance_template_creator(self, label):
+        """
+        Instantiate a new instance template creator
+
+        :param str label: The label of the instance
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMAzureInstanceSettingsTemplateCreator`
+        """
+        return FMAzureInstanceSettingsTemplateCreator(self, label)
+
+    def new_instance_creator(
+        self, label, instance_settings_template_id, virtual_network_id, image_id
+    ):
+        """
+        Instantiate a new instance creator
+
+        :param str label: The label of the instance
+        :param str instance_settings_template: The instance settings template id this instance should be based on
+        :param str virtual_network: The virtual network where the instance should be spawned
+        :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
+        :rtype: :class:`dataikuapi.fm.instances.FMAzureInstanceCreator`
+        """
+        return FMAzureInstanceCreator(
+            self, label, instance_settings_template_id, virtual_network_id, image_id
         )
