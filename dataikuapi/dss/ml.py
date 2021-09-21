@@ -1805,7 +1805,7 @@ class DSSTrainedModelDetails(object):
         return self.details
 
     @property
-    def full_model_like_id(self):
+    def full_id(self):
         return self.details["fullModelId"]
 
     def get_raw_snippet(self):

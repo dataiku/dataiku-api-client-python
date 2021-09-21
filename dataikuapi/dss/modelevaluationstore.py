@@ -290,7 +290,7 @@ class DSSModelEvaluation:
                 "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
 
     @property
-    def full_model_like_id(self):
+    def full_id(self):
         return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.run_id)
 
     def compute_data_drift(self, reference=None, data_drift_params=None):
@@ -303,8 +303,8 @@ class DSSModelEvaluation:
         :return: data drift analysis results, as a JSON object
         """
 
-        if hasattr(reference, 'full_model_like_id'):
-            reference = reference.full_model_like_id
+        if hasattr(reference, 'full_id'):
+            reference = reference.full_id
 
         future_response = self.client._perform_json(
             "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
