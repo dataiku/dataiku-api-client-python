@@ -2,17 +2,13 @@ from enum import Enum
 import json
 from dataikuapi.fm.future import FMFuture
 
+
 class FMInstanceSettingsTemplateCreator(object):
     def __init__(self, client, label):
         """
-        Create an Instance Template
+        A builder class to create an Instance Settings Template
 
-        :param str azureSshKey: Optional, Azure Only, the ssh public key to add to the instance. Needed to get SSH access to the DSS instance, using the centos user.
-        :param str startupManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at startup time
-        :param str runtimeManagedIdentity: Optional, Azure Only, the managed identity assigned to the DSS instance at runtime
-
-        :return: requested instance settings template
-        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        :param str label: The label of the Virtual Network
         """
 
         self.data = {}
@@ -20,7 +16,16 @@ class FMInstanceSettingsTemplateCreator(object):
         self.client = client
 
     def create(self):
-        template = self.client._perform_tenant_json("POST", "/instance-settings-templates", body=self.data)
+        """
+        Create the Instance Settings Template
+
+        :return: Created InstanceSettingsTemplate
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        """
+
+        template = self.client._perform_tenant_json(
+            "POST", "/instance-settings-templates", body=self.data
+        )
         return FMInstanceSettingsTemplate(self, template)
 
     def with_setup_actions(self, setup_actions):
@@ -67,13 +72,17 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
         self.data["runtimeInstanceProfileArn"] = runtime_instance_profile_arn
         return self
 
-    def with_restrict_aws_metadata_server_access(self, restrict_aws_metadata_server_access = True):
+    def with_restrict_aws_metadata_server_access(
+        self, restrict_aws_metadata_server_access=True
+    ):
         """
         Restrict AWS metadata server access on the DSS instance.
 
         :param boolean restrict_aws_metadata_server_access: Optional, If true, restrict the access to the metadata server access. Defaults to true
         """
-        self.data["restrictAwsMetadataServerAccess"] = restrict_aws_metadata_server_access
+        self.data[
+            "restrictAwsMetadataServerAccess"
+        ] = restrict_aws_metadata_server_access
         return self
 
     def with_default_aws_api_access_mode(self):
@@ -83,7 +92,14 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
         self.data["dataikuAwsAPIAccessMode"] = "NONE"
         return self
 
-    def with_keypair_aws_api_access_mode(self, aws_access_key_id, aws_keypair_storage_mode="NONE", aws_secret_access_key=None, aws_secret_access_key_aws_secret_name=None, aws_secrets_manager_region=None):
+    def with_keypair_aws_api_access_mode(
+        self,
+        aws_access_key_id,
+        aws_keypair_storage_mode="NONE",
+        aws_secret_access_key=None,
+        aws_secret_access_key_aws_secret_name=None,
+        aws_secrets_manager_region=None,
+    ):
         """
         DSS Instance will use an Access Key to authenticate against the AWS API.
 
@@ -93,8 +109,14 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
         :param str aws_secret_access_key_aws_secret_name: Optional, ASM secret name. Only needed if aws_keypair_storage_mode is "AWS_SECRET_MANAGER"
         :param str aws_secrets_manager_region: Optional, Secret Manager region to use. Only needed if aws_keypair_storage_mode is "AWS_SECRET_MANAGER"
         """
-        if aws_keypair_storage_mode not in ["NONE", "INLINE_ENCRYPTED", "AWS_SECRETS_MANAGER"]:
-            raise ValueError("aws_keypair_storage_mode should be either \"NONE\", \"INLINE_ENCRYPTED\" or \"AWS_SECRET_MANAGER\"")
+        if aws_keypair_storage_mode not in [
+            "NONE",
+            "INLINE_ENCRYPTED",
+            "AWS_SECRETS_MANAGER",
+        ]:
+            raise ValueError(
+                'aws_keypair_storage_mode should be either "NONE", "INLINE_ENCRYPTED" or "AWS_SECRET_MANAGER"'
+            )
 
         self.data["dataikuAwsAPIAccessMode"] = "KEYPAIR"
         self.data["dataikuAwsKeypairStorageMode"] = aws_keypair_storage_mode
@@ -106,12 +128,18 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
 
         if aws_keypair_storage_mode == "INLINE_ENCRYPTED":
             if aws_secret_access_key == None:
-                raise ValueError("When aws_keypair_storage_mode is \"INLINE_ENCRYPTED\", aws_secret_access_key should be provided")
+                raise ValueError(
+                    'When aws_keypair_storage_mode is "INLINE_ENCRYPTED", aws_secret_access_key should be provided'
+                )
             self.data["dataikuAwsSecretAccessKey"] = aws_secret_access_key
         elif aws_keypair_storage_mode == "AWS_SECRETS_MANAGER":
             if aws_secret_access_key_aws_secret_name == None:
-                raise ValueError("When aws_keypair_storage_mode is \"AWS_SECRETS_MANAGER\", aws_secret_access_key_aws_secret_name should be provided")
-            self.data["dataikuAwsSecretAccessKeyAwsSecretName"] = aws_secret_access_key_aws_secret_name
+                raise ValueError(
+                    'When aws_keypair_storage_mode is "AWS_SECRETS_MANAGER", aws_secret_access_key_aws_secret_name should be provided'
+                )
+            self.data[
+                "dataikuAwsSecretAccessKeyAwsSecretName"
+            ] = aws_secret_access_key_aws_secret_name
             self.data["awsSecretsManagerRegion"] = aws_secrets_manager_region
 
         return self
@@ -149,16 +177,20 @@ class FMAzureInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
 
 class FMInstanceSettingsTemplate(object):
     def __init__(self, client, ist_data):
-        self.client  = client
-        self.id = ist_data['id']
+        self.client = client
+        self.id = ist_data["id"]
         self.ist_data = ist_data
 
     def save(self):
         """
         Update the Instance Settings Template.
         """
-        self.client._perform_tenant_empty("PUT", "/instance-settings-templates/%s" % self.id, body=self.ist_data)
-        self.ist_data = self.client._perform_tenant_json("GET", "/instance-settings-templates/%s" % self.id)
+        self.client._perform_tenant_empty(
+            "PUT", "/instance-settings-templates/%s" % self.id, body=self.ist_data
+        )
+        self.ist_data = self.client._perform_tenant_json(
+            "GET", "/instance-settings-templates/%s" % self.id
+        )
 
     def delete(self):
         """
@@ -167,7 +199,9 @@ class FMInstanceSettingsTemplate(object):
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        future = self.client._perform_tenant_json("DELETE", "/instance-settings-templates/%s" % self.id)
+        future = self.client._perform_tenant_json(
+            "DELETE", "/instance-settings-templates/%s" % self.id
+        )
         return FMFuture.from_resp(self.client, future)
 
     def add_setup_action(self, setup_action):
@@ -176,7 +210,7 @@ class FMInstanceSettingsTemplate(object):
 
         :param object setup_action: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
         """
-        self.ist_data['setupActions'].append(setup_action)
+        self.ist_data["setupActions"].append(setup_action)
         self.save()
 
 
@@ -193,7 +227,7 @@ class FMSetupAction(dict):
             "type": setupActionType.value,
         }
         if params:
-            data['params'] = params
+            data["params"] = params
 
         super(FMSetupAction, self).__init__(data)
 
@@ -202,7 +236,7 @@ class FMSetupAction(dict):
         """
         Return a ADD_AUTHORIZED_KEY FMSetupAction
         """
-        return FMSetupAction(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key })
+        return FMSetupAction(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key})
 
     @staticmethod
     def run_ansible_task(stage, yaml_string):
@@ -212,7 +246,10 @@ class FMSetupAction(dict):
         :param object stage: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
         :param str yaml_string: a yaml encoded string defining the ansibles tasks to run
         """
-        return FMSetupAction(FMSetupActionType.RUN_ANSIBLE_TASKS, {"stage": stage.value, "ansibleTasks": yaml_string })
+        return FMSetupAction(
+            FMSetupActionType.RUN_ANSIBLE_TASKS,
+            {"stage": stage.value, "ansibleTasks": yaml_string},
+        )
 
     @staticmethod
     def install_system_packages(packages):
@@ -221,20 +258,33 @@ class FMSetupAction(dict):
 
         :param list packages: List of packages to install
         """
-        return FMSetupAction(FMSetupActionType.INSTALL_SYSTEM_PACKAGES, {"packages": packages })
+        return FMSetupAction(
+            FMSetupActionType.INSTALL_SYSTEM_PACKAGES, {"packages": packages}
+        )
 
     @staticmethod
-    def setup_advanced_security(basic_headers = True, hsts = False):
+    def setup_advanced_security(basic_headers=True, hsts=False):
         """
         Return an SETUP_ADVANCED_SECURITY FMSetupAction
 
         :param boolean basic_headers: Optional, Prevent browsers to render Web content served by DSS to be embedded into a frame, iframe, embed or object tag. Defaults to True
         :param boolean hsts: Optional,  Enforce HTTP Strict Transport Security. Defaults to False
         """
-        return FMSetupAction(FMSetupActionType.SETUP_ADVANCED_SECURITY, {"basic_headers": basic_headers, "hsts": hsts})
+        return FMSetupAction(
+            FMSetupActionType.SETUP_ADVANCED_SECURITY,
+            {"basic_headers": basic_headers, "hsts": hsts},
+        )
 
     @staticmethod
-    def install_jdbc_driver(database_type, url, paths_in_archive=None, http_headers=None, http_username=None, http_password=None, datadir_subdirectory=None):
+    def install_jdbc_driver(
+        database_type,
+        url,
+        paths_in_archive=None,
+        http_headers=None,
+        http_username=None,
+        http_password=None,
+        datadir_subdirectory=None,
+    ):
         """
         Return a INSTALL_JDBC_DRIVER FMSetupAction
 
@@ -246,7 +296,18 @@ class FMSetupAction(dict):
         :param str http_password: Optional, If the HTTP(S) endpoint expect a Basic Authentication, add here the password. To authenticate with a SAS Token on Azure Blob Storage (not recommended), store the token in this field.
         :param str datadir_subdirectory: Optional, Some drivers are shipped with a high number of JAR files along with them. In that case, you might want to install them under an additional level in the DSS data directory. Set the name of this subdirectory here. Not required for most drivers.
         """
-        return FMSetupAction(FMSetupActionType.INSTALL_JDBC_DRIVER, {"url": url, "dbType": database_type.value, "pathsInArchive": paths_in_archive, "headers": http_headers, "username": http_username, "password": http_password, "subpathInDatadir": datadir_subdirectory})
+        return FMSetupAction(
+            FMSetupActionType.INSTALL_JDBC_DRIVER,
+            {
+                "url": url,
+                "dbType": database_type.value,
+                "pathsInArchive": paths_in_archive,
+                "headers": http_headers,
+                "username": http_username,
+                "password": http_password,
+                "subpathInDatadir": datadir_subdirectory,
+            },
+        )
 
     @staticmethod
     def setup_k8s_and_spark():
@@ -255,30 +316,33 @@ class FMSetupAction(dict):
         """
         return FMSetupAction(FMSetupActionType.SETUP_K8S_AND_SPARK)
 
+
 class FMSetupActionType(Enum):
-    RUN_ANSIBLE_TASKS="RUN_ANSIBLE_TASKS"
-    INSTALL_SYSTEM_PACKAGES="INSTALL_SYSTEM_PACKAGES"
-    INSTALL_DSS_PLUGINS_FROM_STORE="INSTALL_DSS_PLUGINS_FROM_STORE"
-    SETUP_K8S_AND_SPARK="SETUP_K8S_AND_SPARK"
-    SETUP_RUNTIME_DATABASE="SETUP_RUNTIME_DATABASE"
-    SETUP_MUS_AUTOCREATE="SETUP_MUS_AUTOCREATE"
-    SETUP_UI_CUSTOMIZATION="SETUP_UI_CUSTOMIZATION"
-    SETUP_MEMORY_SETTINGS="SETUP_MEMORY_SETTINGS"
-    SETUP_GRAPHICS_EXPORT="SETUP_GRAPHICS_EXPORT"
-    ADD_AUTHORIZED_KEY="ADD_AUTHORIZED_KEY"
-    INSTALL_JDBC_DRIVER="INSTALL_JDBC_DRIVER"
-    SETUP_ADVANCED_SECURITY="SETUP_ADVANCED_SECURITY"
+    RUN_ANSIBLE_TASKS = "RUN_ANSIBLE_TASKS"
+    INSTALL_SYSTEM_PACKAGES = "INSTALL_SYSTEM_PACKAGES"
+    INSTALL_DSS_PLUGINS_FROM_STORE = "INSTALL_DSS_PLUGINS_FROM_STORE"
+    SETUP_K8S_AND_SPARK = "SETUP_K8S_AND_SPARK"
+    SETUP_RUNTIME_DATABASE = "SETUP_RUNTIME_DATABASE"
+    SETUP_MUS_AUTOCREATE = "SETUP_MUS_AUTOCREATE"
+    SETUP_UI_CUSTOMIZATION = "SETUP_UI_CUSTOMIZATION"
+    SETUP_MEMORY_SETTINGS = "SETUP_MEMORY_SETTINGS"
+    SETUP_GRAPHICS_EXPORT = "SETUP_GRAPHICS_EXPORT"
+    ADD_AUTHORIZED_KEY = "ADD_AUTHORIZED_KEY"
+    INSTALL_JDBC_DRIVER = "INSTALL_JDBC_DRIVER"
+    SETUP_ADVANCED_SECURITY = "SETUP_ADVANCED_SECURITY"
+
 
 class FMSetupActionStage(Enum):
-    after_dss_startup="after_dss_startup"
-    after_install="after_install"
-    before_install="before_install"
+    after_dss_startup = "after_dss_startup"
+    after_install = "after_install"
+    before_install = "before_install"
+
 
 class FMSetupActionAddJDBCDriverDatabaseType(Enum):
-    mysql="mysql"
-    mssql="mssql"
-    oracle="oracle"
-    mariadb="mariadb"
-    snowflake="snowflake"
-    athena="athena"
-    bigquery="bigquery"
+    mysql = "mysql"
+    mssql = "mssql"
+    oracle = "oracle"
+    mariadb = "mariadb"
+    snowflake = "snowflake"
+    athena = "athena"
+    bigquery = "bigquery"
