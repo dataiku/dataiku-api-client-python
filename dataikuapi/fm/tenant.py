@@ -65,6 +65,64 @@ class FMCloudCredentials(object):
         )
 
 
+class FMCloudTags(object):
+    """
+    A Tenant Cloud Tags in the FM instance
+    """
+
+    def __init__(self, client, tenant_id, cloud_tags):
+        self.client = client
+        self.tenant_id = tenant_id
+        self.cloud_tags = json.loads(cloud_tags["msg"])
+
+    def add_tag(self, key, value):
+        """
+        Add a tag to the tenant
+
+
+        :param str key: Tag key
+        :param str value: Tag value
+        """
+        if key in self.cloud_tags:
+            raise Exception("Key already exists")
+        self.cloud_tags[key] = value
+
+    def update_tag(self, key, new_key=None, new_value=None):
+        """
+        Update a tag key or value
+
+
+        :param str key: Key of the tag to update
+        :param str new_key: Optional, new key for the tag
+        :param str new_value: Optional, new value for the tag
+        """
+        if key not in self.cloud_tags:
+            raise Exception("Key does not exists")
+        if new_value:
+            self.cloud_tags[key] = new_value
+        if new_key:
+            self.cloud_tags[new_key] = self.cloud_tags[key]
+            del self.cloud_tags[key]
+
+    def delete_tag(self, key):
+        """
+        Delete a tag
+
+
+        :param str key: Key of the tag to delete
+        """
+        if key not in self.cloud_tags:
+            raise Exception("Key does not exists")
+        del self.cloud_tags[key]
+
+    def save(self):
+        """Saves the tags on FM"""
+
+        self.client._perform_empty(
+            "PUT", "/tenants/%s/cloud-tags" % (self.tenant_id), body=self.cloud_tags
+        )
+
+
 class FMCloudAuthentication(dict):
     def __init__(self, data):
         """
