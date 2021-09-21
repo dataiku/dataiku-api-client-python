@@ -1,8 +1,11 @@
 from enum import Enum
 from .future import FMFuture
 
+
 class FMInstanceCreator(object):
-    def __init__(self, client, label, instance_settings_template_id, virtual_network_id, image_id):
+    def __init__(
+        self, client, label, instance_settings_template_id, virtual_network_id, image_id
+    ):
         """
         Helper to create a DSS Instance
 
@@ -30,7 +33,9 @@ class FMInstanceCreator(object):
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         if dss_node_type not in ["design", "automation", "deployer"]:
-            raise ValueError("Only \"design\", \"automation\" or \"deployer\" dss_node_type are supported")
+            raise ValueError(
+                'Only "design", "automation" or "deployer" dss_node_type are supported'
+            )
         self.data["dssNodeType"] = dss_node_type
         return self
 
@@ -44,7 +49,15 @@ class FMInstanceCreator(object):
         self.data["cloudInstanceType"] = cloud_instance_type
         return self
 
-    def with_data_volume_options(self, data_volume_type=None, data_volume_size=None, data_volume_size_max=None, data_volume_IOPS=None, data_volume_encryption=None, data_volume_encryption_key=None):
+    def with_data_volume_options(
+        self,
+        data_volume_type=None,
+        data_volume_size=None,
+        data_volume_size_max=None,
+        data_volume_IOPS=None,
+        data_volume_encryption=None,
+        data_volume_encryption_key=None,
+    ):
         """
         Set the options of the data volume to use with the DSS Instance
 
@@ -57,7 +70,9 @@ class FMInstanceCreator(object):
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         if type(data_volume_encryption) is not FMInstanceEncryptionMode:
-            raise TypeError("data_volume encryption needs to be of type FMInstanceEncryptionMode")
+            raise TypeError(
+                "data_volume encryption needs to be of type FMInstanceEncryptionMode"
+            )
 
         self.data["dataVolumeType"] = data_volume_type
         self.data["dataVolumeSizeGB"] = data_volume_size
@@ -89,7 +104,12 @@ class FMInstanceCreator(object):
 
 
 class FMAWSInstanceCreator(FMInstanceCreator):
-    def with_aws_root_volume_options(self, aws_root_volume_size=None, aws_root_volume_type=None, aws_root_volume_IOPS=None):
+    def with_aws_root_volume_options(
+        self,
+        aws_root_volume_size=None,
+        aws_root_volume_type=None,
+        aws_root_volume_IOPS=None,
+    ):
         """
         Set the options of the root volume of the DSS Instance
 
@@ -110,7 +130,9 @@ class FMAWSInstanceCreator(FMInstanceCreator):
         :return: Created DSS Instance
         :rtype: :class:`dataikuapi.fm.instances.FMAWSInstance`
         """
-        instance = self.client._perform_tenant_json("POST", "/instances", body=self.data)
+        instance = self.client._perform_tenant_json(
+            "POST", "/instances", body=self.data
+        )
         return FMAWSInstance(self.client, instance)
 
 
@@ -122,7 +144,9 @@ class FMAzureInstanceCreator(FMInstanceCreator):
         :return: Created DSS Instance
         :rtype: :class:`dataikuapi.fm.instances.FMAzureInstance`
         """
-        instance = self.client._perform_tenant_json("POST", "/instances", body=self.data)
+        instance = self.client._perform_tenant_json(
+            "POST", "/instances", body=self.data
+        )
         return FMAzureInstance(self.client, instance)
 
 
@@ -131,10 +155,11 @@ class FMInstance(object):
     A handle to interact with a DSS instance.
     Do not create this directly, use :meth:`FMClient.get_instance` or :meth: `FMClient.new_instance_creator`
     """
+
     def __init__(self, client, instance_data):
-        self.client  = client
+        self.client = client
         self.instance_data = instance_data
-        self.id = instance_data['id']
+        self.id = instance_data["id"]
 
     def reprovision(self):
         """
@@ -143,7 +168,9 @@ class FMInstance(object):
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/reprovision" % self.id)
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/reprovision" % self.id
+        )
         return FMFuture.from_resp(self.client, future)
 
     def deprovision(self):
@@ -153,7 +180,9 @@ class FMInstance(object):
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deprovision process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/deprovision" % self.id)
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/deprovision" % self.id
+        )
         return FMFuture.from_resp(self.client, future)
 
     def restart_dss(self):
@@ -163,21 +192,29 @@ class FMInstance(object):
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the restart process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/restart-dss" % self.id)
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/restart-dss" % self.id
+        )
         return FMFuture.from_resp(self.client, future)
 
     def save(self):
         """
         Update the Instance.
         """
-        self.client._perform_tenant_empty("PUT", "/instances/%s" % self.id, body=self.instance_data)
-        self.instance_data = self.client._perform_tenant_json("GET", "/instances/%s" % self.id)
+        self.client._perform_tenant_empty(
+            "PUT", "/instances/%s" % self.id, body=self.instance_data
+        )
+        self.instance_data = self.client._perform_tenant_json(
+            "GET", "/instances/%s" % self.id
+        )
 
     def get_status(self):
         """
         Get the physical DSS instance's status
         """
-        status = self.client._perform_tenant_json("GET", "/instances/%s/status" % self.id)
+        status = self.client._perform_tenant_json(
+            "GET", "/instances/%s/status" % self.id
+        )
         return FMInstanceStatus(status)
 
     def delete(self):
@@ -187,7 +224,9 @@ class FMInstance(object):
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
         """
-        future = self.client._perform_tenant_json("GET", "/instances/%s/actions/delete" % self.id)
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/delete" % self.id
+        )
         return FMFuture.from_resp(self.client, future)
 
     def set_automated_snapshots(self, enable, period, keep=0):
@@ -198,9 +237,9 @@ class FMInstance(object):
         :param int period: The time period between 2 snapshot in hours
         :param int keep: Optional, the number of snapshot to keep. Use 0 to keep all snapshots. Defaults to 0.
         """
-        self.instance_data['enableAutomatedSnapshot'] = enable
-        self.instance_data['automatedSnapshotPeriod'] = period
-        self.instance_data['automatedSnapshotRetention'] = keep
+        self.instance_data["enableAutomatedSnapshot"] = enable
+        self.instance_data["automatedSnapshotPeriod"] = period
+        self.instance_data["automatedSnapshotRetention"] = keep
         self.save()
 
     def set_custom_certificate(self, pem_data):
@@ -211,7 +250,7 @@ class FMInstance(object):
 
         param: str pem_data: The SSL certificate
         """
-        self.instance_data['sslCertificatePEM'] = pem_data
+        self.instance_data["sslCertificatePEM"] = pem_data
         self.save()
 
 
@@ -223,8 +262,8 @@ class FMAWSInstance(FMInstance):
         :param boolan enable: Enable the elastic ip allocation
         :param str elaticip_allocation_id: AWS ElasticIP allocation ID
         """
-        self.instance_data['awsAssignElasticIP'] = enable
-        self.instance_data['awsElasticIPAllocationId'] = elasticip_allocation_id
+        self.instance_data["awsAssignElasticIP"] = enable
+        self.instance_data["awsElasticIPAllocationId"] = elasticip_allocation_id
         self.save()
 
 
@@ -236,8 +275,8 @@ class FMAzureInstance(FMInstance):
         :param boolan enable: Enable the elastic ip allocation
         :param str public_ip_id: Azure Public IP ID
         """
-        self.instance_data['azureAssignElasticIP'] = enable
-        self.instance_data['azurePublicIPId'] = public_ip_id
+        self.instance_data["azureAssignElasticIP"] = enable
+        self.instance_data["azurePublicIPId"] = public_ip_id
         self.save()
 
 
@@ -252,6 +291,7 @@ class FMInstanceStatus(dict):
     """A class holding read-only information about an Instance.
     This class should not be created directly. Instead, use :meth:`FMInstance.get_info`
     """
+
     def __init__(self, data):
         """Do not call this directly, use :meth:`FMInstance.get_status`"""
         super(FMInstanceStatus, self).__init__(data)

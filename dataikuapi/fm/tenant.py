@@ -1,14 +1,17 @@
 import json
+
+
 class FMCloudCredentials(object):
     """
     A Tenant Cloud Credentials in the FM instance
     """
+
     def __init__(self, client, cloud_credentials):
         self.client = client
         self.cloud_credentials = cloud_credentials
 
     def set_cmk_key(self, cmk_key_id):
-        self.cloud_credentials['awsCMKId'] = cmk_key_id
+        self.cloud_credentials["awsCMKId"] = cmk_key_id
         self.save()
 
     def set_static_license(self, license_file=None, license_string=None):
@@ -26,9 +29,11 @@ class FMCloudCredentials(object):
         elif license_string is not None:
             license = json.load(license_string)
         else:
-            raise ValueError("a valid license_file or license_string needs to be provided")
-        self.cloud_credentials['licenseMode'] = 'STATIC'
-        self.cloud_credentials['license'] = json.dumps(license, indent=2)
+            raise ValueError(
+                "a valid license_file or license_string needs to be provided"
+            )
+        self.cloud_credentials["licenseMode"] = "STATIC"
+        self.cloud_credentials["license"] = json.dumps(license, indent=2)
         self.save()
 
     def set_automatically_updated_license(self, license_token):
@@ -39,8 +44,8 @@ class FMCloudCredentials(object):
         """
         if license_token is None:
             raise ValueError("a valid license_token needs to be provided")
-        self.cloud_credentials['licenseMode'] = 'AUTO_UPDATE'
-        self.cloud_credentials['licenseToken'] = license_token
+        self.cloud_credentials["licenseMode"] = "AUTO_UPDATE"
+        self.cloud_credentials["licenseToken"] = license_token
         self.save()
 
     def set_authentication(self, authentication):
@@ -55,8 +60,9 @@ class FMCloudCredentials(object):
     def save(self):
         """Saves back the settings to the project"""
 
-        self.client._perform_tenant_empty("PUT", "/cloud-credentials",
-                                   body = self.cloud_credentials)
+        self.client._perform_tenant_empty(
+            "PUT", "/cloud-credentials", body=self.cloud_credentials
+        )
 
 
 class FMCloudAuthentication(dict):
@@ -85,7 +91,9 @@ class FMCloudAuthentication(dict):
 
         params: str role_arn: ARN of the IAM Role
         """
-        return FMCloudAuthentication({"awsAuthenticationMode": "IAM_ROLE", "awsIAMRoleARN": role_arn})
+        return FMCloudAuthentication(
+            {"awsAuthenticationMode": "IAM_ROLE", "awsIAMRoleARN": role_arn}
+        )
 
     @staticmethod
     def aws_keypair(access_key_id, secret_access_key):
@@ -95,7 +103,13 @@ class FMCloudAuthentication(dict):
         :param str access_key_id: AWS Access Key ID
         :param str secret_access_key: AWS Secret Access Key
         """
-        return FMCloudAuthentication({"awsAuthenticationMode": "KEYPAIR", "awsAccessKeyId": access_key_id, "awsSecretAccessKey": secret_access_key})
+        return FMCloudAuthentication(
+            {
+                "awsAuthenticationMode": "KEYPAIR",
+                "awsAccessKeyId": access_key_id,
+                "awsSecretAccessKey": secret_access_key,
+            }
+        )
 
     @staticmethod
     def azure(subscription, tenant_id, environment, client_id):
@@ -111,7 +125,7 @@ class FMCloudAuthentication(dict):
             "azureSubscription": subscription,
             "azureTenantId": tenant_id,
             "azureEnvironment": environment,
-            "azureFMAppClientId": client_id
+            "azureFMAppClientId": client_id,
         }
 
         return FMCloudAuthentication(data)
