@@ -297,7 +297,7 @@ class DSSModelEvaluation:
         """
         Compute data drift against a reference model or model evaluation. The reference is determined automatically unless specified.
 
-        :param reference: saved model version or model evaluation to use as reference (optional)
+        :param reference: saved model version or model evaluation to use as reference (optional, accepts ID or Python object)
         :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
         :param data_drift_params: data drift computation settings (optional)
         :return: data drift analysis results, as a JSON object
