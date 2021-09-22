@@ -1804,6 +1804,10 @@ class DSSTrainedModelDetails(object):
         """
         return self.details
 
+    @property
+    def full_id(self):
+        return self.details["fullModelId"]
+
     def get_raw_snippet(self):
         """
         Gets the raw dictionary of trained model snippet. 
