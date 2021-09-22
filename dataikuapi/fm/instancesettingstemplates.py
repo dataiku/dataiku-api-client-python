@@ -26,7 +26,7 @@ class FMInstanceSettingsTemplateCreator(object):
         template = self.client._perform_tenant_json(
             "POST", "/instance-settings-templates", body=self.data
         )
-        return FMInstanceSettingsTemplate(self, template)
+        return FMInstanceSettingsTemplate(self.client, template)
 
     def with_setup_actions(self, setup_actions):
         """
