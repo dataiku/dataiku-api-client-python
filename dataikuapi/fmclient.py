@@ -12,12 +12,16 @@ from .fm.virtualnetworks import (
     FMVirtualNetwork,
     FMAWSVirtualNetworkCreator,
     FMAzureVirtualNetworkCreator,
+    FMAWSVirtualNetwork,
+    FMAzureVirtualNetwork
 )
 from .fm.instances import (
     FMInstance,
     FMInstanceEncryptionMode,
     FMAWSInstanceCreator,
     FMAzureInstanceCreator,
+    FMAWSInstance,
+    FMAzureInstance
 )
 from .fm.instancesettingstemplates import (
     FMInstanceSettingsTemplate,
@@ -87,6 +91,14 @@ class FMClient(object):
     # VirtualNetwork
     ########################################################
 
+    def _make_virtual_network(self, vn):
+        if self.cloud == 'AWS':
+            return FMAWSVirtualNetwork(self, vn)
+        elif self.cloud == 'Azure':
+            return FMAzureVirtualNetwork(self, vn)
+        else:
+            raise Exception("Unknown cloud type %s" % self.cloud)
+
     def list_virtual_networks(self):
         """
         List all Virtual Networks
@@ -95,7 +107,7 @@ class FMClient(object):
         :rtype: list of :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
         """
         vns = self._perform_tenant_json("GET", "/virtual-networks")
-        return [FMVirtualNetwork(self, x) for x in vns]
+        return [self._make_virtual_network(x) for x in vns]
 
     def get_virtual_network(self, virtual_network_id):
         """
@@ -109,7 +121,7 @@ class FMClient(object):
         vn = self._perform_tenant_json(
             "GET", "/virtual-networks/%s" % virtual_network_id
         )
-        return FMVirtualNetwork(self, vn)
+        return self._make_virtual_network(vn)
 
     ########################################################
     # Instance settings template
@@ -143,6 +155,14 @@ class FMClient(object):
     # Instance
     ########################################################
 
+    def _make_instance(self, i):
+        if self.cloud == 'AWS':
+            return FMAWSInstance(self, i)
+        elif self.cloud == 'Azure':
+            return FMAzureInstance(self, i)
+        else:
+            raise Exception("Unknown cloud type %s" % self.cloud)
+
     def list_instances(self):
         """
         List all DSS Instances
@@ -151,7 +171,7 @@ class FMClient(object):
         :rtype: list of :class:`dataikuapi.fm.instances.FMInstance`
         """
         instances = self._perform_tenant_json("GET", "/instances")
-        return [FMInstance(self, **x) for x in instances]
+        return [self._make_instance(x) for x in instances]
 
     def get_instance(self, instance_id):
         """
@@ -163,7 +183,7 @@ class FMClient(object):
         :rtype: :class:`dataikuapi.fm.instances.FMInstance`
         """
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
-        return FMInstance(self, instance)
+        return self._make_instance(instance)
 
     ########################################################
     # Internal Request handling
