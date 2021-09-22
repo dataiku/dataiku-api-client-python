@@ -709,6 +709,24 @@ class DSSProject(object):
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
+    def create_mlflow_pyfunc_model(self, id, prediction_type = None):
+        """
+        Creates a new external saved model for storing and managing MLFlow models
+
+        :param string id: Identifier for the new saved model in the flow
+        :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        """
+        if len(id) != 8:
+            raise ValueError("model id must be 8 characters long")
+        model = {
+            "id": id,
+            "savedModelType" : "MLFLOW_PYFUNC",
+            "predictionType" : prediction_type
+        }
+
+        self.client._perform_empty("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)
+        return self.get_saved_model(id)
+
     ########################################################
     # Managed folders
     ########################################################
