@@ -65,7 +65,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
         vn = self.client._perform_tenant_json(
             "POST", "/virtual-networks", body=self.data
         )
-        return FMAWSVirtualNetwork(self, vn)
+        return FMAWSVirtualNetwork(self.client, vn)
 
 
 class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
@@ -99,7 +99,7 @@ class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
         vn = self.client._perform_tenant_json(
             "POST", "/virtual-networks", body=self.data
         )
-        return FMAzureVirtualNetwork(self, vn)
+        return FMAzureVirtualNetwork(self.client, vn)
 
 
 class FMVirtualNetwork(object):
