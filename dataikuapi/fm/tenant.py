@@ -27,7 +27,7 @@ class FMCloudCredentials(object):
             with open(license_file) as json_file:
                 license = json.load(json_file)
         elif license_string is not None:
-            license = json.load(license_string)
+            license = json.loads(license_string)
         else:
             raise ValueError(
                 "a valid license_file or license_string needs to be provided"
