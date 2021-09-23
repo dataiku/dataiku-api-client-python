@@ -38,8 +38,23 @@ class FMInstanceSettingsTemplateCreator(object):
         self.data["setupActions"] = setup_actions
         return self
 
-    def with_license(self, license):
-        self.data["license"] = license
+    def with_license(self, license_file_path=None, license_string=None):
+        """
+        Override global license
+
+        :param str license_file_path: Optional, load the license from a json file
+        :param str license_string: Optional, load the license from a json string
+        """
+        if license_file_path is not None:
+            with open(license_file_path) as json_file:
+                license = json.load(json_file)
+        elif license_string is not None:
+            license = json.loads(license_string)
+        else:
+            raise ValueError(
+                "a valid license_file_path or license_string needs to be provided"
+            )
+        self.data["license"] = json.dumps(license, indent=2)
         return self
 
 
@@ -211,7 +226,7 @@ class FMInstanceSettingsTemplate(object):
         :param object setup_action: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
         """
         self.ist_data["setupActions"].append(setup_action)
-        self.save()
+        return self
 
 
 class FMSetupAction(dict):
