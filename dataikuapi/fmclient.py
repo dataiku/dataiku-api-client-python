@@ -13,7 +13,7 @@ from .fm.virtualnetworks import (
     FMAWSVirtualNetworkCreator,
     FMAzureVirtualNetworkCreator,
     FMAWSVirtualNetwork,
-    FMAzureVirtualNetwork
+    FMAzureVirtualNetwork,
 )
 from .fm.instances import (
     FMInstance,
@@ -21,7 +21,7 @@ from .fm.instances import (
     FMAWSInstanceCreator,
     FMAzureInstanceCreator,
     FMAWSInstance,
-    FMAzureInstance
+    FMAzureInstance,
 )
 from .fm.instancesettingstemplates import (
     FMInstanceSettingsTemplate,
@@ -75,7 +75,7 @@ class FMClient(object):
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
         return FMCloudCredentials(self, creds)
 
-    def get_cloud_tags(self, tenant_id):
+    def get_cloud_tags(self):
         """
         Get Tenant's Cloud Tags
 
@@ -84,17 +84,17 @@ class FMClient(object):
         :return: tenant's cloud tags
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudTags`
         """
-        tags = self._perform_json("GET", "/tenants/%s/cloud-tags" % tenant_id)
-        return FMCloudTags(self, tenant_id, tags)
+        tags = self._perform_tenant_json("GET", "/cloud-tags")
+        return FMCloudTags(self, tags)
 
     ########################################################
     # VirtualNetwork
     ########################################################
 
     def _make_virtual_network(self, vn):
-        if self.cloud == 'AWS':
+        if self.cloud == "AWS":
             return FMAWSVirtualNetwork(self, vn)
-        elif self.cloud == 'Azure':
+        elif self.cloud == "Azure":
             return FMAzureVirtualNetwork(self, vn)
         else:
             raise Exception("Unknown cloud type %s" % self.cloud)
@@ -156,9 +156,9 @@ class FMClient(object):
     ########################################################
 
     def _make_instance(self, i):
-        if self.cloud == 'AWS':
+        if self.cloud == "AWS":
             return FMAWSInstance(self, i)
-        elif self.cloud == 'Azure':
+        elif self.cloud == "Azure":
             return FMAzureInstance(self, i)
         else:
             raise Exception("Unknown cloud type %s" % self.cloud)
