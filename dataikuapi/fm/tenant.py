@@ -12,29 +12,27 @@ class FMCloudCredentials(object):
 
     def set_cmk_key(self, cmk_key_id):
         self.cloud_credentials["awsCMKId"] = cmk_key_id
-        self.save()
+        return self
 
-    def set_static_license(self, license_file=None, license_string=None):
+    def set_static_license(self, license_file_path=None, license_string=None):
         """
         Set a default static license for the DSS instances
 
-        Requires either a license_file or a license_string
-
-        :param str license_file: Optional, load the license from a json file
+        :param str license_file_path: Optional, load the license from a json file
         :param str license_string: Optional, load the license from a json string
         """
-        if license_file is not None:
-            with open(license_file) as json_file:
+        if license_file_path is not None:
+            with open(license_file_path) as json_file:
                 license = json.load(json_file)
         elif license_string is not None:
             license = json.loads(license_string)
         else:
             raise ValueError(
-                "a valid license_file or license_string needs to be provided"
+                "a valid license_file_path or license_string needs to be provided"
             )
         self.cloud_credentials["licenseMode"] = "STATIC"
         self.cloud_credentials["license"] = json.dumps(license, indent=2)
-        self.save()
+        return self
 
     def set_automatically_updated_license(self, license_token):
         """
@@ -46,7 +44,7 @@ class FMCloudCredentials(object):
             raise ValueError("a valid license_token needs to be provided")
         self.cloud_credentials["licenseMode"] = "AUTO_UPDATE"
         self.cloud_credentials["licenseToken"] = license_token
-        self.save()
+        return self
 
     def set_authentication(self, authentication):
         """
@@ -55,7 +53,7 @@ class FMCloudCredentials(object):
         :param object: a :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
         """
         self.cloud_credentials.update(authentication)
-        self.save()
+        return self
 
     def save(self):
         """Saves back the settings to the project"""
@@ -70,57 +68,18 @@ class FMCloudTags(object):
     A Tenant Cloud Tags in the FM instance
     """
 
-    def __init__(self, client, tenant_id, cloud_tags):
+    def __init__(self, client, cloud_tags):
         self.client = client
-        self.tenant_id = tenant_id
         self.cloud_tags = json.loads(cloud_tags["msg"])
 
-    def add_tag(self, key, value):
-        """
-        Add a tag to the tenant
-
-
-        :param str key: Tag key
-        :param str value: Tag value
-        """
-        if key in self.cloud_tags:
-            raise Exception("Key already exists")
-        self.cloud_tags[key] = value
-
-    def update_tag(self, key, new_key=None, new_value=None):
-        """
-        Update a tag key or value
-
-
-        :param str key: Key of the tag to update
-        :param str new_key: Optional, new key for the tag
-        :param str new_value: Optional, new value for the tag
-        """
-        if key not in self.cloud_tags:
-            raise Exception("Key does not exists")
-        if new_value:
-            self.cloud_tags[key] = new_value
-        if new_key:
-            self.cloud_tags[new_key] = self.cloud_tags[key]
-            del self.cloud_tags[key]
-
-    def delete_tag(self, key):
-        """
-        Delete a tag
-
-
-        :param str key: Key of the tag to delete
-        """
-        if key not in self.cloud_tags:
-            raise Exception("Key does not exists")
-        del self.cloud_tags[key]
+    @property
+    def tags(self):
+        return self.cloud_tags
 
     def save(self):
         """Saves the tags on FM"""
 
-        self.client._perform_empty(
-            "PUT", "/tenants/%s/cloud-tags" % (self.tenant_id), body=self.cloud_tags
-        )
+        self.client._perform_tenant_empty("PUT", "/cloud-tags", body=self.cloud_tags)
 
 
 class FMCloudAuthentication(dict):
