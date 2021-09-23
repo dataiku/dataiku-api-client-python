@@ -240,7 +240,7 @@ class FMInstance(object):
         self.instance_data["enableAutomatedSnapshot"] = enable
         self.instance_data["automatedSnapshotPeriod"] = period
         self.instance_data["automatedSnapshotRetention"] = keep
-        self.save()
+        return self
 
     def set_custom_certificate(self, pem_data):
         """
@@ -251,7 +251,7 @@ class FMInstance(object):
         param: str pem_data: The SSL certificate
         """
         self.instance_data["sslCertificatePEM"] = pem_data
-        self.save()
+        return self
 
 
 class FMAWSInstance(FMInstance):
@@ -264,7 +264,7 @@ class FMAWSInstance(FMInstance):
         """
         self.instance_data["awsAssignElasticIP"] = enable
         self.instance_data["awsElasticIPAllocationId"] = elasticip_allocation_id
-        self.save()
+        return self
 
 
 class FMAzureInstance(FMInstance):
@@ -277,7 +277,7 @@ class FMAzureInstance(FMInstance):
         """
         self.instance_data["azureAssignElasticIP"] = enable
         self.instance_data["azurePublicIPId"] = public_ip_id
-        self.save()
+        return self
 
 
 class FMInstanceEncryptionMode(Enum):
