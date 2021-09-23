@@ -234,12 +234,32 @@ class DSSSavedModel(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
 
+class MLFlowVersionSettings:
+    """Handle for the settings of an imported MLFlow model version"""
+
+    def __init__(self, version_handler, data):
+        self.version_handler = version_handler
+        self.data = data
+
+    @property
+    def raw(self):
+        return self.data
+
+    def save(self):
+        self.version_handler.saved_model.client._perform_empty("PUT", 
+            "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.version_handler.saved_model.project_key, self.version_handler.saved_model.sm_id, self.version_handler.version_id),
+            body=self.data)
+
 class MLFlowVersionHandler:
     """Handler to interact with an imported MLFlow model version"""
     def __init__(self, saved_model, version_id):
         """Do not call this, use :meth:`DSSSavedModel.get_mlflow_version_handler`"""
         self.saved_model = saved_model
         self.version_id = version_id
+
+    def get_settings(self):
+        metadata = self.saved_model.client._perform_json("GET", "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id))
+        return MLFlowVersionSettings(self, metadata)
 
     def set_core_metadata(self,
         target_column_name, class_labels = None,
