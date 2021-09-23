@@ -45,11 +45,11 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
         self.data["awsAutoCreateSecurityGroups"] = True
         return self
 
-    def with_aws_security_groups(self, aws_security_groups):
+    def with_aws_security_groups(self, *aws_security_groups):
         """
         Use pre-created AWS Security Groups
 
-        :param list aws_security_groups: A list of up to 5 security group ids to assign to the instances created in this virtual network.
+        :param str *aws_security_groups: Up to 5 security group ids to assign to the instances created in this virtual network.
         """
         self.data["awsAutoCreateSecurityGroups"] = False
         self.data["awsSecurityGroups"] = aws_security_groups
@@ -149,7 +149,7 @@ class FMVirtualNetwork(object):
         self.vn_data["managedNodesDirectory"] = enable
         self.vn_data["eventServerNodeLabel"] = event_server
         self.vn_data["nodesDirectoryDeployerMode"] = deployer_management
-        self.save()
+        return self
 
     def set_https_strategy(self, https_strategy):
         """
@@ -158,7 +158,7 @@ class FMVirtualNetwork(object):
         :param object: a :class:`dataikuapi.fm.virtualnetworks.FMHTTPSStrategy`
         """
         self.vn_data.update(https_strategy)
-        self.save()
+        return self
 
 
 class FMAWSVirtualNetwork(FMVirtualNetwork):
@@ -183,7 +183,7 @@ class FMAWSVirtualNetwork(FMVirtualNetwork):
         else:
             self.vn_data["dnsStrategy"] = "NONE"
 
-        self.save()
+        return self
 
 
 class FMAzureVirtualNetwork(FMVirtualNetwork):
@@ -201,7 +201,7 @@ class FMAzureVirtualNetwork(FMVirtualNetwork):
         else:
             self.vn_data["dnsStrategy"] = "NONE"
 
-        self.save()
+        return self
 
 
 class FMHTTPSStrategy(dict):
