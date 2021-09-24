@@ -732,7 +732,7 @@ class DSSCodeEnv(object):
         """
         Returns the settings of this code env as a :class:`DSSCodeEnvSettings`, or one of its subclasses.
 
-        Know subclasses of :class:`DSSCodeEnvSettings` include :class:`DSSDesignCodeEnvSettings` 
+        Known subclasses of :class:`DSSCodeEnvSettings` include :class:`DSSDesignCodeEnvSettings` 
         and :class:`DSSAutomationCodeEnvSettings`
 
         You must use :meth:`~DSSCodeEnvSettings.save()` on the returned object to make your changes effective
