@@ -924,7 +924,7 @@ class DSSCodeEnvContainerConfsBearer(object):
         return self.settings.get("allSparkKubernetesConfs", False)
     def get_built_spark_kubernetes_confs(self):
         """
-        Returns the list of managed Spark over Kubernetes configs for which the code env builds an image (if not all)
+        Return the list of managed Spark over Kubernetes configs for which the code env builds an image (if not all)
         """
         return self.settings.get("sparkKubernetesConfs", [])
     def set_built_spark_kubernetes_confs(self, *configs, **kwargs):
