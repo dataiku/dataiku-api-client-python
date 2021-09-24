@@ -988,7 +988,7 @@ class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsB
         elif deployment_mode in ['PLUGIN_NON_MANAGED', 'PLUGIN_MANAGED', 'AUTOMATION_NON_MANAGED_PATH', 'EXTERNAL_CONDA_NAMED']:
             return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('noVersion', {}))
         else:
-            raise Exception("Unexpected deloyment mode %s for an automation node code env. Alter the settings directly with get_raw()", deployment_mode)
+            raise Exception("Unexpected deployment mode %s for an automation node code env. Alter the settings directly with get_raw()", deployment_mode)
 
 class DSSAutomationCodeEnvVersionSettings(DSSCodeEnvPackageListBearer):
     """
