@@ -873,22 +873,28 @@ class DSSCodeEnvSettings(object):
             "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=self.settings)
 
 class DSSCodeEnvPackageListBearer(object):
-    def get_required_packages(self):
+    def get_required_packages(self, as_list=False):
         """
         Return the list of required packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
         """
-        return self.settings.get("specPackageList", "")
+        x = self.settings.get("specPackageList", "")
+        return x.split('\n') if as_list else x
     def set_required_packages(self, *packages):
         """
         Set the list of required packages
         """
         self.settings["specPackageList"] = '\n'.join(packages)
 
-    def get_required_conda_spec(self):
+    def get_required_conda_spec(self, as_list=False):
         """
         Return the list of required conda packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
         """
-        return self.settings.get("specCondaEnvironment", "")
+        x = self.settings.get("specCondaEnvironment", "")
+        return x.split('\n') if as_list else x
     def set_required_conda_spec(self, *spec):
         """
         Set the list of required conda packages
