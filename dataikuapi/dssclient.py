@@ -498,7 +498,7 @@ class DSSClient(object):
         list = self._perform_json(
             "GET", "/admin/code-envs/")
         if as_objects:
-            return [DSSCodeEnv(self, e.get("env_lang"), e.get("env_name")) for e in list]
+            return [DSSCodeEnv(self, e.get("envLang"), e.get("envName")) for e in list]
         else:
             return list
 
