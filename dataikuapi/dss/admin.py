@@ -908,7 +908,7 @@ class DSSCodeEnvContainerConfsBearer(object):
         return self.settings.get("containerConfs", [])
     def set_built_container_confs(self, *configs, **kwargs):
         """
-        Sets the list of container configs for which the code env builds an image
+        Set the list of container configs for which the code env builds an image
 
         :param boolean all: if True, an image is built for each config
         :param list configs: list of configuration names to build images for
