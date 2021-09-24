@@ -898,7 +898,7 @@ class DSSCodeEnvPackageListBearer(object):
 class DSSCodeEnvContainerConfsBearer(object):
     def get_built_for_all_container_confs(self):
         """
-        Returns whether the code env creates an image for each container config
+        Return whether the code env creates an image for each container config
         """
         return self.settings.get("allContainerConfs", False)
     def get_built_container_confs(self):
