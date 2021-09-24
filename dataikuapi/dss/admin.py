@@ -896,7 +896,7 @@ class DSSCodeEnvPackageListBearer(object):
         self.settings["specCondaEnvironment"] = '\n'.join(packages)
 
 class DSSCodeEnvContainerConfsBearer(object):
-    def built_for_all_container_confs(self):
+    def get_built_for_all_container_confs(self):
         """
         Returns whether the code env creates an image for each container config
         """
