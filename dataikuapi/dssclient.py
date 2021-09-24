@@ -486,22 +486,28 @@ class DSSClient(object):
     # Code envs
     ########################################################
 
-    def list_code_envs(self):
+    def list_code_envs(self, as_objects=False):
         """
         List all code envs setup on the DSS instance
 
         Note: this call requires an API key with admin rights
         
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
         :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
-        return self._perform_json(
+        list = self._perform_json(
             "GET", "/admin/code-envs/")
+        if as_objects:
+            return [DSSCodeEnv(self, e.get("envLang"), e.get("envName")) for e in list]
+        else:
+            return list
 
     def get_code_env(self, env_lang, env_name):
         """
         Get a handle to interact with a specific code env
         
-        :param str name: the name of the desired code env
+        :param env_lang: the language (PYTHON or R) of the new code env
+        :param env_name: the name of the new code env
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
         """
         return DSSCodeEnv(self, env_lang, env_name)
