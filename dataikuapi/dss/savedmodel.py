@@ -117,7 +117,7 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path):
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model.
 
@@ -125,6 +125,7 @@ class DSSSavedModel(object):
 
         :param str version_id: Identifier of the version to create
         :param str path: An absolute path on the local filesystem. Must be a folder, and must contain a MLFlow model
+        :param str code_env_name: Name of the code environment to use for this model. Default is to inherit from project configuration
 
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
@@ -136,7 +137,7 @@ class DSSSavedModel(object):
         
         with open("tmpmodel.zip", "rb") as fp:
             self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s" % (self.project_key, self.sm_id, version_id),
-                files={"file":("tmpmodel.zip", fp)})
+                files={"file":("tmpmodel.zip", fp)}, params={"codeEnvName": code_env_name})
 
         return self.get_mlflow_version_handler(version_id)
 
