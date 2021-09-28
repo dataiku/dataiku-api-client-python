@@ -229,6 +229,44 @@ class FMInstance(object):
         )
         return FMFuture.from_resp(self.client, future)
 
+    def get_initial_password(self):
+        """
+        Get the initial DSS admin password.
+
+        Can only be called once
+
+        :return: a password for the 'admin' user.
+        """
+        return self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/get-initial-password" % self.id
+        )
+
+    def reset_user_password(self, username, password):
+        """
+        Reset the password for a user on the DSS instance
+
+        :param string username: login
+        :param string password: new password
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the password reset process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future =  self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/reset-user-password" % self.id, params={ 'userName':username, 'password':password }
+        )
+        return FMFuture.from_resp(self.client, future)
+
+    def replay_setup_actions(self):
+        """
+        Replay the setup actions on the DSS instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the replay process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future =  self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/replay-setup-actions" % self.id
+        )
+        return FMFuture.from_resp(self.client, future)
+
     def set_automated_snapshots(self, enable, period, keep=0):
         """
         Set the automated snapshots policy for this instance
