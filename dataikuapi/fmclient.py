@@ -4,7 +4,6 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 import os.path as osp
 
-from enum import Enum
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials, FMCloudTags
@@ -28,6 +27,15 @@ from .fm.instancesettingstemplates import (
     FMAWSInstanceSettingsTemplateCreator,
     FMAzureInstanceSettingsTemplateCreator,
 )
+
+import sys
+
+if sys.version_info > (3, 4):
+    from enum import Enum
+else:
+
+    class Enum(object):
+        pass
 
 
 class FMClient(object):

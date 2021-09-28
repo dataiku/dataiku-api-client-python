@@ -1,5 +1,13 @@
-from enum import Enum
 from .future import FMFuture
+
+import sys
+
+if sys.version_info > (3, 4):
+    from enum import Enum
+else:
+
+    class Enum(object):
+        pass
 
 
 class FMInstanceCreator(object):
