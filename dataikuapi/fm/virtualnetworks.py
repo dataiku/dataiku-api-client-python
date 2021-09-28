@@ -10,6 +10,7 @@ class FMVirtualNetworkCreator(object):
         """
         self.client = client
         self.data = {}
+        self.use_default_values = False
         self.data["label"] = label
         self.data["mode"] = "EXISTING_MONOTENANT"
 
@@ -23,6 +24,13 @@ class FMVirtualNetworkCreator(object):
             )
 
         self.data["internetAccessMode"] = internet_access_mode
+        return self
+
+    def with_default_values(self):
+        """
+        Setup the VPC and Subnet to with the default values: the vpc and subnet of the FM instance
+        """
+        self.use_default_values = True
         return self
 
 
@@ -63,7 +71,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetwork`
         """
         vn = self.client._perform_tenant_json(
-            "POST", "/virtual-networks", body=self.data
+            "POST", "/virtual-networks", body=self.data, params={ 'useDefaultValues':self.use_default_values }
         )
         return FMAWSVirtualNetwork(self.client, vn)
 
@@ -97,7 +105,7 @@ class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetwork`
         """
         vn = self.client._perform_tenant_json(
-            "POST", "/virtual-networks", body=self.data
+            "POST", "/virtual-networks", body=self.data, params={ 'useDefaultValues':self.use_default_values }
         )
         return FMAzureVirtualNetwork(self.client, vn)
 
