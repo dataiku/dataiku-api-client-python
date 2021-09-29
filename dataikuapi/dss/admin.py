@@ -1207,3 +1207,43 @@ class DSSClusterStatus(object):
         Gets the whole status as a raw dictionary.
         """
         return self.status
+
+class DSSGlobalUsageSummary(object):
+    """
+    The summary of the usage of the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_global_usage_summary`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    @property
+    def raw(self):
+        return self.data
+
+    @property
+    def projects_count(self):
+        return self.data["projects"]
+
+    @property
+    def total_datasets_count(self):
+        return self.data["datasets"]["all"]
+
+    @property
+    def total_recipes_count(self):
+        return self.data["recipes"]["all"]
+
+    @property
+    def total_jupyter_notebooks_count(self):
+        return self.data["notebooks"]["nbJupyterNotebooks"]
+
+    @property
+    def total_sql_notebooks_count(self):
+        return self.data["notebooks"]["nbSqlNotebooks"]
+
+    @property
+    def total_scenarios_count(self):
+        return self.data["scenarios"]["all"]
+
+    @property
+    def total_active_with_trigger_scenarios_count(self):
+        return self.data["scenarios"]["activeWithTriggers"]

@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -763,12 +763,12 @@ class DSSClient(object):
 
     def get_global_usage_summary(self, with_per_project=False):
         """
-        Summarize the contents of the instance
-
+        Gets a summary of the global usage of this DSS instance (number of projects, datasets, ...)
         :returns: a summary object
         """
-        return self._perform_json(
+        data = self._perform_json(
             "GET", "/admin/monitoring/global-usage-summary", params={'withPerProject':with_per_project})
+        return DSSGlobalUsageSummary(data)
 
    ########################################################
     # Variables
