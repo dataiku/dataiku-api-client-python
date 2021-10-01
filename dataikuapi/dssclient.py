@@ -594,7 +594,7 @@ class DSSClient(object):
         resp = self._perform_json(
             "GET", "/admin/global-api-keys/")
         if as_type == 'objects':
-            return [DSSGlobalApiKey(self, item.id) for item in resp]
+            return [DSSGlobalApiKey(self, item['id']) for item in resp]
         elif as_type == 'dict':
             return resp
         else:
@@ -610,7 +610,7 @@ class DSSClient(object):
         """
         resp = self._perform_json(
             "GET", "/admin/globalAPIKeys/%s" % key)
-        return DSSGlobalApiKey(self, resp.id)
+        return DSSGlobalApiKey(self, resp['id'])
 
     def get_global_api_key_by_id(self, id_):
         """
@@ -674,7 +674,7 @@ class DSSClient(object):
         resp = self._perform_json(
             "GET", "/personal-api-keys/")
         if as_type == 'objects':
-            return [DSSPersonalApiKey(self, item.id) for item in resp]
+            return [DSSPersonalApiKey(self, item['id']) for item in resp]
         elif as_type == 'dict':
             return resp
         else:
