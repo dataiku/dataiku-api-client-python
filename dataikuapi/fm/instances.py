@@ -237,6 +237,44 @@ class FMInstance(object):
         )
         return FMFuture.from_resp(self.client, future)
 
+    def get_initial_password(self):
+        """
+        Get the initial DSS admin password.
+
+        Can only be called once
+
+        :return: a password for the 'admin' user.
+        """
+        return self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/get-initial-password" % self.id
+        )
+
+    def reset_user_password(self, username, password):
+        """
+        Reset the password for a user on the DSS instance
+
+        :param string username: login
+        :param string password: new password
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the password reset process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future =  self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/reset-user-password" % self.id, params={ 'userName':username, 'password':password }
+        )
+        return FMFuture.from_resp(self.client, future)
+
+    def replay_setup_actions(self):
+        """
+        Replay the setup actions on the DSS instance
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the replay process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future =  self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/replay-setup-actions" % self.id
+        )
+        return FMFuture.from_resp(self.client, future)
+
     def set_automated_snapshots(self, enable, period, keep=0):
         """
         Set the automated snapshots policy for this instance
@@ -261,6 +299,43 @@ class FMInstance(object):
         self.instance_data["sslCertificatePEM"] = pem_data
         return self
 
+
+    ########################################################
+    # Snapshots
+    ########################################################
+
+    def list_snapshots(self):
+        """
+        List all snapshots of this instance
+
+        :return: list of snapshots
+        :rtype: list of :class:`dataikuapi.fm.instances.FMSnapshot`
+        """
+        snapshots = self.client._perform_tenant_json("GET", "/instances/%s/snapshots" % self.id)
+        return [FMSnapshot(self.client, self.id, x["id"], x) for x in snapshots]
+
+    def get_snapshot(self, snapshot_id):
+        """
+        Get a snapshot of this instance
+
+        :param str snapshot_id: identifier of the snapshot
+
+        :return: Snapshot
+        :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`
+        """
+        return FMSnapshot(self.client, self.id, snapshot_id)
+
+    def snapshot(self, reason_for_snapshot=None):
+        """
+        Create a snapshot of the DSS instance
+ 
+        :return: Snapshot
+        :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`
+        """
+        snapshot = self.client._perform_tenant_json(
+            "POST", "/instances/%s/snapshots" % self.id, params={ "reasonForSnapshot":reason_for_snapshot }
+        )
+        return FMSnapshot(self.client, self.id, snapshot["id"], snapshot)
 
 class FMAWSInstance(FMInstance):
     def set_elastic_ip(self, enable, elasticip_allocation_id):
@@ -303,3 +378,53 @@ class FMInstanceStatus(dict):
     def __init__(self, data):
         """Do not call this directly, use :meth:`FMInstance.get_status`"""
         super(FMInstanceStatus, self).__init__(data)
+
+
+class FMSnapshot(object):
+    """
+    A handle to interact with a snapshot of a DSS instance.
+    Do not create this directly, use :meth:`FMInstance.snapshot`
+    """
+
+    def __init__(self, client, instance_id, snapshot_id, snapshot_data=None):
+        self.client = client
+        self.instance_id = instance_id
+        self.snapshot_id = snapshot_id
+        self.snapshot_data = snapshot_data
+
+    def get_info(self):
+        """
+        Get the information about this snapshot
+
+        :return: a dict
+        """
+        if self.snapshot_data is None:
+            self.snapshot_data = self.client._perform_tenant_json(
+                "GET", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)
+            )
+        return self.snapshot_data
+
+    def reprovision(self):
+        """
+        Reprovision the physical DSS instance from this snapshot
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json(
+            "POST", "/instances/%s/snapshots/%s/reprovision" % (self.instance_id, self.snapshot_id)
+        )
+        return FMFuture.from_resp(self.client, future)
+
+    def delete(self):
+        """
+        Delete the snapshot
+
+        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json(
+            "DELETE", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)
+        )
+        return FMFuture.from_resp(self.client, future)
+

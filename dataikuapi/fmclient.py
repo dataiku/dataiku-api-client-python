@@ -193,6 +193,14 @@ class FMClient(object):
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
         return self._make_instance(instance)
 
+    def list_instance_images(self):
+        """
+        List all available images to create new instances
+
+        :return: list of images, as a pair of id and label
+        """
+        return self._perform_tenant_json("GET", "/images")
+
     ########################################################
     # Internal Request handling
     ########################################################
