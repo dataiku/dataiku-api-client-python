@@ -5,8 +5,6 @@ from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .future import DSSFuture
 
-from requests import utils
-
 try:
     basestring
 except NameError:
@@ -271,9 +269,11 @@ class DSSModelEvaluation:
         self.project_key = model_evaluation_store.project_key
         self.mes_id = model_evaluation_store.mes_id
 
-    def get_full_info(self):
+    def get_evaluation_full_info(self):
         """
         Retrieve the model evaluation with its performance data
+
+        :return: the model evaluation full info, as a :class:`dataikuapi.dss.DSSModelEvaluationInfo`
         """
         data = self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/runs/%s" % (self.project_key, self.mes_id, self.run_id))
@@ -301,13 +301,17 @@ class DSSModelEvaluation:
         :param reference: saved model version (full ID or DSSTrainedPredictionModelDetails)
                 or model evaluation (full ID or DSSModelEvaluation) to use as reference (optional)
         :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
-        :param data_drift_params: data drift computation settings (optional)
+        :param data_drift_params: data drift computation settings as a :class:`dataikuapi.dss.modelevaluationstore.DataDriftParams` (optional)
+        :type data_drift_params: DataDriftParams
         :param wait: data drift computation settings (optional)
-        :returns: a `dict` containing data drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
+        :returns: a :class:`dataikuapi.dss.modelevaluationstore.DataDriftResult` containing data drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         if hasattr(reference, 'full_id'):
             reference = reference.full_id
+
+        if data_drift_params:
+            data_drift_params = data_drift_params.data
 
         future_response = self.client._perform_json(
             "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
@@ -315,7 +319,7 @@ class DSSModelEvaluation:
                 "referenceId": reference,
                 "dataDriftParams": data_drift_params
             })
-        future = DSSFuture(self.client, future_response.get('jobId', None), future_response)
+        future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=DataDriftResult)
         return future.wait_for_result() if wait else future
 
     def get_metrics(self):
@@ -356,7 +360,7 @@ class DSSModelEvaluationFullInfo:
     Includes information such as the full id of the evaluated model, the evaluation params,
     the performance and drift metrics, if any, etc.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_full_info`
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_evaluation_full_info`
     """
     def __init__(self, model_evaluation, full_info):
         self.model_evaluation = model_evaluation
@@ -397,3 +401,417 @@ class DSSModelEvaluationFullInfo:
         :return: the date and time, as an epoch
         """
         return self.full_info["evaluation"]["created"]
+
+    def get_full_id(self):
+        """
+        Returns the full id of the Model Evaluation.
+
+        :return: the full id, as a string
+        """
+        return self.full_info["evaluation"]["ref"]["fullId"]
+
+    def get_model_full_id(self):
+        """
+        Returns the full id of the evaluated model.
+
+        :return: the model full id, as a string
+        """
+        return self.full_info["evaluation"]["modelRef"]["fullId"]
+
+    def get_model_type(self):
+        """
+        Returns the evaluated model type.
+
+        :return: the model type, as a string
+        """
+        return self.full_info["evaluation"]["modelType"]
+
+    def get_model_parameters(self):
+        """
+        Returns the evaluated model params.
+
+        :return: the model params, as a dict
+        """
+        return self.full_info["evaluation"]["modelParams"]
+
+    def get_prediction_type(self):
+        """
+        Returns the prediction type of the evaluated model.
+
+        :return: the prediction type, as a string
+        """
+        return self.full_info["evaluation"]["predictionType"]
+
+    def get_prediction_variable(self):
+        """
+        Returns the prediction variable used for evaluation.
+
+        :return: the prediction variable, as a string
+        """
+        return self.full_info["evaluation"]["predictionVariable"]
+
+    def get_target_variable(self):
+        """
+        Returns the target variable used for evaluation.
+
+        :return: the target variable, as a string
+        """
+        return self.full_info["evaluation"]["targetVariable"]
+
+
+class DataDriftParams(object):
+    """
+    Object that represents parameters for data drift computation.
+    Do not create this object directly, use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params` instead.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.data)
+
+    @staticmethod
+    def from_params(columns, nb_bins=10, compute_histograms=True, confidence_level=0.95):
+        """
+        Creates parameters for data drift computation from columns, number of bins, compute histograms and confidence level
+
+        :param dict columns: A dict representing the per column settings.
+        You should use a :class:`~dataikuapi.dss.modelevaluationstore.PerColumnDriftParamBuilder` to build it.
+        :param int nb_bins: (optional) Nb. bins in histograms (apply to all columns) - default: 10
+        :param bool compute_histograms: (optional) Enable/disable histograms - default: True
+        :param float confidence_level: (optional) Used to compute confidence interval on drift's model accuracy - default: 0.95
+
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DataDriftParams`
+        """
+        return DataDriftParams({
+            "columns": columns,
+            "nbBins": nb_bins,
+            "computeHistograms": compute_histograms,
+            "confidenceLevel": confidence_level
+        })
+
+
+class PerColumnDriftParamBuilder(object):
+    """
+    Builder for a map of per column drift params settings.
+    Used as a helper before computing data drift to build columns param expected in dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params.
+    """
+    def __init__(self):
+        self.columns = {}
+
+    def build(self):
+        """Returns the built dict for per column drift params settings"""
+        return self.columns
+
+    def with_column_drift_param(self, name, handling="AUTO", enabled=False):
+        """
+        Sets the drift params settings for given column name.
+
+        :param: string name: The name of the column
+        :param: string handling: (optional) The column type, should be either NUMERICAL, CATEGORICAL or AUTO (default: AUTO)
+        :param: bool name: (optional) If the column should be enabled (default: False)
+        """
+        self.columns[name] = {
+            "handling": handling,
+            "enabled": enabled
+        }
+        return self
+
+
+class DataDriftResult(object):
+    """
+    A handle on the data drift result of a model evaluation.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.compute_data_drift`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw data drift result.
+
+        :return: the raw data drift result
+        :rtype: dict
+        """
+        return self.data
+
+    def get_drift_model_result(self):
+        """
+        Get the drift analysis based on drift modeling.
+
+        :return: A handle on the drift model result
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DriftModelResult`
+        """
+        return DriftModelResult(self.data["driftModelResult"])
+
+    def get_univariate_drift_result(self):
+        """
+        Get a per-column drift analysis based on comparison of distributions.
+
+        :return: A handle on the univariate drift result
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.UnivariateDriftResult`
+        """
+        return UnivariateDriftResult(self.data["univariateDriftResult"])
+
+    def get_per_column_report(self):
+        """
+        Get the information about column handling that has been used (errors, types, etc).
+
+        :return: A list of handles on column reports
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.ColumnReport`
+        """
+        return map(ColumnReport, self.data["perColumnReport"])
+
+    def get_reference_sample_size(self):
+        """
+        Get the size of the reference ME sample.
+
+        :return: the size of the reference sample
+        :rtype: int
+        """
+        return self.data["referenceSampleSize"]
+
+    def get_current_sample_size(self):
+        """
+        Size of the current ME sample.
+
+        :return: the size of the current ME
+        :rtype: int
+        """
+        return self.data["currentSampleSize"]
+
+
+class DriftModelResult(object):
+    """
+    A handle on the drift model result.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_drift_model_result`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw drift model result.
+
+        :return: the raw drift model result
+        :rtype: dict
+        """
+        return self.data
+
+    def get_reference_sample_size(self):
+        """
+        Get the number of rows coming from reference ME in the drift model trainset.
+
+        :return: the number of rows coming from reference ME
+        :rtype: int
+        """
+        return self.data["referenceSampleSize"]
+
+    def get_current_sample_size(self):
+        """
+        Get the number of rows coming from current ME in the drift model trainset.
+
+        :return: the number of rows coming from current ME
+        :rtype: int
+        """
+        return self.data["currentSampleSize"]
+
+    def get_drift_model_accuracy(self):
+        """
+        Get the drift model accuracy information.
+
+        :return: A handle to interact with the drift model accuracy information
+        :rtype: :class:`dataiku.dss.modelevaluationstore.DriftModelAccuracy`
+        """
+        return DriftModelAccuracy(self.data["driftModelAccuracy"])
+
+    def get_feature_drift_importance(self):
+        """
+        Get the feature drift importance chart data.
+
+        :return: A handle on feature drift importance chart data
+        :rtype: :class:`dataiku.dss.modelevaluationstore.DriftVersusImportanceChart`
+        """
+        return DriftVersusImportanceChart(self.data["driftVersusImportance"])
+
+
+class UnivariateDriftResult(object):
+    """
+    A handle on the univariate data drift.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_univariate_drift_result`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw univariate data drift.
+        It consists of a map with column name as keys, and a `dict ` with drift data as value.
+
+        :return: the raw univariate data drift
+        :rtype: dict
+        """
+        return self.data["columns"]
+
+
+class ColumnReport(object):
+    """
+    A handle on column handling information.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_per_column_report`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw column handling information.
+
+        :return: the raw column handling information
+        :rtype: dict
+        """
+        return self.data
+
+    def get_name(self):
+        """
+        Get the column name.
+
+        :return: the column name
+        :rtype: string
+        """
+        return self.data["name"]
+
+    def get_actual_column_handling(self):
+        """
+        Get the actual column handling (either forced via drift params or inferred from ME preprocessings).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
+
+        :return: the actual column handling
+        :rtype: string
+        """
+        return self.data["actualHandling"]
+
+    def get_default_column_handling(self):
+        """
+        Get the default column handling (based on ME preprocessing only).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
+
+        :return: the default column handling
+        :rtype: string
+        """
+        return self.data["defaultHandling"]
+
+    def get_error_message(self):
+        """
+        Get the error message.
+        For example: "could not treat column as numerical" (in this case, the column handling is forced to 'IGNORED').
+
+        :return: the error message, if there is any
+        :rtype: string
+        """
+        return self.data["errorMessage"]
+
+
+class DriftModelAccuracy(object):
+    """
+    A handle on the drift model accuracy.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DriftModelResult.get_drift_model_accuracy`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw drift model accuracy data.
+
+        :return: the drift model accuracy data
+        :rtype: dict
+        """
+        return self.data
+
+    def get_value(self):
+        """
+        Get the drift model accuracy value.
+
+        :return: the accuracy value
+        :rtype: float
+        """
+        return self.data["value"]
+
+    def get_lower_confidence_interval(self):
+        """
+        Get the drift model accuracy lower confidence interval.
+
+        :return: the lower confidence interval
+        :rtype: float
+        """
+        return self.data["lower"]
+
+    def get_upper_confidence_interval(self):
+        """
+        Get the drift model accuracy upper confidence interval.
+
+        :return: the upper confidence interval
+        :rtype: float
+        """
+        return self.data["upper"]
+
+    def get_pvalue(self):
+        """
+        Get the drift model accuracy pvalue for H0: "there is no drift".
+
+        :return: the accuracy pvalue for H0: "there is no drift"
+        :rtype: float
+        """
+        return self.data["pvalue"]
+
+
+class DriftVersusImportanceChart(object):
+    """
+    A handle on the feature drift importance chart data.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DriftModelResult.get_feature_drift_importance`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def get_raw(self):
+        """
+        Get the raw feature drift importance chart data.
+
+        :return: the feature drift importance chart data
+        :rtype: dict
+        """
+        return self.data
+
+    def get_column_names(self):
+        """
+        Get the column names.
+
+        :return: a `list` of the column names
+        :rtype: list of string
+        """
+        return self.data["columns"]
+
+    def get_column_drift_scores(self):
+        """
+        Get the importance of the columns in the drift model.
+
+        :return: the `list` of the importance of the columns in the drift model
+        :rtype: list of float
+        """
+        return self.data["columnDriftScores"]
+
+    def get_column_original_scores(self):
+        """
+        Get the importance of the columns in the original model.
+        Returns None when it can't be computed.
+
+        :return: the `list` of the importance of the columns in the original model
+        :rtype: list of float
+        """
+        return self.data["columnImportanceScores"]
