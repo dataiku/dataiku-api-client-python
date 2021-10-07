@@ -134,11 +134,13 @@ class DSSSavedModel(object):
         # TODO: Put it in a proper temp folder
         # TODO: cleanup the archive
         import shutil
+        import os
         shutil.make_archive("tmpmodel", "zip", path) #[, root_dir[, base_dir[, verbose[, dry_run[, owner[, group[, logger]]]]]]])
         
         with open("tmpmodel.zip", "rb") as fp:
             self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
                 files={"file":("tmpmodel.zip", fp)})
+        os.remove("tmpmodel.zip")
 
         return self.get_mlflow_version_handler(version_id)
 
