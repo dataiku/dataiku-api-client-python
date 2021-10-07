@@ -269,7 +269,7 @@ class DSSModelEvaluation:
         self.project_key = model_evaluation_store.project_key
         self.mes_id = model_evaluation_store.mes_id
 
-    def get_evaluation_full_info(self):
+    def get_full_info(self):
         """
         Retrieve the model evaluation with its performance data
 
@@ -360,7 +360,7 @@ class DSSModelEvaluationFullInfo:
     Includes information such as the full id of the evaluated model, the evaluation params,
     the performance and drift metrics, if any, etc.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_evaluation_full_info`
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.get_full_info`
     """
     def __init__(self, model_evaluation, full_info):
         self.model_evaluation = model_evaluation
