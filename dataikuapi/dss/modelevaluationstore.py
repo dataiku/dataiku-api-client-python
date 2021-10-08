@@ -167,7 +167,7 @@ class DSSModelEvaluationStore(object):
 
     def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True, no_fail=False):
         """
-        Starts a new job to build this Model Evaluation Store and wait for it to complete.
+        Starts a new job to build this model evaluation store and wait for it to complete.
         Raises if the job failed.
 
         .. code-block:: python
@@ -379,7 +379,7 @@ class DSSModelEvaluationFullInfo:
 
     def get_labels(self):
         """
-        Get the labels of the Model Evaluation
+        Get the labels of the model evaluation
 
         :return: a dict containing the labels
         """
@@ -396,7 +396,7 @@ class DSSModelEvaluationFullInfo:
 
     def get_creation_date(self):
         """
-        Return the date and time of the creation of the Model Evaluation
+        Return the date and time of the creation of the model evaluation
 
         :return: the date and time, as an epoch
         """
@@ -404,7 +404,7 @@ class DSSModelEvaluationFullInfo:
 
     def get_full_id(self):
         """
-        Returns the full id of the Model Evaluation.
+        Returns the full id of the model evaluation.
 
         :return: the full id, as a string
         """
@@ -565,18 +565,18 @@ class DataDriftResult(object):
 
     def get_reference_sample_size(self):
         """
-        Get the size of the reference ME sample.
+        Get the size of the reference model evaluation sample.
 
-        :return: the size of the reference sample
+        :return: the size of the reference model evaluation sample
         :rtype: int
         """
         return self.data["referenceSampleSize"]
 
     def get_current_sample_size(self):
         """
-        Size of the current ME sample.
+        Size of the current model evaluation sample.
 
-        :return: the size of the current ME
+        :return: the size of the current model evaluation sample
         :rtype: int
         """
         return self.data["currentSampleSize"]
@@ -602,18 +602,18 @@ class DriftModelResult(object):
 
     def get_reference_sample_size(self):
         """
-        Get the number of rows coming from reference ME in the drift model trainset.
+        Get the number of rows coming from reference model evaluation in the drift model trainset.
 
-        :return: the number of rows coming from reference ME
+        :return: the number of rows coming from reference model evaluation
         :rtype: int
         """
         return self.data["referenceSampleSize"]
 
     def get_current_sample_size(self):
         """
-        Get the number of rows coming from current ME in the drift model trainset.
+        Get the number of rows coming from current model evaluation in the drift model trainset.
 
-        :return: the number of rows coming from current ME
+        :return: the number of rows coming from current model evaluation
         :rtype: int
         """
         return self.data["currentSampleSize"]
@@ -686,7 +686,7 @@ class ColumnReport(object):
 
     def get_actual_column_handling(self):
         """
-        Get the actual column handling (either forced via drift params or inferred from ME preprocessings).
+        Get the actual column handling (either forced via drift params or inferred from model evaluation preprocessings).
         It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
 
         :return: the actual column handling
@@ -696,7 +696,7 @@ class ColumnReport(object):
 
     def get_default_column_handling(self):
         """
-        Get the default column handling (based on ME preprocessing only).
+        Get the default column handling (based on model evaluation preprocessing only).
         It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
 
         :return: the default column handling
@@ -762,9 +762,9 @@ class DriftModelAccuracy(object):
 
     def get_pvalue(self):
         """
-        Get the drift model accuracy pvalue for H0: "there is no drift".
+        Get the drift model accuracy pvalue for null hypothesis: "there is no drift".
 
-        :return: the accuracy pvalue for H0: "there is no drift"
+        :return: the accuracy pvalue for null hypothesis
         :rtype: float
         """
         return self.data["pvalue"]
