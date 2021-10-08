@@ -1867,7 +1867,7 @@ class DSSTrainedModelDetails(object):
         :returns: list of diagnostics
         :rtype: list of type `dataikuapi.dss.ml.DSSMLDiagnostic`
         """
-        diagnostics = self.details.get("trainDiagnostics", {})
+        diagnostics = self.details.get("mlDiagnostics", {})
         return [DSSMLDiagnostic(d) for d in diagnostics.get("diagnostics", [])]
 
     def generate_documentation(self, folder_id=None, path=None):
