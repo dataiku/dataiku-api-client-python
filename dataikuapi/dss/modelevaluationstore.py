@@ -554,14 +554,14 @@ class DataDriftResult(object):
         """
         return UnivariateDriftResult(self.data["univariateDriftResult"])
 
-    def get_per_column_report(self):
+    def get_per_column_settings(self):
         """
         Get the information about column handling that has been used (errors, types, etc).
 
-        :return: A list of handles on column reports
-        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.ColumnReport`
+        :return: A list of handles on column settings
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.ColumnSettings`
         """
-        return map(ColumnReport, self.data["perColumnReport"])
+        return map(ColumnSettings, self.data["perColumnSettings"])
 
     def get_reference_sample_size(self):
         """
@@ -657,11 +657,11 @@ class UnivariateDriftResult(object):
         return self.data["columns"]
 
 
-class ColumnReport(object):
+class ColumnSettings(object):
     """
     A handle on column handling information.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_per_column_report`
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_per_column_settings`
     """
     def __init__(self, data):
         self.data = data
