@@ -122,18 +122,18 @@ class DSSModelEvaluationStore(object):
         :returns: The list of the model evaluations
         :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
         """
-        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
+        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id))
+        return [DSSModelEvaluation(self, item["ref"]["evaluationId"]) for item in items]
 
-    def get_model_evaluation(self, run_id):
+    def get_model_evaluation(self, evaluation_id):
         """
         Get a handle to interact with a specific model evaluation
        
-        :param string run_id: the id of the desired model evaluation
+        :param string evaluation_id: the id of the desired model evaluation
         
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
         """
-        return DSSModelEvaluation(self, run_id)
+        return DSSModelEvaluation(self, evaluation_id)
 
     def get_latest_model_evaluation(self):
         """
@@ -144,11 +144,11 @@ class DSSModelEvaluationStore(object):
             if the store is not empty, else None
         """
 
-        latest_run_id = self.client._perform_text(
-            "GET", "/projects/%s/modelevaluationstores/%s/latestRunId" % (self.project_key, self.mes_id))
-        if not latest_run_id:
+        latest_evaluation_id = self.client._perform_text(
+            "GET", "/projects/%s/modelevaluationstores/%s/latestEvaluationId" % (self.project_key, self.mes_id))
+        if not latest_evaluation_id:
             return None
-        return DSSModelEvaluation(self, latest_run_id)
+        return DSSModelEvaluation(self, latest_evaluation_id)
 
     def delete_model_evaluations(self, evaluations):
         """
@@ -157,13 +157,13 @@ class DSSModelEvaluationStore(object):
         obj = []
         for evaluation in evaluations:
             if isinstance(evaluation, DSSModelEvaluation):
-                obj.append(evaluation.run_id)
+                obj.append(evaluation.evaluation_id)
             elif isinstance(evaluation, dict):
-                obj.append(evaluation['run_id'])
+                obj.append(evaluation['evaluation_id'])
             else:
                 obj.append(evaluation)
         self.client._perform_json(
-                "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id, self.run_id), body=obj)
+                "DELETE", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id), body=obj)
 
     def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True, no_fail=False):
         """
@@ -261,11 +261,11 @@ class DSSModelEvaluation:
     Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluationStore.get_model_evaluation`
     """
 
-    def __init__(self, model_evaluation_store, run_id):
+    def __init__(self, model_evaluation_store, evaluation_id):
         self.model_evaluation_store = model_evaluation_store
         self.client = model_evaluation_store.client
         # unpack some fields
-        self.run_id = run_id
+        self.evaluation_id = evaluation_id
         self.project_key = model_evaluation_store.project_key
         self.mes_id = model_evaluation_store.mes_id
 
@@ -276,23 +276,23 @@ class DSSModelEvaluation:
         :return: the model evaluation full info, as a :class:`dataikuapi.dss.DSSModelEvaluationInfo`
         """
         data = self.client._perform_json(
-            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s" % (self.project_key, self.mes_id, self.run_id))
+            "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s" % (self.project_key, self.mes_id, self.evaluation_id))
         return DSSModelEvaluationFullInfo(self, data)
 
     def get_full_id(self):
-        return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.run_id)
+        return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.evaluation_id)
 
     def delete(self):
         """
         Remove this model evaluation
         """
-        obj = [self.run_id]
+        obj = [self.evaluation_id]
         self.client._perform_json(
-                "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
+                "DELETE", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id), body=obj)
 
     @property
     def full_id(self):
-        return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.run_id)
+        return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.evaluation_id)
 
     def compute_data_drift(self, reference=None, data_drift_params=None, wait=True):
         """
@@ -314,7 +314,7 @@ class DSSModelEvaluation:
             data_drift_params = data_drift_params.data
 
         future_response = self.client._perform_json(
-            "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
+            "POST", "/projects/%s/modelevaluationstores/%s/evaluations/%s/computeDataDrift" % (self.project_key, self.mes_id, self.evaluation_id),
             body={
                 "referenceId": reference,
                 "dataDriftParams": data_drift_params
@@ -329,7 +329,7 @@ class DSSModelEvaluation:
         :return: the metrics, as a JSON object
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
+            "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s/metrics" % (self.project_key, self.mes_id, self.evaluation_id))
 
     def get_sample_df(self):
         """
@@ -341,12 +341,12 @@ class DSSModelEvaluation:
         buf = BytesIO()
         with self.client._perform_raw(
                 "GET",
-                "/projects/%s/modelevaluationstores/%s/runs/%s/sample" % (self.project_key, self.mes_id, self.run_id)
+                "/projects/%s/modelevaluationstores/%s/evaluations/%s/sample" % (self.project_key, self.mes_id, self.evaluation_id)
         ).raw as f:
             buf.write(f.read())
         schema_txt = self.client._perform_raw(
             "GET",
-            "/projects/%s/modelevaluationstores/%s/runs/%s/schema" % (self.project_key, self.mes_id, self.run_id)
+            "/projects/%s/modelevaluationstores/%s/evaluations/%s/schema" % (self.project_key, self.mes_id, self.evaluation_id)
         ).text
         schema = json.loads(schema_txt)
         import pandas as pd
