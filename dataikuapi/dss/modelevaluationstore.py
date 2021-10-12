@@ -369,7 +369,8 @@ class DSSModelEvaluationFullInfo:
     def get_raw(self):
         return self.full_info
 
-    def get_metrics(self):
+    @property
+    def metrics(self):
         """
         Get the metrics evaluated, if any.
 
@@ -377,7 +378,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["metrics"]
 
-    def get_labels(self):
+    @property
+    def labels(self):
         """
         Get the labels of the model evaluation
 
@@ -385,7 +387,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["labels"]
 
-    def get_evaluation_parameters(self):
+    @property
+    def evaluation_parameters(self):
         """
         Get info on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field
         of the returned dict)
@@ -394,7 +397,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["metricParams"]
 
-    def get_creation_date(self):
+    @property
+    def creation_date(self):
         """
         Return the date and time of the creation of the model evaluation
 
@@ -402,7 +406,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["created"]
 
-    def get_full_id(self):
+    @property
+    def full_id(self):
         """
         Returns the full id of the model evaluation.
 
@@ -410,7 +415,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["ref"]["fullId"]
 
-    def get_model_full_id(self):
+    @property
+    def model_full_id(self):
         """
         Returns the full id of the evaluated model.
 
@@ -418,7 +424,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["modelRef"]["fullId"]
 
-    def get_model_type(self):
+    @property
+    def model_type(self):
         """
         Returns the evaluated model type.
 
@@ -426,7 +433,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["modelType"]
 
-    def get_model_parameters(self):
+    @property
+    def model_parameters(self):
         """
         Returns the evaluated model params.
 
@@ -434,7 +442,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["modelParams"]
 
-    def get_prediction_type(self):
+    @property
+    def prediction_type(self):
         """
         Returns the prediction type of the evaluated model.
 
@@ -442,7 +451,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["predictionType"]
 
-    def get_prediction_variable(self):
+    @property
+    def prediction_variable(self):
         """
         Returns the prediction variable used for evaluation.
 
@@ -450,7 +460,8 @@ class DSSModelEvaluationFullInfo:
         """
         return self.full_info["evaluation"]["predictionVariable"]
 
-    def get_target_variable(self):
+    @property
+    def target_variable(self):
         """
         Returns the target variable used for evaluation.
 
@@ -563,7 +574,8 @@ class DataDriftResult(object):
         """
         return map(ColumnSettings, self.data["perColumnSettings"])
 
-    def get_reference_sample_size(self):
+    @property
+    def reference_sample_size(self):
         """
         Get the size of the reference model evaluation sample.
 
@@ -572,7 +584,8 @@ class DataDriftResult(object):
         """
         return self.data["referenceSampleSize"]
 
-    def get_current_sample_size(self):
+    @property
+    def current_sample_size(self):
         """
         Size of the current model evaluation sample.
 
@@ -600,7 +613,8 @@ class DriftModelResult(object):
         """
         return self.data
 
-    def get_reference_sample_size(self):
+    @property
+    def reference_sample_size(self):
         """
         Get the number of rows coming from reference model evaluation in the drift model trainset.
 
@@ -609,7 +623,8 @@ class DriftModelResult(object):
         """
         return self.data["referenceSampleSize"]
 
-    def get_current_sample_size(self):
+    @property
+    def current_sample_size(self):
         """
         Get the number of rows coming from current model evaluation in the drift model trainset.
 
@@ -649,9 +664,19 @@ class UnivariateDriftResult(object):
     def get_raw(self):
         """
         Get the raw univariate data drift.
-        It consists of a map with column name as keys, and a `dict ` with drift data as value.
 
         :return: the raw univariate data drift
+        :rtype: dict
+        """
+        return self.data
+
+    @property
+    def drift_data_per_column(self):
+        """
+        Get the drift data per column.
+        It consists of a map with column name as keys, and a `dict ` with drift data as value.
+
+        :return: the drift data per column
         :rtype: dict
         """
         return self.data["columns"]
@@ -675,7 +700,8 @@ class ColumnSettings(object):
         """
         return self.data
 
-    def get_name(self):
+    @property
+    def name(self):
         """
         Get the column name.
 
@@ -684,7 +710,8 @@ class ColumnSettings(object):
         """
         return self.data["name"]
 
-    def get_actual_column_handling(self):
+    @property
+    def actual_column_handling(self):
         """
         Get the actual column handling (either forced via drift params or inferred from model evaluation preprocessings).
         It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
@@ -694,7 +721,8 @@ class ColumnSettings(object):
         """
         return self.data["actualHandling"]
 
-    def get_default_column_handling(self):
+    @property
+    def default_column_handling(self):
         """
         Get the default column handling (based on model evaluation preprocessing only).
         It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
@@ -704,7 +732,8 @@ class ColumnSettings(object):
         """
         return self.data["defaultHandling"]
 
-    def get_error_message(self):
+    @property
+    def error_message(self):
         """
         Get the error message.
         For example: "could not treat column as numerical" (in this case, the column handling is forced to 'IGNORED').
@@ -733,7 +762,8 @@ class DriftModelAccuracy(object):
         """
         return self.data
 
-    def get_value(self):
+    @property
+    def value(self):
         """
         Get the drift model accuracy value.
 
@@ -742,7 +772,8 @@ class DriftModelAccuracy(object):
         """
         return self.data["value"]
 
-    def get_lower_confidence_interval(self):
+    @property
+    def lower_confidence_interval(self):
         """
         Get the drift model accuracy lower confidence interval.
 
@@ -751,7 +782,8 @@ class DriftModelAccuracy(object):
         """
         return self.data["lower"]
 
-    def get_upper_confidence_interval(self):
+    @property
+    def upper_confidence_interval(self):
         """
         Get the drift model accuracy upper confidence interval.
 
@@ -760,7 +792,8 @@ class DriftModelAccuracy(object):
         """
         return self.data["upper"]
 
-    def get_pvalue(self):
+    @property
+    def pvalue(self):
         """
         Get the drift model accuracy pvalue for null hypothesis: "there is no drift".
 
@@ -788,7 +821,8 @@ class DriftVersusImportanceChart(object):
         """
         return self.data
 
-    def get_column_names(self):
+    @property
+    def column_names(self):
         """
         Get the column names.
 
@@ -797,7 +831,8 @@ class DriftVersusImportanceChart(object):
         """
         return self.data["columns"]
 
-    def get_column_drift_scores(self):
+    @property
+    def column_drift_scores(self):
         """
         Get the importance of the columns in the drift model.
 
@@ -806,7 +841,8 @@ class DriftVersusImportanceChart(object):
         """
         return self.data["columnDriftScores"]
 
-    def get_column_original_scores(self):
+    @property
+    def column_original_scores(self):
         """
         Get the importance of the columns in the original model.
         Returns None when it can't be computed.
