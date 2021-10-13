@@ -595,10 +595,8 @@ class DSSClient(object):
             "GET", "/admin/global-api-keys/")
         if as_type == 'objects':
             return [DSSGlobalApiKey(self, item['id']) for item in resp]
-        elif as_type == 'dict':
-            return resp
         else:
-            raise ValueError("Unknown as_type")
+            return resp
 
     def get_global_api_key(self, key):
         """
@@ -624,7 +622,7 @@ class DSSClient(object):
 
     def create_global_api_key(self, label=None, description=None, admin=False, as_type='object'):
         """
-        Create a Global API key, and return a handle to interact with it
+        Create a Global API key
 
         Note: this call requires an API key with admin rights
 
@@ -652,10 +650,8 @@ class DSSClient(object):
 
         if as_type == 'object':
             return DSSGlobalApiKey(self, resp.get('id', ''))
-        elif as_type == 'dict':
-            return resp
         else:
-            raise ValueError("Unknown as_type")
+            return resp
     ########################################################
     # Personal API Keys
     ########################################################
@@ -675,16 +671,15 @@ class DSSClient(object):
             "GET", "/personal-api-keys/")
         if as_type == 'objects':
             return [DSSPersonalApiKey(self, item['id']) for item in resp]
-        elif as_type == 'dict':
-            return resp
         else:
-            raise ValueError("Unknown as_type")
+            return resp
+
 
     def get_personal_api_key(self, id_):
         """
-        Get a specific API key from the user doing the request
+        Get a specific API key
 
-        :param str id_: the id the desired API key
+        :param str id_: the id of the desired API key
 
         :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key
         """
@@ -692,7 +687,7 @@ class DSSClient(object):
 
     def create_personal_api_key(self, label="", description="", as_type='dict', on_behalf=""):
         """
-        Create a Personal API key belonging to the user doing the request, and return a handle to interact with it
+        Create a Personal API key
 
         :param str label: the label of the new API key
         :param str description: the description of the new API key
@@ -712,10 +707,8 @@ class DSSClient(object):
 
         if as_type == 'object':
             return DSSPersonalApiKey(self, resp["id"])
-        elif as_type == 'dict':
-            return resp
         else:
-            raise ValueError("Unknown as_type")
+            return resp
 
     ########################################################
     # Meanings

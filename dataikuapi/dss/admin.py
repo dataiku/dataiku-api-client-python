@@ -803,6 +803,7 @@ class DSSPersonalApiKey(object):
     A personal API key on the DSS instance
     """
     def __init__(self, client, id_):
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`"""
         self.client = client
         self.id_ = id_
 
@@ -812,7 +813,7 @@ class DSSPersonalApiKey(object):
 
     def delete(self):
         """
-        Delete the api key
+        Delete the API key
         """
         return self.client._perform_empty(
             "DELETE", "/personal-api-keys/%s" % self.id_)
@@ -832,10 +833,10 @@ class DSSPersonalApiKey(object):
 
     def update(self, label="", description=""):
         """
-        Get the API key's definition
+        Update the API key's definition
 
-        :param str label: Label for the API key (optional)
-        :param str description: Description for the API key (optional)
+        :param str label: Label for the API key
+        :param str description: Description for the API key
 
         :returns: the personal API key definition, as a JSON object
         """
