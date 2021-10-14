@@ -79,17 +79,21 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self, drop_data=False):
+    def delete(self, drop_data=False, drop_managed_folders_output_of_recipe=False, delete_job_logs=False):
         """
         Delete the project
 
         This call requires an API key with admin rights
 
         :param bool drop_data: Should the data of managed datasets be dropped
+        :param bool drop_managed_folders_output_of_recipe: Should the data from managed folders be dropped
+        :param bool delete_job_logs: Should the job logs be deleted
         """
         return self.client._perform_empty(
-            "DELETE", "/projects/%s" % self.project_key, params = {
-                "dropData": drop_data
+            "DELETE", "/projects/%s" % self.project_key, params={
+                "dropData": drop_data,
+                "dropManagedFoldersOutputOfRecipe": drop_managed_folders_output_of_recipe,
+                "deleteJobLogs": delete_job_logs
             })
 
     ########################################################
