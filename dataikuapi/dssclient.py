@@ -659,7 +659,7 @@ class DSSClient(object):
     def list_personal_api_keys(self, as_type='dict'):
         """
         List all personal API keys:
-            - not admin: only the keys belonging to the owner of the key
+            - not admin: only the keys belonging to the current user
             - admin: all the personal keys
 
         :param str as_type: 'objects' or 'dict'

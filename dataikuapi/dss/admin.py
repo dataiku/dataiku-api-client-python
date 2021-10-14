@@ -831,12 +831,12 @@ class DSSPersonalApiKey(object):
         return self.client._perform_json(
             "GET", "/personal-api-keys/%s" % (self.id_))
 
-    def update(self, label="", description=""):
+    def update(self, label=None, description=None):
         """
         Update the API key's definition
 
-        :param str label: Label for the API key
-        :param str description: Description for the API key
+        :param str label: Label for the API key (Optional)
+        :param str description: Description for the API key (Optional)
 
         :returns: the personal API key definition, as a JSON object
         """
