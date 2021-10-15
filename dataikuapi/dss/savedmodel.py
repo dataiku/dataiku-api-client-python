@@ -140,7 +140,7 @@ class DSSSavedModel(object):
         try:
             archive_filename = shutil.make_archive(os.path.join(archive_temp_dir, "tmpmodel"), "zip", path) #[, root_dir[, base_dir[, verbose[, dry_run[, owner[, group[, logger]]]]]]])
 
-            with open("tmpmodel.zip", "rb") as fp:
+            with open(archive_filename, "rb") as fp:
                 self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
                     files={"file":(archive_filename, fp)})
             return self.get_mlflow_version_handler(version_id)
