@@ -460,8 +460,6 @@ class DataDriftResult(object):
         """Per-column drift analysis based on comparison of distributions."""
         self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]]
         """Information about column handling that has been used (errors, types, etc)."""
-        self.reference_sample_size = self.data["referenceSampleSize"]  # type: int
-        self.current_sample_size = self.data["currentSampleSize"]  # type: int
 
     def get_raw(self):
         """
@@ -481,10 +479,6 @@ class DriftModelResult(object):
     """
     def __init__(self, data):
         self.data = data
-        self.reference_sample_size = self.data["referenceSampleSize"]  # type: int
-        """Number of rows coming from reference model evaluation in the drift model trainset."""
-        self.current_sample_size = self.data["currentSampleSize"]  # type: int
-        """Number of rows coming from current model evaluation in the drift model trainset."""
         self.drift_model_accuracy = DriftModelAccuracy(self.data["driftModelAccuracy"])
         self.feature_drift_importance = self.data["driftVersusImportance"]  # type: dict
 
