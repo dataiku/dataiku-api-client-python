@@ -458,7 +458,7 @@ class DataDriftResult(object):
         """Drift analysis based on drift modeling."""
         self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"])
         """Per-column drift analysis based on comparison of distributions."""
-        self.per_column_settings = list(map(ColumnSettings, self.data["perColumnSettings"]))
+        self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]]
         """Information about column handling that has been used (errors, types, etc)."""
         self.reference_sample_size = self.data["referenceSampleSize"]  # type: int
         self.current_sample_size = self.data["currentSampleSize"]  # type: int
