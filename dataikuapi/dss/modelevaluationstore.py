@@ -365,109 +365,30 @@ class DSSModelEvaluationFullInfo:
     def __init__(self, model_evaluation, full_info):
         self.model_evaluation = model_evaluation
         self.full_info = full_info
+        self.metrics = self.full_info["metrics"]  # type: dict
+        """The performance and data drift metric, if any."""
+        self.evaluation_parameters = self.full_info["evaluation"]["metricParams"]  # type: dict
+        """Information on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field of the returned dict)."""
+        self.creation_date = self.full_info["evaluation"]["created"]  # type: int
+        """The date and time of the creation of the model evaluation, as an epoch."""
+        self.full_id = self.full_info["evaluation"]["ref"]["fullId"]  # type: str
+        self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
+        self.model_type = self.full_info["evaluation"]["modelType"]  # type: str
+        self.model_parameters = self.full_info["evaluation"]["modelParams"]
+        self.prediction_type = self.full_info["evaluation"]["predictionType"]  # type: str
+        self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
+        self.target_variable = self.full_info["evaluation"]["targetVariable"]  # type: str
+        self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
+        """The user-accessible metadata (name, labels)
+        Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling :meth:`save_user_meta`."""
 
     def get_raw(self):
         return self.full_info
 
-    @property
-    def metrics(self):
-        """
-        Get the metrics evaluated, if any.
-
-        :return: a dict containing the performance and data drift metric, if any
-        """
-        return self.full_info["metrics"]
-
-    @property
-    def labels(self):
-        """
-        Get the labels of the model evaluation
-
-        :return: a dict containing the labels
-        """
-        return self.full_info["evaluation"]["labels"]
-
-    @property
-    def evaluation_parameters(self):
-        """
-        Get info on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field
-        of the returned dict)
-
-        :return: a dict
-        """
-        return self.full_info["evaluation"]["metricParams"]
-
-    @property
-    def creation_date(self):
-        """
-        Return the date and time of the creation of the model evaluation
-
-        :return: the date and time, as an epoch
-        """
-        return self.full_info["evaluation"]["created"]
-
-    @property
-    def full_id(self):
-        """
-        Returns the full id of the model evaluation.
-
-        :return: the full id, as a string
-        """
-        return self.full_info["evaluation"]["ref"]["fullId"]
-
-    @property
-    def model_full_id(self):
-        """
-        Returns the full id of the evaluated model.
-
-        :return: the model full id, as a string
-        """
-        return self.full_info["evaluation"]["modelRef"]["fullId"]
-
-    @property
-    def model_type(self):
-        """
-        Returns the evaluated model type.
-
-        :return: the model type, as a string
-        """
-        return self.full_info["evaluation"]["modelType"]
-
-    @property
-    def model_parameters(self):
-        """
-        Returns the evaluated model params.
-
-        :return: the model params, as a dict
-        """
-        return self.full_info["evaluation"]["modelParams"]
-
-    @property
-    def prediction_type(self):
-        """
-        Returns the prediction type of the evaluated model.
-
-        :return: the prediction type, as a string
-        """
-        return self.full_info["evaluation"]["predictionType"]
-
-    @property
-    def prediction_variable(self):
-        """
-        Returns the prediction variable used for evaluation.
-
-        :return: the prediction variable, as a string
-        """
-        return self.full_info["evaluation"]["predictionVariable"]
-
-    @property
-    def target_variable(self):
-        """
-        Returns the target variable used for evaluation.
-
-        :return: the target variable, as a string
-        """
-        return self.full_info["evaluation"]["targetVariable"]
+    def save_user_meta(self):
+        return self.model_evaluation.client._perform_text(
+                "PUT", "/projects/%s/modelevaluationstores/%s/evaluations/%s/user-meta" %
+                       (self.model_evaluation.project_key, self.model_evaluation.mes_id, self.model_evaluation.evaluation_id), body=self.user_meta)
 
 
 class DataDriftParams(object):
@@ -537,6 +458,14 @@ class DataDriftResult(object):
     """
     def __init__(self, data):
         self.data = data
+        self.drift_model_result = DriftModelResult(self.data["driftModelResult"])
+        """Drift analysis based on drift modeling."""
+        self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"])
+        """Per-column drift analysis based on comparison of distributions."""
+        self.per_column_settings = list(map(ColumnSettings, self.data["perColumnSettings"]))
+        """Information about column handling that has been used (errors, types, etc)."""
+        self.reference_sample_size = self.data["referenceSampleSize"]  # type: int
+        self.current_sample_size = self.data["currentSampleSize"]  # type: int
 
     def get_raw(self):
         """
@@ -547,53 +476,6 @@ class DataDriftResult(object):
         """
         return self.data
 
-    def get_drift_model_result(self):
-        """
-        Get the drift analysis based on drift modeling.
-
-        :return: A handle on the drift model result
-        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DriftModelResult`
-        """
-        return DriftModelResult(self.data["driftModelResult"])
-
-    def get_univariate_drift_result(self):
-        """
-        Get a per-column drift analysis based on comparison of distributions.
-
-        :return: A handle on the univariate drift result
-        :rtype: :class:`dataikuapi.dss.modelevaluationstore.UnivariateDriftResult`
-        """
-        return UnivariateDriftResult(self.data["univariateDriftResult"])
-
-    def get_per_column_settings(self):
-        """
-        Get the information about column handling that has been used (errors, types, etc).
-
-        :return: A list of handles on column settings
-        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.ColumnSettings`
-        """
-        return map(ColumnSettings, self.data["perColumnSettings"])
-
-    @property
-    def reference_sample_size(self):
-        """
-        Get the size of the reference model evaluation sample.
-
-        :return: the size of the reference model evaluation sample
-        :rtype: int
-        """
-        return self.data["referenceSampleSize"]
-
-    @property
-    def current_sample_size(self):
-        """
-        Size of the current model evaluation sample.
-
-        :return: the size of the current model evaluation sample
-        :rtype: int
-        """
-        return self.data["currentSampleSize"]
-
 
 class DriftModelResult(object):
     """
@@ -603,6 +485,12 @@ class DriftModelResult(object):
     """
     def __init__(self, data):
         self.data = data
+        self.reference_sample_size = self.data["referenceSampleSize"]  # type: int
+        """Number of rows coming from reference model evaluation in the drift model trainset."""
+        self.current_sample_size = self.data["currentSampleSize"]  # type: int
+        """Number of rows coming from current model evaluation in the drift model trainset."""
+        self.drift_model_accuracy = DriftModelAccuracy(self.data["driftModelAccuracy"])
+        self.feature_drift_importance = DriftVersusImportanceChart(self.data["driftVersusImportance"])
 
     def get_raw(self):
         """
@@ -613,44 +501,6 @@ class DriftModelResult(object):
         """
         return self.data
 
-    @property
-    def reference_sample_size(self):
-        """
-        Get the number of rows coming from reference model evaluation in the drift model trainset.
-
-        :return: the number of rows coming from reference model evaluation
-        :rtype: int
-        """
-        return self.data["referenceSampleSize"]
-
-    @property
-    def current_sample_size(self):
-        """
-        Get the number of rows coming from current model evaluation in the drift model trainset.
-
-        :return: the number of rows coming from current model evaluation
-        :rtype: int
-        """
-        return self.data["currentSampleSize"]
-
-    def get_drift_model_accuracy(self):
-        """
-        Get the drift model accuracy information.
-
-        :return: A handle to interact with the drift model accuracy information
-        :rtype: :class:`dataiku.dss.modelevaluationstore.DriftModelAccuracy`
-        """
-        return DriftModelAccuracy(self.data["driftModelAccuracy"])
-
-    def get_feature_drift_importance(self):
-        """
-        Get the feature drift importance chart data.
-
-        :return: A handle on feature drift importance chart data
-        :rtype: :class:`dataiku.dss.modelevaluationstore.DriftVersusImportanceChart`
-        """
-        return DriftVersusImportanceChart(self.data["driftVersusImportance"])
-
 
 class UnivariateDriftResult(object):
     """
@@ -660,6 +510,8 @@ class UnivariateDriftResult(object):
     """
     def __init__(self, data):
         self.data = data
+        self.per_column_drift_data = self.data["columns"]  # type: dict
+        """Drift data per column, as a dict of column name -> drift data."""
 
     def get_raw(self):
         """
@@ -670,17 +522,6 @@ class UnivariateDriftResult(object):
         """
         return self.data
 
-    @property
-    def drift_data_per_column(self):
-        """
-        Get the drift data per column.
-        It consists of a map with column name as keys, and a `dict ` with drift data as value.
-
-        :return: the drift data per column
-        :rtype: dict
-        """
-        return self.data["columns"]
-
 
 class ColumnSettings(object):
     """
@@ -690,6 +531,14 @@ class ColumnSettings(object):
     """
     def __init__(self, data):
         self.data = data
+        self.name = self.data["name"]  # type: str
+        self.actual_column_handling = self.data["actualHandling"]  # type: str
+        """The actual column handling (either forced via drift params or inferred from model evaluation preprocessings).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED."""
+        self.default_column_handling = self.data["defaultHandling"]  # type: str
+        """The default column handling (based on model evaluation preprocessing only).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED."""
+        self.error_message = self.data.get("errorMessage", None)
 
     def get_raw(self):
         """
@@ -700,49 +549,6 @@ class ColumnSettings(object):
         """
         return self.data
 
-    @property
-    def name(self):
-        """
-        Get the column name.
-
-        :return: the column name
-        :rtype: string
-        """
-        return self.data["name"]
-
-    @property
-    def actual_column_handling(self):
-        """
-        Get the actual column handling (either forced via drift params or inferred from model evaluation preprocessings).
-        It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
-
-        :return: the actual column handling
-        :rtype: string
-        """
-        return self.data["actualHandling"]
-
-    @property
-    def default_column_handling(self):
-        """
-        Get the default column handling (based on model evaluation preprocessing only).
-        It can be any of NUMERICAL, CATEGORICAL, or IGNORED.
-
-        :return: the default column handling
-        :rtype: string
-        """
-        return self.data["defaultHandling"]
-
-    @property
-    def error_message(self):
-        """
-        Get the error message.
-        For example: "could not treat column as numerical" (in this case, the column handling is forced to 'IGNORED').
-
-        :return: the error message, if there is any
-        :rtype: string
-        """
-        return self.data["errorMessage"]
-
 
 class DriftModelAccuracy(object):
     """
@@ -752,6 +558,10 @@ class DriftModelAccuracy(object):
     """
     def __init__(self, data):
         self.data = data
+        self.value = self.data["value"]  # type: float
+        self.lower_confidence_interval = self.data["lower"]  # type: float
+        self.upper_confidence_interval = self.data["upper"]  # type: float
+        self.pvalue = self.data["pvalue"]  # type: float
 
     def get_raw(self):
         """
@@ -762,46 +572,6 @@ class DriftModelAccuracy(object):
         """
         return self.data
 
-    @property
-    def value(self):
-        """
-        Get the drift model accuracy value.
-
-        :return: the accuracy value
-        :rtype: float
-        """
-        return self.data["value"]
-
-    @property
-    def lower_confidence_interval(self):
-        """
-        Get the drift model accuracy lower confidence interval.
-
-        :return: the lower confidence interval
-        :rtype: float
-        """
-        return self.data["lower"]
-
-    @property
-    def upper_confidence_interval(self):
-        """
-        Get the drift model accuracy upper confidence interval.
-
-        :return: the upper confidence interval
-        :rtype: float
-        """
-        return self.data["upper"]
-
-    @property
-    def pvalue(self):
-        """
-        Get the drift model accuracy pvalue for null hypothesis: "there is no drift".
-
-        :return: the accuracy pvalue for null hypothesis
-        :rtype: float
-        """
-        return self.data["pvalue"]
-
 
 class DriftVersusImportanceChart(object):
     """
@@ -811,6 +581,9 @@ class DriftVersusImportanceChart(object):
     """
     def __init__(self, data):
         self.data = data
+        self.column_names = self.data["columns"]  # type: list
+        self.column_drift_scores = self.data["columnDriftScores"]  # type: list
+        self.column_original_scores = self.data["columnImportanceScores"]  # type: list
 
     def get_raw(self):
         """
@@ -820,34 +593,3 @@ class DriftVersusImportanceChart(object):
         :rtype: dict
         """
         return self.data
-
-    @property
-    def column_names(self):
-        """
-        Get the column names.
-
-        :return: a `list` of the column names
-        :rtype: list of string
-        """
-        return self.data["columns"]
-
-    @property
-    def column_drift_scores(self):
-        """
-        Get the importance of the columns in the drift model.
-
-        :return: the `list` of the importance of the columns in the drift model
-        :rtype: list of float
-        """
-        return self.data["columnDriftScores"]
-
-    @property
-    def column_original_scores(self):
-        """
-        Get the importance of the columns in the original model.
-        Returns None when it can't be computed.
-
-        :return: the `list` of the importance of the columns in the original model
-        :rtype: list of float
-        """
-        return self.data["columnImportanceScores"]
