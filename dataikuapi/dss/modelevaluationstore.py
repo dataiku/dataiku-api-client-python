@@ -367,14 +367,10 @@ class DSSModelEvaluationFullInfo:
         self.full_info = full_info
         self.metrics = self.full_info["metrics"]  # type: dict
         """The performance and data drift metric, if any."""
-        self.evaluation_parameters = self.full_info["evaluation"]["metricParams"]  # type: dict
-        """Information on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field of the returned dict)."""
         self.creation_date = self.full_info["evaluation"]["created"]  # type: int
         """The date and time of the creation of the model evaluation, as an epoch."""
         self.full_id = self.full_info["evaluation"]["ref"]["fullId"]  # type: str
         self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
-        self.model_type = self.full_info["evaluation"]["modelType"]  # type: str
-        self.model_parameters = self.full_info["evaluation"]["modelParams"]
         self.prediction_type = self.full_info["evaluation"]["predictionType"]  # type: str
         self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
         self.target_variable = self.full_info["evaluation"]["targetVariable"]  # type: str
@@ -481,7 +477,7 @@ class DriftModelResult(object):
     """
     A handle on the drift model result.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_drift_model_result`
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DataDriftResult.drift_model_result`
     """
     def __init__(self, data):
         self.data = data
@@ -490,7 +486,7 @@ class DriftModelResult(object):
         self.current_sample_size = self.data["currentSampleSize"]  # type: int
         """Number of rows coming from current model evaluation in the drift model trainset."""
         self.drift_model_accuracy = DriftModelAccuracy(self.data["driftModelAccuracy"])
-        self.feature_drift_importance = DriftVersusImportanceChart(self.data["driftVersusImportance"])
+        self.feature_drift_importance = self.data["driftVersusImportance"]  # type: dict
 
     def get_raw(self):
         """
@@ -506,7 +502,7 @@ class UnivariateDriftResult(object):
     """
     A handle on the univariate data drift.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_univariate_drift_result`
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DataDriftResult.univariate_drift_result`
     """
     def __init__(self, data):
         self.data = data
@@ -554,7 +550,7 @@ class DriftModelAccuracy(object):
     """
     A handle on the drift model accuracy.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DriftModelResult.get_drift_model_accuracy`
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DriftModelResult.drift_model_accuracy`
     """
     def __init__(self, data):
         self.data = data
@@ -568,28 +564,6 @@ class DriftModelAccuracy(object):
         Get the raw drift model accuracy data.
 
         :return: the drift model accuracy data
-        :rtype: dict
-        """
-        return self.data
-
-
-class DriftVersusImportanceChart(object):
-    """
-    A handle on the feature drift importance chart data.
-
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DriftModelResult.get_feature_drift_importance`
-    """
-    def __init__(self, data):
-        self.data = data
-        self.column_names = self.data["columns"]  # type: list
-        self.column_drift_scores = self.data["columnDriftScores"]  # type: list
-        self.column_original_scores = self.data["columnImportanceScores"]  # type: list
-
-    def get_raw(self):
-        """
-        Get the raw feature drift importance chart data.
-
-        :return: the feature drift importance chart data
         :rtype: dict
         """
         return self.data
