@@ -399,11 +399,11 @@ class DataDriftParams(object):
         return u"{}({})".format(self.__class__.__name__, self.data)
 
     @staticmethod
-    def from_params(columns, nb_bins=10, compute_histograms=True, confidence_level=0.95):
+    def from_params(per_column_settings, nb_bins=10, compute_histograms=True, confidence_level=0.95):
         """
         Creates parameters for data drift computation from columns, number of bins, compute histograms and confidence level
 
-        :param dict columns: A dict representing the per column settings.
+        :param dict per_column_settings: A dict representing the per column settings.
         You should use a :class:`~dataikuapi.dss.modelevaluationstore.PerColumnDriftParamBuilder` to build it.
         :param int nb_bins: (optional) Nb. bins in histograms (apply to all columns) - default: 10
         :param bool compute_histograms: (optional) Enable/disable histograms - default: True
@@ -412,7 +412,7 @@ class DataDriftParams(object):
         :rtype: :class:`dataikuapi.dss.modelevaluationstore.DataDriftParams`
         """
         return DataDriftParams({
-            "columns": columns,
+            "columns": per_column_settings,
             "nbBins": nb_bins,
             "computeHistograms": compute_histograms,
             "confidenceLevel": confidence_level
@@ -422,7 +422,8 @@ class DataDriftParams(object):
 class PerColumnDriftParamBuilder(object):
     """
     Builder for a map of per column drift params settings.
-    Used as a helper before computing data drift to build columns param expected in dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params.
+    Used as a helper before computing data drift to build columns param expected in
+    :meth:`dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params`.
     """
     def __init__(self):
         self.columns = {}
@@ -431,13 +432,13 @@ class PerColumnDriftParamBuilder(object):
         """Returns the built dict for per column drift params settings"""
         return self.columns
 
-    def with_column_drift_param(self, name, handling="AUTO", enabled=False):
+    def with_column_drift_param(self, name, handling="AUTO", enabled=True):
         """
         Sets the drift params settings for given column name.
 
         :param: string name: The name of the column
         :param: string handling: (optional) The column type, should be either NUMERICAL, CATEGORICAL or AUTO (default: AUTO)
-        :param: bool name: (optional) If the column should be enabled (default: False)
+        :param: bool enabled: (optional) If the column should be enabled in drift computation (default: True)
         """
         self.columns[name] = {
             "handling": handling,
@@ -457,14 +458,12 @@ class DataDriftResult(object):
         self.drift_model_result = DriftModelResult(self.data["driftModelResult"])
         """Drift analysis based on drift modeling."""
         self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"])
-        """Per-column drift analysis based on comparison of distributions."""
+        """Per-column drift analysis based on pairwise comparison of distributions."""
         self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]]
         """Information about column handling that has been used (errors, types, etc)."""
 
     def get_raw(self):
         """
-        Get the raw data drift result.
-
         :return: the raw data drift result
         :rtype: dict
         """
@@ -484,8 +483,6 @@ class DriftModelResult(object):
 
     def get_raw(self):
         """
-        Get the raw drift model result.
-
         :return: the raw drift model result
         :rtype: dict
         """
@@ -505,8 +502,6 @@ class UnivariateDriftResult(object):
 
     def get_raw(self):
         """
-        Get the raw univariate data drift.
-
         :return: the raw univariate data drift
         :rtype: dict
         """
@@ -532,8 +527,6 @@ class ColumnSettings(object):
 
     def get_raw(self):
         """
-        Get the raw column handling information.
-
         :return: the raw column handling information
         :rtype: dict
         """
@@ -555,8 +548,6 @@ class DriftModelAccuracy(object):
 
     def get_raw(self):
         """
-        Get the raw drift model accuracy data.
-
         :return: the drift model accuracy data
         :rtype: dict
         """
