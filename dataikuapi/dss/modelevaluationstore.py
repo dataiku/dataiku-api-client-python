@@ -438,7 +438,7 @@ class PerColumnDriftParamBuilder(object):
 
         :param: string name: The name of the column
         :param: string handling: (optional) The column type, should be either NUMERICAL, CATEGORICAL or AUTO (default: AUTO)
-        :param: bool enabled: (optional) If the column should be enabled in drift computation (default: True)
+        :param: bool enabled: (optional) False means the column is ignored in drift computation (default: True)
         """
         self.columns[name] = {
             "handling": handling,
