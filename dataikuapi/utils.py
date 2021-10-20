@@ -104,10 +104,7 @@ class CallableStr(str):
         return self.val
 
 
-def make_zipfile(output_filename, source_dir):
-    """Replace shutil.make_archive which adds undesired folders to the archive
-    in python 2.7 in some environments.
-    """
+def _make_zipfile(output_filename, source_dir):
     relroot = os.path.abspath(os.path.join(source_dir))
     with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zipfp:
         for root, dirs, files in os.walk(source_dir):
