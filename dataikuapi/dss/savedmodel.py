@@ -5,7 +5,7 @@ from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 
-from ..utils import make_zipfile
+from ..utils import _make_zipfile
 
 try:
     basestring
@@ -141,7 +141,7 @@ class DSSSavedModel(object):
 
         archive_temp_dir = tempfile.mkdtemp()
         try:
-            archive_filename = make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
+            archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
 
             with open(archive_filename, "rb") as fp:
                 self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
