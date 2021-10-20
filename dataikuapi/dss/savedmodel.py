@@ -5,6 +5,8 @@ from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 
+from ..utils import make_zipfile
+
 try:
     basestring
 except NameError:
@@ -136,24 +138,6 @@ class DSSSavedModel(object):
         # TODO: cleanup the archive
         import shutil
         import os
-        import zipfile
-
-        def make_zipfile(output_filename, source_dir):
-            """Replace shutil.make_archive which adds undesired './' to the archive
-            in python 2.7 in some environments.
-            """
-            relroot = os.path.abspath(os.path.join(source_dir))
-            with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zip:
-                for root, dirs, files in os.walk(source_dir):
-                    relpath_root = os.path.relpath(root, relroot)
-                    if relpath_root != ".":
-                        zip.write(root, relpath_root)
-                    for file in files:
-                        filename = os.path.join(root, file)
-                        if os.path.isfile(filename):
-                            arcname = os.path.join(os.path.relpath(root, relroot), file)
-                            zip.write(filename, arcname)
-            return output_filename
 
         archive_temp_dir = tempfile.mkdtemp()
         try:
