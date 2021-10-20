@@ -139,6 +139,9 @@ class DSSSavedModel(object):
         import zipfile
 
         def make_zipfile(output_filename, source_dir):
+            """Replace shutil.make_archive which adds undesired './' to the archive
+            in python 2.7 in some environments.
+            """
             relroot = os.path.abspath(os.path.join(source_dir))
             with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zip:
                 for root, dirs, files in os.walk(source_dir):
