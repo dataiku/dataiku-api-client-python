@@ -5,6 +5,8 @@ from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 
+from ..utils import make_zipfile
+
 try:
     basestring
 except NameError:
@@ -119,7 +121,7 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path, code_env_name = "INHERIT"):
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model.
 
@@ -127,7 +129,7 @@ class DSSSavedModel(object):
 
         :param str version_id: Identifier of the version to create
         :param str path: An absolute path on the local filesystem. Must be a folder, and must contain a MLFlow model
-        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least 
+        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
                                   If value is "INHERIT", the default active code env of the project will be used
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
@@ -136,13 +138,14 @@ class DSSSavedModel(object):
         # TODO: cleanup the archive
         import shutil
         import os
+
         archive_temp_dir = tempfile.mkdtemp()
         try:
-            archive_filename = shutil.make_archive(os.path.join(archive_temp_dir, "tmpmodel"), "zip", path) #[, root_dir[, base_dir[, verbose[, dry_run[, owner[, group[, logger]]]]]]])
+            archive_filename = make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
 
             with open(archive_filename, "rb") as fp:
                 self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
-                    files={"file":(archive_filename, fp)})
+                                           files={"file": (archive_filename, fp)})
             return self.get_mlflow_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
