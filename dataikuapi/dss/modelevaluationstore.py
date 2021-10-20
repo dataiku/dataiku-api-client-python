@@ -370,10 +370,13 @@ class DSSModelEvaluationFullInfo:
         self.creation_date = self.full_info["evaluation"]["created"]  # type: int
         """The date and time of the creation of the model evaluation, as an epoch."""
         self.full_id = self.full_info["evaluation"]["ref"]["fullId"]  # type: str
-        self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
+        if "modelRef" in self.full_info["evaluation"]:
+            self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
+        else:
+            self.model_full_id = None
         self.prediction_type = self.full_info["evaluation"]["predictionType"]  # type: str
         self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
-        self.target_variable = self.full_info["evaluation"]["targetVariable"]  # type: str
+        self.target_variable = self.full_info["evaluation"].get("targetVariable")  # type: str
         self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
         """The user-accessible metadata (name, labels)
         Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling :meth:`save_user_meta`."""
