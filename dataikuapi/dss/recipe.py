@@ -1353,7 +1353,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_store_into(connection)
         dataset = builder.create()
 
-        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").id
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").mes_id
     """
 
     def __init__(self, name, project):
