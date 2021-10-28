@@ -2,6 +2,7 @@ from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 import json
+import os
 from requests import utils
 from .metrics import ComputedMetrics
 from .future import DSSFuture
@@ -99,7 +100,7 @@ class DSSManagedFolder(object):
     def put_file(self, path, f):
         """
         Upload the file to the managed folder
-        
+
         Args:
             f: the file contents, as a stream
             path: the path of the file
@@ -107,6 +108,23 @@ class DSSManagedFolder(object):
         return self.client._perform_json_upload(
                 "POST", "/projects/%s/managedfolders/%s/contents/%s" % (self.project_key, self.odb_id, utils.quote(path)),
                 "", f)
+
+    def upload_folder(self, path, folder):
+        """
+        Upload folder and its content into path
+
+        Args:
+            folder: path to the folder (absolute or relative)
+            path: the path of the folder in the managed folder
+        """
+        real_root = os.path.realpath(folder)
+        for root, _, files in os.walk(real_root):
+            for file in files:
+                filename = os.path.join(root, file)
+                relpath = os.path.relpath(filename, real_root)
+                with open(filename, "r") as f:
+                    self.put_file(os.path.join(path, relpath), f.read())
+        return
 
     ########################################################
     # Managed folder actions
