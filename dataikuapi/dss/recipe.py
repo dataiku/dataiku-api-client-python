@@ -1371,9 +1371,9 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         """Sets the output dataset containing the metrics"""
         return self._with_output(name, role="metrics")
 
-    def with_output_evaluation_store(self, name):
+    def with_output_evaluation_store(self, mes_id):
         """Sets the output model evaluation store"""
-        return self._with_output(name, role="evaluationStore")
+        return self._with_output(mes_id, role="evaluationStore")
 
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
