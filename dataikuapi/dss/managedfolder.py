@@ -111,7 +111,7 @@ class DSSManagedFolder(object):
 
     def upload_folder(self, path, folder):
         """
-        Upload folder and its content into path
+        Upload folder and its content as path in the managed folder.
 
         Args:
             folder: path to the folder (absolute or relative)
