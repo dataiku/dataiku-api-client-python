@@ -151,7 +151,7 @@ class DSSSavedModel(object):
 
     def import_mlflow_version_from_managed_folder(self, version_id, managed_folder_id, path, code_env_name="INHERIT"):
         """
-        Create a new version for this saved model from a path containing a MLFlow model.
+        Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
 
         Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
 
