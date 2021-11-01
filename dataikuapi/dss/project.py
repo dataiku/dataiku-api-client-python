@@ -79,7 +79,7 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self, drop_data=False, drop_managed_folders_output_of_recipe=False, delete_job_logs=False):
+    def delete(self, drop_data=False, drop_managed_folders_output_of_recipe=False, delete_job_logs=True):
         """
         Delete the project
 
