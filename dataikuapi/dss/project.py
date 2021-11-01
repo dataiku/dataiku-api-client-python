@@ -137,11 +137,12 @@ class DSSProject(object):
             * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
             * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
             * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportModelEvaluationStores (boolean): Exports the evaluation stores - default False
             * exportManagedFolders (boolean): Exports the data of managed folders - default False
             * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
             * exportAllDatasets (boolean): Exports the data of all datasets - default False
             * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
-            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportGitRepository (boolean): Exports the Git repository history - default False
             * exportInsightsData (boolean): Exports the data of static insights - default False
         """
         if options is None:
@@ -713,22 +714,22 @@ class DSSProject(object):
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
-    def create_mlflow_pyfunc_model(self, id, prediction_type = None):
+    def create_mlflow_pyfunc_model(self, name, prediction_type = None):
         """
         Creates a new external saved model for storing and managing MLFlow models
 
-        :param string id: Identifier for the new saved model in the flow
+        :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
         """
-        if len(id) != 8:
-            raise ValueError("model id must be 8 characters long")
+        if not name:
+            raise ValueError("name can not be empty")
         model = {
-            "id": id,
             "savedModelType" : "MLFLOW_PYFUNC",
-            "predictionType" : prediction_type
+            "predictionType" : prediction_type,
+            "name": name
         }
 
-        self.client._perform_empty("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)
+        id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)["id"]
         return self.get_saved_model(id)
 
     ########################################################

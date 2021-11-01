@@ -104,7 +104,7 @@ class DSSModelComparisonSettings(object):
         """
         if not self.settings["comparedModels"]:
             return
-        self.settings["comparedModels"] = filter(lambda x: x["refId"] != full_id, self.settings["comparedModels"])
+        self.settings["comparedModels"] = list(filter(lambda x: x["refId"] != full_id, self.settings["comparedModels"]))
 
     def get_compared_items(self):
         """

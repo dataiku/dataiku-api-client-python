@@ -5,8 +5,6 @@ from dataikuapi.dss.metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .future import DSSFuture
 
-from requests import utils
-
 try:
     basestring
 except NameError:
@@ -124,18 +122,18 @@ class DSSModelEvaluationStore(object):
         :returns: The list of the model evaluations
         :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
         """
-        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id))
-        return [DSSModelEvaluation(self, item["ref"]["runId"]) for item in items]
+        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id))
+        return [DSSModelEvaluation(self, item["ref"]["evaluationId"]) for item in items]
 
-    def get_model_evaluation(self, run_id):
+    def get_model_evaluation(self, evaluation_id):
         """
         Get a handle to interact with a specific model evaluation
        
-        :param string run_id: the id of the desired model evaluation
+        :param string evaluation_id: the id of the desired model evaluation
         
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
         """
-        return DSSModelEvaluation(self, run_id)
+        return DSSModelEvaluation(self, evaluation_id)
 
     def get_latest_model_evaluation(self):
         """
@@ -146,11 +144,11 @@ class DSSModelEvaluationStore(object):
             if the store is not empty, else None
         """
 
-        latest_run_id = self.client._perform_text(
-            "GET", "/projects/%s/modelevaluationstores/%s/latestRunId" % (self.project_key, self.mes_id))
-        if not latest_run_id:
+        latest_evaluation_id = self.client._perform_text(
+            "GET", "/projects/%s/modelevaluationstores/%s/latestEvaluationId" % (self.project_key, self.mes_id))
+        if not latest_evaluation_id:
             return None
-        return DSSModelEvaluation(self, latest_run_id)
+        return DSSModelEvaluation(self, latest_evaluation_id)
 
     def delete_model_evaluations(self, evaluations):
         """
@@ -159,17 +157,17 @@ class DSSModelEvaluationStore(object):
         obj = []
         for evaluation in evaluations:
             if isinstance(evaluation, DSSModelEvaluation):
-                obj.append(evaluation.run_id)
+                obj.append(evaluation.evaluation_id)
             elif isinstance(evaluation, dict):
-                obj.append(evaluation['run_id'])
+                obj.append(evaluation['evaluation_id'])
             else:
                 obj.append(evaluation)
         self.client._perform_json(
-                "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id, self.run_id), body=obj)
+                "DELETE", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id), body=obj)
 
     def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True, no_fail=False):
         """
-        Starts a new job to build this Model Evaluation Store and wait for it to complete.
+        Starts a new job to build this model evaluation store and wait for it to complete.
         Raises if the job failed.
 
         .. code-block:: python
@@ -263,36 +261,38 @@ class DSSModelEvaluation:
     Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluationStore.get_model_evaluation`
     """
 
-    def __init__(self, model_evaluation_store, run_id):
+    def __init__(self, model_evaluation_store, evaluation_id):
         self.model_evaluation_store = model_evaluation_store
         self.client = model_evaluation_store.client
         # unpack some fields
-        self.run_id = run_id
+        self.evaluation_id = evaluation_id
         self.project_key = model_evaluation_store.project_key
         self.mes_id = model_evaluation_store.mes_id
 
     def get_full_info(self):
         """
         Retrieve the model evaluation with its performance data
+
+        :return: the model evaluation full info, as a :class:`dataikuapi.dss.DSSModelEvaluationInfo`
         """
         data = self.client._perform_json(
-            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s" % (self.project_key, self.mes_id, self.run_id))
+            "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s" % (self.project_key, self.mes_id, self.evaluation_id))
         return DSSModelEvaluationFullInfo(self, data)
 
     def get_full_id(self):
-        return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.run_id)
+        return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.evaluation_id)
 
     def delete(self):
         """
         Remove this model evaluation
         """
-        obj = [self.run_id]
+        obj = [self.evaluation_id]
         self.client._perform_json(
-                "DELETE", "/projects/%s/modelevaluationstores/%s/runs/" % (self.project_key, self.mes_id), body=obj)
+                "DELETE", "/projects/%s/modelevaluationstores/%s/evaluations/" % (self.project_key, self.mes_id), body=obj)
 
     @property
     def full_id(self):
-        return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.run_id)
+        return "ME-%s-%s-%s"%(self.project_key, self.mes_id, self.evaluation_id)
 
     def compute_data_drift(self, reference=None, data_drift_params=None, wait=True):
         """
@@ -301,21 +301,25 @@ class DSSModelEvaluation:
         :param reference: saved model version (full ID or DSSTrainedPredictionModelDetails)
                 or model evaluation (full ID or DSSModelEvaluation) to use as reference (optional)
         :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
-        :param data_drift_params: data drift computation settings (optional)
+        :param data_drift_params: data drift computation settings as a :class:`dataikuapi.dss.modelevaluationstore.DataDriftParams` (optional)
+        :type data_drift_params: DataDriftParams
         :param wait: data drift computation settings (optional)
-        :returns: a `dict` containing data drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
+        :returns: a :class:`dataikuapi.dss.modelevaluationstore.DataDriftResult` containing data drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
         """
 
         if hasattr(reference, 'full_id'):
             reference = reference.full_id
 
+        if data_drift_params:
+            data_drift_params = data_drift_params.data
+
         future_response = self.client._perform_json(
-            "POST", "/projects/%s/modelevaluationstores/%s/runs/%s/computeDataDrift" % (self.project_key, self.mes_id, self.run_id),
+            "POST", "/projects/%s/modelevaluationstores/%s/evaluations/%s/computeDataDrift" % (self.project_key, self.mes_id, self.evaluation_id),
             body={
                 "referenceId": reference,
                 "dataDriftParams": data_drift_params
             })
-        future = DSSFuture(self.client, future_response.get('jobId', None), future_response)
+        future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=DataDriftResult)
         return future.wait_for_result() if wait else future
 
     def get_metrics(self):
@@ -325,7 +329,7 @@ class DSSModelEvaluation:
         :return: the metrics, as a JSON object
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/modelevaluationstores/%s/runs/%s/metrics" % (self.project_key, self.mes_id, self.run_id))
+            "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s/metrics" % (self.project_key, self.mes_id, self.evaluation_id))
 
     def get_sample_df(self):
         """
@@ -337,12 +341,12 @@ class DSSModelEvaluation:
         buf = BytesIO()
         with self.client._perform_raw(
                 "GET",
-                "/projects/%s/modelevaluationstores/%s/runs/%s/sample" % (self.project_key, self.mes_id, self.run_id)
+                "/projects/%s/modelevaluationstores/%s/evaluations/%s/sample" % (self.project_key, self.mes_id, self.evaluation_id)
         ).raw as f:
             buf.write(f.read())
         schema_txt = self.client._perform_raw(
             "GET",
-            "/projects/%s/modelevaluationstores/%s/runs/%s/schema" % (self.project_key, self.mes_id, self.run_id)
+            "/projects/%s/modelevaluationstores/%s/evaluations/%s/schema" % (self.project_key, self.mes_id, self.evaluation_id)
         ).text
         schema = json.loads(schema_txt)
         import pandas as pd
@@ -361,39 +365,193 @@ class DSSModelEvaluationFullInfo:
     def __init__(self, model_evaluation, full_info):
         self.model_evaluation = model_evaluation
         self.full_info = full_info
+        self.metrics = self.full_info["metrics"]  # type: dict
+        """The performance and data drift metric, if any."""
+        self.creation_date = self.full_info["evaluation"]["created"]  # type: int
+        """The date and time of the creation of the model evaluation, as an epoch."""
+        self.full_id = self.full_info["evaluation"]["ref"]["fullId"]  # type: str
+        if "modelRef" in self.full_info["evaluation"]:
+            self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
+        else:
+            self.model_full_id = None
+        self.prediction_type = self.full_info["evaluation"]["predictionType"]  # type: str
+        self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
+        self.target_variable = self.full_info["evaluation"].get("targetVariable")  # type: str
+        self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
+        """The user-accessible metadata (name, labels)
+        Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling :meth:`save_user_meta`."""
 
     def get_raw(self):
         return self.full_info
 
-    def get_metrics(self):
-        """
-        Get the metrics evaluated, if any.
+    def save_user_meta(self):
+        return self.model_evaluation.client._perform_text(
+                "PUT", "/projects/%s/modelevaluationstores/%s/evaluations/%s/user-meta" %
+                       (self.model_evaluation.project_key, self.model_evaluation.mes_id, self.model_evaluation.evaluation_id), body=self.user_meta)
 
-        :return: a dict containing the performance and data drift metric, if any
-        """
-        return self.full_info["metrics"]
 
-    def get_labels(self):
-        """
-        Get the labels of the Model Evaluation
+class DataDriftParams(object):
+    """
+    Object that represents parameters for data drift computation.
+    Do not create this object directly, use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params` instead.
+    """
+    def __init__(self, data):
+        self.data = data
 
-        :return: a dict containing the labels
-        """
-        return self.full_info["evaluation"]["labels"]
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.data)
 
-    def get_evaluation_parameters(self):
+    @staticmethod
+    def from_params(per_column_settings, nb_bins=10, compute_histograms=True, confidence_level=0.95):
         """
-        Get info on the evaluation parameters, most noticeably the evaluation metric (evaluationMetric field
-        of the returned dict)
+        Creates parameters for data drift computation from columns, number of bins, compute histograms and confidence level
 
-        :return: a dict
-        """
-        return self.full_info["evaluation"]["metricParams"]
+        :param dict per_column_settings: A dict representing the per column settings.
+        You should use a :class:`~dataikuapi.dss.modelevaluationstore.PerColumnDriftParamBuilder` to build it.
+        :param int nb_bins: (optional) Nb. bins in histograms (apply to all columns) - default: 10
+        :param bool compute_histograms: (optional) Enable/disable histograms - default: True
+        :param float confidence_level: (optional) Used to compute confidence interval on drift's model accuracy - default: 0.95
 
-    def get_creation_date(self):
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DataDriftParams`
         """
-        Return the date and time of the creation of the Model Evaluation
+        return DataDriftParams({
+            "columns": per_column_settings,
+            "nbBins": nb_bins,
+            "computeHistograms": compute_histograms,
+            "confidenceLevel": confidence_level
+        })
 
-        :return: the date and time, as an epoch
+
+class PerColumnDriftParamBuilder(object):
+    """
+    Builder for a map of per column drift params settings.
+    Used as a helper before computing data drift to build columns param expected in
+    :meth:`dataikuapi.dss.modelevaluationstore.DataDriftParams.from_params`.
+    """
+    def __init__(self):
+        self.columns = {}
+
+    def build(self):
+        """Returns the built dict for per column drift params settings"""
+        return self.columns
+
+    def with_column_drift_param(self, name, handling="AUTO", enabled=True):
         """
-        return self.full_info["evaluation"]["created"]
+        Sets the drift params settings for given column name.
+
+        :param: string name: The name of the column
+        :param: string handling: (optional) The column type, should be either NUMERICAL, CATEGORICAL or AUTO (default: AUTO)
+        :param: bool enabled: (optional) False means the column is ignored in drift computation (default: True)
+        """
+        self.columns[name] = {
+            "handling": handling,
+            "enabled": enabled
+        }
+        return self
+
+
+class DataDriftResult(object):
+    """
+    A handle on the data drift result of a model evaluation.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.compute_data_drift`
+    """
+    def __init__(self, data):
+        self.data = data
+        self.drift_model_result = DriftModelResult(self.data["driftModelResult"])
+        """Drift analysis based on drift modeling."""
+        self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"])
+        """Per-column drift analysis based on pairwise comparison of distributions."""
+        self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]]
+        """Information about column handling that has been used (errors, types, etc)."""
+
+    def get_raw(self):
+        """
+        :return: the raw data drift result
+        :rtype: dict
+        """
+        return self.data
+
+
+class DriftModelResult(object):
+    """
+    A handle on the drift model result.
+
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DataDriftResult.drift_model_result`
+    """
+    def __init__(self, data):
+        self.data = data
+        self.drift_model_accuracy = DriftModelAccuracy(self.data["driftModelAccuracy"])
+        self.feature_drift_importance = self.data["driftVersusImportance"]  # type: dict
+
+    def get_raw(self):
+        """
+        :return: the raw drift model result
+        :rtype: dict
+        """
+        return self.data
+
+
+class UnivariateDriftResult(object):
+    """
+    A handle on the univariate data drift.
+
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DataDriftResult.univariate_drift_result`
+    """
+    def __init__(self, data):
+        self.data = data
+        self.per_column_drift_data = self.data["columns"]  # type: dict
+        """Drift data per column, as a dict of column name -> drift data."""
+
+    def get_raw(self):
+        """
+        :return: the raw univariate data drift
+        :rtype: dict
+        """
+        return self.data
+
+
+class ColumnSettings(object):
+    """
+    A handle on column handling information.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DataDriftResult.get_per_column_settings`
+    """
+    def __init__(self, data):
+        self.data = data
+        self.name = self.data["name"]  # type: str
+        self.actual_column_handling = self.data["actualHandling"]  # type: str
+        """The actual column handling (either forced via drift params or inferred from model evaluation preprocessings).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED."""
+        self.default_column_handling = self.data["defaultHandling"]  # type: str
+        """The default column handling (based on model evaluation preprocessing only).
+        It can be any of NUMERICAL, CATEGORICAL, or IGNORED."""
+        self.error_message = self.data.get("errorMessage", None)
+
+    def get_raw(self):
+        """
+        :return: the raw column handling information
+        :rtype: dict
+        """
+        return self.data
+
+
+class DriftModelAccuracy(object):
+    """
+    A handle on the drift model accuracy.
+
+    Do not create this class directly, instead use :attr:`dataikuapi.dss.modelevaluationstore.DriftModelResult.drift_model_accuracy`
+    """
+    def __init__(self, data):
+        self.data = data
+        self.value = self.data["value"]  # type: float
+        self.lower_confidence_interval = self.data["lower"]  # type: float
+        self.upper_confidence_interval = self.data["upper"]  # type: float
+        self.pvalue = self.data["pvalue"]  # type: float
+
+    def get_raw(self):
+        """
+        :return: the drift model accuracy data
+        :rtype: dict
+        """
+        return self.data
