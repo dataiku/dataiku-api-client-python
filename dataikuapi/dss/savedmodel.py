@@ -4,6 +4,7 @@ from .metrics import ComputedMetrics
 from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
+from .managedfolder import DSSManagedFolder
 
 from ..utils import _make_zipfile
 
@@ -149,14 +150,14 @@ class DSSSavedModel(object):
         finally:
             shutil.rmtree(archive_temp_dir)
 
-    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder_id, path, code_env_name="INHERIT"):
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
 
         Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
 
         :param str version_id: Identifier of the version to create
-        :param str managed_folder_id: Identifier of the managed folder
+        :param str managed_folder: Identifier of the managed folder or `dataikuapi.dss.managedfolder.DSSManagedFolder`
         :param str path: Path of the MLflow folder in the managed folder
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
@@ -164,11 +165,18 @@ class DSSSavedModel(object):
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
+        smartFolderId = None
+        if managed_folder is not None:
+            if type(managed_folder) is DSSManagedFolder:
+                smartFolderId = "{}.{}".format(managed_folder.project_key, managed_folder.id)
+            else:
+                smartFolderId = managed_folder
+
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
                 project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
             ),
-            params={"folderId": managed_folder_id, "path": path},
+            params={"smartFolderId": smartFolderId, "path": path},
             files={"file": (None, None)}
         )
         return self.get_mlflow_version_handler(version_id)
