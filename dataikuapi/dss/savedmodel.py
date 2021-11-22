@@ -165,18 +165,18 @@ class DSSSavedModel(object):
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
-        smartFolderId = None
+        folder_ref = None
         if managed_folder is not None:
             if type(managed_folder) is DSSManagedFolder:
-                smartFolderId = "{}.{}".format(managed_folder.project_key, managed_folder.id)
+                folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
             else:
-                smartFolderId = managed_folder
+                folder_ref = managed_folder
 
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
                 project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
             ),
-            params={"smartFolderId": smartFolderId, "path": path},
+            params={"folderRef": folder_ref, "path": path},
             files={"file": (None, None)}
         )
         return self.get_mlflow_version_handler(version_id)
