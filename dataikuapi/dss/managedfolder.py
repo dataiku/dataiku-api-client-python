@@ -113,18 +113,16 @@ class DSSManagedFolder(object):
         """
         Upload folder and its content as path in the managed folder.
 
-        Args:
-            folder: path to the folder (absolute or relative)
-            path: the path of the folder in the managed folder
+        :param str folder: path to the folder (absolute or relative)
+        :param str path: the path of the folder in the managed folder
         """
         real_root = os.path.realpath(folder)
         for root, _, files in os.walk(real_root):
             for file in files:
                 filename = os.path.join(root, file)
                 relpath = os.path.relpath(filename, real_root)
-                with open(filename, "r") as f:
-                    self.put_file(os.path.join(path, relpath), f.read())
-        return
+                with open(filename, "rb") as f:
+                    self.put_file(os.path.join(path, relpath), f)
 
     ########################################################
     # Managed folder actions
