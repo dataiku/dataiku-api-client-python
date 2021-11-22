@@ -346,9 +346,10 @@ class MLFlowVersionHandler:
 
         :meth:`set_core_metadata` must be called before you can evaluate a dataset
 
-        :param str dataset_ref: Name of the evaluation dataset to use (either a dataset name or "PROJECT.datasetName")
+        :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", DSSDataset instance or dataiku.Dataset instance)
         """
-        # TODO Add support for handling a DSSDataset or dataiku.Dataset as dataset_ref
+        if hasattr(dataset_ref, 'name'):
+            dataset_ref = dataset_ref.name
         req = {
             "datasetRef" : dataset_ref
         }

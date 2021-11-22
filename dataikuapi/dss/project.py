@@ -133,11 +133,12 @@ class DSSProject(object):
             * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
             * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
             * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportModelEvaluationStores (boolean): Exports the evaluation stores - default False
             * exportManagedFolders (boolean): Exports the data of managed folders - default False
             * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
             * exportAllDatasets (boolean): Exports the data of all datasets - default False
             * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
-            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportGitRepository (boolean): Exports the Git repository history - default False
             * exportInsightsData (boolean): Exports the data of static insights - default False
         """
         if options is None:

@@ -1353,7 +1353,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_store_into(connection)
         dataset = builder.create()
 
-        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").id
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").mes_id
     """
 
     def __init__(self, name, project):
@@ -1371,9 +1371,9 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         """Sets the output dataset containing the metrics"""
         return self._with_output(name, role="metrics")
 
-    def with_output_evaluation_store(self, name):
+    def with_output_evaluation_store(self, mes_id):
         """Sets the output model evaluation store"""
-        return self._with_output(name, role="evaluationStore")
+        return self._with_output(mes_id, role="evaluationStore")
 
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
