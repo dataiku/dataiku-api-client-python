@@ -85,9 +85,9 @@ class DSSProject(object):
 
         This call requires an API key with admin rights
 
-        :param bool clear_managed_datasets: Should the data of managed datasets be dropped
-        :param bool clear_output_managed_folders: Should the data from managed folders be dropped
-        :param bool clear_job_and_scenario_logs: Should the job and scenario logs be deleted
+        :param bool clear_managed_datasets: Should the data of managed datasets be cleared
+        :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared
+        :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared
         """
         # For backwards compatibility
         if 'drop_data' in kwargs and kwargs['drop_data']:
