@@ -794,18 +794,18 @@ class DSSClient(object):
         warnings.warn("set_variables is deprecated, please use get_global_variables().save()", DeprecationWarning)
         return DSSInstanceVariables(self, variables).save()
 
-    def get_resolved_variables(self, projectKey=None, typed=False):
+    def get_resolved_variables(self, project_key=None, typed=False):
         """
         Get a dictionary of resolved variables of the project.
 
-        :param str projectKey: the project key, defaults to the current project if any
+        :param str project_key: the project key, defaults to the current project if any
         :param bool typed: if True, the variable values will be typed in the returned dict, defaults to False
         :returns: a dictionary with instance and project variables merged
         """
         import dataiku
         return self._perform_json(
             "GET",
-            "/projects/%s/variables-resolved" % (dataiku.default_project_key() if projectKey is None else projectKey),
+            "/projects/%s/variables-resolved" % (dataiku.default_project_key() if project_key is None else project_key),
             params={
                 "typed": "true" if typed else "false"
             })
