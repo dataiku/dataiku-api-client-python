@@ -1,5 +1,6 @@
 import time, warnings, sys, os.path as osp
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .notebook import DSSNotebook
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, DSSManagedStreamingEndpointCreationHelper
@@ -16,7 +17,7 @@ from .future import DSSFuture
 from .macro import DSSMacro
 from .wiki import DSSWiki
 from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask
+from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
@@ -132,11 +133,12 @@ class DSSProject(object):
             * exportManagedFS (boolean): Exports the data of managed Filesystem datasets - default False
             * exportAnalysisModels (boolean): Exports the models trained in analysis - default False
             * exportSavedModels (boolean): Exports the models trained in saved models - default False
+            * exportModelEvaluationStores (boolean): Exports the evaluation stores - default False
             * exportManagedFolders (boolean): Exports the data of managed folders - default False
             * exportAllInputDatasets (boolean): Exports the data of all input datasets - default False
             * exportAllDatasets (boolean): Exports the data of all datasets - default False
             * exportAllInputManagedFolders (boolean): Exports the data of all input managed folders - default False
-            * exportGitRepositoy (boolean): Exports the Git repository history - default False
+            * exportGitRepository (boolean): Exports the Git repository history - default False
             * exportInsightsData (boolean): Exports the data of static insights - default False
         """
         if options is None:
@@ -638,6 +640,15 @@ class DSSProject(object):
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
+    def list_mltask_queues(self):
+        """
+        List non-empty ML task queues in this project 
+        
+        :returns: an iterable :class:`DSSMLTaskQueues` listing of MLTask queues (each a dict)
+        :rtype: :class:`DSSMLTaskQueues`
+        """ 
+        data = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
+        return DSSMLTaskQueues(data)
 
     def create_analysis(self, input_dataset):
         """
@@ -699,6 +710,24 @@ class DSSProject(object):
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
+    def create_mlflow_pyfunc_model(self, name, prediction_type = None):
+        """
+        Creates a new external saved model for storing and managing MLFlow models
+
+        :param string name: Human readable name for the new saved model in the flow
+        :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        """
+        if not name:
+            raise ValueError("name can not be empty")
+        model = {
+            "savedModelType" : "MLFLOW_PYFUNC",
+            "predictionType" : prediction_type,
+            "name": name
+        }
+
+        id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)["id"]
+        return self.get_saved_model(id)
+
     ########################################################
     # Managed folders
     ########################################################
@@ -754,18 +783,15 @@ class DSSProject(object):
     # Model evaluation stores
     ########################################################
 
-    def list_model_evaluation_stores(self, as_type=None):
+    def list_model_evaluation_stores(self):
         """
         List the model evaluation stores in this project.
 
         :returns: The list of the model evaluation stores
-        :rtype: list
+        :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
         items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
-        if as_type == "objects" or as_type == "object":
-            return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
-        else:
-            return items
+        return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
 
     def get_model_evaluation_store(self, mes_id):
         """
@@ -777,17 +803,15 @@ class DSSProject(object):
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
-    def create_model_evaluation_store(self, name, mes_id=None):
+    def create_model_evaluation_store(self, name):
         """
         Create a new model evaluation store in the project, and return a handle to interact with it.
         
         :param string name: the name for the new model evaluation store
-        :param string mes_id optional: the id for the new model evaluation store
-        
+
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
         """
         obj = {
-            "id" : mes_id,
             "projectKey" : self.project_key,
             "name" : name
         }
@@ -795,6 +819,51 @@ class DSSProject(object):
                        body = obj)
         mes_id = res['id']
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
+
+    ########################################################
+    # Model comparisons
+    ########################################################
+
+    def list_model_comparisons(self):
+        """
+        List the model comparisons in this project.
+
+        :returns: The list of the model comparisons
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/modelcomparisons/" % self.project_key)
+        return [DSSModelComparison(self.client, self.project_key, item["id"]) for item in items]
+
+    def get_model_comparison(self, mec_id):
+        """
+        Get a handle to interact with a specific model comparison
+
+        :param string mec_id: the id of the desired model comparison
+
+        :returns: A handle on a model comparison
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        """
+        return DSSModelComparison(self.client, self.project_key, mec_id)
+
+    def create_model_comparison(self, name, prediction_type):
+        """
+        Create a new model comparison in the project, and return a handle to interact with it.
+
+        :param string name: the name for the new model comparison
+        :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
+
+        :returns: A handle on a new model comparison
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        """
+        obj = {
+            "projectKey": self.project_key,
+            "displayName": name,
+            "predictionType": prediction_type
+        }
+        res = self.client._perform_json("POST", "/projects/%s/modelcomparisons/" % self.project_key,
+                                        body = obj)
+        mec_id = res['id']
+        return DSSModelComparison(self.client, self.project_key, mec_id)
 
     ########################################################
     # Jobs
@@ -1327,6 +1396,8 @@ class DSSProject(object):
             return recipe.PrepareRecipeCreator(name, self)
         elif type == "prediction_scoring":
             return recipe.PredictionScoringRecipeCreator(name, self)
+        elif type == "evaluation":
+            return recipe.EvaluationRecipeCreator(name, self)
         elif type == "clustering_scoring":
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":

@@ -89,6 +89,7 @@ class DSSRecipe(object):
             "COMPUTABLE_FOLDER": "MANAGED_FOLDER",
             "COMPUTABLE_SAVED_MODEL": "SAVED_MODEL",
             "COMPUTABLE_STREAMING_ENDPOINT": "STREAMING_ENDPOINT",
+            "COMPUTABLE_MODEL_EVALUATION_STORE": "MODEL_EVALUATION_STORE"
         }
         if first_output["type"] in object_type_map:
             jd = project.new_job(job_type)
@@ -201,7 +202,7 @@ class DSSRecipe(object):
     def set_metadata(self, metadata):
         """
         Set the metadata on this recipe.
-        :params dict metadata: the new state of the metadata for the recipe. You should only set a metadata object 
+        :params dict metadata: the new state of the metadata for the recipe. You should only set a metadata object
             that has been retrieved using the get_metadata call.
         """
         return self.client._perform_json(
@@ -225,7 +226,7 @@ class DSSRecipe(object):
         return DSSContinuousActivity(self.client, self.project_key, self.recipe_name)
 
 class DSSRecipeStatus(object):
-    """Status of a recipce. 
+    """Status of a recipce.
     Do not create that directly, use :meth:`DSSRecipe.get_status`"""
 
     def __init__(self, client, data):
@@ -269,7 +270,7 @@ class DSSRecipeStatus(object):
         """
         Returns status messages for this recipe.
 
-        :returns: a list of dict, for each status message. Each dict represents a single message, 
+        :returns: a list of dict, for each status message. Each dict represents a single message,
             and contains at least a "severity" field (SUCCESS, WARNING or ERROR)
             and a "message" field
         :rtype: list
@@ -612,7 +613,7 @@ class DSSRecipeCreator(object):
 
     def create(self):
         """
-        Creates the new recipe in the project, and return a handle to interact with it. 
+        Creates the new recipe in the project, and return a handle to interact with it.
 
         Returns:
             A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
@@ -787,7 +788,7 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
 
     def with_group_key(self, group_key):
         """
-        Set a column as the first grouping key. Only a single grouping key may be set 
+        Set a column as the first grouping key. Only a single grouping key may be set
         at recipe creation time. For additional groupings, get the recipe settings
 
         :param str group_key: name of a column in the input dataset
@@ -1030,6 +1031,13 @@ class FuzzyJoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     def __init__(self, name, project):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'fuzzyjoin', name, project)
 
+class GeoJoinRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
+    """
+    Create a GeoJoin recipe
+    """
+    def __init__(self, name, project):
+        VirtualInputsSingleOutputRecipeCreator.__init__(self, 'geojoin', name, project)
+
 class StackRecipeSettings(DSSRecipeSettings):
     """
     Settings of a stack recipe. Do not create this directly, use :meth:`DSSRecipe.get_settings`
@@ -1175,8 +1183,8 @@ class CodeRecipeCreator(DSSRecipeCreator):
         :param str connection_id: name of the connection to create the dataset on
         :param str type: type of dataset, for connection where the type could be ambiguous. Typically,
                                  this is SCP or SFTP, for SSH connection
-        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE, 
-                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE, 
+        :param str format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                                     CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
                                      AVRO, ORC. If None, uses the default
         :param str copy_partitioning_from: Whether to copy the partitioning from another thing.
                     Use None for not partitioning the output, "FIRST_INPUT" to copy from the first input of the recipe,
@@ -1313,6 +1321,61 @@ class PredictionScoringRecipeCreator(SingleOutputRecipeCreator):
         return self._with_input(model_id, self.project.project_key, "model")
 
 
+class EvaluationRecipeCreator(DSSRecipeCreator):
+    """
+    Builder for the creation of a new "Evaluate" recipe, from an
+    input dataset, with an input saved model identifier
+
+    .. code-block:: python
+
+        # Create a new prediction scoring recipe outputing to a new dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = EvaluationRecipeCreator("my_scoring_recipe", project)
+        builder.with_input_model(saved_model_id)
+        builder.with_input("dataset_to_evaluate")
+
+        builder.with_output("output_scored")
+        builder.with_output_metrics("output_metrics")
+        builder.with_output_evaluation_store(evaluation_store_id)
+
+        new_recipe = builder.build()
+    
+    Outputs must exist. They can be created using the following:
+
+    .. code-block:: python
+
+        builder = project.new_managed_dataset("output_scored")
+        builder.with_store_into(connection)
+        dataset = builder.create()
+
+        builder = project.new_managed_dataset("output_scored")
+        builder.with_store_into(connection)
+        dataset = builder.create()
+
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").mes_id
+    """
+
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'evaluation', name, project)
+
+    def with_input_model(self, model_id):
+        """Sets the input model"""
+        return self._with_input(model_id, self.project.project_key, "model")
+
+    def with_output(self, name):
+        """Sets the ouput dataset containing the scored input"""
+        return self._with_output(name, role="main")
+
+    def with_output_metrics(self, name):
+        """Sets the output dataset containing the metrics"""
+        return self._with_output(name, role="metrics")
+
+    def with_output_evaluation_store(self, mes_id):
+        """Sets the output model evaluation store"""
+        return self._with_output(mes_id, role="evaluationStore")
+
+
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     """
     Builder for the creation of a new "Clustering scoring" recipe, from an
@@ -1343,44 +1406,3 @@ class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     def with_input_model(self, model_id):
         """Sets the input model"""
         return self._with_input(model_id, self.project.project_key, "model")
-
-
-class DownloadRecipeCreator(SingleOutputRecipeCreator):
-    """
-    Create a Download recipe
-    """
-    def __init__(self, name, project):
-        SingleOutputRecipeCreator.__init__(self, 'download', name, project)
-
-
-class RequiredSchemaUpdates(object):
-    """
-    Representation of the updates required to the schema of the outputs of a recipe.
-    Do not create this class directly, use :meth:`DSSRecipe.compute_schema_updates`
-    """
-
-    def __init__(self, recipe, data):
-        self.recipe = recipe
-        self.data = data
-        self.drop_and_recreate = True
-        self.synchronize_metastore = True
-
-    def any_action_required(self):
-        return self.data["totalIncompatibilities"] > 0
-
-    def apply(self):
-        results  = []
-        for computable in self.data["computables"]:
-            osu = {
-                "computableType": computable["type"],
-                # dirty
-                "computableId": computable["type"] == "DATASET" and computable["datasetName"] or computable["id"],
-                "newSchema": computable["newSchema"],
-                "dropAndRecreate": self.drop_and_recreate,
-                "synchronizeMetastore" : self.synchronize_metastore
-            }
-
-            results.append(self.recipe.client._perform_json("POST",
-                    "/projects/%s/recipes/%s/actions/updateOutputSchema" % (self.recipe.project_key, self.recipe.recipe_name),
-                    body=osu))
-        return results
