@@ -1,10 +1,12 @@
 import json
+import os
 
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.dss.notebook import DSSNotebook
+from .dss_plugin_mlflow import load_dss_mlflow_plugin
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
@@ -17,6 +19,7 @@ from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
+from base64 import b64encode
 from .utils import DataikuException, dku_basestring_type
 
 class DSSClient(object):
@@ -1086,6 +1089,25 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
+
+    ########################################################
+    # MLflow
+    ########################################################
+    def setup_mlflow(self, project_key):
+        load_dss_mlflow_plugin()
+        if self._session.auth is not None:
+            auth_header = "Authorization"
+            auth_token = "Basic {}".format(
+                b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8"))
+        elif self.internal_ticket:
+            auth_header = "X-DKU-APITicket"
+            auth_token = self.internal_ticket
+        os.environ.update({
+            "DSS_MLFLOW_HEADER": auth_header,
+            "DSS_MLFLOW_TOKEN": auth_token,
+            "DSS_MLFLOW_PROJECTKEY": project_key,
+        })
+
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
