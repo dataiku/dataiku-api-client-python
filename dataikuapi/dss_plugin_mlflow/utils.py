@@ -10,12 +10,14 @@ def load_dss_mlflow_plugin():
     This function adds dss-mlflow-plugin entrypoints dynamically by adding them in sys.path
     at call time.
     """
-    tempdir = tempfile.mkdtemp()
+    tempdir = os.path.join(tempfile.gettempdir(), "dss-plugin-mlflow")
     plugin_dir = os.path.join(tempdir, "dss-plugin-mlflow.egg-info")
-    os.mkdir(plugin_dir)
+    if not os.path.isdir(plugin_dir):
+        os.makedirs(plugin_dir)
     with open(os.path.join(plugin_dir, "entry_points.txt"), "w") as f:
         f.write(
             "[mlflow.request_header_provider]\n"
             "unused=dataikuapi.dss_plugin_mlflow.header_provider:PluginHeaderProvider\n"
         )
+    # Load plugin
     sys.path.insert(0, tempdir)
