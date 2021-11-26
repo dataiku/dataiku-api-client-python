@@ -11,7 +11,7 @@ def load_dss_mlflow_plugin():
     at call time.
     """
     tempdir = tempfile.mkdtemp()
-    plugin_dir = os.path.join(tempdir, "dss-mlflow-plugin.egg-info")
+    plugin_dir = os.path.join(tempdir, "dss-plugin-mlflow.egg-info")
     os.mkdir(plugin_dir)
     with open(os.path.join(plugin_dir, "entry_points.txt"), "w") as f:
         f.write(
