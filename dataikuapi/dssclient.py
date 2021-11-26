@@ -1094,6 +1094,11 @@ class DSSClient(object):
     # MLflow
     ########################################################
     def setup_mlflow(self, project_key):
+        """
+        Setup the dss-plugin for MLflow
+
+        :param str project_key: identifier of the project to access
+        """
         load_dss_mlflow_plugin()
         if self._session.auth is not None:
             auth_header = "Authorization"
