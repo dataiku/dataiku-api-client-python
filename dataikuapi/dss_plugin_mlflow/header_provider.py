@@ -1,6 +1,6 @@
 import os
 
-class PluginHeaderProvider:
+class PluginDSSHeaderProvider:
 
     def in_context(self):
         env_variables = {"DSS_MLFLOW_HEADER", "DSS_MLFLOW_TOKEN", "DSS_MLFLOW_PROJECTKEY"}

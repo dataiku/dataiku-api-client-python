@@ -17,7 +17,7 @@ def load_dss_mlflow_plugin():
     with open(os.path.join(plugin_dir, "entry_points.txt"), "w") as f:
         f.write(
             "[mlflow.request_header_provider]\n"
-            "unused=dataikuapi.dss_plugin_mlflow.header_provider:PluginHeaderProvider\n"
+            "unused=dataikuapi.dss_plugin_mlflow.header_provider:PluginDSSHeaderProvider\n"
         )
     # Load plugin
     sys.path.insert(0, tempdir)
