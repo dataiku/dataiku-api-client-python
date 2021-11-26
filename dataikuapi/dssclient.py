@@ -1093,7 +1093,7 @@ class DSSClient(object):
     ########################################################
     # MLflow
     ########################################################
-    def setup_mlflow(self, project_key):
+    def setup_mlflow(self, project_key, host=None):
         """
         Setup the dss-plugin for MLflow
 
@@ -1111,6 +1111,7 @@ class DSSClient(object):
             "DSS_MLFLOW_HEADER": auth_header,
             "DSS_MLFLOW_TOKEN": auth_token,
             "DSS_MLFLOW_PROJECTKEY": project_key,
+            "MLFLOW_TRACKING_URI": self.host if host is None else host
         })
 
 
