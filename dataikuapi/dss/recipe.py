@@ -332,6 +332,8 @@ class DSSRecipeSettings(DSSTaggableObjectSettings):
             self.data["payload"] = self._str_payload
 
     def _payload_to_obj(self):
+        print("PAYLOAD")
+        print(self._str_payload)
         if self._str_payload is not None:
             self._obj_payload = json.loads(self._str_payload)
             self._str_payload = None
@@ -1374,6 +1376,37 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
     def with_output_evaluation_store(self, mes_id):
         """Sets the output model evaluation store"""
         return self._with_output(mes_id, role="evaluationStore")
+
+
+class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
+    """
+    Builder for the creation of a new "Standalone Evaluate" recipe, from an
+    input dataset
+
+    .. code-block:: python
+
+        # Create a new standalone evaluation of a dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = EvaluationRecipeCreator("my_standalone_evaluation_recipe", project)
+        builder.with_input("scored_dataset_to_evaluate")
+        builder.with_output_evaluation_store(evaluation_store_id)
+
+        new_recipe = builder.build()
+
+    Output model evaluation store must exist. It can be created using the following:
+
+    .. code-block:: python
+
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").mes_id
+    """
+
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'standalone_evaluation', name, project)
+
+    def with_output_evaluation_store(self, mes_id):
+        """Sets the output model evaluation store"""
+        return self._with_output(mes_id, role="main")
 
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
