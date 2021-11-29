@@ -176,7 +176,7 @@ class DSSSavedModel(object):
                 project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
             ),
             params={"folderRef": folder_ref, "path": path},
-            files={"file": (None, None)}
+            files={"file": (None, None)}  # required for backend-mandated multipart request
         )
         return self.get_mlflow_version_handler(version_id)
 
