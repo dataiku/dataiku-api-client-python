@@ -332,8 +332,6 @@ class DSSRecipeSettings(DSSTaggableObjectSettings):
             self.data["payload"] = self._str_payload
 
     def _payload_to_obj(self):
-        print("PAYLOAD")
-        print(self._str_payload)
         if self._str_payload is not None:
             self._obj_payload = json.loads(self._str_payload)
             self._str_payload = None
