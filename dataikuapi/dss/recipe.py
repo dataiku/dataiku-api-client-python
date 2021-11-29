@@ -1386,7 +1386,7 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         # Create a new standalone evaluation of a dataset
 
         project = client.get_project("MYPROJECT")
-        builder = EvaluationRecipeCreator("my_standalone_evaluation_recipe", project)
+        builder = StandaloneEvaluationRecipeCreator("my_standalone_evaluation_recipe", project)
         builder.with_input("scored_dataset_to_evaluate")
         builder.with_output_evaluation_store(evaluation_store_id)
 
