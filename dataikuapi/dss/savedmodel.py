@@ -166,11 +166,10 @@ class DSSSavedModel(object):
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         folder_ref = None
-        if managed_folder is not None:
-            if type(managed_folder) is DSSManagedFolder:
-                folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
-            else:
-                folder_ref = managed_folder
+        if type(managed_folder) is DSSManagedFolder:
+            folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
+        else:
+            folder_ref = managed_folder
 
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
