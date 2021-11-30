@@ -865,6 +865,30 @@ class DSSProject(object):
         mec_id = res['id']
         return DSSModelComparison(self.client, self.project_key, mec_id)
 
+    def get_comparable(self, comparable_full_id):
+        """
+        Retrieves a comparable item (Saved Model from the flow, Lab Model from an Analysis or Model Evaluation from a Model Evaluation Store) using its full id.
+
+        :param string comparable_full_id: the full id of the comparable
+
+        :returns: A handle on the Saved Model, the Model Evaluation or the Lab Model
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSSavedModel`
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelEvaluation`
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSTrainedPredictionModelDetails`
+        """
+        comparable_type = comparable_full_id.split('-')[0]
+        if comparable_type == "S":
+            return self.get_saved_model(comparable_full_id)
+        elif comparable_type == "ME":
+            mes_id = comparable_full_id.split('-')[2]
+            evaluation_id = comparable_full_id.split('-')[3]
+            mes = self.get_model_evaluation_store(mes_id)
+            return mes.get_model_evaluation(evaluation_id)
+        elif comparable_type == "A":
+            analysis_id = comparable_full_id.split('-')[2]
+            task_id = comparable_full_id.split('-')[3]
+            return self.get_ml_task(analysis_id, task_id).get_trained_model_details(comparable_full_id)
+
     ########################################################
     # Jobs
     ########################################################
