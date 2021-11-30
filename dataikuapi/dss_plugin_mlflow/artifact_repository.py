@@ -10,16 +10,13 @@ def parse_dss_managed_folder_uri(uri):
     parsed = urllib.parse.urlparse(uri)
     if parsed.scheme != "dss-managed-folder":
         raise Exception("Not an DSS Managed Folder URI: %s" % uri)
-    path = parsed.path
-    if path.startswith("/"):
-        path = path[1:]
-    return parsed.netloc, path
+    return os.path.normpath(parsed.path)
 
 
 class PluginDSSManagedFolderArtifactRepository:
 
     def __init__(self, artifact_uri):
-        self.artifact_uri = artifact_uri
+        self.base_artifact_path = parse_dss_managed_folder_uri(artifact_uri)
         self.client = DSSClient(
             os.environ.get("DSS_MLFLOW_HOST"),
             os.environ.get("DSS_MLFLOW_APIKEY")
@@ -44,8 +41,10 @@ class PluginDSSManagedFolderArtifactRepository:
         :param artifact_path: Directory within the run's artifact directory in which to log the
                               artifact.
         """
-        print("loool", self.artifact_uri, parse_dss_managed_folder_uri(self.artifact_uri))
-        # self.managed_folder.put_file(artifact_path, open(local_file))
+        path = (
+            os.path.join(self.base_artifact_path, artifact_path) if artifact_path else self.base_artifact_path
+        )
+        self.managed_folder.put_file(os.path.join(path, os.path.basename(local_file)), open(local_file))
 
     def log_artifacts(self, local_dir, artifact_path=None):
         """
