@@ -55,7 +55,10 @@ class PluginDSSManagedFolderArtifactRepository:
         :param artifact_path: Directory within the run's artifact directory in which to log the
                               artifacts
         """
-        print("[LOL] LOG ARTIFACTS")
+        path = (
+            os.path.join(self.base_artifact_path, artifact_path) if artifact_path else self.base_artifact_path
+        )
+        self.managed_folder.upload_folder(path, local_dir)
 
     def list_artifacts(self, path):
         """
@@ -66,7 +69,10 @@ class PluginDSSManagedFolderArtifactRepository:
 
         :return: List of artifacts as FileInfo listed directly under path.
         """
-        print("[LOL] LIST ARTIFACTS")
+        from pathlib import Path
+        path = Path(os.path.join(self.base_artifact_path, path))
+        files = [x["path"] for x in self.managed_folder.list_contents().get("items", []) if path in Path(x["path"]).parents]
+        return files
 
     def _is_directory(self, artifact_path):
         listing = self.list_artifacts(artifact_path)
@@ -205,7 +211,7 @@ class PluginDSSManagedFolderArtifactRepository:
                                  directory of the artifact repository.
         :param local_path: The path to which to save the downloaded file.
         """
-        print("[LOL] __  DOWNLOAD ARTIFACT")
+        raise Exception("Not yet implemented")
 
     def delete_artifacts(self, artifact_path=None):
         """
@@ -214,7 +220,7 @@ class PluginDSSManagedFolderArtifactRepository:
         is recursive.
         :param artifact_path: Path of the artifact to delete
         """
-        print("[LOL] __  DELETE ARTIFACTS")
+        raise Exception("Not yet implemented")
 
 
 def verify_artifact_path(artifact_path):
