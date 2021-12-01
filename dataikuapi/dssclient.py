@@ -1111,7 +1111,7 @@ class DSSClient(object):
             "DSS_MLFLOW_HEADER": auth_header,
             "DSS_MLFLOW_TOKEN": auth_token,
             "DSS_MLFLOW_PROJECTKEY": project_key,
-            "MLFLOW_TRACKING_URI": self.host if host is None else host
+            "MLFLOW_TRACKING_URI": self.host + "/dip/publicapi" if host is None else host,
         })
 
 

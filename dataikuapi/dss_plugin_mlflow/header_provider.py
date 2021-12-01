@@ -10,6 +10,6 @@ class PluginDSSHeaderProvider:
     def request_headers(self):
         headers = {
             os.environ.get("DSS_MLFLOW_HEADER"): os.environ.get("DSS_MLFLOW_TOKEN"),
-            "projectKey": os.environ.get("DSS_MLFLOW_PROJECTKEY"),
+            "x-dku-mlflow-project-key": os.environ.get("DSS_MLFLOW_PROJECTKEY"),
         }
         return headers
