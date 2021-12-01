@@ -1103,19 +1103,22 @@ class DSSClient(object):
         """
         load_dss_mlflow_plugin()
         if self._session.auth is not None:
-            auth_header = "Authorization"
-            auth_token = "Basic {}".format(
-                b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8"))
+            os.environ.update({
+                "DSS_MLFLOW_HEADER": "Authorization",
+                "DSS_MLFLOW_TOKEN": "Basic {}".format(
+                    b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8")),
+                "DSS_MLFLOW_APIKEY": self.api_key
+            })
         elif self.internal_ticket:
-            auth_header = "X-DKU-APITicket"
-            auth_token = self.internal_ticket
+            os.environ.update({
+                "DSS_MLFLOW_HEADER": "X-DKU-APITicket",
+                "DSS_MLFLOW_TOKEN": self.internal_ticket,
+                "DSS_MLFLOW_INTERNAL_TICKET": self.internal_ticket
+            })
         os.environ.update({
-            "DSS_MLFLOW_HEADER": auth_header,
-            "DSS_MLFLOW_TOKEN": auth_token,
             "DSS_MLFLOW_PROJECTKEY": project_key,
-            "MLFLOW_TRACKING_URI": self.host if host is None else host,
+            "MLFLOW_TRACKING_URI": self.host + "/dip/publicapi" if host is None else host,
             "DSS_MLFLOW_HOST": self.host,
-            "DSS_MLFLOW_APIKEY": self.api_key,
             "DSS_MLFLOW_MANAGED_FOLDER": managed_folder,
         })
 

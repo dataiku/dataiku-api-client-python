@@ -17,10 +17,16 @@ class PluginDSSManagedFolderArtifactRepository:
 
     def __init__(self, artifact_uri):
         self.base_artifact_path = parse_dss_managed_folder_uri(artifact_uri)
-        self.client = DSSClient(
-            os.environ.get("DSS_MLFLOW_HOST"),
-            os.environ.get("DSS_MLFLOW_APIKEY")
-        )
+        if os.environ.get("DSS_MLFLOW_APIKEY") is not None:
+            self.client = DSSClient(
+                os.environ.get("DSS_MLFLOW_HOST"),
+                api_key=os.environ.get("DSS_MLFLOW_APIKEY")
+            )
+        else:
+            self.client = DSSClient(
+                os.environ.get("DSS_MLFLOW_HOST"),
+                internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET")
+            )
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
         managed_folders = [
             x["id"] for x in self.project.list_managed_folders()
