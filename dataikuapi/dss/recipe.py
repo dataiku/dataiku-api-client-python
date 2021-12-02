@@ -1423,6 +1423,11 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         ser_payload['features'] = [feature_passengerid, feature_ticket, feature_cabin]
 
         ser_settings = ser.get_settings()
+
+        # Add the newly created json payload to the recipe settings
+        # Note that with this method, all the settings that were not explicitly set are instead set to their default value.
+        # e.g. there is an empty cost matrix setting for this recipe because 'cost matrix' is not defined in the payload
+
         ser_settings.set_json_payload(ser_payload)
         ser_settings.save()
 
