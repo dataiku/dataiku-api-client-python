@@ -1392,6 +1392,31 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
 
         new_recipe = builder.build()
 
+        # Save the model parameters in the SER settings and run the SER
+
+        ser_payload = dict(predictionType="BINARY_CLASSIFICATION",
+                   targetVariable="Survived",
+                   predictionVariable="prediction",
+                   isProbaAware=True,
+                   dontComputePerformance=False)
+
+        class_0 = dict(key=0, value="proba_0")
+        class_1 = dict(key=1, value="proba_1")
+        ser_payload['probas'] = [class_0, class_1]
+
+        feature_passengerid = dict(name="Passenger_Id", role="REJECT", type="TEXT")
+        feature_ticket = dict(name="Ticket", role="REJECT", type="TEXT")
+        feature_cabin = dict(name="Cabin", role="REJECT", type="TEXT")
+
+        ser_payload['features'] = [feature_passengerid, feature_ticket, feature_cabin]
+
+        ser_settings = ser.get_settings()
+        ser_settings.set_json_payload(ser_payload)
+        ser_settings.save()
+
+        ser.run()
+
+
     Output model evaluation store must exist. It can be created using the following:
 
     .. code-block:: python
