@@ -86,8 +86,8 @@ class FMInstanceCreator(object):
         self.data["dataVolumeSizeGB"] = data_volume_size
         self.data["dataVolumeSizeMaxGB"] = data_volume_size_max
         self.data["dataVolumeIOPS"] = data_volume_IOPS
-        self.data["dataVolumeEncryption"] = data_volume_encryption.value
-        self.data["dataVolumeEncryptionKey"] = data_volume_encryption_key
+        self.data["volumesEncryption"] = data_volume_encryption.value
+        self.data["volumesEncryptionKey"] = data_volume_encryption_key
         return self
 
     def with_cloud_tags(self, cloud_tags):
@@ -144,7 +144,7 @@ class FMAWSInstanceCreator(FMInstanceCreator):
         return FMAWSInstance(self.client, instance)
 
 
-class FMAzureInstanceCreator(FMInstanceCreator):
+class (FMInstanceCreator):
     def create(self):
         """
         Create the DSS instance
