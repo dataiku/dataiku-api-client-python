@@ -1340,6 +1340,18 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_output_evaluation_store(evaluation_store_id)
 
         new_recipe = builder.build()
+
+        # Change evaluation recipe settings and run it
+
+        er_payload = er_settings.get_json_payload()
+        er_payload['metrics'] = ["precision", "recall", "auc", "f1", "costMatrixGain"]
+        er_payload['dontComputePerformance'] = True
+
+        er_settings = new_recipe.get_settings()
+        er_settings.set_json_payload(er_payload)
+        er_settings.save()
+
+        new_recipe.run()
     
     Outputs must exist. They can be created using the following:
 
@@ -1415,7 +1427,6 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         ser_settings.save()
 
         ser.run()
-
 
     Output model evaluation store must exist. It can be created using the following:
 
