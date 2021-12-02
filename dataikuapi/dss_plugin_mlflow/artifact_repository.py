@@ -217,7 +217,10 @@ class PluginDSSManagedFolderArtifactRepository:
                                  directory of the artifact repository.
         :param local_path: The path to which to save the downloaded file.
         """
-        raise Exception("Not yet implemented")
+        with self.managed_folder.get_file(remote_file_path) as remote_file:
+            with open(local_path, "wb") as local_file:
+                for line in remote_file:
+                    local_file.write(line)
 
     def delete_artifacts(self, artifact_path=None):
         """
@@ -226,7 +229,10 @@ class PluginDSSManagedFolderArtifactRepository:
         is recursive.
         :param artifact_path: Path of the artifact to delete
         """
-        raise Exception("Not yet implemented")
+        path = (
+            os.path.join(self.base_artifact_path, artifact_path) if artifact_path else self.base_artifact_path
+        )
+        self.managed_folder.delete_file(path)
 
 
 def verify_artifact_path(artifact_path):
