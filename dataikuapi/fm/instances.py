@@ -144,7 +144,7 @@ class FMAWSInstanceCreator(FMInstanceCreator):
         return FMAWSInstance(self.client, instance)
 
 
-class (FMInstanceCreator):
+class FMAzureInstanceCreator(FMInstanceCreator):
     def create(self):
         """
         Create the DSS instance
