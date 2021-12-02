@@ -10,7 +10,7 @@ def load_dss_mlflow_plugin():
     This function adds dss-mlflow-plugin entrypoints dynamically by adding them in sys.path
     at call time.
     """
-    tempdir = os.path.join(tempfile.gettempdir(), "dss-plugin-mlflow")
+    tempdir = tempfile.mkdtemp()
     plugin_dir = os.path.join(tempdir, "dss-plugin-mlflow.egg-info")
     if not os.path.isdir(plugin_dir):
         os.makedirs(plugin_dir)
@@ -23,3 +23,4 @@ def load_dss_mlflow_plugin():
         )
     # Load plugin
     sys.path.insert(0, tempdir)
+    return tempdir
