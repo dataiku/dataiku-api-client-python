@@ -18,6 +18,8 @@ def load_dss_mlflow_plugin():
         f.write(
             "[mlflow.request_header_provider]\n"
             "unused=dataikuapi.dss_plugin_mlflow.header_provider:PluginDSSHeaderProvider\n"
+            "[mlflow.artifact_repository]\n"
+            "dss-managed-folder=dataikuapi.dss_plugin_mlflow.artifact_repository:PluginDSSManagedFolderArtifactRepository\n"
         )
     # Load plugin
     sys.path.insert(0, tempdir)

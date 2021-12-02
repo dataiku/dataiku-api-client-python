@@ -1093,25 +1093,33 @@ class DSSClient(object):
     ########################################################
     # MLflow
     ########################################################
-    def setup_mlflow(self, project_key, host=None):
+    def setup_mlflow(self, project_key, managed_folder="mlflow_artifacts", host=None):
         """
         Setup the dss-plugin for MLflow
 
         :param str project_key: identifier of the project to access
+        :param str managed_folder: managed folder where artifacts are stored
+        :param str host: setup a custom host if the backend used is not DSS
         """
         load_dss_mlflow_plugin()
         if self._session.auth is not None:
-            auth_header = "Authorization"
-            auth_token = "Basic {}".format(
-                b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8"))
+            os.environ.update({
+                "DSS_MLFLOW_HEADER": "Authorization",
+                "DSS_MLFLOW_TOKEN": "Basic {}".format(
+                    b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8")),
+                "DSS_MLFLOW_APIKEY": self.api_key
+            })
         elif self.internal_ticket:
-            auth_header = "X-DKU-APITicket"
-            auth_token = self.internal_ticket
+            os.environ.update({
+                "DSS_MLFLOW_HEADER": "X-DKU-APITicket",
+                "DSS_MLFLOW_TOKEN": self.internal_ticket,
+                "DSS_MLFLOW_INTERNAL_TICKET": self.internal_ticket
+            })
         os.environ.update({
-            "DSS_MLFLOW_HEADER": auth_header,
-            "DSS_MLFLOW_TOKEN": auth_token,
             "DSS_MLFLOW_PROJECTKEY": project_key,
             "MLFLOW_TRACKING_URI": self.host + "/dip/publicapi" if host is None else host,
+            "DSS_MLFLOW_HOST": self.host,
+            "DSS_MLFLOW_MANAGED_FOLDER": managed_folder,
         })
 
 

@@ -778,7 +778,6 @@ class DSSProject(object):
         odb_id = res['id']
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
-
     ########################################################
     # Model evaluation stores
     ########################################################
