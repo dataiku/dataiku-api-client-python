@@ -9,7 +9,7 @@ def parse_dss_managed_folder_uri(uri):
     """Parse an S3 URI, returning (bucket, path)"""
     parsed = urllib.parse.urlparse(uri)
     if parsed.scheme != "dss-managed-folder":
-        raise Exception("Not an DSS Managed Folder URI: %s" % uri)
+        raise Exception("Not a DSS Managed Folder URI: %s" % uri)
     return os.path.normpath(parsed.path)
 
 
