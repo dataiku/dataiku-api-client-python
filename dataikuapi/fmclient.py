@@ -372,7 +372,7 @@ class FMClientAzure(FMClient):
         :param str host: Full url of the FM
         """
         self.cloud = "Azure"
-        super(FMClientAWS, self).__init__(
+        super(FMClientAzure, self).__init__(
             host, api_key_id, api_key_secret, tenant_id, extra_headers
         )
 
