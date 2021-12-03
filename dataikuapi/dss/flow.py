@@ -338,6 +338,22 @@ class DSSFlowZone(object):
         self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
                                   body=self.flow._to_smart_ref(obj))
 
+    def add_items(self, items):
+        """
+        Adds items to this zone.
+
+        The items will automatically be moved from its existing zone. Additional items may be moved to this zone
+        as a result of the operation (notably the recipe generating `obj`).
+
+        :param object items: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
+        """
+        smart_refs = []
+        for item in items:
+            smart_refs.append(self.flow._to_smart_ref(item))
+        self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/add-items" % (self.flow.project.project_key, self.id),
+                                  body=smart_refs)
+
     @property
     def items(self):
         """
