@@ -343,9 +343,9 @@ class DSSFlowZone(object):
         Adds items to this zone.
 
         The items will automatically be moved from its existing zone. Additional items may be moved to this zone
-        as a result of the operation (notably the recipe generating `obj`).
+        as a result of the operations (notably the recipe generating the `items`).
 
-        :param object items: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
+        :param list of object items, either :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
                            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
         """
         smart_refs = []
