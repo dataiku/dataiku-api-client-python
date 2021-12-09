@@ -1328,7 +1328,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
 
     .. code-block:: python
 
-        # Create a new prediction scoring recipe outputing to a new dataset
+        # Create a new evaluation recipe outputing to a new dataset, to a metrics dataset and/or to a model evaluation store
 
         project = client.get_project("MYPROJECT")
         builder = EvaluationRecipeCreator("my_scoring_recipe", project)
@@ -1340,6 +1340,27 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_output_evaluation_store(evaluation_store_id)
 
         new_recipe = builder.build()
+
+        # Access the settings
+
+        er_settings = new_recipe.get_settings()
+        json_payload = er_settings.get_json_payload()
+
+        # Change the settings
+
+        json_payload['dontComputePerformance'] = True
+        json_payload['outputProbabilities'] = False
+
+        # Manage evaluation labels
+
+        json_payload['labels'] = [dict(key="label_1", value="value_1"), dict(key="label_2", value="value_2")]
+
+        # Save the settings and run the recipe
+
+        er_settings.set_json_payload(json_payload)
+        er_settings.save()
+
+        new_recipe.run()
     
     Outputs must exist. They can be created using the following:
 
