@@ -1331,7 +1331,7 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         # Create a new evaluation recipe outputing to a new dataset, to a metrics dataset and/or to a model evaluation store
 
         project = client.get_project("MYPROJECT")
-        builder = EvaluationRecipeCreator("my_scoring_recipe", project)
+        builder = EvaluationRecipeCreator("my_evaluation_recipe", project)
         builder.with_input_model(saved_model_id)
         builder.with_input("dataset_to_evaluate")
 
