@@ -1,6 +1,6 @@
 import json, copy, re
-from dataikuapi.dss.recipe import *
-from dataikuapi.dss.dataset import *
+from ..recipe import *
+from ..dataset import *
 
 class _IndentContext(object):
     def __init__(self, flow_code_generator):

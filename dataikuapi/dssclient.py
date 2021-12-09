@@ -4,13 +4,13 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
-from dataikuapi.dss.notebook import DSSNotebook
+from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -486,22 +486,28 @@ class DSSClient(object):
     # Code envs
     ########################################################
 
-    def list_code_envs(self):
+    def list_code_envs(self, as_objects=False):
         """
         List all code envs setup on the DSS instance
 
         Note: this call requires an API key with admin rights
         
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
         :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
-        return self._perform_json(
+        list = self._perform_json(
             "GET", "/admin/code-envs/")
+        if as_objects:
+            return [DSSCodeEnv(self, e.get("envLang"), e.get("envName")) for e in list]
+        else:
+            return list
 
     def get_code_env(self, env_lang, env_name):
         """
         Get a handle to interact with a specific code env
         
-        :param str name: the name of the desired code env
+        :param env_lang: the language (PYTHON or R) of the new code env
+        :param env_name: the name of the new code env
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
         """
         return DSSCodeEnv(self, env_lang, env_name)
@@ -757,12 +763,12 @@ class DSSClient(object):
 
     def get_global_usage_summary(self, with_per_project=False):
         """
-        Summarize the contents of the instance
-
+        Gets a summary of the global usage of this DSS instance (number of projects, datasets, ...)
         :returns: a summary object
         """
-        return self._perform_json(
+        data = self._perform_json(
             "GET", "/admin/monitoring/global-usage-summary", params={'withPerProject':with_per_project})
+        return DSSGlobalUsageSummary(data)
 
    ########################################################
     # Variables
