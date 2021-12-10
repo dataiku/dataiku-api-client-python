@@ -1,11 +1,14 @@
 import json
+import os
+import shutil
 
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
+from contextlib import contextmanager
 
 from dataikuapi.dss.notebook import DSSNotebook
-from .dss_plugin_mlflow import MLflowHandle
+from .dss_plugin_mlflow import load_dss_mlflow_plugin
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
@@ -18,6 +21,7 @@ from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
+from base64 import b64encode
 from .utils import DataikuException, dku_basestring_type
 
 class DSSClient(object):
@@ -1091,6 +1095,7 @@ class DSSClient(object):
     ########################################################
     # MLflow
     ########################################################
+    @contextmanager
     def setup_mlflow(self, project_key, managed_folder="mlflow_artifacts", host=None):
         """
         Setup the dss-plugin for MLflow
@@ -1099,7 +1104,38 @@ class DSSClient(object):
         :param str managed_folder: managed folder where artifacts are stored
         :param str host: setup a custom host if the backend used is not DSS
         """
-        return MLflowHandle(client=self, project_key=project_key, managed_folder=managed_folder, host=host)
+        tempdir = load_dss_mlflow_plugin()
+        mlflow_env = {}
+        if self._session.auth is not None:
+            mlflow_env.update({
+                "DSS_MLFLOW_HEADER": "Authorization",
+                "DSS_MLFLOW_TOKEN": "Basic {}".format(
+                    b64encode("{}:".format(self._session.auth.username).encode("utf-8")).decode("utf-8")),
+                "DSS_MLFLOW_APIKEY": self.api_key
+            })
+        elif self.internal_ticket:
+            mlflow_env.update({
+                "DSS_MLFLOW_HEADER": "X-DKU-APITicket",
+                "DSS_MLFLOW_TOKEN": self.internal_ticket,
+                "DSS_MLFLOW_INTERNAL_TICKET": self.internal_ticket
+            })
+        mlflow_env.update({
+            "DSS_MLFLOW_PROJECTKEY": project_key,
+            "MLFLOW_TRACKING_URI": self.host + "/dip/publicapi" if host is None else host,
+            "DSS_MLFLOW_HOST": self.host,
+            "DSS_MLFLOW_MANAGED_FOLDER": managed_folder,
+        })
+        os.environ.update(mlflow_env)
+
+        try:
+            import mlflow
+            yield mlflow
+        except Exception as e:
+            raise e
+        finally:
+            shutil.rmtree(tempdir)
+            for variable in mlflow_env:
+                os.environ.pop(variable, None)
 
 
 class TemporaryImportHandle(object):

@@ -1,1 +1,1 @@
-from .utils import MLflowHandle
+from .utils import load_dss_mlflow_plugin
