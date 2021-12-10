@@ -9,7 +9,7 @@ class MLflowHandle:
     def __init__(self, client, project_key, managed_folder, host=None):
         """ Add the MLflow-plugin parts of dataikuapi to MLflow local setup.
 
-        This functions deals with
+        This method deals with
         1. importing dynamically the DSS Mlflow plugin:
         MLflow uses entrypoints==0.3 to load entrypoints from plugins at import time.
         We add dss-mlflow-plugin entrypoints dynamically by adding them in sys.path
