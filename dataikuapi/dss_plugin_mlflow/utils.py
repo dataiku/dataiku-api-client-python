@@ -45,7 +45,7 @@ class MLflowHandle:
                     b64encode("{}:".format(self.client._session.auth.username).encode("utf-8")).decode("utf-8")),
                 "DSS_MLFLOW_APIKEY": self.client.api_key
             })
-        elif self.internal_ticket:
+        elif client.internal_ticket:
             self.mlflow_env.update({
                 "DSS_MLFLOW_HEADER": "X-DKU-APITicket",
                 "DSS_MLFLOW_TOKEN": self.client.internal_ticket,
