@@ -865,9 +865,9 @@ class DSSProject(object):
         mec_id = res['id']
         return DSSModelComparison(self.client, self.project_key, mec_id)
 
-    def get_comparable(self, comparable_full_id):
+    def get_model_from_full_id(self, comparable_full_id):
         """
-        Retrieves a comparable item (Saved Model from the flow, Lab Model from an Analysis or Model Evaluation from a Model Evaluation Store) using its full id.
+        Retrieves a Saved Model from the flow, a Lab Model from an Analysis or a Model Evaluation from a Model Evaluation Store) using its full id.
 
         :param string comparable_full_id: the full id of the comparable
 
