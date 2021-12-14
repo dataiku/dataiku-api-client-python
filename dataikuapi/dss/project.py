@@ -894,6 +894,8 @@ class DSSProject(object):
             task_id = full_id.split('-')[3]
             return self.get_ml_task(analysis_id, task_id).get_trained_model_details(full_id)
 
+        raise ValueError("{} is not a valid full model id or full model evaluation id.".format(full_id))
+
     ########################################################
     # Jobs
     ########################################################
