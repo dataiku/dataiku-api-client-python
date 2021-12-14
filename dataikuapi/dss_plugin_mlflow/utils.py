@@ -6,7 +6,7 @@ from base64 import b64encode
 
 
 class MLflowHandle:
-    def __init__(self, client, project_key, managed_folder, host=None):
+    def __init__(self, client, project_key, managed_folder="mlflow_artifacts", host=None):
         """ Add the MLflow-plugin parts of dataikuapi to MLflow local setup.
 
         This method deals with
@@ -56,6 +56,7 @@ class MLflowHandle:
             "DSS_MLFLOW_PROJECTKEY": project_key,
             "MLFLOW_TRACKING_URI": self.client.host + "/dip/publicapi" if host is None else host,
             "DSS_MLFLOW_HOST": self.client.host,
+            "DSS_MLFLOW_MANAGED_FOLDER": managed_folder
         })
         os.environ.update(self.mlflow_env)
 
