@@ -50,7 +50,7 @@ class PluginDSSManagedFolderArtifactRepository:
         path = (
             os.path.join(self.base_artifact_path, artifact_path) if artifact_path else self.base_artifact_path
         )
-        self.managed_folder.put_file(os.path.join(path, os.path.basename(local_file)), open(local_file))
+        self.managed_folder.put_file(os.path.join(path, os.path.basename(local_file)), open(local_file, "rb"))
 
     def log_artifacts(self, local_dir, artifact_path=None):
         """
