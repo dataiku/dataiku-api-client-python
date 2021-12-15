@@ -1,4 +1,5 @@
 import time, warnings, sys, os.path as osp
+import re
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
@@ -864,6 +865,36 @@ class DSSProject(object):
                                         body = obj)
         mec_id = res['id']
         return DSSModelComparison(self.client, self.project_key, mec_id)
+
+    def get_from_full_id(self, full_id):
+        """
+        Retrieves a Saved Model from the flow, a Lab Model from an Analysis or a Model Evaluation from a Model Evaluation Store) using its full id.
+
+        :param string full_id: the full id of the item to retrieve
+
+        :returns: A handle on the Saved Model, the Model Evaluation or the Lab Model
+        :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation`
+        :rtype: :class:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails`
+        """
+
+        saved_model_pattern = re.compile("^S-(\\w+)-(\\w+)-(\\w+)(?:-part-(\\w+)-(v?\\d+))?$\\Z")
+        analysis_model_pattern = re.compile("^A-(\\w+)-(\\w+)-(\\w+)-(s[0-9]+)-(pp[0-9]+(?:-part-(\\w+)|-base)?)-(m[0-9]+)$\\Z")
+        model_evaluation_pattern = re.compile("^ME-(\\w+)-(\\w+)-(\\w+)$\\Z")
+
+        if saved_model_pattern.match(full_id):
+            return self.get_saved_model(full_id)
+        elif model_evaluation_pattern.match(full_id):
+            mes_id = full_id.split('-')[2]
+            evaluation_id = full_id.split('-')[3]
+            mes = self.get_model_evaluation_store(mes_id)
+            return mes.get_model_evaluation(evaluation_id)
+        elif analysis_model_pattern.match(full_id):
+            analysis_id = full_id.split('-')[2]
+            task_id = full_id.split('-')[3]
+            return self.get_ml_task(analysis_id, task_id).get_trained_model_details(full_id)
+
+        raise ValueError("{} is not a valid full model id or full model evaluation id.".format(full_id))
 
     ########################################################
     # Jobs
