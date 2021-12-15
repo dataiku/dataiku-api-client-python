@@ -10,12 +10,12 @@ class MLflowHandle:
         """ Add the MLflow-plugin parts of dataikuapi to MLflow local setup.
 
         This method deals with
-        1. importing dynamically the DSS Mlflow plugin:
+        1. importing dynamically the DSS MLflow plugin:
         MLflow uses entrypoints==0.3 to load entrypoints from plugins at import time.
         We add dss-mlflow-plugin entrypoints dynamically by adding them in sys.path
         at call time.
 
-        2. Setup the correct environemnent variables to setup the plugin to work
+        2. Setup the correct environment variables to setup the plugin to work
         with DSS backend as the tracking backend and enable using DSS managed folder
         as artifact location.
         """
