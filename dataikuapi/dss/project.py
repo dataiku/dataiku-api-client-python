@@ -1595,6 +1595,17 @@ class DSSProject(object):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
+    ########################################################
+    # MLflow experiment tracking
+    ########################################################
+    def clean_experiment_tracking_db(self):
+        """
+        Cleans the experiments, runs, params, metrics, tags, etc. for this project
+
+        This call requires an API key with admin rights
+        """
+        self.client._perform_raw("DELETE", "/api/2.0/mlflow/clean-db/%s" % self.project_key)
+
 
 class TablesImportDefinition(object):
     """
