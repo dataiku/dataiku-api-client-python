@@ -37,6 +37,14 @@ class MLflowHandle:
             )
         sys.path.insert(0, self.tempdir)
 
+        # Reload the artifact_repository_registry in case MLflow was imported beforehand
+        import mlflow
+        try:  # python 3.4+
+            from importlib import reload
+        except ImportError:
+            pass
+        reload(mlflow.store.artifact.artifact_repository_registry)
+
         # Setup authentication
         if client._session.auth is not None:
             self.mlflow_env.update({
