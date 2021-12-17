@@ -1208,6 +1208,28 @@ class DSSClusterStatus(object):
         """
         return self.status
 
+
+class DSSInstanceVariables(dict):
+    """
+    Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its :meth:`save` method.
+
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_global_variables`
+    """
+
+    def __init__(self, client, variables):
+        super(dict, self).__init__()
+        self.update(variables)
+        self.client = client
+
+    def save(self):
+        """
+        Save the changes made to the instance variables.
+
+        Note: this call requires an API key with admin rights.
+        """
+        return self.client._perform_empty("PUT", "/admin/variables/", body=self)
+
+
 class DSSGlobalUsageSummary(object):
     """
     The summary of the usage of the DSS instance.

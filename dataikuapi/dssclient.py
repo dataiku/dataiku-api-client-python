@@ -1,4 +1,4 @@
-import json
+import json, warnings
 
 from requests import Session
 from requests import exceptions
@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -48,7 +48,7 @@ class DSSClient(object):
     ########################################################
     # Futures
     ########################################################
-            
+
     def list_futures(self, as_objects=False, all_users=False):
         """
         List the currently-running long tasks (a.k.a futures)
@@ -776,17 +776,26 @@ class DSSClient(object):
 
     def get_variables(self):
         """
+        Deprecated. Use :meth:`get_global_variables`
+        """
+        warnings.warn("get_variables is deprecated, please use get_global_variables", DeprecationWarning)
+        return self.get_global_variables()
+
+    def get_global_variables(self):
+        """
         Get the DSS instance's variables, as a Python dictionary
 
         This call requires an API key with admin rights
-        
-        :returns: a Python dictionary of the instance-level variables
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSInstanceVariables` handle
         """
-        return self._perform_json(
-            "GET", "/admin/variables/")
+        variables = self._perform_json("GET", "/admin/variables/")
+        return DSSInstanceVariables(self, variables)
 
     def set_variables(self, variables):
         """
+        Deprecated. Use :meth:`get_global_variables` and :meth:`dataikuapi.dss.admin.DSSInstanceVariables.save`
+
         Updates the DSS instance's variables
 
         This call requires an API key with admin rights
@@ -797,8 +806,24 @@ class DSSClient(object):
         :param dict variables: the new dictionary of all variables of the instance
 
         """
-        return self._perform_empty(
-            "PUT", "/admin/variables/", body=variables)
+        warnings.warn("set_variables is deprecated, please use get_global_variables().save()", DeprecationWarning)
+        return DSSInstanceVariables(self, variables).save()
+
+    def get_resolved_variables(self, project_key=None, typed=False):
+        """
+        Get a dictionary of resolved variables of the project.
+
+        :param str project_key: the project key, defaults to the current project if any
+        :param bool typed: if True, the variable values will be typed in the returned dict, defaults to False
+        :returns: a dictionary with instance and project variables merged
+        """
+        import dataiku
+        return self._perform_json(
+            "GET",
+            "/projects/%s/variables-resolved" % (dataiku.default_project_key() if project_key is None else project_key),
+            params={
+                "typed": "true" if typed else "false"
+            })
 
 
     ########################################################
@@ -960,7 +985,7 @@ class DSSClient(object):
         """
         return self._perform_json("POST", "/auth/info-from-browser-headers",
                 params={"withSecrets": with_secrets}, body=headers_dict)
-        
+
     def get_ticket_from_browser_headers(self, headers_dict):
          """
          Returns a ticket for the DSS user authenticated by the dictionary of
