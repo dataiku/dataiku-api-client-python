@@ -27,7 +27,7 @@ setup(
             'Operating System :: OS Independent'
         ],
         install_requires = [
-            "requests>=2,<2.22",
+            "requests<3",
             "python-dateutil"
         ]
      )
