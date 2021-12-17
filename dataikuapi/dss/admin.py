@@ -695,13 +695,18 @@ class DSSCodeEnv(object):
 
         * env.permissions, env.usableByAll, env.desc.owner
         * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
-          env.desc.installJupyterSupport, env.desc.yarnPythonBin
+          env.desc.corePackagesSet, env.desc.installJupyterSupport, env.desc.yarnPythonBin, env.desc.yarnRBin
+          env.desc.envSettings, env.desc.allContainerConfs, env.desc.containerConfs, 
+          env.desc.allSparkKubernetesConfs, env.desc.sparkKubernetesConfs
 
         Fields that can be updated in automation node (where {version} is the updated version):
 
-        * env.permissions, env.usableByAll, env.owner
+        * env.permissions, env.usableByAll, env.owner, env.envSettings
         * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
-          env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
+          env.{version}.desc.installCorePackages, env.{version}.corePackagesSet, env.{version}.desc.installJupyterSupport
+          env.{version}.desc.yarnPythonBin, env.{version}.desc.yarnRBin, env.{version}.desc.allContainerConfs, 
+          env.{version}.desc.containerConfs, env.{version}.desc.allSparkKubernetesConfs, 
+          env.{version}.{version}.desc.sparkKubernetesConfs
 
         Note: this call requires an API key with admin rights
         
@@ -721,6 +726,39 @@ class DSSCodeEnv(object):
         """
         return self.client._perform_json(
             "GET", "/admin/code-envs/%s/%s/%s/version" % (self.env_lang, self.env_name, project_key))
+
+
+    def get_settings(self):
+        """
+        Returns the settings of this code env as a :class:`DSSCodeEnvSettings`, or one of its subclasses.
+
+        Known subclasses of :class:`DSSCodeEnvSettings` include :class:`DSSDesignCodeEnvSettings` 
+        and :class:`DSSAutomationCodeEnvSettings`
+
+        You must use :meth:`~DSSCodeEnvSettings.save()` on the returned object to make your changes effective
+        on the code env.
+
+        .. code-block:: python
+
+            # Example: setting the required packagd
+            codeenv = client.get_code_env("PYTHON", "code_env_name")
+            settings = codeenv.get_settings()
+            settings.set_required_packages("dash==2.0.0", "bokeh<2.0")
+            settings.save()
+            # then proceed to update_packages()
+
+        :rtype: :class:`DSSCodeEnvSettings`
+        """
+        data = self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+
+        # you can't just use deploymentMode to check if it's an automation code
+        # env, because some modes are common to both types of nodes. So we rely 
+        # on a non-null field that only the automation code envs have
+        if data.get("versions", None) is not None:
+            return DSSAutomationCodeEnvSettings(self, data)
+        else:
+            return DSSDesignCodeEnvSettings(self, data)
 
    
     ########################################################
@@ -804,6 +842,171 @@ class DSSCodeEnv(object):
         """
         return self.client._perform_text(
             "GET", "/admin/code-envs/%s/%s/logs/%s" % (self.env_lang, self.env_name, log_name))
+
+
+class DSSCodeEnvSettings(object):
+    """
+    Base settings class for a DSS code env.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        self.codeenv = codeenv
+        self.settings = settings
+
+    def get_raw(self):
+        """Get the raw code env settings as a dict"""
+        return self.settings
+
+    @property
+    def env_lang(self):
+        return self.codeenv.env_lang
+
+    @property
+    def env_name(self):
+        return self.codeenv.env_name
+
+    def save(self):
+        self.codeenv.client._perform_json(
+            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=self.settings)
+
+class DSSCodeEnvPackageListBearer(object):
+    def get_required_packages(self, as_list=False):
+        """
+        Return the list of required packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
+        """
+        x = self.settings.get("specPackageList", "")
+        return x.split('\n') if as_list else x
+    def set_required_packages(self, *packages):
+        """
+        Set the list of required packages
+        """
+        self.settings["specPackageList"] = '\n'.join(packages)
+
+    def get_required_conda_spec(self, as_list=False):
+        """
+        Return the list of required conda packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
+        """
+        x = self.settings.get("specCondaEnvironment", "")
+        return x.split('\n') if as_list else x
+    def set_required_conda_spec(self, *spec):
+        """
+        Set the list of required conda packages
+        """
+        self.settings["specCondaEnvironment"] = '\n'.join(packages)
+
+class DSSCodeEnvContainerConfsBearer(object):
+    def get_built_for_all_container_confs(self):
+        """
+        Return whether the code env creates an image for each container config
+        """
+        return self.settings.get("allContainerConfs", False)
+    def get_built_container_confs(self):
+        """
+        Return the list of container configs for which the code env builds an image (if not all)
+        """
+        return self.settings.get("containerConfs", [])
+    def set_built_container_confs(self, *configs, **kwargs):
+        """
+        Set the list of container configs for which the code env builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allContainerConfs'] = all
+        if not all:
+            self.settings['containerConfs'] = configs
+    def built_for_all_spark_kubernetes_confs(self):
+        """
+        Return whether the code env creates an image for each managed Spark over Kubernetes config
+        """
+        return self.settings.get("allSparkKubernetesConfs", False)
+    def get_built_spark_kubernetes_confs(self):
+        """
+        Return the list of managed Spark over Kubernetes configs for which the code env builds an image (if not all)
+        """
+        return self.settings.get("sparkKubernetesConfs", [])
+    def set_built_spark_kubernetes_confs(self, *configs, **kwargs):
+        """
+        Set the list of managed Spark over Kubernetes configs for which the code env builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allSparkKubernetesConfs'] = all
+        if not all:
+            self.settings['sparkKubernetesConfs'] = configs
+
+
+class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, DSSCodeEnvContainerConfsBearer):
+    """
+    Base settings class for a DSS code env on a design node.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        super(DSSDesignCodeEnvSettings, self).__init__(codeenv, settings)
+
+
+class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsBearer):
+    """
+    Base settings class for a DSS code env on an automation node.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        super(DSSAutomationCodeEnvSettings, self).__init__(codeenv, settings)
+
+
+    def get_version(self, version_id=None):
+        """
+        Get a specific code env version (for versioned envs) or the single
+        version
+
+        :param string version_id: for versioned code env, identifier of the desired version 
+
+        :rtype: :class:`DSSAutomationCodeEnvVersionSettings`
+        """
+        deployment_mode = self.settings.get("deploymentMode", None)
+        if deployment_mode in ['AUTOMATION_SINGLE']:
+            return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('currentVersion', {}))
+        elif deployment_mode in ['AUTOMATION_VERSIONED']:
+            versions = self.settings.get("versions", [])
+            version_ids = [v.get('versionId') for v in versions]
+            if version_id is None:
+                raise Exception("A version id is required in a versioned code env. Existing ids: %s" % ', '.join(version_ids))
+            for version in versions:
+                if version_id == version.get("versionId"):
+                    return DSSAutomationCodeEnvVersionSettings(self.codeenv, version)
+            raise Exception("Version %s not found in : %s" % (version_id, ', '.join(version_ids)))
+        elif deployment_mode in ['PLUGIN_NON_MANAGED', 'PLUGIN_MANAGED', 'AUTOMATION_NON_MANAGED_PATH', 'EXTERNAL_CONDA_NAMED']:
+            return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('noVersion', {}))
+        else:
+            raise Exception("Unexpected deployment mode %s for an automation node code env. Alter the settings directly with get_raw()", deployment_mode)
+
+class DSSAutomationCodeEnvVersionSettings(DSSCodeEnvPackageListBearer):
+    """
+    Base settings class for a DSS code env version on an automation node.
+    Do not instantiate this class directly, use :meth:`DSSAutomationCodeEnvSettings.get_version`
+
+    Use :meth:`save` on the :class:`DSSAutomationCodeEnvSettings` to save your changes
+    """
+
+    def __init__(self, codeenv_settings, version_settings):
+        self.codeenv_settings = codeenv_settings
+        self.settings = version_settings
 
 
 class DSSGlobalApiKey(object):
@@ -1025,3 +1228,44 @@ class DSSInstanceVariables(dict):
         Note: this call requires an API key with admin rights.
         """
         return self.client._perform_empty("PUT", "/admin/variables/", body=self)
+
+
+class DSSGlobalUsageSummary(object):
+    """
+    The summary of the usage of the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_global_usage_summary`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    @property
+    def raw(self):
+        return self.data
+
+    @property
+    def projects_count(self):
+        return self.data["projects"]
+
+    @property
+    def total_datasets_count(self):
+        return self.data["datasets"]["all"]
+
+    @property
+    def total_recipes_count(self):
+        return self.data["recipes"]["all"]
+
+    @property
+    def total_jupyter_notebooks_count(self):
+        return self.data["notebooks"]["nbJupyterNotebooks"]
+
+    @property
+    def total_sql_notebooks_count(self):
+        return self.data["notebooks"]["nbSqlNotebooks"]
+
+    @property
+    def total_scenarios_count(self):
+        return self.data["scenarios"]["all"]
+
+    @property
+    def total_active_with_trigger_scenarios_count(self):
+        return self.data["scenarios"]["activeWithTriggers"]
