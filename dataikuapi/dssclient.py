@@ -5,7 +5,6 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.dss.notebook import DSSNotebook
-from .dss_plugin_mlflow import MLflowHandle
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
@@ -1087,19 +1086,6 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
-
-    ########################################################
-    # MLflow
-    ########################################################
-    def setup_mlflow(self, project_key, managed_folder="mlflow_artifacts", host=None):
-        """
-        Setup the dss-plugin for MLflow
-
-        :param str project_key: identifier of the project to access
-        :param str managed_folder: managed folder where artifacts are stored
-        :param str host: setup a custom host if the backend used is not DSS
-        """
-        return MLflowHandle(client=self, project_key=project_key, managed_folder=managed_folder, host=host)
 
 
 class TemporaryImportHandle(object):

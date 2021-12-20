@@ -21,6 +21,7 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
+from .dss_plugin_mlflow import MLflowHandle
 
 
 class DSSProject(object):
@@ -1594,6 +1595,18 @@ class DSSProject(object):
     def get_app_manifest(self):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
+
+    ########################################################
+    # MLflow
+    ########################################################
+    def setup_mlflow(self, managed_folder="mlflow_artifacts", host=None):
+        """
+        Setup the dss-plugin for MLflow
+
+        :param str managed_folder: managed folder where artifacts are stored
+        :param str host: setup a custom host if the backend used is not DSS
+        """
+        return MLflowHandle(client=self.client, project_key=self.project_key, managed_folder=managed_folder, host=host)
 
 
 class TablesImportDefinition(object):
