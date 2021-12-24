@@ -1,4 +1,7 @@
 import time, warnings, sys, os.path as osp
+
+from ..dss_plugin_mlflow import MLflowHandle
+
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
@@ -1581,7 +1584,7 @@ class DSSProject(object):
         """
         connection_name = "@virtual(hive-jdbc):" + hive_database
         ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
-                params = {"connectionName": connection_name} )
+                params={"connectionName": connection_name} )
 
         def to_schema_table_pair(x):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
@@ -1590,14 +1593,21 @@ class DSSProject(object):
     ########################################################
     # App designer
     ########################################################
-
     def get_app_manifest(self):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
-    ########################################################
     # MLflow experiment tracking
     ########################################################
+    def setup_mlflow(self, managed_folder="mlflow_artifacts", host=None):
+        """
+        Setup the dss-plugin for MLflow
+
+        :param str managed_folder: managed folder where artifacts are stored
+        :param str host: setup a custom host if the backend used is not DSS
+        """
+        return MLflowHandle(client=self.client, project_key=self.project_key, managed_folder=managed_folder, host=host)
+
     def clean_experiment_tracking_db(self):
         """
         Cleans the experiments, runs, params, metrics, tags, etc. for this project
