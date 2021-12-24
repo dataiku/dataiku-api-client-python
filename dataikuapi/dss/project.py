@@ -1,4 +1,7 @@
 import time, warnings, sys, os.path as osp
+
+from ..dss_plugin_mlflow import MLflowHandle
+
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
@@ -21,7 +24,6 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-from .dss_plugin_mlflow import MLflowHandle
 
 
 class DSSProject(object):
