@@ -717,8 +717,6 @@ class DSSProject(object):
         :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
         """
-        if not name:
-            raise ValueError("name can not be empty")
         model = {
             "savedModelType" : "MLFLOW_PYFUNC",
             "predictionType" : prediction_type,
