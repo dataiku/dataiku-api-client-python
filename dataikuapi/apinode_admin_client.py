@@ -36,3 +36,9 @@ class APINodeAdminClient(DSSBaseClient):
 
     def get_metrics(self):
         return self._perform_json("GET", "metrics")
+
+    def create_code_env(self, file_dir, language):
+        self._perform_empty("POST", "codeenvs", params={
+            "fileDir": file_dir,
+            "language": language
+        })
