@@ -4,7 +4,6 @@ class DSSMLflowExtension(object):
 
     Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_mlflow_extension`
     """
-    ROOT_URL = ""
 
     def __init__(self, client, project_key):
         self.client = client
