@@ -1412,7 +1412,7 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_input("scored_dataset_to_evaluate")
         builder.with_output_evaluation_store(evaluation_store_id)
 
-        new_recipe = builder.build()
+        new_recipe = builder.create()
 
         # Save the model parameters in the SER settings
 
@@ -1445,12 +1445,12 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         # Add the newly created json payload to the recipe settings and save the recipe
         # Note that with this method, all the settings that were not explicitly set are instead set to their default value.
 
-        ser_settings = ser.get_settings()
+        ser_settings = new_recipe.get_settings()
 
         ser_settings.set_json_payload(ser_payload)
         ser_settings.save()
 
-        ser.run()
+        new_recipe.run()
 
     Output model evaluation store must exist. It can be created using the following:
 
