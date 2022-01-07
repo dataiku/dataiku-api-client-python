@@ -1429,6 +1429,8 @@ class DSSProject(object):
             return recipe.PredictionScoringRecipeCreator(name, self)
         elif type == "evaluation":
             return recipe.EvaluationRecipeCreator(name, self)
+        elif type == "standalone_evaluation":
+            return recipe.StandaloneEvaluationRecipeCreator(name, self)
         elif type == "clustering_scoring":
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":
