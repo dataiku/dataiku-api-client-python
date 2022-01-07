@@ -1414,13 +1414,16 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
 
         new_recipe = builder.create()
 
-        # Save the model parameters in the SER settings
+        # Modify the model parameters in the SER settings
 
-        ser_payload = dict(predictionType="BINARY_CLASSIFICATION",
-                   targetVariable="Survived",
-                   predictionVariable="prediction",
-                   isProbaAware=True,
-                   dontComputePerformance=False)
+        ser_settings = new_recipe.get_settings()
+        ser_json_payload = ser_settings.get_json_payload()
+
+        ser_json_payload['predictionType'] = "BINARY_CLASSIFICATION"
+        ser_json_payload['targetVariable'] = "Survived"
+        ser_json_payload['predictionVariable'] = "prediction"
+        ser_json_payload['isProbaAware'] = True
+        ser_json_payload['dontComputePerformance'] = False
 
         # For a classification model with probabilities, the 'probas' section can be filled with the mapping of the class and the probability column
         # e.g. for a binary classification model with 2 columns: proba_0 and proba_1
@@ -1442,7 +1445,7 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
 
         ser_payload['metricParams'] = dict(costMatrixWeights=dict(tpGain=0.4, fpGain=-1.0, tnGain=0.2, fnGain=-0.5))
 
-        # Add the newly created json payload to the recipe settings and save the recipe
+        # Add the modified json payload to the recipe settings and save the recipe
         # Note that with this method, all the settings that were not explicitly set are instead set to their default value.
 
         ser_settings = new_recipe.get_settings()
