@@ -4,6 +4,7 @@ from .metrics import ComputedMetrics
 from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
+from .managedfolder import DSSManagedFolder
 
 from ..utils import _make_zipfile
 
@@ -135,7 +136,6 @@ class DSSSavedModel(object):
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
-        # TODO: cleanup the archive
         import shutil
         import os
 
@@ -149,6 +149,36 @@ class DSSSavedModel(object):
             return self.get_mlflow_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
+
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT"):
+        """
+        Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
+
+        Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
+
+        :param str version_id: Identifier of the version to create
+        :param str managed_folder: Identifier of the managed folder or `dataikuapi.dss.managedfolder.DSSManagedFolder`
+        :param str path: Path of the MLflow folder in the managed folder
+        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
+                                  mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
+                                  If value is "INHERIT", the default active code env of the project will be used
+        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        """
+        # TODO: Add a check that it's indeed a MLFlow model folder
+        folder_ref = None
+        if type(managed_folder) is DSSManagedFolder:
+            folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
+        else:
+            folder_ref = managed_folder
+
+        self.client._perform_empty(
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
+            ),
+            params={"folderRef": folder_ref, "path": path},
+            files={"file": (None, None)}  # required for backend-mandated multipart request
+        )
+        return self.get_mlflow_version_handler(version_id)
 
     def get_mlflow_version_handler(self, version_id):
         """
@@ -315,9 +345,10 @@ class MLFlowVersionHandler:
 
         :meth:`set_core_metadata` must be called before you can evaluate a dataset
 
-        :param str dataset_ref: Name of the evaluation dataset to use (either a dataset name or "PROJECT.datasetName")
+        :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", :class:`DSSDataset` instance or :class:`dataiku.Dataset` instance)
         """
-        # TODO Add support for handling a DSSDataset or dataiku.Dataset as dataset_ref
+        if hasattr(dataset_ref, 'name'):
+            dataset_ref = dataset_ref.name
         req = {
             "datasetRef" : dataset_ref
         }
