@@ -344,13 +344,12 @@ class MLFlowVersionHandler:
         and more information will be available when calling :meth:`DSSSavedModel.get_version_details`
 
         :meth:`set_core_metadata` must be called before you can evaluate a dataset
-
-        :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", DSSDataset instance or dataiku.Dataset instance)
+        :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", :class:`DSSDataset` instance or :class:`dataiku.Dataset` instance)
         """
         if hasattr(dataset_ref, 'name'):
             dataset_ref = dataset_ref.name
         req = {
-            "datasetRef" : dataset_ref
+            "datasetRef": dataset_ref
         }
         self.saved_model.client._perform_empty("POST",
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/actions/evaluate" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),

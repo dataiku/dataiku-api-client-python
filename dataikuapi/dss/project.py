@@ -83,17 +83,25 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self, drop_data=False):
+    def delete(self, clear_managed_datasets=False, clear_output_managed_folders=False, clear_job_and_scenario_logs=True, **kwargs):
         """
         Delete the project
 
         This call requires an API key with admin rights
 
-        :param bool drop_data: Should the data of managed datasets be dropped
+        :param bool clear_managed_datasets: Should the data of managed datasets be cleared
+        :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared
+        :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared
         """
+        # For backwards compatibility
+        if 'drop_data' in kwargs and kwargs['drop_data']:
+            clear_managed_datasets = True
+
         return self.client._perform_empty(
-            "DELETE", "/projects/%s" % self.project_key, params = {
-                "dropData": drop_data
+            "DELETE", "/projects/%s" % self.project_key, params={
+                "clearManagedDatasets": clear_managed_datasets,
+                "clearOutputManagedFolders": clear_output_managed_folders,
+                "clearJobAndScenarioLogs": clear_job_and_scenario_logs
             })
 
     ########################################################
@@ -721,8 +729,6 @@ class DSSProject(object):
         :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
         """
-        if not name:
-            raise ValueError("name can not be empty")
         model = {
             "savedModelType" : "MLFLOW_PYFUNC",
             "predictionType" : prediction_type,
