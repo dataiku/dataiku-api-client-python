@@ -12,6 +12,7 @@ from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .modelevaluationstore import DSSModelEvaluationStore
+from .mlflow import DSSMLflowExtension
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario, DSSScenarioListItem
 from .continuousactivity import DSSContinuousActivity
@@ -33,8 +34,8 @@ class DSSProject(object):
     Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project`
     """
     def __init__(self, client, project_key):
-       self.client = client
-       self.project_key = project_key
+        self.client = client
+        self.project_key = project_key
 
     def get_summary(self):
         """
@@ -1607,6 +1608,15 @@ class DSSProject(object):
         :param str host: setup a custom host if the backend used is not DSS
         """
         return MLflowHandle(client=self.client, project_key=self.project_key, managed_folder=managed_folder, host=host)
+
+    def get_mlflow_extension(self):
+        """
+        Get a handle to interact with the extension of MLflow provided by DSS
+
+        :returns: A :class:`dataikuapi.dss.mlflow.DSSMLflowExtension` Mlflow Extension handle
+
+        """
+        return DSSMLflowExtension(client=self.client, project_key=self.project_key)
 
     def clean_experiment_tracking_db(self):
         """
