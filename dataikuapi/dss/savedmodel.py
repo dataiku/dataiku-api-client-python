@@ -1,10 +1,17 @@
-from ..utils import DataikuException
-from ..utils import DataikuUTF8CSVReader
-from ..utils import DataikuStreamedHttpUTF8CSVReader
-import json
-from .ml import DSSTrainedPredictionModelDetails, DSSTrainedClusteringModelDetails
+import tempfile
+
 from .metrics import ComputedMetrics
-from .discussion import DSSObjectDiscussions
+from .ml import DSSMLTask
+from .ml import DSSTrainedClusteringModelDetails
+from .ml import DSSTrainedPredictionModelDetails
+from .managedfolder import DSSManagedFolder
+
+from ..utils import _make_zipfile
+
+try:
+    basestring
+except NameError:
+    basestring = str
 
 class DSSSavedModel(object):
     """
@@ -14,8 +21,23 @@ class DSSSavedModel(object):
     """
     def __init__(self, client, project_key, sm_id):
         self.client = client
+        self.project = client.get_project(project_key)
         self.project_key = project_key
         self.sm_id = sm_id
+  
+    @property
+    def id(self):
+        return self.sm_id
+
+    def get_settings(self):
+        """
+        Returns the settings of this saved model.
+
+        :rtype: DSSSavedModelSettings
+        """
+        data = self.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
+        return DSSSavedModelSettings(self, data)
 
         
     ########################################################
@@ -69,6 +91,101 @@ class DSSSavedModel(object):
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
 
+    def delete_versions(self, versions, remove_intermediate=True):
+        """
+        Delete version(s) of the saved model
+
+        :param versions: list of versions to delete
+        :type versions: list[str]
+        :param remove_intermediate: also remove intermediate versions (default: True). In the case of a partitioned
+        model, an intermediate version is created every time a partition has finished training.
+        :type remove_intermediate: bool
+        """
+        if not isinstance(versions, list):
+            versions = [versions]
+        body = {
+            "versions": versions,
+            "removeIntermediate": remove_intermediate
+        }
+        self.client._perform_empty(
+            "POST", "/projects/%s/savedmodels/%s/actions/delete-versions" % (self.project_key, self.sm_id),
+            body=body)
+
+    def get_origin_ml_task(self):
+        """
+        Fetch the last ML task that has been exported to this saved model. Returns None if the saved model
+        does not have an origin ml task.
+
+        :rtype: DSSMLTask | None
+        """
+        fmi = self.get_settings().get_raw().get("lastExportedFrom")
+        if fmi is not None:
+            return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
+
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT"):
+        """
+        Create a new version for this saved model from a path containing a MLFlow model.
+
+        Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
+
+        :param str version_id: Identifier of the version to create
+        :param str path: An absolute path on the local filesystem. Must be a folder, and must contain a MLFlow model
+        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
+                                  mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
+                                  If value is "INHERIT", the default active code env of the project will be used
+        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        """
+        # TODO: Add a check that it's indeed a MLFlow model folder
+        import shutil
+        import os
+
+        archive_temp_dir = tempfile.mkdtemp()
+        try:
+            archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
+
+            with open(archive_filename, "rb") as fp:
+                self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
+                                           files={"file": (archive_filename, fp)})
+            return self.get_mlflow_version_handler(version_id)
+        finally:
+            shutil.rmtree(archive_temp_dir)
+
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT"):
+        """
+        Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
+
+        Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
+
+        :param str version_id: Identifier of the version to create
+        :param str managed_folder: Identifier of the managed folder or `dataikuapi.dss.managedfolder.DSSManagedFolder`
+        :param str path: Path of the MLflow folder in the managed folder
+        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
+                                  mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
+                                  If value is "INHERIT", the default active code env of the project will be used
+        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        """
+        # TODO: Add a check that it's indeed a MLFlow model folder
+        folder_ref = None
+        if type(managed_folder) is DSSManagedFolder:
+            folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
+        else:
+            folder_ref = managed_folder
+
+        self.client._perform_empty(
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
+            ),
+            params={"folderRef": folder_ref, "path": path},
+            files={"file": (None, None)}  # required for backend-mandated multipart request
+        )
+        return self.get_mlflow_version_handler(version_id)
+
+    def get_mlflow_version_handler(self, version_id):
+        """
+        Returns a :class:MLFlowVersionHandler to interact with a MLFlow model version
+        """
+        return MLFlowVersionHandler(self, version_id)
+
     ########################################################
     # Metrics
     ########################################################
@@ -85,8 +202,46 @@ class DSSSavedModel(object):
 
                 
     ########################################################
-    # Usages
+    # Misc
     ########################################################
+
+    def get_zone(self):
+        """
+        Gets the flow zone of this saved model
+
+        :rtype: :class:`dataikuapi.dss.flow.DSSFlowZone`
+        """
+        return self.project.get_flow().get_zone_of_object(self)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.project.get_flow().get_zone(zone)
+        zone.add_item(self)
+
+    def share_to_zone(self, zone):
+        """
+        Share this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to share the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.add_shared(self)
+
+    def unshare_from_zone(self, zone):
+        """
+        Unshare this object from a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` from where to unshare the object
+        """
+        if isinstance(zone, basestring):
+            zone = self.project.get_flow().get_zone(zone)
+        zone.remove_shared(self)
 
     def get_usages(self):
         """
@@ -97,10 +252,6 @@ class DSSSavedModel(object):
         """
         return self.client._perform_json("GET", "/projects/%s/savedmodels/%s/usages" % (self.project_key, self.sm_id))
 
-
-    ########################################################
-    # Discussions
-    ########################################################
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the saved model
@@ -120,3 +271,112 @@ class DSSSavedModel(object):
 
         """
         return self.client._perform_empty("DELETE", "/projects/%s/savedmodels/%s" % (self.project_key, self.sm_id))
+
+class MLFlowVersionSettings:
+    """Handle for the settings of an imported MLFlow model version"""
+
+    def __init__(self, version_handler, data):
+        self.version_handler = version_handler
+        self.data = data
+
+    @property
+    def raw(self):
+        return self.data
+
+    def save(self):
+        self.version_handler.saved_model.client._perform_empty("PUT", 
+            "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.version_handler.saved_model.project_key, self.version_handler.saved_model.sm_id, self.version_handler.version_id),
+            body=self.data)
+
+class MLFlowVersionHandler:
+    """Handler to interact with an imported MLFlow model version"""
+    def __init__(self, saved_model, version_id):
+        """Do not call this, use :meth:`DSSSavedModel.get_mlflow_version_handler`"""
+        self.saved_model = saved_model
+        self.version_id = version_id
+
+    def get_settings(self):
+        metadata = self.saved_model.client._perform_json("GET", "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id))
+        return MLFlowVersionSettings(self, metadata)
+
+    def set_core_metadata(self,
+        target_column_name, class_labels = None,
+        get_features_from_dataset=None, features_list = None,
+        output_style="AUTO_DETECT"):
+        """
+        Sets metadata for this MLFlow model version
+
+        In addition to target_column_name, one of get_features_from_dataset or features_list must be passed in order
+        to be able to evaluate performance
+
+        :param str target_column_name: name of the target column. Mandatory in order to be able to evaluate performance
+        :param list class_labels: List of strings, ordered class labels. Mandatory in order to be able to evaluate performance on classification models
+        :param str get_features_from_dataset: Name of a dataset to get feature names from
+        :param list features_list: List of {"name": "feature_name", "type": "feature_type"}
+        """
+
+        metadata = self.saved_model.client._perform_json("GET", "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id))
+
+        if target_column_name is not None:
+            metadata["targetColumnName"] = target_column_name
+
+        if class_labels is not None:
+            metadata["classLabels"] = [{"label": l} for l in class_labels]
+
+        if get_features_from_dataset is not None:
+            metadata["gatherFeaturesFromDataset"] = get_features_from_dataset
+
+        # TODO: add support for get_features_from_signature=False,
+        #if get_features_from_signature:
+        #    raise Exception("Get features from signature is not yet implemented")
+
+        # TODO: Add support for features_list, with validation
+
+        self.saved_model.client._perform_empty("PUT", 
+            "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
+            body=metadata)
+
+    def evaluate(self, dataset_ref):
+        """
+        Evaluates the performance of this model version on a particular dataset.
+        After calling this, the "result screens" of the MLFlow model version will be available
+        (confusion matrix, error distribution, performance metrics, ...)
+        and more information will be available when calling :meth:`DSSSavedModel.get_version_details`
+
+        :meth:`set_core_metadata` must be called before you can evaluate a dataset
+
+        :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", :class:`DSSDataset` instance or :class:`dataiku.Dataset` instance)
+        """
+        if hasattr(dataset_ref, 'name'):
+            dataset_ref = dataset_ref.name
+        req = {
+            "datasetRef" : dataset_ref
+        }
+        self.saved_model.client._perform_empty("POST",
+            "/projects/%s/savedmodels/%s/versions/%s/external-ml/actions/evaluate" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
+            body=req)
+
+
+class DSSSavedModelSettings:
+    """
+    A handle on the settings of a saved model
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSSavedModel.get_settings`
+    """
+
+    def __init__(self, saved_model, settings):
+        self.saved_model = saved_model
+        self.settings = settings
+
+    def get_raw(self):
+        return self.settings
+
+    @property
+    def prediction_metrics_settings(self):
+        """The settings of evaluation metrics for a prediction saved model"""
+        return self.settings["miniTask"]["modeling"]["metrics"]
+
+    def save(self):
+        """Saves the settings of this saved model"""
+        self.saved_model.client._perform_empty("PUT", "/projects/%s/savedmodels/%s" % (self.saved_model.project_key, self.saved_model.sm_id),
+                    body=self.settings)

@@ -1,7 +1,8 @@
 import csv, sys
 from dateutil import parser as date_iso_parser
 from contextlib import closing
-
+import os
+import zipfile
 import itertools
 
 if sys.version_info > (3,0):
@@ -94,3 +95,22 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 doublequote=True):
                 yield [none_if_throws(caster)(val)
                         for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+
+class CallableStr(str):
+    def __init__(self, val):
+        self.val = val
+
+    def __call__(self):
+        return self.val
+
+
+def _make_zipfile(output_filename, source_dir):
+    relroot = os.path.abspath(os.path.join(source_dir))
+    with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zipfp:
+        for root, dirs, files in os.walk(source_dir):
+            for file in files:
+                filename = os.path.join(root, file)
+                if os.path.isfile(filename):
+                    arcname = os.path.join(os.path.relpath(root, relroot), file)
+                    zipfp.write(filename, arcname)
+    return output_filename

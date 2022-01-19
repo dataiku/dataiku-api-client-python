@@ -1,6 +1,6 @@
 import time
 import sys
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 
 class DSSJob(object):
     """

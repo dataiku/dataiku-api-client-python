@@ -1,6 +1,6 @@
 import time
 import sys, json
-from dataikuapi.utils import DataikuException
+from ..utils import DataikuException
 
 class DSSMacro(object):
     """
@@ -33,16 +33,20 @@ class DSSMacro(object):
         return self.definition
 
 
-    def run(self, params={}, admin_params={}, wait=True):
+    def run(self, params=None, admin_params=None, wait=True):
         """
         Run the macro from the project
 
-        :param params: parameters to the macro run
-        :param admin_params: admin parameters to the macro run (if the authentication of
-                             the api client does not cover admin rights, they are ignored)
+        :param dict params: parameters to the macro run (defaults to `{}`)
+        :param dict admin_params: admin parameters to the macro run (if the authentication of
+                             the api client does not cover admin rights, they are ignored, defaults to `{}`)
         :param wait: if True, the call blocks until the run is finished
         :returns: a run identifier to use to abort or retrieve results
         """
+        if params is None:
+            params = {}
+        if admin_params is None:
+            admin_params = {}
         return self.client._perform_json(
             "POST", "/projects/%s/runnables/%s" % (self.project_key, self.runnable_type), 
             params={'wait':wait}, body={'params':params, 'adminParams':admin_params})['runId']
@@ -87,5 +91,4 @@ class DSSMacro(object):
                 return json.load(s)
         else:
             return resp.raw
-
 

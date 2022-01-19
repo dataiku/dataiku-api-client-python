@@ -2,18 +2,20 @@ from .discussion import DSSObjectDiscussions
 
 class DSSNotebook(object):
     """
+    Deprecated. Use DSSJupyterNotebook
     A Python/R/Scala notebook on the DSS instance
     """
     def __init__(self, client, project_key, notebook_name, state=None):
-       self.client = client
-       self.project_key = project_key
-       self.notebook_name = notebook_name
-       self.state = state
-       self.state_is_peek = True
+        self.client = client
+        self.project_key = project_key
+        self.notebook_name = notebook_name
+        self.state = state
+        self.state_is_peek = True
 
     def unload(self, session_id=None):
         """
-        Stop the notebook and release its resources
+        Deprecated. Use DSSJupyterNotebook
+        Stop this Jupyter notebook and release its resources
         """
         state = self.get_state()
         if state is None:
@@ -29,9 +31,11 @@ class DSSNotebook(object):
                 session_id = state['activeSessions'][0].get('sessionId', None)
         return self.client._perform_json("DELETE", "/projects/%s/notebooks/" % self.project_key, params={'notebookName' : self.notebook_name, 'sessionId' : session_id})
 
+
     def get_state(self):
         """
-        Get the status of the notebook
+        Deprecated. Use DSSJupyterNotebook
+        Get the metadata associated to this Jupyter notebook
         """
         if self.state is None:
             self.state = self.client._perform_json("GET", "/projects/%s/notebooks/" % self.project_key, params={'notebookName' : self.notebook_name})
@@ -39,7 +43,8 @@ class DSSNotebook(object):
 
     def get_sessions(self):
         """
-        Get the list of the running sessions of this notebook
+        Deprecated. Use DSSJupyterNotebook
+        Get the list of running sessions of this Jupyter notebook
         """
         state = self.get_state()
         if state is None:
@@ -53,6 +58,7 @@ class DSSNotebook(object):
     ########################################################
     def get_object_discussions(self):
         """
+        Deprecated. Use DSSJupyterNotebook
         Get a handle to manage discussions on the notebook
 
         :returns: the handle to manage discussions

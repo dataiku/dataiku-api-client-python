@@ -1,11 +1,58 @@
 from .future import DSSFuture
-import json
+import json, warnings
+
+class DSSConnectionInfo(dict):
+    """A class holding read-only information about a connection.
+    This class should not be created directly. Instead, use :meth:`DSSConnection.get_info`
+
+    The main use case of this class is to retrieve the decrypted credentials for a connection,
+    if allowed by the connection permissions.
+
+    Depending on the connection kind, the credential may be available using :meth:`get_basic_credential` 
+    or :meth:`get_aws_credential`
+    """
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`DSSConnection.get_info`"""
+        super(DSSConnectionInfo, self).__init__(data)
+
+    def get_type(self):
+        """Returns the type of the connection"""
+        return self["type"]
+
+    def get_params(self):
+        """Returns the parameters of the connection, as a dict"""
+        return self["params"]
+
+    def get_basic_credential(self):
+        """
+        Returns the basic credential (user/password pair) for this connection, if available
+
+        :returns: the credential, as a dict containing "user" and "password"
+        :rtype dict
+        """
+        if not "resolvedBasicCredential" in self:
+            raise ValueError("No basic credential available")
+        return self["resolvedBasicCredential"]
+
+    def get_aws_credential(self):
+        """
+        Returns the AWS credential for this connection, if available.
+        The AWS credential can either be a keypair or a STS token triplet
+
+        :returns: the credential, as a dict containing "accessKey", "secretKey", and "sessionToken" (only in the case of STS token)
+        :rtype dict
+        """
+        if not "resolvedAWSCredential" in self:
+            raise ValueError("No AWS credential available")
+        return self["resolvedAWSCredential"]
+
 
 class DSSConnection(object):
     """
-    A connection on the DSS instance
+    A connection on the DSS instance.
     """
     def __init__(self, client, name):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_connection`"""
         self.client = client
         self.name = name
 
@@ -14,18 +61,20 @@ class DSSConnection(object):
     ########################################################
 
     def get_location_info(self):
+        """Deprecated, use get_info"""
+        warnings.warn("DSSConnection.get_location_info is deprecated, please use get_info", DeprecationWarning)
+        return self.get_info()
+
+    def get_info(self):
         """
         Gets information about this connection.
 
-        Note: this call requires either an admin API key or
-        a personal API key that corresponds to a user who 
-        belongs to a group who has the rights to read connection
-        details
+        Note: this call requires permissions to read connection details
 
-        :returns: a dict containing connection information
+        :returns: a :class:`DSSConnectionInfo` containing connection information
         """
-        return  self.client._perform_json(
-            "GET", "/connections/%s/info" % self.name)
+        return DSSConnectionInfo(self.client._perform_json(
+            "GET", "/connections/%s/info" % self.name))
     
     ########################################################
     # Connection deletion
@@ -34,21 +83,13 @@ class DSSConnection(object):
     def delete(self):
         """
         Delete the connection
-
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/connections/%s" % self.name)
-    
-        
-    ########################################################
-    # User description
-    ########################################################
-    
+
     def get_definition(self):
         """
         Get the connection's definition (type, name, params, usage restrictions)
-        Note: this call requires an API key with admin rights
         
         :returns: The connection definition, as a dict.
 
@@ -62,7 +103,6 @@ class DSSConnection(object):
     def set_definition(self, description):
         """
         Set the connection's definition.
-        Note: this call requires an API key with admin rights
         
         You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
         not create a new dict.
@@ -80,10 +120,9 @@ class DSSConnection(object):
     def sync_root_acls(self):
         """
         Resync root permissions on this connection path. This is only useful for HDFS connections
-        when DSS is in multi-user-security mode.
-        Note: this call requires an API key with admin rights
-        
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
+        when DSS has User Isolation activated with "DSS-managed HDFS ACL"
+
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
@@ -93,54 +132,60 @@ class DSSConnection(object):
     def sync_datasets_acls(self):
         """
         Resync permissions on datasets in this connection path. This is only useful for HDFS connections
-        when DSS is in multi-user-security mode.
-        Note: this call requires an API key with admin rights
+        when DSS has User Isolation activated with "DSS-managed HDFS ACL"
         
-        :returns: a :class:`~dataikuapi.dss.future.DSSFuture`  handle to the task of resynchronizing the permissions
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of resynchronizing the permissions
         """
         future_response = self.client._perform_json(
             "POST", "/admin/connections/%s/sync" % self.name,
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
-    
-        
+
+
 class DSSUser(object):
     """
     A handle for a user on the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_user`
     """
     def __init__(self, client, login):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_user`"""
         self.client = client
         self.login = login
-
-    ########################################################
-    # User deletion
-    ########################################################
 
     def delete(self):
         """
         Deletes the user
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/users/%s" % self.login)
 
+    def get_settings(self):
+        """
+        Gets the settings of the user
+        :rtype: :class:`DSSUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
+        return DSSUserSettings(self.client, self.login, raw)
+
     ########################################################
-    # User description
+    # Legacy
     ########################################################
 
     def get_definition(self):
         """
+        Deprecated, use get_settings instead
+
         Get the user's definition (login, type, display name, permissions, ...)
-        Note: this call requires an API key with admin rights
 
         :return: the user's definition, as a dict
         """
-        return self.client._perform_json(
-            "GET", "/admin/users/%s" % self.login)
+        warnings.warn("DSSUser.get_definition is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json("GET", "/admin/users/%s" % self.login)
 
     def set_definition(self, definition):
         """
+        Deprecated, use get_settings instead
+
         Set the user's definition.
         Note: this call requires an API key with admin rights
 
@@ -157,16 +202,174 @@ class DSSUser(object):
 
         :param dict definition: the definition for the user, as a dict
         """
-        return self.client._perform_json(
-            "PUT", "/admin/users/%s" % self.login,
-            body = definition)
-            
+        warnings.warn("DSSUser.set_definition is deprecated, please use get_settings", DeprecationWarning)
+        return self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = definition)
+
+    def get_client_as(self):
+        """
+        Gets a :class:`dataikuapi.DSSClient` that has the permissions of this user.
+
+        This allows administrators to impersonate actions on behalf of other users, in order to perform
+        actions on their behalf
+        """
+        from dataikuapi.dssclient import DSSClient
+
+        if self.client.api_key is not None:
+            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})
+        elif self.client.internal_ticket is not None:
+            return DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
+                                         extra_headers={"X-DKU-ProxyUser":  self.login})
+        else:
+            raise ValueError("Don't know how to proxy this client")
+
+class DSSOwnUser(object):
+    """
+    A handle to interact with your own user
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_own_user`
+    """
+    def __init__(self, client):
+        self.client = client
+
+    def get_settings(self):
+        """
+        Get your own settings
+
+        :rtype: :class:`DSSOwnUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/current-user")
+        return DSSOwnUserSettings(self.client, raw)
+
+
+class DSSUserSettingsBase(object):
+    """Settings for a DSS user"""
+    def __init__(self, settings):
+        """Do not call this directly, use :meth:`DSSUser.get_settings` or :meth:`DSSOwnUser.get_settings` """
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
+        are reflected when saving
+        :rtype: dict
+        """
+        return self.settings
+
+    def add_secret(self, name, value):
+        """
+        Adds a user secret.
+        If there was already a secret with the same name, it is replaced
+        """
+        self.remove_secret(name)
+        return self.settings["secrets"].append({"name": name, "value": value, "secret": True})
+
+    def remove_secret(self, name):
+        """Removes a user secret based on its name"""
+        self.settings["secrets"] = [x for x in self.settings["secrets"] if x["name"] != name]
+
+    @property
+    def user_properties(self):
+        """
+        The user properties (editable by the user) for this user. Do not set this property, modify the dict in place
+
+        :rtype dict
+        """
+        return self.settings["userProperties"]
+
+    def set_basic_connection_credential(self, connection, user, password):
+        """Sets per-user-credentials for a connection that takes a user/password pair"""
+        self.settings["credentials"][connection] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def remove_connection_credential(self,connection):
+        """Removes per-user-credentials for a connection"""
+        if connection in self.settings["credentials"]:
+            del self.settings["credentials"][connection]
+
+    def set_basic_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, user, password):
+        """Sets per-user-credentials for a plugin preset that takes a user/password pair"""
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "BASIC",
+            "user": user,
+            "password": password
+        }
+
+    def set_oauth2_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name, refresh_token):
+        """Sets per-user-credentials for a plugin preset that takes a OAuth refresh token"""
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
+
+        self.settings["credentials"][name] = {
+            "type": "OAUTH_REFRESH_TOKEN",
+            "refreshToken": refresh_token
+        }
+
+    def remove_plugin_credential(self, plugin_id, param_set_id, preset_id, param_name):
+        """Removes per-user-credentials for a plugin preset"""
+        name = json.dumps(["PLUGIN", plugin_id, param_set_id, preset_id, param_name])[1:-1]
+
+        if name in self.settings["credentials"]:
+            del self.settings["credentials"][name]
+
+
+class DSSUserSettings(DSSUserSettingsBase):
+    """Settings for a DSS user"""
+
+    def __init__(self, client, login, settings):
+        """Do not call this directly, use :meth:`DSSUser.get_settings`"""
+        super(DSSUserSettings, self).__init__(settings)
+        self.client = client
+        self.login = login
+
+    @property
+    def admin_properties(self):
+        """
+        The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
+
+        :rtype dict
+        """
+        return self.settings["adminProperties"]
+
+    @property
+    def enabled(self):
+        """
+        Whether this user is enabled
+        :rtype boolean
+        """
+        return self.settings["enabled"]
+
+    @enabled.setter
+    def enabled(self, new_value):
+        self.settings["enabled"] = new_value
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
+
+
+class DSSOwnUserSettings(DSSUserSettingsBase):
+    """Settings for the current DSS user"""
+
+    def __init__(self, client, settings):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_own_user`"""
+        super(DSSOwnUserSettings, self).__init__(settings)
+        self.client = client
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
 class DSSGroup(object):
     """
     A group on the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_group`
     """
     def __init__(self, client, name):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_group`"""
         self.client = client
         self.name = name
     
@@ -177,20 +380,14 @@ class DSSGroup(object):
     def delete(self):
         """
         Deletes the group
-        Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty(
             "DELETE", "/admin/groups/%s" % self.name)
     
-        
-    ########################################################
-    # User description
-    ########################################################
-    
+
     def get_definition(self):
         """
         Get the group's definition (name, description, admin abilities, type, ldap name mapping)
-        Note: this call requires an API key with admin rights
         
         :return: the group's definition, as a dict
         """
@@ -200,7 +397,6 @@ class DSSGroup(object):
     def set_definition(self, definition):
         """
         Set the group's definition.
-        Note: this call requires an API key with admin rights
 
         You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
         not create a new dict.
@@ -212,12 +408,14 @@ class DSSGroup(object):
             "PUT", "/admin/groups/%s" % self.name,
             body = definition)
 
+
 class DSSGeneralSettings(object):
     """
     The general settings of the DSS instance.
     Do not create this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`
     """
     def __init__(self, client):
+        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`"""
         self.client = client
         self.settings = self.client._perform_json("GET", "/admin/general-settings")
     
@@ -231,8 +429,7 @@ class DSSGeneralSettings(object):
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty("PUT", "/admin/general-settings", body = self.settings)
-    
-    
+
     ########################################################
     # Value accessors
     ########################################################
@@ -498,13 +695,18 @@ class DSSCodeEnv(object):
 
         * env.permissions, env.usableByAll, env.desc.owner
         * env.specCondaEnvironment, env.specPackageList, env.externalCondaEnvName, env.desc.installCorePackages,
-          env.desc.installJupyterSupport, env.desc.yarnPythonBin
+          env.desc.corePackagesSet, env.desc.installJupyterSupport, env.desc.yarnPythonBin, env.desc.yarnRBin
+          env.desc.envSettings, env.desc.allContainerConfs, env.desc.containerConfs, 
+          env.desc.allSparkKubernetesConfs, env.desc.sparkKubernetesConfs
 
         Fields that can be updated in automation node (where {version} is the updated version):
 
-        * env.permissions, env.usableByAll, env.owner
+        * env.permissions, env.usableByAll, env.owner, env.envSettings
         * env.{version}.specCondaEnvironment, env.{version}.specPackageList, env.{version}.externalCondaEnvName, 
-          env.{version}.desc.installCorePackages, env.{version}.desc.installJupyterSupport, env.{version}.desc.yarnPythonBin
+          env.{version}.desc.installCorePackages, env.{version}.corePackagesSet, env.{version}.desc.installJupyterSupport
+          env.{version}.desc.yarnPythonBin, env.{version}.desc.yarnRBin, env.{version}.desc.allContainerConfs, 
+          env.{version}.desc.containerConfs, env.{version}.desc.allSparkKubernetesConfs, 
+          env.{version}.{version}.desc.sparkKubernetesConfs
 
         Note: this call requires an API key with admin rights
         
@@ -513,7 +715,52 @@ class DSSCodeEnv(object):
         """
         return self.client._perform_json(
             "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=env)
-    
+
+    def get_version_for_project(self, project_key):
+        """
+        Resolve the code env version for a given project
+
+        Note: version will only be non-empty for versioned code envs actually used by the project
+
+        :returns: the code env reference, with a version field
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/%s/version" % (self.env_lang, self.env_name, project_key))
+
+
+    def get_settings(self):
+        """
+        Returns the settings of this code env as a :class:`DSSCodeEnvSettings`, or one of its subclasses.
+
+        Known subclasses of :class:`DSSCodeEnvSettings` include :class:`DSSDesignCodeEnvSettings` 
+        and :class:`DSSAutomationCodeEnvSettings`
+
+        You must use :meth:`~DSSCodeEnvSettings.save()` on the returned object to make your changes effective
+        on the code env.
+
+        .. code-block:: python
+
+            # Example: setting the required packagd
+            codeenv = client.get_code_env("PYTHON", "code_env_name")
+            settings = codeenv.get_settings()
+            settings.set_required_packages("dash==2.0.0", "bokeh<2.0")
+            settings.save()
+            # then proceed to update_packages()
+
+        :rtype: :class:`DSSCodeEnvSettings`
+        """
+        data = self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+
+        # you can't just use deploymentMode to check if it's an automation code
+        # env, because some modes are common to both types of nodes. So we rely 
+        # on a non-null field that only the automation code envs have
+        if data.get("versions", None) is not None:
+            return DSSAutomationCodeEnvSettings(self, data)
+        else:
+            return DSSDesignCodeEnvSettings(self, data)
+
+   
     ########################################################
     # Code env actions
     ########################################################
@@ -535,19 +782,231 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def update_packages(self):
+    def update_packages(self, force_rebuild_env=False):
         """
         Update the code env packages so that it matches its spec
         
         Note: this call requires an API key with admin rights
         """
         resp = self.client._perform_json(
-            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name))
+            "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name),
+            params={"forceRebuildEnv": force_rebuild_env})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
+
+    def update_images(self, env_version=None):
+        """
+        Rebuild the docker image of the code env
+        
+        Note: this call requires an API key with admin rights
+        """
+        resp = self.client._perform_json(
+            "POST", "/admin/code-envs/%s/%s/images" % (self.env_lang, self.env_name),
+            params={"envVersion": env_version})
+        if resp is None:
+            raise Exception('Env image build returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Env image build failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return resp
+
+    def list_usages(self, env_version=None):
+        """
+        List usages of the code env in the instance
+
+        :return: a list of objects where the code env is used
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/usages" % (self.env_lang, self.env_name), params={"envVersion": env_version})
+
+    def list_logs(self, env_version=None):
+        """
+        List logs of the code env in the instance
+
+        :return: a list of log descriptions
+        """
+        return self.client._perform_json(
+            "GET", "/admin/code-envs/%s/%s/logs" % (self.env_lang, self.env_name), params={"envVersion": env_version})
+
+    def get_log(self, log_name):
+        """
+        Get the logs of the code env
+        
+        Args:
+            log_name: name of the log to fetch
+            
+           Returns:
+               the log, as a string
+        """
+        return self.client._perform_text(
+            "GET", "/admin/code-envs/%s/%s/logs/%s" % (self.env_lang, self.env_name, log_name))
+
+
+class DSSCodeEnvSettings(object):
+    """
+    Base settings class for a DSS code env.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        self.codeenv = codeenv
+        self.settings = settings
+
+    def get_raw(self):
+        """Get the raw code env settings as a dict"""
+        return self.settings
+
+    @property
+    def env_lang(self):
+        return self.codeenv.env_lang
+
+    @property
+    def env_name(self):
+        return self.codeenv.env_name
+
+    def save(self):
+        self.codeenv.client._perform_json(
+            "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=self.settings)
+
+class DSSCodeEnvPackageListBearer(object):
+    def get_required_packages(self, as_list=False):
+        """
+        Return the list of required packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
+        """
+        x = self.settings.get("specPackageList", "")
+        return x.split('\n') if as_list else x
+    def set_required_packages(self, *packages):
+        """
+        Set the list of required packages
+        """
+        self.settings["specPackageList"] = '\n'.join(packages)
+
+    def get_required_conda_spec(self, as_list=False):
+        """
+        Return the list of required conda packages, as a single string
+
+        :param boolean as_list: if True, return the spec as a list of lines; if False, return as a single multiline string
+        """
+        x = self.settings.get("specCondaEnvironment", "")
+        return x.split('\n') if as_list else x
+    def set_required_conda_spec(self, *spec):
+        """
+        Set the list of required conda packages
+        """
+        self.settings["specCondaEnvironment"] = '\n'.join(packages)
+
+class DSSCodeEnvContainerConfsBearer(object):
+    def get_built_for_all_container_confs(self):
+        """
+        Return whether the code env creates an image for each container config
+        """
+        return self.settings.get("allContainerConfs", False)
+    def get_built_container_confs(self):
+        """
+        Return the list of container configs for which the code env builds an image (if not all)
+        """
+        return self.settings.get("containerConfs", [])
+    def set_built_container_confs(self, *configs, **kwargs):
+        """
+        Set the list of container configs for which the code env builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allContainerConfs'] = all
+        if not all:
+            self.settings['containerConfs'] = configs
+    def built_for_all_spark_kubernetes_confs(self):
+        """
+        Return whether the code env creates an image for each managed Spark over Kubernetes config
+        """
+        return self.settings.get("allSparkKubernetesConfs", False)
+    def get_built_spark_kubernetes_confs(self):
+        """
+        Return the list of managed Spark over Kubernetes configs for which the code env builds an image (if not all)
+        """
+        return self.settings.get("sparkKubernetesConfs", [])
+    def set_built_spark_kubernetes_confs(self, *configs, **kwargs):
+        """
+        Set the list of managed Spark over Kubernetes configs for which the code env builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allSparkKubernetesConfs'] = all
+        if not all:
+            self.settings['sparkKubernetesConfs'] = configs
+
+
+class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, DSSCodeEnvContainerConfsBearer):
+    """
+    Base settings class for a DSS code env on a design node.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        super(DSSDesignCodeEnvSettings, self).__init__(codeenv, settings)
+
+
+class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsBearer):
+    """
+    Base settings class for a DSS code env on an automation node.
+    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+
+    Use :meth:`save` to save your changes
+    """
+
+    def __init__(self, codeenv, settings):
+        super(DSSAutomationCodeEnvSettings, self).__init__(codeenv, settings)
+
+
+    def get_version(self, version_id=None):
+        """
+        Get a specific code env version (for versioned envs) or the single
+        version
+
+        :param string version_id: for versioned code env, identifier of the desired version 
+
+        :rtype: :class:`DSSAutomationCodeEnvVersionSettings`
+        """
+        deployment_mode = self.settings.get("deploymentMode", None)
+        if deployment_mode in ['AUTOMATION_SINGLE']:
+            return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('currentVersion', {}))
+        elif deployment_mode in ['AUTOMATION_VERSIONED']:
+            versions = self.settings.get("versions", [])
+            version_ids = [v.get('versionId') for v in versions]
+            if version_id is None:
+                raise Exception("A version id is required in a versioned code env. Existing ids: %s" % ', '.join(version_ids))
+            for version in versions:
+                if version_id == version.get("versionId"):
+                    return DSSAutomationCodeEnvVersionSettings(self.codeenv, version)
+            raise Exception("Version %s not found in : %s" % (version_id, ', '.join(version_ids)))
+        elif deployment_mode in ['PLUGIN_NON_MANAGED', 'PLUGIN_MANAGED', 'AUTOMATION_NON_MANAGED_PATH', 'EXTERNAL_CONDA_NAMED']:
+            return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('noVersion', {}))
+        else:
+            raise Exception("Unexpected deployment mode %s for an automation node code env. Alter the settings directly with get_raw()", deployment_mode)
+
+class DSSAutomationCodeEnvVersionSettings(DSSCodeEnvPackageListBearer):
+    """
+    Base settings class for a DSS code env version on an automation node.
+    Do not instantiate this class directly, use :meth:`DSSAutomationCodeEnvSettings.get_version`
+
+    Use :meth:`save` on the :class:`DSSAutomationCodeEnvSettings` to save your changes
+    """
+
+    def __init__(self, codeenv_settings, version_settings):
+        self.codeenv_settings = codeenv_settings
+        self.settings = version_settings
 
 
 class DSSGlobalApiKey(object):
@@ -600,12 +1059,13 @@ class DSSGlobalApiKey(object):
             "PUT", "/admin/globalAPIKeys/%s" % self.key,
             body = definition)
 
+
 class DSSCluster(object):
     """
     A handle to interact with a cluster on the DSS instance
     """
     def __init__(self, client, cluster_id):
-        """Do not call that directly, use :meth:`dataikuapi.dss.DSSClient.get_cluster`"""
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_cluster`"""
         self.client = client
         self.cluster_id = cluster_id
     
@@ -676,7 +1136,7 @@ class DSSCluster(object):
         resp = self.client._perform_json(
             "POST", "/admin/clusters/%s/actions/start" % (self.cluster_id))
         if resp is None:
-            raise Exception('Env update returned no data')
+            raise Exception('Cluster operation returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
@@ -698,6 +1158,9 @@ class DSSCluster(object):
         return resp
 
 class DSSClusterSettings(object):
+    """
+    The settings of a cluster
+    """
     def __init__(self, client, cluster_id, settings):
         """Do not call directly, use :meth:`DSSCluster.get_settings`"""
         self.client = client
@@ -730,6 +1193,9 @@ class DSSClusterSettings(object):
             "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
 
 class DSSClusterStatus(object):
+    """
+    The status of a cluster
+    """
     def __init__(self, client, cluster_id, status):
         """Do not call directly, use :meth:`DSSCluster.get_Status`"""
         self.client = client
@@ -741,3 +1207,65 @@ class DSSClusterStatus(object):
         Gets the whole status as a raw dictionary.
         """
         return self.status
+
+
+class DSSInstanceVariables(dict):
+    """
+    Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its :meth:`save` method.
+
+    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_global_variables`
+    """
+
+    def __init__(self, client, variables):
+        super(dict, self).__init__()
+        self.update(variables)
+        self.client = client
+
+    def save(self):
+        """
+        Save the changes made to the instance variables.
+
+        Note: this call requires an API key with admin rights.
+        """
+        return self.client._perform_empty("PUT", "/admin/variables/", body=self)
+
+
+class DSSGlobalUsageSummary(object):
+    """
+    The summary of the usage of the DSS instance.
+    Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_global_usage_summary`
+    """
+    def __init__(self, data):
+        self.data = data
+
+    @property
+    def raw(self):
+        return self.data
+
+    @property
+    def projects_count(self):
+        return self.data["projects"]
+
+    @property
+    def total_datasets_count(self):
+        return self.data["datasets"]["all"]
+
+    @property
+    def total_recipes_count(self):
+        return self.data["recipes"]["all"]
+
+    @property
+    def total_jupyter_notebooks_count(self):
+        return self.data["notebooks"]["nbJupyterNotebooks"]
+
+    @property
+    def total_sql_notebooks_count(self):
+        return self.data["notebooks"]["nbSqlNotebooks"]
+
+    @property
+    def total_scenarios_count(self):
+        return self.data["scenarios"]["all"]
+
+    @property
+    def total_active_with_trigger_scenarios_count(self):
+        return self.data["scenarios"]["activeWithTriggers"]
