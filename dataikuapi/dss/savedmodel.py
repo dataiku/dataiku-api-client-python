@@ -315,6 +315,9 @@ class MLFlowVersionHandler:
         :param list features_list: List of {"name": "feature_name", "type": "feature_type"}
         """
 
+        if features_list is not None and get_features_from_dataset is not None:
+            raise Exception("The information of the features should come either from the features_list or get_features_from_dataset, but not both.")
+
         metadata = self.saved_model.client._perform_json("GET", "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id))
 
         if target_column_name is not None:
@@ -330,9 +333,10 @@ class MLFlowVersionHandler:
         #if get_features_from_signature:
         #    raise Exception("Get features from signature is not yet implemented")
 
-        # TODO: Add support for features_list, with validation
+        if features_list is not None:
+            metadata["features"] = features_list
 
-        self.saved_model.client._perform_empty("PUT", 
+        self.saved_model.client._perform_empty("PUT",
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
             body=metadata)
 
