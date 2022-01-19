@@ -331,6 +331,8 @@ class MLFlowVersionHandler:
         #    raise Exception("Get features from signature is not yet implemented")
 
         # TODO: Add support for features_list, with validation
+        if features_list is not None:
+            metadata["features"] = features_list
 
         self.saved_model.client._perform_empty("PUT", 
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
