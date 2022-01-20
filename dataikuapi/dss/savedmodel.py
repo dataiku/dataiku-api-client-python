@@ -334,6 +334,9 @@ class MLFlowVersionHandler:
         #    raise Exception("Get features from signature is not yet implemented")
 
         if features_list is not None:
+            for feature in features_list:
+                if not ("name" in feature and "type" in feature):
+                    raise Exception("The features_list should be a list of {'name': 'feature_name', 'type': 'feature_type'}")
             metadata["features"] = features_list
 
         self.saved_model.client._perform_empty("PUT",
