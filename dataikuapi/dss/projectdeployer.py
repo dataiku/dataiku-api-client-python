@@ -36,7 +36,7 @@ class DSSProjectDeployer(object):
         return DSSProjectDeployerDeployment(self.client, deployment_id)
 
     def create_deployment(self, deployment_id, project_key, infra_id, bundle_id,
-                          deployed_project_key=None, project_folder_id=None):
+                          deployed_project_key=None, project_folder_id=None, ignore_warnings=False):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSProjectDeployerDeployment.start_update`
@@ -50,6 +50,7 @@ class DSSProjectDeployer(object):
                                          published project
         :param str project_folder_id: The automation node project folder id to deploy this project into. If not set,
                                       the project will be created in the root folder
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the bundle to deploy
         :rtype: :class:`DSSProjectDeployerDeployment`
         """
         settings = {
@@ -62,7 +63,7 @@ class DSSProjectDeployer(object):
             settings["deployedProjectKey"] = deployed_project_key
         if project_folder_id:
             settings["projectFolderId"] = project_folder_id
-        self.client._perform_json("POST", "/project-deployer/deployments", body=settings)
+        self.client._perform_json("POST", "/project-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
 
     def list_stages(self):
@@ -90,17 +91,19 @@ class DSSProjectDeployer(object):
         else:
             return l
 
-    def create_infra(self, infra_id, stage):
+    def create_infra(self, infra_id, stage, govern_check_policy="NO_CHECK"):
         """
         Creates a new infrastructure on the Project Deployer and returns the handle to interact with it.
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage
+        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the bundle deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSProjectDeployerInfra`
         """
         settings = {
             "id": infra_id,
-            "stage": stage
+            "stage": stage, 
+            "govern_check_policy": govern_check_policy,
         }
         self.client._perform_json("POST", "/project-deployer/infras", body=settings)
         return self.get_infra(infra_id)
@@ -309,6 +312,14 @@ class DSSProjectDeployerDeployment(object):
 
         return DSSProjectDeployerDeploymentStatus(self.client, self.deployment_id, light, heavy)
 
+    def get_governance_status(self):
+        """
+        Returns the governance status about this deployment if applicable
+
+        :rtype: dict InforMessages containing the governance status
+        """
+        return self.client._perform_json("GET", "/project-deployer/deployments/%s/governance-status" % (self.deployment_id))
+
     def get_settings(self):
         """
         Gets the settings of this deployment. If you want to modify the settings, you need to
@@ -377,12 +388,15 @@ class DSSProjectDeployerDeploymentSettings(object):
     def bundle_id(self, new_bundle_id):
         self.settings["bundleId"] = new_bundle_id
 
-    def save(self):
+    def save(self, ignore_warnings=False):
         """
         Saves back these settings to the deployment
+
+        :param boolean ignore_warnings: ignore warnings concerning the governance status of the bundle to deploy
         """
         self.client._perform_empty(
                 "PUT", "/project-deployer/deployments/%s/settings" % (self.deployment_id),
+                params = { "ignoreWarnings" : ignore_warnings },
                 body = self.settings)
 
 
