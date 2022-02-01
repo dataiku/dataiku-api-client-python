@@ -1,0 +1,241 @@
+
+class GovernUser(object):
+    """
+    A handle for a user on the Govern instance.
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_user`
+    """
+    def __init__(self, client, login):
+        """Do not call this directly, use :meth:`dataikuapi.GovernClient.get_user`"""
+        self.client = client
+        self.login = login
+
+    def delete(self):
+        """
+        Deletes the user
+        """
+        return self.client._perform_empty(
+            "DELETE", "/admin/users/%s" % self.login)
+
+    def get_settings(self):
+        """
+        Gets the settings of the user
+        :rtype: :class:`GovernUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
+        return GovernUserSettings(self.client, self.login, raw)
+
+    def get_client_as(self):
+        """
+        Gets a :class:`dataikuapi.GovernClient` that has the permissions of this user.
+
+        This allows administrators to impersonate actions on behalf of other users, in order to perform
+        actions on their behalf
+        """
+        from dataikuapi.governclient import GovernClient
+
+        if self.client.api_key is not None:
+            return Govern(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})
+        elif self.client.internal_ticket is not None:
+            return Govern(self.client.host, internal_ticket = self.client.internal_ticket,
+                                         extra_headers={"X-DKU-ProxyUser":  self.login})
+        else:
+            raise ValueError("Don't know how to proxy this client")
+
+class GovernOwnUser(object):
+    """
+    A handle to interact with your own user
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_own_user`
+    """
+    def __init__(self, client):
+        self.client = client
+
+    def get_settings(self):
+        """
+        Get your own settings
+
+        :rtype: :class:`GovernOwnUserSettings`
+        """
+        raw = self.client._perform_json("GET", "/current-user")
+        return GovernOwnUserSettings(self.client, raw)
+
+
+class GovernUserSettingsBase(object):
+    """Settings for a Govern user"""
+    def __init__(self, settings):
+        """Do not call this directly, use :meth:`GovernUser.get_settings` or :meth:`GovernOwnUser.get_settings` """
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
+        are reflected when saving
+        :rtype: dict
+        """
+        return self.settings
+
+class GovernUserSettings(GovernUserSettingsBase):
+    """Settings for a Govern user"""
+
+    def __init__(self, client, login, settings):
+        """Do not call this directly, use :meth:`GovernUser.get_settings`"""
+        super(GovernUserSettings, self).__init__(settings)
+        self.client = client
+        self.login = login
+
+    @property
+    def enabled(self):
+        """
+        Whether this user is enabled
+        :rtype boolean
+        """
+        return self.settings["enabled"]
+
+    @enabled.setter
+    def enabled(self, new_value):
+        self.settings["enabled"] = new_value
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
+
+
+class GovernOwnUserSettings(GovernUserSettingsBase):
+    """Settings for the current Govern user"""
+
+    def __init__(self, client, settings):
+        """Do not call this directly, use :meth:`dataikuapi.GovernClient.get_own_user`"""
+        super(GovernOwnUserSettings, self).__init__(settings)
+        self.client = client
+
+    def save(self):
+        """Saves the settings"""
+        self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
+class GovernGroup(object):
+    """
+    A group on the Govern instance.
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_group`
+    """
+    def __init__(self, client, name):
+        """Do not call this directly, use :meth:`dataikuapi.GovernClient.get_group`"""
+        self.client = client
+        self.name = name
+    
+    ########################################################
+    # Group deletion
+    ########################################################
+    
+    def delete(self):
+        """
+        Deletes the group
+        """
+        return self.client._perform_empty(
+            "DELETE", "/admin/groups/%s" % self.name)
+    
+
+    def get_definition(self):
+        """
+        Get the group's definition (name, description, admin abilities, type, ldap name mapping)
+        
+        :return: the group's definition, as a dict
+        """
+        return self.client._perform_json(
+            "GET", "/admin/groups/%s" % self.name)
+    
+    def set_definition(self, definition):
+        """
+        Set the group's definition.
+
+        You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+        not create a new dict.
+
+        Args:
+            definition: the definition for the group, as a dict
+        """
+        return self.client._perform_json(
+            "PUT", "/admin/groups/%s" % self.name,
+            body = definition)
+
+
+class GovernGeneralSettings(object):
+    """
+    The general settings of the Govern instance.
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_general_settings`
+    """
+    def __init__(self, client):
+        """Do not call this directly, use :meth:`dataikuapi.GovernClient.get_general_settings`"""
+        self.client = client
+        self.settings = self.client._perform_json("GET", "/admin/general-settings")
+    
+    ########################################################
+    # Update settings on instance
+    ########################################################
+    
+    def save(self):
+        """
+        Save the changes that were made to the settings on the Govern instance
+        Note: this call requires an API key with admin rights
+        """
+        return self.client._perform_empty("PUT", "/admin/general-settings", body = self.settings)
+
+    ########################################################
+    # Value accessors
+    ########################################################
+    
+    def get_raw(self):
+        """
+        Get the settings as a dictionary
+        """
+        return self.settings
+
+class GovernGlobalApiKey(object):
+    """
+    A global API key on the Govern instance
+    """
+    def __init__(self, client, key):
+        self.client = client
+        self.key = key
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the api key
+
+        Note: this call requires an API key with admin rights
+        """
+        return self.client._perform_empty(
+            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            the code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+
+    def set_definition(self, definition):
+        """
+        Set the API key's definition.
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            definition: the definition for the API key, as a JSON object.                        
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/globalAPIKeys/%s" % self.key,
+            body = definition)
+
