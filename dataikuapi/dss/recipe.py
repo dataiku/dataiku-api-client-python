@@ -3,6 +3,10 @@ from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
+try:
+    basestring
+except NameError:
+    basestring = str
 
 class DSSRecipeListItem(DSSTaggableObjectListItem):
     """An item in a list of recipes. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_recipes`"""
@@ -33,6 +37,11 @@ class DSSRecipe(object):
         self.client = client
         self.project_key = project_key
         self.recipe_name = recipe_name
+
+    @property
+    def id(self):
+        """The id of the recipe"""
+        return self.recipe_name
 
     @property
     def name(self):
@@ -224,6 +233,16 @@ class DSSRecipe(object):
         """
         from .continuousactivity import DSSContinuousActivity
         return DSSContinuousActivity(self.client, self.project_key, self.recipe_name)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.client.get_project(self.project_key).get_flow().get_zone(zone)
+        zone.add_item(self)
 
 class DSSRecipeStatus(object):
     """Status of a recipce.
