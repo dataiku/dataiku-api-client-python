@@ -2,21 +2,22 @@ import os
 import posixpath
 import tempfile
 import urllib
+import re
 from dataikuapi import DSSClient
 
 
 def parse_dss_managed_folder_uri(uri):
-    """Parse an S3 URI, returning (bucket, path)"""
     parsed = urllib.parse.urlparse(uri)
     if parsed.scheme != "dss-managed-folder":
         raise Exception("Not a DSS Managed Folder URI: %s" % uri)
-    return os.path.normpath(parsed.path)
-
+    pattern = re.compile("^(\w+\.)?\w{8}")
+    if not parsed.netloc or not pattern.match(parsed.netloc):
+        raise Exception("Could not find a managed folder id in URI: %s" % uri)
+    return parsed
 
 class PluginDSSManagedFolderArtifactRepository:
 
     def __init__(self, artifact_uri):
-        self.base_artifact_path = parse_dss_managed_folder_uri(artifact_uri)
         if os.environ.get("DSS_MLFLOW_APIKEY") is not None:
             self.client = DSSClient(
                 os.environ.get("DSS_MLFLOW_HOST"),
@@ -28,14 +29,19 @@ class PluginDSSManagedFolderArtifactRepository:
                 internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET")
             )
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
-        managed_folders = [
-            x["id"] for x in self.project.list_managed_folders()
-            if x["name"] == os.environ.get("DSS_MLFLOW_MANAGED_FOLDER")
-        ]
-        if len(managed_folders) > 0:
-            self.managed_folder = self.project.get_managed_folder(managed_folders[0])
+        parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
+        self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
+        self.base_artifact_path = os.path.normpath(parsed_uri.path)
+
+    def __get_managed_folder(self, managed_folder_smart_id):
+        chunks = managed_folder_smart_id.split('.')
+        if len(chunks) == 1:
+            return self.project.get_managed_folder(chunks[0])
+        elif len(chunks) == 2:
+            project = self.client.get_project(chunks[0])
+            return project.get_managed_folder(chunks[1])
         else:
-            self.managed_folder = self.project.create_managed_folder(os.environ.get("DSS_MLFLOW_MANAGED_FOLDER"))
+            raise Exception("Invalid managed folder id: %s" % managed_folder_smart_id)
 
     def log_artifact(self, local_file, artifact_path=None):
         """

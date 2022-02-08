@@ -6,7 +6,7 @@ from base64 import b64encode
 
 
 class MLflowHandle:
-    def __init__(self, client, project_key, managed_folder="mlflow_artifacts", host=None):
+    def __init__(self, client, project_key, managed_folder_name, host=None):
         """ Add the MLflow-plugin parts of dataikuapi to MLflow local setup.
 
         This method deals with
@@ -61,9 +61,30 @@ class MLflowHandle:
         self.mlflow_env.update({
             "DSS_MLFLOW_PROJECTKEY": project_key,
             "MLFLOW_TRACKING_URI": self.client.host + "/dip/publicapi" if host is None else host,
-            "DSS_MLFLOW_HOST": self.client.host,
-            "DSS_MLFLOW_MANAGED_FOLDER": managed_folder
+            "DSS_MLFLOW_HOST": self.client.host
         })
+
+        # Get or create managed folder with name 'managed_folder_name'
+        project = self.client.get_project(project_key)
+        managed_folders = [
+            x["id"] for x in project.list_managed_folders()
+            if x["name"] == managed_folder_name
+        ]
+        managed_folder = None
+        if len(managed_folders) > 0:
+            managed_folder = project.get_managed_folder(managed_folders[0])
+        else:
+            managed_folder = project.create_managed_folder(managed_folder_name)
+
+
+        # TODO: don't allow to pass a managed folder name, everything is already
+        # wired in artifact_repository and in the backend for DSS_MLFLOW_MANAGED_FOLDER_ID to contain
+        # a smart ref. So, instead of managed_folder_name, we should take a DSSManagedFolder
+        # or a managed folder id/smart ref and set DSS_MLFLOW_MANAGED_FOLDER_ID to that (smart) id.
+        self.mlflow_env.update({
+            "DSS_MLFLOW_MANAGED_FOLDER_ID": managed_folder.id
+        })
+
         os.environ.update(self.mlflow_env)
 
     def clear(self):
