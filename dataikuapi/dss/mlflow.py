@@ -35,3 +35,28 @@ class DSSMLflowExtension(object):
             headers={"x-dku-mlflow-project-key": self.project_key}
         )
         return response.json()
+
+    def rename_experiment(self, experiment_id, new_name):
+        """
+        Renames an experiment
+
+        :param experiment_id: experiment id
+        :type experiment_id: str
+        :param new_name: new name
+        :type new_name: str
+        """
+        response = self.client._perform_http(
+            "POST", "/api/2.0/mlflow/experiments/update",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={"experiment_id": experiment_id, "new_name": new_name}
+        )
+        return response.json()
+
+    def garbage_collect(self):
+        """
+        Permanently deletes the experiments and runs marked as "Deleted
+        """
+        self.client._perform_http(
+            "GET", "/api/2.0/mlflow/extension/garbage-collect",
+            headers={"x-dku-mlflow-project-key": self.project_key}
+        )
