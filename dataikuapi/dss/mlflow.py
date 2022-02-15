@@ -23,15 +23,19 @@ class DSSMLflowExtension(object):
         )
         return response.json()
 
-    def list_experiments(self):
+    def list_experiments(self, view_type="ACTIVE_ONLY", max_results=1000):
         """
         Returns the list of experiments in the DSS project for which MLflow integration
         is setup
 
+        :param view_type: ACTIVE_ONLY, DELETED_ONLY or ALL
+        :type view_type: str
+        :param max_results: max results count
+        :type max_results: int
         :rtype: dict
         """
         response = self.client._perform_http(
-            "GET", "/api/2.0/mlflow/experiments/list",
+            "GET", "/api/2.0/mlflow/experiments/list?view_type={view_type}&max_results={max_results}".format(view_type=view_type, max_results=max_results),
             headers={"x-dku-mlflow-project-key": self.project_key}
         )
         return response.json()
@@ -49,6 +53,34 @@ class DSSMLflowExtension(object):
             "POST", "/api/2.0/mlflow/experiments/update",
             headers={"x-dku-mlflow-project-key": self.project_key},
             body={"experiment_id": experiment_id, "new_name": new_name}
+        )
+        return response.json()
+
+    def restore_experiment(self, experiment_id):
+        """
+        Restores a deleted experiment
+
+        :param experiment_id: experiment id
+        :type experiment_id: str
+        """
+        response = self.client._perform_http(
+            "POST", "/api/2.0/mlflow/experiments/restore",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={"experiment_id": experiment_id}
+        )
+        return response.json()
+
+    def restore_run(self, run_id):
+        """
+        Restores a deleted run
+
+        :param run_id: run id
+        :type run_id: str
+        """
+        response = self.client._perform_http(
+            "POST", "/api/2.0/mlflow/runs/restore",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={"run_id": run_id}
         )
         return response.json()
 
