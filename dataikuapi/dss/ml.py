@@ -2676,6 +2676,13 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
 
+    def get_scoring_python(self, filename):
+        """
+        Download the zip containing data to use Python scoring for this trained model in filename,
+        provided that you have the license to do so and that the model is compatible with Python scoring
+        """
+        with open(filename, "wb") as f:
+            f.write(self.get_scoring_python_stream().content)
 
     ## Post-train computations
 
