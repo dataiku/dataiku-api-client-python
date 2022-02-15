@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -645,6 +645,73 @@ class DSSClient(object):
         return DSSGlobalApiKey(self, key)
 
     ########################################################
+    # Personal API Keys
+    ########################################################
+
+    def list_personal_api_keys(self, as_type='dict'):
+        """
+        List all personal API keys:
+            - not admin: only the keys belonging to the current user
+            - admin: all the personal keys
+        :param str as_type: 'objects' or 'dict'
+        :returns: All personal API keys
+        """
+
+        resp = self._perform_json(
+            "GET", "/personal-api-keys/")
+        if as_type == 'objects':
+            return [DSSPersonalApiKey(self, item['id']) for item in resp]
+        else:
+            return resp
+
+    def get_personal_api_key(self, id_):
+        """
+        Get a specific API key
+        :param str id_: the id of the desired API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key
+        """
+        return DSSPersonalApiKey(self, id_)
+
+    def list_personal_api_keys(self, as_type='dict'):
+        """
+        List all personal API keys:
+            - not admin: only the keys belonging to the current user
+            - admin: all the personal keys
+        :param str as_type: 'objects' or 'dict'
+        :returns: All personal API keys
+        """
+
+        resp = self._perform_json(
+            "GET", "/personal-api-keys/all")
+        if as_type == 'objects':
+            return [DSSPersonalApiKey(self, item['id']) for item in resp]
+        else:
+            return resp
+
+    def create_personal_api_key(self, label="", description="", as_type='dict', user=""):
+        """
+        Create a Personal API key
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str as_type: 'object' or 'dict'
+        :param str user: the id of the user to impersonate (optional)
+        :returns: The new personal API key
+        """
+        resp = self._perform_json(
+            "POST", "/personal-api-keys/", body={"user": user, "label": label, "description": description})
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+
+        if as_type == 'object':
+            return DSSPersonalApiKey(self, resp["id"])
+        else:
+            return resp
+
+    ########################################################
     # Meanings
     ########################################################
 
@@ -1001,18 +1068,6 @@ class DSSClient(object):
          """
          return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
 
-    def create_personal_api_key(self, label):
-        """
-        Creates a personal API key corresponding to the user doing the request.
-        This can be called if the DSSClient was initialized with an internal
-        ticket or with a personal API key
-
-        :param: label string: Label for the new API key
-        :returns: a dict of the new API key, containing at least "secret", i.e. the actual secret API key
-        :rtype: dict
-        """
-        return self._perform_json("POST", "/auth/personal-api-keys",
-                params={"label": label})
 
     ########################################################
     # Container execution

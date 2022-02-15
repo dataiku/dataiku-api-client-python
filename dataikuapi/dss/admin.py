@@ -1060,6 +1060,38 @@ class DSSGlobalApiKey(object):
             body = definition)
 
 
+class DSSPersonalApiKey(object):
+    """
+    A personal API key on the DSS instance
+    """
+    def __init__(self, client, id_):
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`"""
+        self.client = client
+        self.id_ = id_
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+        :returns: the personal API key definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/personal-api-keys/%s" % (self.id_))
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the API key
+        """
+        return self.client._perform_empty(
+            "DELETE", "/personal-api-keys/%s" % self.id_)
+
 class DSSCluster(object):
     """
     A handle to interact with a cluster on the DSS instance
