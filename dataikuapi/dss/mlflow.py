@@ -92,3 +92,12 @@ class DSSMLflowExtension(object):
             "GET", "/api/2.0/mlflow/extension/garbage-collect",
             headers={"x-dku-mlflow-project-key": self.project_key}
         )
+
+    def clean_experiment_tracking_db(self):
+        """
+        Cleans the experiments, runs, params, metrics, tags, etc. for this project
+
+        This call requires an API key with admin rights
+        """
+        self.client._perform_raw("DELETE", "/api/2.0/mlflow/extension/clean-db/%s" % self.project_key)
+

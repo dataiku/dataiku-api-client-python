@@ -1626,15 +1626,6 @@ class DSSProject(object):
         """
         return DSSMLflowExtension(client=self.client, project_key=self.project_key)
 
-    def clean_experiment_tracking_db(self):
-        """
-        Cleans the experiments, runs, params, metrics, tags, etc. for this project
-
-        This call requires an API key with admin rights
-        """
-        self.client._perform_raw("DELETE", "/api/2.0/mlflow/clean-db/%s" % self.project_key)
-
-
 class TablesImportDefinition(object):
     """
     Temporary structure holding the list of tables to import
