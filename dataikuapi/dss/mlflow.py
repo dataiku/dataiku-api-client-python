@@ -86,7 +86,7 @@ class DSSMLflowExtension(object):
 
     def garbage_collect(self):
         """
-        Permanently deletes the experiments and runs marked as "Deleted
+        Permanently deletes the experiments and runs marked as "Deleted"
         """
         self.client._perform_http(
             "GET", "/api/2.0/mlflow/extension/garbage-collect",
@@ -95,6 +95,8 @@ class DSSMLflowExtension(object):
 
     def create_experiment_tracking_dataset(self, dataset_name, experiment_ids=[], view_type="ACTIVE_ONLY", filter_expr="", order_by=[], format="LONG"):
         """
+
+        Creates a virtual dataset exposing experiment tracking data.
 
         :param dataset_name: name of the dataset
         :type dataset_name: str
