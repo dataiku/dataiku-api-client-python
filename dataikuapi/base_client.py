@@ -5,8 +5,9 @@ from requests.auth import HTTPBasicAuth
 from .utils import DataikuException
 
 class DSSBaseClient(object):
-    def __init__(self, base_uri, api_key=None, internal_ticket=None):
+    def __init__(self, base_uri, api_key=None, bearer_token=None, internal_ticket=None):
         self.api_key = api_key
+        self.bearer_token = bearer_token
         self.base_uri = base_uri
         self._session = Session()
 
@@ -18,12 +19,18 @@ class DSSBaseClient(object):
         if body:
             body = json.dumps(body)
 
-        auth = HTTPBasicAuth(self.api_key, "")
+        headers = None
+        auth = None
+
+        if self.api_key:
+            auth = HTTPBasicAuth(self.api_key, "")
+        elif self.bearer_token:
+            headers = {"Authorization": "Bearer " + self.bearer_token}
 
         try:
             http_res = self._session.request(
                     method, "%s/%s" % (self.base_uri, path),
-                    params=params, data=body,
+                    params=params, data=body, headers=headers,
                     auth=auth, stream = stream)
             http_res.raise_for_status()
             return http_res
