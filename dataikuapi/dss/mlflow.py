@@ -93,6 +93,35 @@ class DSSMLflowExtension(object):
             headers={"x-dku-mlflow-project-key": self.project_key}
         )
 
+    def create_experiment_tracking_dataset(self, dataset_name, experiment_ids=[], view_type="ACTIVE_ONLY", filter_expr="", order_by=[], format="LONG"):
+        """
+
+        :param dataset_name: name of the dataset
+        :type dataset_name: str
+        :param experiment_ids: list of ids of experiments to filter on. No filtering if empty
+        :type experiment_ids: list(str)
+        :param view_type: one of ACTIVE_ONLY, DELETED_ONLY and ALL. Default is ACTIVE_ONLY
+        :type view_type: str
+        :param filter_expr: MLflow search expression
+        :type filter_expr: str
+        :param order_by: list of order by clauses. Default is ordered by start_time, then runId
+        :type order_by: list(str)
+        :param format: LONG or JSON. Default is LONG
+        :type format: str
+        """
+        self.client._perform_http(
+            "POST", "/api/2.0/mlflow/extension/create-project-experiments-dataset",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={
+                "datasetName": dataset_name,
+                "experimentIds": experiment_ids,
+                "viewType": view_type,
+                "filter": filter_expr,
+                "orderBy": order_by,
+                "format": format
+            }
+        )
+
     def clean_experiment_tracking_db(self):
         """
         Cleans the experiments, runs, params, metrics, tags, etc. for this project
@@ -100,4 +129,3 @@ class DSSMLflowExtension(object):
         This call requires an API key with admin rights
         """
         self.client._perform_raw("DELETE", "/api/2.0/mlflow/extension/clean-db/%s" % self.project_key)
-
