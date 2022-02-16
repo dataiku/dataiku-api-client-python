@@ -122,7 +122,7 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT"):
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT", container_exec_config_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model.
 
@@ -133,6 +133,12 @@ class DSSSavedModel(object):
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
                                   If value is "INHERIT", the default active code env of the project will be used
+        :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
+                                  this model version. Note that this information is not saved with the model version, so,
+                                  for example, if you evaluate this model version later on, you will have to provide again
+                                  that parameter.
+                                  If value is "INHERIT", the container execution configuration of the project will be used.
+                                  If value is "NONE", local execution will be used (no container)
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
@@ -144,13 +150,13 @@ class DSSSavedModel(object):
             archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
 
             with open(archive_filename, "rb") as fp:
-                self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s" % (self.project_key, self.sm_id, version_id, code_env_name),
+                self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s&containerExecConfigName=%s" % (self.project_key, self.sm_id, version_id, code_env_name, container_exec_config_name),
                                            files={"file": (archive_filename, fp)})
             return self.get_mlflow_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
 
-    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT"):
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT", container_exec_config_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
 
@@ -162,6 +168,12 @@ class DSSSavedModel(object):
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
                                   If value is "INHERIT", the default active code env of the project will be used
+        :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
+                                  this model version. Note that this information is not saved with the model version, so,
+                                  for example, if you evaluate this model version later on, you will have to provide again
+                                  that parameter.
+                                  If value is "INHERIT", the container execution configuration of the project will be used.
+                                  If value is "NONE", local execution will be used (no container)
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
@@ -172,8 +184,8 @@ class DSSSavedModel(object):
             folder_ref = managed_folder
 
         self.client._perform_empty(
-            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
-                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}&containerExecConfigName={containerExecConfigName}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name, containerExecConfigName=container_exec_config_name
             ),
             params={"folderRef": folder_ref, "path": path},
             files={"file": (None, None)}  # required for backend-mandated multipart request
@@ -343,7 +355,7 @@ class MLFlowVersionHandler:
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
             body=metadata)
 
-    def evaluate(self, dataset_ref):
+    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT"):
         """
         Evaluates the performance of this model version on a particular dataset.
         After calling this, the "result screens" of the MLFlow model version will be available
@@ -352,11 +364,15 @@ class MLFlowVersionHandler:
 
         :meth:`set_core_metadata` must be called before you can evaluate a dataset
         :param str dataset_ref: Evaluation dataset to use (either a dataset name, "PROJECT.datasetName", :class:`DSSDataset` instance or :class:`dataiku.Dataset` instance)
+        :param str container_exec_config_name: Name of the containerized execution configuration to use for running the evaluation process.
+                                  If value is "INHERIT", the container execution configuration of the project will be used.
+                                  If value is "NONE", local execution will be used (no container)
         """
         if hasattr(dataset_ref, 'name'):
             dataset_ref = dataset_ref.name
         req = {
-            "datasetRef": dataset_ref
+            "datasetRef": dataset_ref,
+            "containerExecConfigName": container_exec_config_name
         }
         self.saved_model.client._perform_empty("POST",
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/actions/evaluate" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
