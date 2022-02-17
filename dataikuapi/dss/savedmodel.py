@@ -134,9 +134,7 @@ class DSSSavedModel(object):
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
                                   If value is "INHERIT", the default active code env of the project will be used
         :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
-                                  this model version. Note that this information is not saved with the model version, so,
-                                  for example, if you evaluate this model version later on, you will have to provide again
-                                  that parameter.
+                                  this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
@@ -168,10 +166,8 @@ class DSSSavedModel(object):
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
                                   mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
                                   If value is "INHERIT", the default active code env of the project will be used
-        :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
-                                  this model version. Note that this information is not saved with the model version, so,
-                                  for example, if you evaluate this model version later on, you will have to provide again
-                                  that parameter.
+        :param str container_exec_config_name: Name of the containerized execution configuration to use for evaluating
+                                  this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
