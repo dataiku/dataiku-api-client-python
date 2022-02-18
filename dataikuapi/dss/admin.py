@@ -65,16 +65,18 @@ class DSSConnection(object):
         warnings.warn("DSSConnection.get_location_info is deprecated, please use get_info", DeprecationWarning)
         return self.get_info()
 
-    def get_info(self):
+    def get_info(self, contextual_project_key=None):
         """
         Gets information about this connection.
 
         Note: this call requires permissions to read connection details
 
+        :param contextual_project_key: optional project key use to resolve variables
         :returns: a :class:`DSSConnectionInfo` containing connection information
         """
+        additional_params = { "contextualProjectKey": contextual_project_key } if contextual_project_key is not None else None
         return DSSConnectionInfo(self.client._perform_json(
-            "GET", "/connections/%s/info" % self.name))
+            "GET", "/connections/%s/info" % self.name, params=additional_params))
     
     ########################################################
     # Connection deletion
