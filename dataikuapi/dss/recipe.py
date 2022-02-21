@@ -1465,6 +1465,10 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         """Sets the output model evaluation store"""
         return self._with_output(mes_id, role="main")
 
+    def with_reference_dataset(self, dataset_name):
+        """Sets the output model evaluation store"""
+        return self._with_input(dataset_name, self.project.project_key, role="reference")
+
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
     """
