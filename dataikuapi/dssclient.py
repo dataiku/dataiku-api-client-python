@@ -648,6 +648,9 @@ class DSSClient(object):
     # Personal API Keys
     ########################################################
 
+    def list_all_personal_api_keys(self, as_type='dict'):
+
+
     def list_personal_api_keys(self, as_type='dict'):
         """
         List all personal API keys:
@@ -688,7 +691,10 @@ class DSSClient(object):
         else:
             return resp
 
-    def create_personal_api_key(self, label="", description="", as_type='dict', user=""):
+    def create_personal_api_key_for_user(self, label="", description="", as_type='dict', user=""):
+
+
+    def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
         Create a Personal API key
         :param str label: the label of the new API key
