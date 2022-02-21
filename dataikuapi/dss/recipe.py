@@ -1411,6 +1411,12 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_input("scored_dataset_to_evaluate")
         builder.with_output_evaluation_store(evaluation_store_id)
 
+        # Add a reference dataset (optional) to compute data drift
+
+        builder.with_reference_dataset("reference_dataset")
+
+        # Finish creation of the recipe
+
         new_recipe = builder.create()
 
         # Modify the model parameters in the SER settings
