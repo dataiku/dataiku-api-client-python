@@ -511,7 +511,6 @@ class DSSDataset(object):
         return ComputedMetrics(self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/last/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition)))
 
-
     def get_metric_history(self, metric, partition=''):
         """
         Get the history of the values of the metric on this dataset
@@ -522,6 +521,17 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
+
+    def get_full_info(self):
+        """
+        Retrieve all the information about a dataset
+
+        Returns:
+            a complex JSON object containing all the information on a dataset, such as params, schema, lastbuild infos, status, etc.
+        """
+        return self.client._perform_json(
+                "GET", "/projects/%s/datasets/%s/getFullInfo" % (self.project_key, self.dataset_name)
+        )
 
     ########################################################
     # Misc
@@ -542,7 +552,7 @@ class DSSDataset(object):
         :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
         """
         if isinstance(zone, basestring):
-           zone = self.project.get_flow().get_zone(zone)
+            zone = self.project.get_flow().get_zone(zone)
         zone.add_item(self)
 
     def share_to_zone(self, zone):
