@@ -530,7 +530,7 @@ class DSSDataset(object):
             a complex JSON object containing all the information on a dataset, such as params, schema, lastbuild infos, status, etc.
         """
         return self.client._perform_json(
-                "GET", "/projects/%s/datasets/%s/getFullInfo" % (self.project_key, self.dataset_name)
+                "GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name)
         )
 
     ########################################################
