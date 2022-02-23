@@ -527,7 +527,7 @@ class DSSDataset(object):
         Retrieve all the information about a dataset
 
         Returns:
-            a complex JSON object containing all the information on a dataset, such as params, schema, lastbuild infos, status, etc.
+            a complex JSON object containing all the information about a dataset, such as params, schema, last build infos, status, etc.
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name)
