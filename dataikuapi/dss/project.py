@@ -764,6 +764,23 @@ class DSSProject(object):
         """
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
+    def find_managed_folder_by_name(self, name):
+        """
+        Get a list of managed folders matching the 'name' parameter.
+
+        Args:
+            name: the managed folder name to look for
+
+        Returns:
+            A list of :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handles.
+            Can be empty if there is no managed folder matching this name.
+        """
+        managed_folders = [
+            x["id"] for x in self.list_managed_folders()
+            if x["name"] == name
+        ]
+        return [DSSManagedFolder(self.client, self.project_key, managed_folder) for managed_folder in managed_folders]
+
     def create_managed_folder(self, name, folder_type=None, connection_name="filesystem_folders"):
         """
         Create a new managed folder in the project, and return a handle to interact with it
