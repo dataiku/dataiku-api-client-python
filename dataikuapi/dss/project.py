@@ -1625,14 +1625,15 @@ class DSSProject(object):
 
     # MLflow experiment tracking
     ########################################################
-    def setup_mlflow(self, managed_folder_name="mlflow_artifacts", host=None):
+    def setup_mlflow(self, managed_folder, host=None):
         """
         Setup the dss-plugin for MLflow
 
-        :param str managed_folder_name: name of the managed folder where artifacts should be stored
+        :param managed_folder: Managed folder where artifacts should be stored.
+                               Either a managed folder id, or an instance of :class:`dataikuapi.dss.DSSManagedFolder`.
         :param str host: setup a custom host if the backend used is not DSS
         """
-        return MLflowHandle(client=self.client, project_key=self.project_key, managed_folder_name=managed_folder_name, host=host)
+        return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
     def get_mlflow_extension(self):
         """
