@@ -1,5 +1,5 @@
-from ..dss.utils import AnyLoc
 from ..utils import DataikuException
+from ..dss.managedfolder import DSSManagedFolder
 import logging
 import os
 import sys
@@ -62,16 +62,13 @@ class MLflowHandle:
                 "DSS_MLFLOW_INTERNAL_TICKET": self.client.internal_ticket
             })
 
-        def full_id(mf):
-            return mf.project.project_key + "." + mf.id
+        if not isinstance(managed_folder, DSSManagedFolder):
+            raise TypeError('managed_folder must a DSSManagedFolder.')
 
-        def get_managed_folder(smart_mf_id):
-            return client.get_project(smart_mf_id.project_key).get_managed_folder(smart_mf_id.object_id)
-
-        mf_id = managed_folder if isinstance(managed_folder, str) else full_id(managed_folder)
-        smart_mf_id = AnyLoc.from_ref(self.project_key, mf_id)
+        mf_project = managed_folder.project.project_key
+        mf_id = managed_folder.id
         try:
-            get_managed_folder(smart_mf_id).get_definition()
+            client.get_project(mf_project).get_managed_folder(mf_id).get_definition()
         except DataikuException as e:
             if "NotFoundException" in str(e):
                 logging.error('The managed folder "%s" does not exist, please create it in your project flow before running this command.' % (mf_id))
@@ -82,7 +79,7 @@ class MLflowHandle:
             "DSS_MLFLOW_PROJECTKEY": self.project_key,
             "MLFLOW_TRACKING_URI": self.client.host + "/dip/publicapi" if host is None else host,
             "DSS_MLFLOW_HOST": self.client.host,
-            "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_id
+            "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_project + "." + mf_id
         })
 
         os.environ.update(self.mlflow_env)

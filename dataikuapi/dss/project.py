@@ -1,4 +1,4 @@
-import time, warnings, sys, os.path as osp
+import warnings, os.path as osp
 
 from ..dss_plugin_mlflow import MLflowHandle
 
@@ -1629,8 +1629,7 @@ class DSSProject(object):
         """
         Setup the dss-plugin for MLflow
 
-        :param managed_folder: Managed folder where artifacts should be stored.
-                               Either a managed folder id, or an instance of :class:`dataikuapi.dss.DSSManagedFolder`.
+        :param object managed_folder: a :class:`dataikuapi.dss.DSSManagedFolder` where MLflow artifacts should be stored.
         :param str host: setup a custom host if the backend used is not DSS
         """
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
