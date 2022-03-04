@@ -1,3 +1,6 @@
+from ..utils import DataikuException
+from ..dss.managedfolder import DSSManagedFolder
+import logging
 import os
 import sys
 import tempfile
@@ -6,7 +9,7 @@ from base64 import b64encode
 
 
 class MLflowHandle:
-    def __init__(self, client, project_key, managed_folder_name, host=None):
+    def __init__(self, client, project, managed_folder, host=None):
         """ Add the MLflow-plugin parts of dataikuapi to MLflow local setup.
 
         This method deals with
@@ -19,7 +22,8 @@ class MLflowHandle:
         with DSS backend as the tracking backend and enable using DSS managed folder
         as artifact location.
         """
-        self.project_key = project_key
+        self.project = project
+        self.project_key = project.project_key
         self.client = client
         self.mlflow_env = {}
 
@@ -57,32 +61,25 @@ class MLflowHandle:
                 "DSS_MLFLOW_TOKEN": self.client.internal_ticket,
                 "DSS_MLFLOW_INTERNAL_TICKET": self.client.internal_ticket
             })
-        # Set host, tracking URI and project key
+
+        if not isinstance(managed_folder, DSSManagedFolder):
+            raise TypeError('managed_folder must a DSSManagedFolder.')
+
+        mf_project = managed_folder.project.project_key
+        mf_id = managed_folder.id
+        try:
+            client.get_project(mf_project).get_managed_folder(mf_id).get_definition()
+        except DataikuException as e:
+            if "NotFoundException" in str(e):
+                logging.error('The managed folder "%s" does not exist, please create it in your project flow before running this command.' % (mf_id))
+            raise
+
+        # Set host, tracking URI, project key and managed_folder_id
         self.mlflow_env.update({
-            "DSS_MLFLOW_PROJECTKEY": project_key,
+            "DSS_MLFLOW_PROJECTKEY": self.project_key,
             "MLFLOW_TRACKING_URI": self.client.host + "/dip/publicapi" if host is None else host,
-            "DSS_MLFLOW_HOST": self.client.host
-        })
-
-        # Get or create managed folder with name 'managed_folder_name'
-        project = self.client.get_project(project_key)
-        managed_folders = [
-            x["id"] for x in project.list_managed_folders()
-            if x["name"] == managed_folder_name
-        ]
-        managed_folder = None
-        if len(managed_folders) > 0:
-            managed_folder = project.get_managed_folder(managed_folders[0])
-        else:
-            managed_folder = project.create_managed_folder(managed_folder_name)
-
-
-        # TODO: don't allow to pass a managed folder name, everything is already
-        # wired in artifact_repository and in the backend for DSS_MLFLOW_MANAGED_FOLDER_ID to contain
-        # a smart ref. So, instead of managed_folder_name, we should take a DSSManagedFolder
-        # or a managed folder id/smart ref and set DSS_MLFLOW_MANAGED_FOLDER_ID to that (smart) id.
-        self.mlflow_env.update({
-            "DSS_MLFLOW_MANAGED_FOLDER_ID": managed_folder.id
+            "DSS_MLFLOW_HOST": self.client.host,
+            "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_project + "." + mf_id
         })
 
         os.environ.update(self.mlflow_env)
