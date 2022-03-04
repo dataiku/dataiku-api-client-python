@@ -741,7 +741,6 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
     def is_feature_group(self):
         """
         Indicates whether the Dataset is defined as a Feature Group, available in the Feature Store.
-        Changes of this property will be applied when calling :meth:`save` and require the "Manage Feature Store" permission.
 
         :rtype: bool
         """
@@ -749,7 +748,7 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
 
     def set_feature_group(self, status):
         """
-        Indicates whether the Dataset is defined as a Feature Group, available in the Feature Store.
+        (Un)sets the dataset as a Feature Group, available in the Feature Store.
         Changes of this property will be applied when calling :meth:`save` and require the "Manage Feature Store" permission.
 
         :param status: whether the dataset should be defined as a feature group

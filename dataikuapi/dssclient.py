@@ -1123,8 +1123,13 @@ class DSSClient(object):
     # Feature Store
     ########################################################
     def get_feature_store(self):
-        return DSSFeatureStore(self)
+        """
+        Get a handle to interact with the Feature Store.
 
+        :return: a handle on the feature store
+        :rtype: :class:`dataikuapi.feature_store.DSSFeatureStore`
+        """
+        return DSSFeatureStore(self)
 
 
 class TemporaryImportHandle(object):
