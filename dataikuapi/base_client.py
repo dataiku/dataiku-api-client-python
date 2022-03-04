@@ -5,7 +5,7 @@ from requests.auth import HTTPBasicAuth
 from .utils import DataikuException
 
 class DSSBaseClient(object):
-    def __init__(self, base_uri, api_key=None, bearer_token=None, internal_ticket=None):
+    def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None):
         self.api_key = api_key
         self.bearer_token = bearer_token
         self.base_uri = base_uri
