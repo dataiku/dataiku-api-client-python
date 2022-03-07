@@ -12,6 +12,10 @@ class DSSFeatureGroupListItem(object):
         return self.project_key + "." + self.name
 
     def get_as_dataset(self):
+        """
+        :return: a handle on the dataset
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
         return DSSDataset(self.client, self.project_key, self.name)
 
 
@@ -29,7 +33,7 @@ class DSSFeatureStore(object):
         and that are defined as feature groups in the DSS instance
 
         :return: list of dataset names
-        :rtype: list of str
+        :rtype: list of :class:`dataikuapi.feature_store.DSSFeatureGroupListItem`
         """
         items = self.client._perform_json("GET", "/feature-store/feature-groups")
         return [DSSFeatureGroupListItem(self.client, item["projectKey"], item["name"]) for item in items]
