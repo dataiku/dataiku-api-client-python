@@ -13,6 +13,8 @@ class DSSFeatureGroupListItem(object):
 
     def get_as_dataset(self):
         """
+        Gets the feature group as a dataset
+
         :return: a handle on the dataset
         :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
@@ -29,10 +31,9 @@ class DSSFeatureStore(object):
 
     def list_feature_groups(self):
         """
-        Get a list of names of datasets on which the user has right permissions
-        and that are defined as feature groups in the DSS instance
+        Get a list of feature groups on which the user has at least read permissions
 
-        :return: list of dataset names
+        :return: list of feature groups
         :rtype: list of :class:`dataikuapi.feature_store.DSSFeatureGroupListItem`
         """
         items = self.client._perform_json("GET", "/feature-store/feature-groups")
