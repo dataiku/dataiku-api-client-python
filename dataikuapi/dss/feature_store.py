@@ -1,3 +1,20 @@
+from dataikuapi.dss.dataset import DSSDataset
+
+
+class DSSFeatureGroupListItem(object):
+    def __init__(self, client, project_key, name):
+        self.client = client
+        self.project_key = project_key
+        self.name = name
+
+    @property
+    def id(self):
+        return self.project_key + "." + self.name
+
+    def get_as_dataset(self):
+        return DSSDataset(self.client, self.project_key, self.name)
+
+
 class DSSFeatureStore(object):
     def __init__(self, client):
         """
@@ -14,4 +31,5 @@ class DSSFeatureStore(object):
         :return: list of dataset names
         :rtype: list of str
         """
-        return self.client._perform_json("GET", "/feature-store/feature-groups/list")
+        items = self.client._perform_json("GET", "/feature-store/feature-groups")
+        return [DSSFeatureGroupListItem(self.client, item["projectKey"], item["name"]) for item in items]
