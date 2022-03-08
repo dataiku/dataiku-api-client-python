@@ -169,6 +169,16 @@ class DSSUser(object):
         raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
         return DSSUserSettings(self.client, self.login, raw)
 
+    def get_last_activity(self):
+        """
+        Gets the last activity of a user:
+        - his last successful login attempt
+        - his last failed login attempt
+        - his last load of DSS
+        :return: a dict
+        """
+        return self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+
     ########################################################
     # Legacy
     ########################################################
