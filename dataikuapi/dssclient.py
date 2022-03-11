@@ -329,17 +329,21 @@ class DSSClient(object):
     # Users
     ########################################################
 
-    def list_users(self):
+    def list_users(self, as_objects=False):
         """
         List all users setup on the DSS instance
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of users, as a list of dicts
-        :rtype: list of dicts
+        :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
         """
-        return self._perform_json(
-            "GET", "/admin/users/")
+        users = self._perform_json("GET", "/admin/users/")
+
+        if as_objects:
+            return [DSSUser(self, user["login"]) for user in users]
+        else:
+            return users
 
     def get_user(self, login):
         """

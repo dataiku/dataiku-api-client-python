@@ -172,10 +172,13 @@ class DSSUser(object):
     def get_last_activity(self):
         """
         Gets the last activity of a user:
-        - his last successful login attempt
-        - his last failed login attempt
-        - his last load of DSS
-        :return: a dict
+
+            * last successful login attempt
+            * last failed login attempt
+            * last loading of DSS (new tab or tab refresh)
+
+        :return: the user's activity, as a dict
+        :rtype: dict
         """
         return self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
 
@@ -260,8 +263,7 @@ class DSSUserSettingsBase(object):
 
     def get_raw(self):
         """
-        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
-        are reflected when saving
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object are reflected when saving
         :rtype: dict
         """
         return self.settings
@@ -341,7 +343,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         """
         The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
 
-        :rtype dict
+        :rtype: dict
         """
         return self.settings["adminProperties"]
 
@@ -349,7 +351,7 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled
-        :rtype boolean
+        :rtype: boolean
         """
         return self.settings["enabled"]
 
