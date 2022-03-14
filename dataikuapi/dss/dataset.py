@@ -1,3 +1,5 @@
+import datetime
+
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
@@ -522,16 +524,15 @@ class DSSDataset(object):
                 "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
 
-    def get_full_info(self):
+    def get_info(self):
         """
         Retrieve all the information about a dataset
 
-        Returns:
-            a complex JSON object containing all the information about a dataset, such as params, schema, last build infos, status, etc.
+        :returns: a :class:`DSSDatasetInfo` containing all the information about a dataset, such as params, schema, last build infos, status, etc.
+        :rtype: :class:`DSSDatasetInfo`
         """
-        return self.client._perform_json(
-                "GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name)
-        )
+        data = self.client._perform_json("GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name))
+        return DSSDatasetInfo(self, data)
 
     ########################################################
     # Misc
@@ -869,3 +870,78 @@ class DSSManagedDatasetCreationHelper(object):
             return True
         except Exception as e:
             return False
+
+
+class DSSDatasetInfo(object):
+    """
+    Info class for a DSS dataset (Read-Only).
+    Do not instantiate this class directly, use :meth:`DSSDataset.get_info`
+    """
+
+    def __init__(self, dataset, info):
+        """
+        :type dataset: :class:`DSSDataset`
+        :type info: dict
+        """
+        self.dataset = dataset
+        self.info = info
+
+    def get_raw(self):
+        """
+        Get the raw dataset full information as a dict
+
+        :return: the raw dataset full information
+        :rtype: dict
+        """
+        return self.info
+
+    def get_raw_last_build(self):
+        """
+        Get the last build information of the dataset, as a raw dict, or None if there is no last build information.
+
+        :return: the last build information
+        :rtype: dict or None
+        """
+        return self.info.get("lastBuild", None)
+
+    def get_last_build_start_time(self, as_date=False):
+        """
+        Get the last build start time of the dataset as a timestamp or as a :class:`datetime.datetime`, or None if there
+        is no last build information.
+
+        :return: the last build start time
+        :rtype: int or :class:`datetime.datetime` or None
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        timestamp = last_build_info.get("buildStartTime", None)
+
+        if as_date and timestamp is not None:
+            return datetime.datetime.fromtimestamp(timestamp / 1000)
+        return timestamp
+
+    def get_last_build_end_time(self, as_date=False):
+        """
+        Get the last build end time of the dataset as a timestamp or as a :class:`datetime.datetime`, or None if there
+        is no last build information.
+
+        :return: the last build end time
+        :rtype: int or :class:`datetime.datetime` or None
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        timestamp = last_build_info.get("buildEndTime", None)
+
+        if as_date and timestamp is not None:
+            return datetime.datetime.fromtimestamp(timestamp / 1000)
+        return timestamp
+
+    def is_last_build_successful(self):
+        """
+        Get whether the last build of the dataset is successful.
+
+        :return: True if the last build is successful, False otherwise
+        :rtype: bool
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        success = last_build_info.get("buildSuccess", False)
+
+        return success
