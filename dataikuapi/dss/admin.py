@@ -1,3 +1,5 @@
+import datetime
+
 from .future import DSSFuture
 import json, warnings
 
@@ -164,23 +166,21 @@ class DSSUser(object):
     def get_settings(self):
         """
         Gets the settings of the user
+
         :rtype: :class:`DSSUserSettings`
         """
         raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
         return DSSUserSettings(self.client, self.login, raw)
 
-    def get_last_activity(self):
+    def get_activity(self):
         """
-        Gets the last activity of a user:
+        Gets the activity of the user
 
-            * last successful login attempt
-            * last failed login attempt
-            * last loading of DSS (new tab or tab refresh)
-
-        :return: the user's activity, as a dict
-        :rtype: dict
+        :return: the user's activity
+        :rtype: :class:`DSSUserActivity`
         """
-        return self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+        raw = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+        return DSSUserActivity(self.client, self.login, raw)
 
     ########################################################
     # Legacy
@@ -236,6 +236,7 @@ class DSSUser(object):
                                          extra_headers={"X-DKU-ProxyUser":  self.login})
         else:
             raise ValueError("Don't know how to proxy this client")
+
 
 class DSSOwnUser(object):
     """
@@ -375,6 +376,73 @@ class DSSOwnUserSettings(DSSUserSettingsBase):
     def save(self):
         """Saves the settings"""
         self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
+class DSSUserActivity(object):
+    """
+    Settings for a DSS user.
+    Do not call this directly, use :meth:`DSSUser.get_activity`
+    """
+
+    def __init__(self, client, login, activity):
+        self.client = client
+        self.login = login
+        self.activity = activity
+
+    def get_raw(self):
+        """
+        Get the raw activity of the user as a dict.
+
+        :return: the raw activity
+        :rtype: dict
+        """
+        return self.activity
+
+    def get_last_successful_login_attempt(self, as_date=False):
+        """
+        Get the last successful login attempt of the user as a timestamp or as a :class:`datetime.datetime`
+        
+        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+
+        :return: the last successful login attempt
+        :rtype: int or :class:`datetime.datetime`
+        """
+        timestamp = self.activity["lastSuccessfulLogin"]
+        if as_date:
+            return datetime.datetime.fromtimestamp(timestamp / 1000)
+        else:
+            return timestamp
+
+    def get_last_failed_login_attempt(self, as_date=False):
+        """
+        Get the last failed login attempt of the user as a timestamp or as a :class:`datetime.datetime`
+
+        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+
+        :return: the last failed login attempt
+        :rtype: int or :class:`datetime.datetime`
+        """
+        timestamp = self.activity["lastFailedLogin"]
+        if as_date:
+            return datetime.datetime.fromtimestamp(timestamp / 1000)
+        else:
+            return timestamp
+
+    def get_last_session_loading(self, as_date=False):
+        """
+        Get the last session loading of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
+        he opened a new DSS tab or refreshed his session.
+
+        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+
+        :return: the last session loading
+        :rtype: int or :class:`datetime.datetime`
+        """
+        timestamp = self.activity["lastLoaded"]
+        if as_date:
+            return datetime.datetime.fromtimestamp(timestamp / 1000)
+        else:
+            return timestamp
 
 
 class DSSGroup(object):
