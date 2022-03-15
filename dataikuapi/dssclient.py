@@ -4,6 +4,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
@@ -1117,6 +1118,19 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
+
+    ########################################################
+    # Feature Store
+    ########################################################
+    def get_feature_store(self):
+        """
+        Get a handle to interact with the Feature Store.
+
+        :return: a handle on the feature store
+        :rtype: :class:`dataikuapi.feature_store.DSSFeatureStore`
+        """
+        return DSSFeatureStore(self)
+
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
