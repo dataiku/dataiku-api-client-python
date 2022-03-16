@@ -1,3 +1,5 @@
+import json
+
 class DSSMLflowExtension(object):
     """
     A handle to interact with specific endpoints of the DSS MLflow integration.
@@ -131,3 +133,34 @@ class DSSMLflowExtension(object):
         This call requires an API key with admin rights
         """
         self.client._perform_raw("DELETE", "/api/2.0/mlflow/extension/clean-db/%s" % self.project_key)
+
+    def set_run_classes(self, run_id, classes):
+        """
+        Stores the classes of the target of classification models trained in the specified run. This information is leveraged
+        to prefill the classes when deploying using the GUI an MLflow model as a version of a DSS Saved Model.
+
+        :param run_id: run_id for which to set the classes
+        :type run_id: str
+        :param classes: ordered list of classes
+        :type classes: list(str)
+        """
+
+        if not classes:
+            raise ValueError('Parameter classes must be defined')
+        if not isinstance(classes, list):
+            raise ValueError('Wrong type for classes: {}'.format(type(classes)))
+        for cur_class in classes:
+            if not cur_class:
+                raise ValueError('class can not be None')
+            if not isinstance(cur_class, str):
+                raise ValueError('Wrong type for class {}: {}'.format(cur_class, type(cur_class)))
+        self.client._perform_http(
+            "POST", "/api/2.0/mlflow/runs/set-tag",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={
+                "run_id": run_id,
+                "run_uuid": run_id,
+                "key": "dku-ext.targetClasses",
+                "value": json.dumps(classes)
+            }
+        )
