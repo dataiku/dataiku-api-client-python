@@ -930,7 +930,7 @@ class DSSDatasetInfo(object):
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildEndTime", None)
 
-        if as_date and timestamp is not None:
+        if as_date and timestamp:
             return datetime.datetime.fromtimestamp(timestamp / 1000)
         return timestamp
 
@@ -938,7 +938,7 @@ class DSSDatasetInfo(object):
         """
         Get whether the last build of the dataset is successful.
 
-        :return: True if the last build is successful, False otherwise
+        :return: True if the last build is successful
         :rtype: bool
         """
         last_build_info = self.info.get("lastBuild", dict())
