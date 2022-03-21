@@ -134,23 +134,23 @@ class DSSMLflowExtension(object):
         """
         self.client._perform_raw("DELETE", "/api/2.0/mlflow/extension/clean-db/%s" % self.project_key)
 
-    def set_run_inference_info(self, run_id, prediction_type, classes, code_env_name, target):
+    def set_run_inference_info(self, run_id, model_type, classes=None, code_env_name=None, target=None):
         """
-        Sets the prediction_type of the model, and the classes, if it is a classification model.
+        Sets the type of the model, and optionally other information useful to deploy or evaluate it.
 
-        prediction_type must be one of:
-        - NON_TABULAR if the model is not tabular
+        model_type must be one of:
         - REGRESSION
         - BINARY_CLASSIFICATION
         - MULTICLASS
+        - OTHER
 
         Classes must be specified if and only if the model is a BINARY_CLASSIFICATION or MULTICLASS model.
 
         This information is leveraged to filter saved models on their prediction type and prefill the classes
         when deploying using the GUI an MLflow model as a version of a DSS Saved Model.
 
-        :param prediction_type: prediction type (see doc)
-        :type prediction_type: str
+        :param model_type: prediction type (see doc)
+        :type model_type: str
         :param run_id: run_id for which to set the classes
         :type run_id: str
         :param classes: ordered list of classes (not for all prediction types, see doc)
@@ -160,18 +160,18 @@ class DSSMLflowExtension(object):
         :param target: name of the target
         :type target: str
         """
-        if prediction_type not in {"NON_TABULAR", "REGRESSION", "BINARY_CLASSIFICATION", "MULTICLASS"}:
-            raise ValueError('Invalid prediction type: {}'.format(prediction_type))
+        if model_type not in {"REGRESSION", "BINARY_CLASSIFICATION", "MULTICLASS", "OTHER"}:
+            raise ValueError('Invalid prediction type: {}'.format(model_type))
 
-        if classes and prediction_type not in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
+        if classes and model_type not in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
             raise ValueError('Classes can be specified only for BINARY_CLASSIFICATION or MULTICLASS prediction types')
-        if prediction_type in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
+        if model_type in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
             if not classes:
-                raise ValueError('Classes must be specified for {} prediction type'.format(prediction_type))
+                raise ValueError('Classes must be specified for {} prediction type'.format(model_type))
             if not isinstance(classes, list):
                 raise ValueError('Wrong type for classes: {}'.format(type(classes)))
             for cur_class in classes:
-                if not cur_class:
+                if cur_class is None:
                     raise ValueError('class can not be None')
                 if not isinstance(cur_class, str):
                     raise ValueError('Wrong type for class {}: {}'.format(cur_class, type(cur_class)))
@@ -183,7 +183,7 @@ class DSSMLflowExtension(object):
 
         params = {
             "run_id": run_id,
-            "prediction_type": prediction_type
+            "prediction_type": model_type
         }
 
         if classes:
