@@ -737,6 +737,25 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
     def add_raw_schema_column(self, column):
         self.settings["schema"]["columns"].append(column)
 
+    @property
+    def is_feature_group(self):
+        """
+        Indicates whether the Dataset is defined as a Feature Group, available in the Feature Store.
+
+        :rtype: bool
+        """
+        return self.settings["featureGroup"]
+
+    def set_feature_group(self, status):
+        """
+        (Un)sets the dataset as a Feature Group, available in the Feature Store.
+        Changes of this property will be applied when calling :meth:`save` and require the "Manage Feature Store" permission.
+
+        :param status: whether the dataset should be defined as a feature group
+        :type status: bool
+        """
+        self.settings["featureGroup"] = status
+
     def save(self):
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
