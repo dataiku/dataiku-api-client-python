@@ -1060,7 +1060,7 @@ class DSSClient(object):
     # Internal Request handling
     ########################################################
 
-    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None):
+    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None, headers=None):
         if body is not None:
             body = json.dumps(body)
         if raw_body is not None:
@@ -1070,8 +1070,9 @@ class DSSClient(object):
             http_res = self._session.request(
                     method, "%s/dip/publicapi%s" % (self.host, path),
                     params=params, data=body,
-                    files = files,
-                    stream = stream)
+                    files=files,
+                    stream=stream,
+                    headers=headers)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
