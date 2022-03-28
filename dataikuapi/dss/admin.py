@@ -402,13 +402,15 @@ class DSSUserActivity(object):
         """
         Get the last successful login attempt of the user as a timestamp or as a :class:`datetime.datetime`
         
-        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+        Returns None if there is no logged attempt.
 
         :return: the last successful login attempt
-        :rtype: int or :class:`datetime.datetime`
+        :rtype: int or :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        if as_date:
+        if timestamp == 0:
+            return None
+        elif as_date:
             return datetime.datetime.fromtimestamp(timestamp / 1000)
         else:
             return timestamp
@@ -417,13 +419,15 @@ class DSSUserActivity(object):
         """
         Get the last failed login attempt of the user as a timestamp or as a :class:`datetime.datetime`
 
-        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+        Returns None if there is no logged attempt.
 
         :return: the last failed login attempt
-        :rtype: int or :class:`datetime.datetime`
+        :rtype: int or :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        if as_date:
+        if timestamp == 0:
+            return None
+        elif as_date:
             return datetime.datetime.fromtimestamp(timestamp / 1000)
         else:
             return timestamp
@@ -433,13 +437,15 @@ class DSSUserActivity(object):
         Get the last session loading of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
         he opened a new DSS tab or refreshed his session.
 
-        Returns `0` or `1970-01-01 01:00:00` if there is no logged attempt.
+        Returns None if there is no logged attempt.
 
         :return: the last session loading
-        :rtype: int or :class:`datetime.datetime`
+        :rtype: int or :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastLoaded"]
-        if as_date:
+        if timestamp == 0:
+            return None
+        elif as_date:
             return datetime.datetime.fromtimestamp(timestamp / 1000)
         else:
             return timestamp
