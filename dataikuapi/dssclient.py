@@ -648,18 +648,12 @@ class DSSClient(object):
     # Personal API Keys
     ########################################################
 
-    def list_all_personal_api_keys(self, as_type='dict'):
-
-
     def list_personal_api_keys(self, as_type='dict'):
         """
-        List all personal API keys:
-            - not admin: only the keys belonging to the current user
-            - admin: all the personal keys
+        List all your personal API keys
         :param str as_type: 'objects' or 'dict'
-        :returns: All personal API keys
+        :returns: All personal API keys associated with your user
         """
-
         resp = self._perform_json(
             "GET", "/personal-api-keys/")
         if as_type == 'objects':
@@ -667,44 +661,26 @@ class DSSClient(object):
         else:
             return resp
 
-    def get_personal_api_key(self, id_):
+    def get_personal_api_key(self, key):
         """
-        Get a specific API key
-        :param str id_: the id of the desired API key
-        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key
-        """
-        return DSSPersonalApiKey(self, id_)
+        Get a handle to interact with a specific Personal API key
 
-    def list_personal_api_keys(self, as_type='dict'):
+        :param str key: the secret key of the desired API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
         """
-        List all personal API keys:
-            - not admin: only the keys belonging to the current user
-            - admin: all the personal keys
-        :param str as_type: 'objects' or 'dict'
-        :returns: All personal API keys
-        """
-
-        resp = self._perform_json(
-            "GET", "/personal-api-keys/all")
-        if as_type == 'objects':
-            return [DSSPersonalApiKey(self, item['id']) for item in resp]
-        else:
-            return resp
-
-    def create_personal_api_key_for_user(self, label="", description="", as_type='dict', user=""):
+        return DSSPersonalApiKey(self, key)
 
 
     def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
-        Create a Personal API key
+        Create a Personal API key associated with your user
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str as_type: 'object' or 'dict'
-        :param str user: the id of the user to impersonate (optional)
-        :returns: The new personal API key
+        :returns: The new personal API key associated with your user
         """
         resp = self._perform_json(
-            "POST", "/personal-api-keys/", body={"user": user, "label": label, "description": description})
+            "POST", "/personal-api-keys/", body={"label": label, "description": description})
         if resp is None:
             raise Exception('API key creation returned no data')
         if resp.get('messages', {}).get('error', False):
@@ -716,6 +692,46 @@ class DSSClient(object):
             return DSSPersonalApiKey(self, resp["id"])
         else:
             return resp
+
+    def list_all_personal_api_keys(self, as_type='dict'):
+        """
+        List all personal API keys
+        Only admin can list all the keys
+        :param str as_type: 'objects' or 'dict'
+        :returns: All personal API keys in DSS
+        """
+        resp = self._perform_json(
+            "GET", "/admin/personal-api-keys/")
+        if as_type == 'objects':
+            return [DSSPersonalApiKey(self, item['id']) for item in resp]
+        else:
+            return resp
+
+
+    def create_personal_api_key_for_user(self, label="", description="", as_type='dict', user=""):
+        """
+        Create a Personal API key associated on behalf of a user
+        Only admin can create a key for another user
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str as_type: 'object' or 'dict'
+        :param str user: the id of the user to impersonate
+        :returns: The new personal API key associated with 'user'
+        """
+        resp = self._perform_json(
+            "POST", "/admin/personal-api-keys/", body={"user": user, "label": label, "description": description})
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+
+        if as_type == 'object':
+            return DSSPersonalApiKey(self, resp["id"])
+        else:
+            return resp
+
 
     ########################################################
     # Meanings
