@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables
+from .dss.admin import DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -385,6 +385,23 @@ class DSSClient(object):
 
     def get_own_user(self):
         return DSSOwnUser(self)
+
+    def list_users_activity(self, as_objects=False):
+        """
+        List all users activity
+
+        Note: this call requires an API key with admin rights
+
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity` if as_objects is True, else as a list of dict
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity` or a list of dict
+        """
+        all_activity = self._perform_json("GET", "/admin/users/activity")
+
+        if as_objects:
+            return [DSSUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
+        else:
+            return all_activity
+
 
     ########################################################
     # Groups

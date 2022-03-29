@@ -179,8 +179,8 @@ class DSSUser(object):
         :return: the user's activity
         :rtype: :class:`DSSUserActivity`
         """
-        raw = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
-        return DSSUserActivity(self.client, self.login, raw)
+        activity = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+        return DSSUserActivity(self.client, self.login, activity)
 
     ########################################################
     # Legacy
@@ -381,7 +381,7 @@ class DSSOwnUserSettings(DSSUserSettingsBase):
 class DSSUserActivity(object):
     """
     Settings for a DSS user.
-    Do not call this directly, use :meth:`DSSUser.get_activity`
+    Do not call this directly, use :meth:`DSSUser.get_activity` or :meth:`DSSClient.list_users_activity`
     """
 
     def __init__(self, client, login, activity):
@@ -432,9 +432,9 @@ class DSSUserActivity(object):
         else:
             return timestamp
 
-    def get_last_session_loading(self, as_date=False):
+    def get_last_session_activity(self, as_date=False):
         """
-        Get the last session loading of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
+        Get the last session activity of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
         he opened a new DSS tab or refreshed his session.
 
         Returns None if there is no logged attempt.
