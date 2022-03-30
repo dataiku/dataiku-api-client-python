@@ -380,7 +380,7 @@ class DSSOwnUserSettings(DSSUserSettingsBase):
 
 class DSSUserActivity(object):
     """
-    Settings for a DSS user.
+    Activity for a DSS user.
     Do not call this directly, use :meth:`DSSUser.get_activity` or :meth:`DSSClient.list_users_activity`
     """
 
@@ -398,13 +398,13 @@ class DSSUserActivity(object):
         """
         return self.activity
 
-    def get_last_successful_login_attempt(self, as_date=False):
+    def get_last_successful_login(self, as_date=False):
         """
-        Get the last successful login attempt of the user as a timestamp or as a :class:`datetime.datetime`
+        Get the last successful login of the user as a timestamp or as a :class:`datetime.datetime`
         
-        Returns None if there is no logged attempt.
+        Returns None if there were no successful login for this user.
 
-        :return: the last successful login attempt
+        :return: the last successful login
         :rtype: int or :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
@@ -415,13 +415,13 @@ class DSSUserActivity(object):
         else:
             return timestamp
 
-    def get_last_failed_login_attempt(self, as_date=False):
+    def get_last_failed_login(self, as_date=False):
         """
-        Get the last failed login attempt of the user as a timestamp or as a :class:`datetime.datetime`
+        Get the last failed login of the user as a timestamp or as a :class:`datetime.datetime`
 
-        Returns None if there is no logged attempt.
+        Returns None if there were no failed login for this user.
 
-        :return: the last failed login attempt
+        :return: the last failed login
         :rtype: int or :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
@@ -437,12 +437,12 @@ class DSSUserActivity(object):
         Get the last session activity of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
         he opened a new DSS tab or refreshed his session.
 
-        Returns None if there is no logged attempt.
+        Returns None if there is no session activity yet.
 
-        :return: the last session loading
+        :return: the last session activity
         :rtype: int or :class:`datetime.datetime` or None
         """
-        timestamp = self.activity["lastLoaded"]
+        timestamp = self.activity["lastSessionActivity"]
         if timestamp == 0:
             return None
         elif as_date:

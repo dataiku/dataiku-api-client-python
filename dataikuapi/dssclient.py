@@ -386,7 +386,7 @@ class DSSClient(object):
     def get_own_user(self):
         return DSSOwnUser(self)
 
-    def list_users_activity(self, as_objects=False):
+    def list_users_activity(self, as_objects=False, enabledUsersOnly=False):
         """
         List all users activity
 
@@ -395,7 +395,10 @@ class DSSClient(object):
         :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity` if as_objects is True, else as a list of dict
         :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity` or a list of dict
         """
-        all_activity = self._perform_json("GET", "/admin/users/activity")
+        params = {
+            "enabledUsersOnly": enabledUsersOnly
+        }
+        all_activity = self._perform_json("GET", "/admin/users/activity", params=params)
 
         if as_objects:
             return [DSSUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
