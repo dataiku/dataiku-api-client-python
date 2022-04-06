@@ -1143,21 +1143,113 @@ class DSSCluster(object):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def stop(self, terminate=True):
+    def stop(self, terminate=True, force_stop=False):
         """
         Stops or detaches the cluster
 
         This operation is only valid for a managed cluster.
-        :param boolean terminate: whether to delete the cluster after stopping it
+
+        :param terminate: whether to delete the cluster after stopping it
+        :type terminate: bool
+        :param force_stop: whether to try to force stop the cluster,
+            useful if DSS expects the cluster to already be stopped
+        :type force_stop: bool
         """
         resp = self.client._perform_json(
             "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id),
-            params = {'terminate':terminate})
+            params={'terminate': terminate, 'forceStop': force_stop})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
+
+    def kubectl_command(self, args):
+        """
+        Runs an arbitrary kubectl command on the cluster.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param args: the arguments to pass to kubectl (without the "kubectl")
+        :type args: str
+        :return: a dict containing the return value, output, and possible error output of the command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/kubectl" % self.cluster_id,
+            body={'args': args})
+
+    @staticmethod
+    def _build_args(base_command, namespace, label_filter, dry_run=True):
+        args = base_command
+        if namespace:
+            args += ' --namespace ' + namespace
+        if label_filter:
+            args += ' -l ' + label_filter
+        if dry_run:
+            args += ' --dry-run=client'
+        return args
+
+    def delete_finished_jobs(self, delete_failed=False, namespace="", label_filter="", dry_run=True):
+        """
+        Runs a kubectl command to delete finished jobs.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param delete_failed: if True, delete both completed and failed jobs, otherwise only delete completed jobs
+        :type delete_failed: bool
+        :param namespace: the namespace in which to delete the jobs
+        :type namespace: str
+        :param label_filter: delete only jobs matching a label filter
+        :type label_filter: str
+        :param dry_run: if True, execute the command as a "dry run"
+        :type dry_run: bool
+        :return: a dict containing the return value, output, and possible error output of the command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/delete-finished-jobs" % self.cluster_id,
+            params={'deleteFailed': delete_failed, 'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
+
+    def delete_succeeded_and_failed_pods(self, namespace="", label_filter="", dry_run=True):
+        """
+        Runs a kubectl command to delete succeeded and failed pods.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param namespace: the namespace in which to delete the pods
+        :type namespace: str
+        :param label_filter: delete only pods matching a label filter
+        :type label_filter: str
+        :param dry_run: if True, execute the command as a "dry run"
+        :type dry_run: bool
+        :return: a dict containing the return value, output, and possible error output of the command
+        :rtype: dict
+        """
+        return self.kubectl_command(
+            self._build_args(
+                'delete pods --field-selector=status.phase!=Pending,status.phase!=Running,status.phase!=Unknown',
+                namespace, label_filter, dry_run))
+
+    def delete_all_pods(self, namespace="", label_filter="", dry_run=True):
+        """
+        Runs a kubectl command to delete all pods.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param namespace: the namespace in which to delete the pods
+        :type namespace: str
+        :param label_filter: delete only pods matching a label filter
+        :type label_filter: str
+        :param dry_run: if True, execute the command as a "dry run"
+        :type dry_run: bool
+        :return: a dict containing the return value, output, and possible error output of the command
+        :rtype: dict
+        """
+        args = 'delete pods'
+        if not label_filter:
+            args += ' --all'
+        return self.kubectl_command(self._build_args(args, namespace, label_filter, dry_run))
 
 class DSSClusterSettings(object):
     """
