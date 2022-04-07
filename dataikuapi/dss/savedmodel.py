@@ -6,7 +6,7 @@ from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 from .managedfolder import DSSManagedFolder
 
-from ..utils import _make_zipfile
+from ..utils import _make_zipfile, dku_basestring_type
 
 try:
     basestring
@@ -166,10 +166,13 @@ class DSSSavedModel(object):
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         folder_ref = None
-        if type(managed_folder) is DSSManagedFolder:
+        if isinstance(managed_folder, DSSManagedFolder):
             folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
-        else:
+        elif isinstance(managed_folder, dku_basestring_type):
             folder_ref = managed_folder
+        else:
+            raise Exception("managed_folder should either be a string representing the identifier of the managed folder"
+                            " or an instance of dataikuapi.dss.managedfolder.DSSManagedFolder")
 
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}".format(
