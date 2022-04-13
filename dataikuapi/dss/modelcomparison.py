@@ -1,4 +1,4 @@
-from dataikuapi.dss.discussion import DSSObjectDiscussions
+from .discussion import DSSObjectDiscussions
 import re
 
 
