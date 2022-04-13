@@ -1181,17 +1181,6 @@ class DSSCluster(object):
             "POST", "/admin/clusters/%s/k8s/kubectl" % self.cluster_id,
             body={'args': args})
 
-    @staticmethod
-    def _build_args(base_command, namespace, label_filter, dry_run=True):
-        args = base_command
-        if namespace:
-            args += ' --namespace ' + namespace
-        if label_filter:
-            args += ' -l ' + label_filter
-        if dry_run:
-            args += ' --dry-run=client'
-        return args
-
     def delete_finished_jobs(self, delete_failed=False, namespace="", label_filter="", dry_run=False):
         """
         Runs a kubectl command to delete finished jobs.
