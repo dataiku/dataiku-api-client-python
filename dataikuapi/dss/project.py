@@ -1,4 +1,7 @@
-import time, warnings, sys, os.path as osp
+import warnings, os.path as osp
+
+from ..dss_plugin_mlflow import MLflowHandle
+
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .modelcomparison import DSSModelComparison
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
@@ -9,6 +12,7 @@ from . import recipe
 from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .modelevaluationstore import DSSModelEvaluationStore
+from .mlflow import DSSMLflowExtension
 from .job import DSSJob, DSSJobWaiter
 from .scenario import DSSScenario, DSSScenarioListItem
 from .continuousactivity import DSSContinuousActivity
@@ -30,8 +34,8 @@ class DSSProject(object):
     Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project`
     """
     def __init__(self, client, project_key):
-       self.client = client
-       self.project_key = project_key
+        self.client = client
+        self.project_key = project_key
 
     def get_summary(self):
         """
@@ -1589,7 +1593,7 @@ class DSSProject(object):
         """
         connection_name = "@virtual(hive-jdbc):" + hive_database
         ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-tables" % (self.project_key),
-                params = {"connectionName": connection_name} )
+                params={"connectionName": connection_name} )
 
         def to_schema_table_pair(x):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
@@ -1598,11 +1602,29 @@ class DSSProject(object):
     ########################################################
     # App designer
     ########################################################
-
     def get_app_manifest(self):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
+    # MLflow experiment tracking
+    ########################################################
+    def setup_mlflow(self, managed_folder, host=None):
+        """
+        Setup the dss-plugin for MLflow
+
+        :param object managed_folder: a :class:`dataikuapi.dss.DSSManagedFolder` where MLflow artifacts should be stored.
+        :param str host: setup a custom host if the backend used is not DSS
+        """
+        return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
+
+    def get_mlflow_extension(self):
+        """
+        Get a handle to interact with the extension of MLflow provided by DSS
+
+        :returns: A :class:`dataikuapi.dss.mlflow.DSSMLflowExtension` Mlflow Extension handle
+
+        """
+        return DSSMLflowExtension(client=self.client, project_key=self.project_key)
 
 class TablesImportDefinition(object):
     """

@@ -4,6 +4,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
@@ -1032,6 +1033,19 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
+
+    ########################################################
+    # Global Instance Info
+    ########################################################
+
+    def get_instance_info(self):
+        """
+        Get global information about the DSS instance
+        :return: a :classss:`DSSInstanceInfo` 
+        """
+        resp = self._perform_json("GET", "/instance-info")
+        return DSSInstanceInfo(resp)
+
     ########################################################
     # Licensing
     ########################################################
@@ -1059,7 +1073,7 @@ class DSSClient(object):
     # Internal Request handling
     ########################################################
 
-    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None):
+    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None, headers=None):
         if body is not None:
             body = json.dumps(body)
         if raw_body is not None:
@@ -1069,8 +1083,9 @@ class DSSClient(object):
             http_res = self._session.request(
                     method, "%s/dip/publicapi%s" % (self.host, path),
                     params=params, data=body,
-                    files = files,
-                    stream = stream)
+                    files=files,
+                    stream=stream,
+                    headers=headers)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -1118,6 +1133,19 @@ class DSSClient(object):
         """
         return DSSObjectDiscussions(self, project_key, object_type, object_id)
 
+    ########################################################
+    # Feature Store
+    ########################################################
+    def get_feature_store(self):
+        """
+        Get a handle to interact with the Feature Store.
+
+        :return: a handle on the feature store
+        :rtype: :class:`dataikuapi.feature_store.DSSFeatureStore`
+        """
+        return DSSFeatureStore(self)
+
+
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client
@@ -1156,3 +1184,33 @@ class TemporaryImportHandle(object):
             settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)
+
+class DSSInstanceInfo(object):
+    """Global information about the DSS instance"""
+
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`DSSClient.get_instance_info`"""
+        self._data = data
+
+    @property
+    def raw(self):
+        """Returns all data as a Python dictionary"""
+        return self._data
+
+    @property
+    def node_id(self):
+        """Returns the node id (as defined in Cloud Stacks or in install.ini)"""
+        return self._data["nodeId"]
+
+    @property
+    def node_name(self):
+        """Returns the node name as it appears in the navigation bar"""
+        return self._data["nodeName"]
+
+    @property
+    def node_type(self):
+        """
+        Returns the node type
+        :return: One of DESIGN, AUTOMATION or DEPLOYER
+        """
+        return self._data["nodeType"]
