@@ -312,13 +312,14 @@ class DSSProjectDeployerDeployment(object):
 
         return DSSProjectDeployerDeploymentStatus(self.client, self.deployment_id, light, heavy)
 
-    def get_governance_status(self):
+    def get_governance_status(self, bundle_id=""):
         """
         Returns the governance status about this deployment if applicable
 
+        :param str bundle_id: (Optional) The ID of a specific bundle of the published project to get status from. If empty, consider the bundle currently used in the deployment.
         :rtype: dict InforMessages containing the governance status
         """
-        return self.client._perform_json("GET", "/project-deployer/deployments/%s/governance-status" % (self.deployment_id))
+        return self.client._perform_json("GET", "/project-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "bundleId": bundle_id })
 
     def get_settings(self):
         """
