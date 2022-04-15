@@ -103,7 +103,7 @@ class DSSProjectDeployer(object):
         settings = {
             "id": infra_id,
             "stage": stage, 
-            "govern_check_policy": govern_check_policy,
+            "governCheckPolicy": govern_check_policy,
         }
         self.client._perform_json("POST", "/project-deployer/infras", body=settings)
         return self.get_infra(infra_id)
