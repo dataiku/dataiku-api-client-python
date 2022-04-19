@@ -1430,6 +1430,12 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_input("scored_dataset_to_evaluate")
         builder.with_output_evaluation_store(evaluation_store_id)
 
+        # Add a reference dataset (optional) to compute data drift
+
+        builder.with_reference_dataset("reference_dataset")
+
+        # Finish creation of the recipe
+
         new_recipe = builder.create()
 
         # Modify the model parameters in the SER settings
@@ -1483,6 +1489,10 @@ class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
     def with_output_evaluation_store(self, mes_id):
         """Sets the output model evaluation store"""
         return self._with_output(mes_id, role="main")
+
+    def with_reference_dataset(self, dataset_name):
+        """Sets the dataset to use as a reference in data drift computation (optional)."""
+        return self._with_input(dataset_name, self.project.project_key, role="reference")
 
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):

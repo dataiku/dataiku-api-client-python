@@ -1033,6 +1033,19 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
+
+    ########################################################
+    # Global Instance Info
+    ########################################################
+
+    def get_instance_info(self):
+        """
+        Get global information about the DSS instance
+        :return: a :classss:`DSSInstanceInfo` 
+        """
+        resp = self._perform_json("GET", "/instance-info")
+        return DSSInstanceInfo(resp)
+
     ########################################################
     # Licensing
     ########################################################
@@ -1171,3 +1184,33 @@ class TemporaryImportHandle(object):
             settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)
+
+class DSSInstanceInfo(object):
+    """Global information about the DSS instance"""
+
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`DSSClient.get_instance_info`"""
+        self._data = data
+
+    @property
+    def raw(self):
+        """Returns all data as a Python dictionary"""
+        return self._data
+
+    @property
+    def node_id(self):
+        """Returns the node id (as defined in Cloud Stacks or in install.ini)"""
+        return self._data["nodeId"]
+
+    @property
+    def node_name(self):
+        """Returns the node name as it appears in the navigation bar"""
+        return self._data["nodeName"]
+
+    @property
+    def node_type(self):
+        """
+        Returns the node type
+        :return: One of DESIGN, AUTOMATION or DEPLOYER
+        """
+        return self._data["nodeType"]

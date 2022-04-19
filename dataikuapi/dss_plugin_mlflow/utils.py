@@ -65,6 +65,12 @@ class MLflowHandle:
         if not isinstance(managed_folder, DSSManagedFolder):
             raise TypeError('managed_folder must a DSSManagedFolder.')
 
+        if not client._session.verify:
+            self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "true"})
+        elif isinstance(client._session.verify, str):
+            self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
+
+
         mf_project = managed_folder.project.project_key
         mf_id = managed_folder.id
         try:
