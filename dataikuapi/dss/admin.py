@@ -1149,11 +1149,9 @@ class DSSCluster(object):
 
         This operation is only valid for a managed cluster.
 
-        :param terminate: whether to delete the cluster after stopping it
-        :type terminate: bool
-        :param force_stop: whether to try to force stop the cluster,
+        :param bool terminate: whether to delete the cluster after stopping it
+        :param bool force_stop: whether to try to force stop the cluster,
             useful if DSS expects the cluster to already be stopped
-        :type force_stop: bool
         """
         resp = self.client._perform_json(
             "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id),
@@ -1172,9 +1170,8 @@ class DSSCluster(object):
 
         Note: this call requires an API key with DSS instance admin rights
 
-        :param args: the arguments to pass to kubectl (without the "kubectl")
-        :type args: str
-        :return: a dict containing the return value, output, and possible error output of the command
+        :param str args: the arguments to pass to kubectl (without the "kubectl")
+        :return: a dict containing the return value, standard output, and standard error of the command
         :rtype: dict
         """
         return self.client._perform_json(
@@ -1187,15 +1184,11 @@ class DSSCluster(object):
 
         This operation is only valid for a Kubernetes cluster.
 
-        :param delete_failed: if True, delete both completed and failed jobs, otherwise only delete completed jobs
-        :type delete_failed: bool
-        :param namespace: the namespace in which to delete the jobs
-        :type namespace: str
-        :param label_filter: delete only jobs matching a label filter
-        :type label_filter: str
-        :param dry_run: if True, execute the command as a "dry run"
-        :type dry_run: bool
-        :return: a dict containing the return value, output, and possible error output of the command
+        :param bool delete_failed: if True, delete both completed and failed jobs, otherwise only delete completed jobs
+        :param str namespace: the namespace in which to delete the jobs
+        :param str label_filter: delete only jobs matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing the return value, standard output, and standard error of the command
         :rtype: dict
         """
         return self.client._perform_json(
@@ -1208,13 +1201,10 @@ class DSSCluster(object):
 
         This operation is only valid for a Kubernetes cluster.
 
-        :param namespace: the namespace in which to delete the pods
-        :type namespace: str
-        :param label_filter: delete only pods matching a label filter
-        :type label_filter: str
-        :param dry_run: if True, execute the command as a "dry run"
-        :type dry_run: bool
-        :return: a dict containing the return value, output, and possible error output of the command
+        :param str namespace: the namespace in which to delete the pods
+        :param str label_filter: delete only pods matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing the return value, standard output, and standard error of the command
         :rtype: dict
         """
         return self.client._perform_json(
@@ -1227,13 +1217,10 @@ class DSSCluster(object):
 
         This operation is only valid for a Kubernetes cluster.
 
-        :param namespace: the namespace in which to delete the pods
-        :type namespace: str
-        :param label_filter: delete only pods matching a label filter
-        :type label_filter: str
-        :param dry_run: if True, execute the command as a "dry run"
-        :type dry_run: bool
-        :return: a dict containing the return value, output, and possible error output of the command
+        :param str namespace: the namespace in which to delete the pods
+        :param str label_filter: delete only pods matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing the return value, standard output, and standard error of the command
         :rtype: dict
         """
         return self.client._perform_json(
