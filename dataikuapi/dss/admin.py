@@ -1,5 +1,6 @@
 from .future import DSSFuture
 import json, warnings
+from datetime import datetime
 
 class DSSConnectionInfo(dict):
     """A class holding read-only information about a connection.
@@ -1271,3 +1272,80 @@ class DSSGlobalUsageSummary(object):
     @property
     def total_active_with_trigger_scenarios_count(self):
         return self.data["scenarios"]["activeWithTriggers"]
+
+
+class DSSKubikleTemplateListItem(object):
+    """An item in a list of datasets. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_datasets`"""
+    def __init__(self, client, data):
+        self.client = client
+        self._data = data
+
+    def to_kubikle_template(self):
+        """Gets the :class:`DSSKubikleTemplate` corresponding to this kubikle template """
+        return DSSKubikleTemplate(self.client, self._data["id"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["id"]
+    @property
+    def type(self):
+        return self._data["type"]
+    @property
+    def type_label(self):
+        return self._data.get("desc", {}).get("label", self._data["type"])
+    @property
+    def type_description(self):
+        return self._data.get("desc", {}).get("description", self._data["type"])
+    @property
+    def build_for_configs(self):
+        return self._data.get("buildFor", [])
+    @property
+    def last_built(self):
+        ts = self._data.get("lastBuilt", 0)
+        if ts > 0:
+            return datetime.fromtimestamp(ts / 1000)
+        else:
+            return None
+
+class DSSKubikleTemplate(object):
+    """
+    A handle to interact with a kubikle template on the DSS instance
+    """
+    def __init__(self, client, template_id):
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_kubikle_template`"""
+        self.client = client
+        self.template_id = template_id
+            
+    ########################################################
+    # Template description
+    ########################################################
+    
+    def get_settings(self):
+        """
+        Get the template's settings. 
+
+        :returns: a :class:`DSSKubikleTemplateSettings` object to interact with kubikle template settings
+        :rtype: :class:`DSSKubikleTemplateSettings`
+        """
+        settings = self.client._perform_json("GET", "/admin/kubikles/%s" % (self.template_id))
+        return DSSKubikleTemplateSettings(self.client, self.template_id, settings)
+
+class DSSKubikleTemplateSettings(object):
+    """
+    The settings of a kubikle template
+    """
+    def __init__(self, client, template_id, settings):
+        """Do not call directly, use :meth:`DSSKubikleTemplate.get_settings`"""
+        self.client = client
+        self.template_id = template_id
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
+        """
+        return self.settings
+

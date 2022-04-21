@@ -11,7 +11,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSKubikleTemplate, DSSKubikleTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -592,6 +592,39 @@ class DSSClient(object):
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return DSSCluster(self, resp['id'])
+
+
+    ########################################################
+    # Kubikle templates
+    ########################################################
+
+    def list_kubikle_templates(self, as_type='listitems'):
+        """
+        List all kubikle templates on the DSS instance
+
+        Returns:
+            List of templates (name, type)
+        """
+        items = self._perform_json("GET", "/admin/kubikles/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSKubikleTemplateListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSKubikleTemplate(self, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type") 
+
+    def get_kubikle_template(self, template_id):
+        """
+        Get a handle to interact with a specific kubikle template
+        
+        Args:
+            template_id: the template id of the desired kubikle template
+        
+        Returns:
+            A :class:`dataikuapi.dss.admin.DSSKubikleTemplate` kubikle template handle
+        """
+        return DSSKubikleTemplate(self, template_id)
+
 
     ########################################################
     # Global API Keys

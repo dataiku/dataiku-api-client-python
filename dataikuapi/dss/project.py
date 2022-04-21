@@ -25,7 +25,7 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-
+from .kubikle import DSSKubikleObject
 
 class DSSProject(object):
     """
@@ -1606,6 +1606,7 @@ class DSSProject(object):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
+    ########################################################
     # MLflow experiment tracking
     ########################################################
     def setup_mlflow(self, managed_folder, host=None):
@@ -1625,6 +1626,55 @@ class DSSProject(object):
 
         """
         return DSSMLflowExtension(client=self.client, project_key=self.project_key)
+
+
+
+    ########################################################
+    # Kubikles
+    ########################################################
+    def list_kubikle_objects(self):
+        """
+        List the kubikle objects in this project
+        
+        Returns:
+            the list of the kubikle objects, each one as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/kubikles/" % self.project_key)
+
+    def get_kubikle_object(self, kubikle_object_id):
+        """
+        Get a handle to interact with a specific kubikle object
+       
+        Args:
+            kubikle_object_id: the identifier of the desired kubikle object
+        
+        Returns:
+            A :class:`dataikuapi.dss.kubikle.DSSKubikleObject` kubikle object handle
+        """
+        return DSSKubikleObject(self.client, self.project_key, kubikle_object_id)
+
+    def create_kubikle_object(self, name, template_id):
+        """
+        Create a new kubikle object in the project, and return a handle to interact with it
+        
+        Args:
+            name: the name of the kubikle object
+            template_id: the identifier of a kubikle template
+        
+        Returns:
+            A :class:`dataikuapi.dss.kubikle.DSSKubikleObject` kubikle object handle
+        """
+        obj = {
+            "name" : name,
+            "projectKey" : self.project_key,
+            "templateId" : template_id
+        }
+        res = self.client._perform_json("POST", "/projects/%s/kubikles/" % self.project_key, body = obj)
+        kubikle_object_id = res['id']
+        return DSSKubikleObject(self.client, self.project_key, kubikle_object_id)
+
+
 
 class TablesImportDefinition(object):
     """
