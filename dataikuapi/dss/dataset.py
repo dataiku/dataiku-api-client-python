@@ -528,7 +528,7 @@ class DSSDataset(object):
         """
         Retrieve all the information about a dataset
 
-        :returns: a :class:`DSSDatasetInfo` containing all the information about a dataset, such as params, schema, last build infos, status, etc.
+        :returns: a :class:`DSSDatasetInfo` containing all the information about a dataset.
         :rtype: :class:`DSSDatasetInfo`
         """
         data = self.client._perform_json("GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name))
@@ -879,10 +879,6 @@ class DSSDatasetInfo(object):
     """
 
     def __init__(self, dataset, info):
-        """
-        :type dataset: :class:`DSSDataset`
-        :type info: dict
-        """
         self.dataset = dataset
         self.info = info
 
@@ -895,45 +891,31 @@ class DSSDatasetInfo(object):
         """
         return self.info
 
-    def get_raw_last_build(self):
+    @property
+    def last_build_start_time(self):
         """
-        Get the last build information of the dataset, as a raw dict, or None if there is no last build information.
-
-        :return: the last build information
-        :rtype: dict or None
-        """
-        return self.info.get("lastBuild", None)
-
-    def get_last_build_start_time(self, as_date=False):
-        """
-        Get the last build start time of the dataset as a timestamp or as a :class:`datetime.datetime`, or None if there
-        is no last build information.
+        The last build start time of the dataset as a :class:`datetime.datetime` or None if there is no last build information.
 
         :return: the last build start time
-        :rtype: int or :class:`datetime.datetime` or None
+        :rtype: :class:`datetime.datetime` or None
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildStartTime", None)
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
 
-        if as_date and timestamp is not None:
-            return datetime.datetime.fromtimestamp(timestamp / 1000)
-        return timestamp
-
-    def get_last_build_end_time(self, as_date=False):
+    @property
+    def last_build_end_time(self):
         """
-        Get the last build end time of the dataset as a timestamp or as a :class:`datetime.datetime`, or None if there
-        is no last build information.
+        The last build end time of the dataset as a :class:`datetime.datetime` or None if there is no last build information.
 
         :return: the last build end time
-        :rtype: int or :class:`datetime.datetime` or None
+        :rtype: :class:`datetime.datetime` or None
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildEndTime", None)
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
 
-        if as_date and timestamp:
-            return datetime.datetime.fromtimestamp(timestamp / 1000)
-        return timestamp
-
+    @property
     def is_last_build_successful(self):
         """
         Get whether the last build of the dataset is successful.
@@ -943,5 +925,4 @@ class DSSDatasetInfo(object):
         """
         last_build_info = self.info.get("lastBuild", dict())
         success = last_build_info.get("buildSuccess", False)
-
         return success
