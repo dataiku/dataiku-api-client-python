@@ -25,7 +25,7 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-from .kubikle import DSSKubikleObject
+from .kubikle import DSSKubikleObject, DSSKubikleObjectListItem
 
 class DSSProject(object):
     """
@@ -1632,15 +1632,21 @@ class DSSProject(object):
     ########################################################
     # Kubikles
     ########################################################
-    def list_kubikle_objects(self):
+    def list_kubikle_objects(self, as_type="listitems"):
         """
         List the kubikle objects in this project
         
         Returns:
             the list of the kubikle objects, each one as a JSON object
         """
-        return self.client._perform_json(
+        items = self.client._perform_json(
             "GET", "/projects/%s/kubikles/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSKubikleObjectListItem(self.client, self.project_key, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSKubikleObject(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type") 
 
     def get_kubikle_object(self, kubikle_object_id):
         """

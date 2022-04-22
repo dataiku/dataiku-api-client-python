@@ -1275,7 +1275,7 @@ class DSSGlobalUsageSummary(object):
 
 
 class DSSKubikleTemplateListItem(object):
-    """An item in a list of datasets. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_datasets`"""
+    """An item in a list of kubikle templates. Do not instantiate this class, use :meth:`dataikuapi.DSSClient.list_kubikle_templates`"""
     def __init__(self, client, data):
         self.client = client
         self._data = data
