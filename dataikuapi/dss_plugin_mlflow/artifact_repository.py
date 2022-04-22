@@ -7,7 +7,7 @@ import sys
 from dataikuapi import DSSClient
 
 
-if sys.version_info > (3, 0):  # MLflow only work for python3 anyway (in >1.18.0)
+if sys.version_info > (3, 0):  # MLflow only work for python3 (in >1.18.0)
     from pathlib import Path
 
 
