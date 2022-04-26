@@ -398,57 +398,45 @@ class DSSUserActivity(object):
         """
         return self.activity
 
-    def get_last_successful_login(self, as_date=False):
+    @property
+    def last_successful_login(self):
         """
-        Get the last successful login of the user as a timestamp or as a :class:`datetime.datetime`
+        Get the last successful login of the user as a :class:`datetime.datetime`
         
         Returns None if there were no successful login for this user.
 
         :return: the last successful login
-        :rtype: int or :class:`datetime.datetime` or None
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        if timestamp == 0:
-            return None
-        elif as_date:
-            return datetime.datetime.fromtimestamp(timestamp / 1000)
-        else:
-            return timestamp
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
-    def get_last_failed_login(self, as_date=False):
+    @property
+    def last_failed_login(self):
         """
-        Get the last failed login of the user as a timestamp or as a :class:`datetime.datetime`
+        Get the last failed login of the user as a :class:`datetime.datetime`
 
         Returns None if there were no failed login for this user.
 
         :return: the last failed login
-        :rtype: int or :class:`datetime.datetime` or None
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        if timestamp == 0:
-            return None
-        elif as_date:
-            return datetime.datetime.fromtimestamp(timestamp / 1000)
-        else:
-            return timestamp
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
-    def get_last_session_activity(self, as_date=False):
+    @property
+    def last_session_activity(self):
         """
-        Get the last session activity of the user as a timestamp or as a :class:`datetime.datetime`, i.e. the last time
+        Get the last session activity of the user as a :class:`datetime.datetime`, i.e. the last time
         he opened a new DSS tab or refreshed his session.
 
         Returns None if there is no session activity yet.
 
         :return: the last session activity
-        :rtype: int or :class:`datetime.datetime` or None
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSessionActivity"]
-        if timestamp == 0:
-            return None
-        elif as_date:
-            return datetime.datetime.fromtimestamp(timestamp / 1000)
-        else:
-            return timestamp
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
 
 class DSSGroup(object):
