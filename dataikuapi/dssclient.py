@@ -612,6 +612,7 @@ class DSSClient(object):
         Get a handle to interact with a specific Global API key
 
         :param str key: the secret key of the desired API key
+        
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         return DSSGlobalApiKey(self, key)
@@ -625,6 +626,7 @@ class DSSClient(object):
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str admin: has the new API key admin rights (True or False)
+        
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         resp = self._perform_json(
@@ -651,8 +653,11 @@ class DSSClient(object):
     def list_personal_api_keys(self, as_type='dict'):
         """
         List all your personal API keys
-        :param str as_type: 'objects' or 'dict'
-        :returns: All personal API keys associated with your user
+
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, each personal API keys is returned as a dict.
+                 if as_type=object, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "GET", "/personal-api-keys/")
@@ -661,23 +666,26 @@ class DSSClient(object):
         else:
             return resp
 
-    def get_personal_api_key(self, key):
+    def get_personal_api_key(self, id):
         """
         Get a handle to interact with a specific Personal API key
 
-        :param str key: the secret key of the desired API key
+        :param str id: the secret id of the desired API key
+       
         :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
         """
-        return DSSPersonalApiKey(self, key)
-
+        return DSSPersonalApiKey(self, id)
 
     def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
         Create a Personal API key associated with your user
+        
         :param str label: the label of the new API key
         :param str description: the description of the new API key
-        :param str as_type: 'object' or 'dict'
-        :returns: The new personal API key associated with your user
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, the new personal API key is returned as a dict.
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "POST", "/personal-api-keys/", body={"label": label, "description": description})
@@ -697,8 +705,11 @@ class DSSClient(object):
         """
         List all personal API keys
         Only admin can list all the keys
-        :param str as_type: 'objects' or 'dict'
-        :returns: All personal API keys in DSS
+        
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, each personal API keys is returned as a dict.
+                 if as_type=object, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "GET", "/admin/personal-api-keys/")
@@ -707,16 +718,18 @@ class DSSClient(object):
         else:
             return resp
 
-
-    def create_personal_api_key_for_user(self, label="", description="", as_type='dict', user=""):
+    def create_personal_api_key_for_user(self, label="", description="", user="", as_type='dict'):
         """
         Create a Personal API key associated on behalf of a user
         Only admin can create a key for another user
+        
         :param str label: the label of the new API key
         :param str description: the description of the new API key
-        :param str as_type: 'object' or 'dict'
         :param str user: the id of the user to impersonate
-        :returns: The new personal API key associated with 'user'
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        
+        :return: if as_type=dict, the new personal API key is returned as a dict.
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "POST", "/admin/personal-api-keys/", body={"user": user, "label": label, "description": description})
@@ -731,7 +744,6 @@ class DSSClient(object):
             return DSSPersonalApiKey(self, resp["id"])
         else:
             return resp
-
 
     ########################################################
     # Meanings

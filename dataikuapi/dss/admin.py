@@ -1065,6 +1065,7 @@ class DSSGlobalApiKey(object):
 class DSSPersonalApiKey(object):
     """
     A personal API key on the DSS instance
+    Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`
     """
     def __init__(self, client, id_):
         """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`"""
@@ -1078,6 +1079,7 @@ class DSSPersonalApiKey(object):
     def get_definition(self):
         """
         Get the API key's definition
+        
         :returns: the personal API key definition, as a JSON object
         """
         return self.client._perform_json(
