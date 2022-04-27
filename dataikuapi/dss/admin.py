@@ -1185,7 +1185,7 @@ class DSSCluster(object):
         This operation is only valid for a Kubernetes cluster.
 
         :param bool delete_failed: if True, delete both completed and failed jobs, otherwise only delete completed jobs
-        :param str namespace: the namespace in which to delete the jobs
+        :param str namespace: the namespace in which to delete the jobs, if None, uses the namespace set in kubectl's current context
         :param str label_filter: delete only jobs matching a label filter
         :param bool dry_run: if True, execute the command as a "dry run"
         :return: a dict containing whether the deletion succeeded, a list of deleted job names, and
@@ -1202,7 +1202,7 @@ class DSSCluster(object):
 
         This operation is only valid for a Kubernetes cluster.
 
-        :param str namespace: the namespace in which to delete the pods
+        :param str namespace: the namespace in which to delete the pods, if None, uses the namespace set in kubectl's current context
         :param str label_filter: delete only pods matching a label filter
         :param bool dry_run: if True, execute the command as a "dry run"
         :return: a dict containing whether the deletion succeeded, a list of deleted pod names, and
@@ -1219,7 +1219,7 @@ class DSSCluster(object):
 
         This operation is only valid for a Kubernetes cluster.
 
-        :param str namespace: the namespace in which to delete the pods
+        :param str namespace: the namespace in which to delete the pods, if None, uses the namespace set in kubectl's current context
         :param str label_filter: delete only pods matching a label filter
         :param bool dry_run: if True, execute the command as a "dry run"
         :return: a dict containing whether the deletion succeeded, a list of deleted pod names, and
@@ -1229,6 +1229,7 @@ class DSSCluster(object):
         return self.client._perform_json(
             "POST", "/admin/clusters/%s/k8s/delete-all-pods" % self.cluster_id,
             params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
+
 
 class DSSClusterSettings(object):
     """
@@ -1264,6 +1265,7 @@ class DSSClusterSettings(object):
         """Saves back the settings to the cluster"""
         return self.client._perform_json(
             "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
+
 
 class DSSClusterStatus(object):
     """
