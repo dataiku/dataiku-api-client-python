@@ -67,13 +67,20 @@ class MLflowHandle:
         elif isinstance(client._session.verify, str):
             self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
 
-        mf_full_id = managed_folder
+        mf_full_id = None
         if isinstance(managed_folder, DSSManagedFolder):
             mf_full_id = managed_folder.project.project_key + "." + managed_folder.id
-        elif hasattr(managed_folder, 'name'): # True if dataiku.Folder
-            mf_full_id = managed_folder.name
+        elif isinstance(managed_folder, str):
+            mf_full_id = managed_folder
+        else:
+            try:
+                from dataiku import Folder
+                if isinstance(managed_folder, Folder):
+                    mf_full_id = managed_folder.name
+            except ImportError:
+                pass
 
-        if not isinstance(mf_full_id, str):
+        if not mf_full_id:
             raise TypeError('Type of managed_folder must be "str", "DSSManagedFolder" or "dataiku.Folder".')
 
         if not "." in mf_full_id:
