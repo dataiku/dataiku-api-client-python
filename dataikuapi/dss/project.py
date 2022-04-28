@@ -1612,8 +1612,10 @@ class DSSProject(object):
         """
         Setup the dss-plugin for MLflow
 
-        :param object managed_folder: a :class:`dataikuapi.dss.DSSManagedFolder` where MLflow artifacts should be stored.
-        :param str host: setup a custom host if the backend used is not DSS
+        :param object managed_folder: the managed folder where MLflow artifacts should be stored.
+                                      Can be either a managed folder id as a string,
+                                      a :class:`dataikuapi.dss.DSSManagedFolder`, or a :class:`dataiku.Folder`
+        :param str host: setup a custom host if the backend used is not DSS.
         """
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
