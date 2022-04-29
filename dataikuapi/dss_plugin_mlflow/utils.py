@@ -46,6 +46,8 @@ class MLflowHandle:
             from importlib import reload
         import mlflow
         reload(mlflow.store.artifact.artifact_repository_registry)
+        mlflow.set_tracking_uri(None)  # if user has changed tracking backend manually before
+        mlflow.end_run()  # if user already created a run with another tracking backend
 
         # Setup authentication
         if client._session.auth is not None:
@@ -69,7 +71,6 @@ class MLflowHandle:
             self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "true"})
         elif isinstance(client._session.verify, str):
             self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
-
 
         mf_project = managed_folder.project.project_key
         mf_id = managed_folder.id
