@@ -71,7 +71,7 @@ class PredictionSplitParamsHandler(object):
                 sp["ssdSelection"] = selection
 
         sp["kfold"] = True
-        sp["nFolds"] = n_folds
+        sp["modeling"]["metrics"]["nFolds"] = n_folds
 
         if dataset_name is not None:
             sp["ssdDatasetSmartName"] = dataset_name
