@@ -1,5 +1,5 @@
 import json
-from dataikuapi.fm.future import FMFuture
+from .future import FMFuture
 
 import sys
 
