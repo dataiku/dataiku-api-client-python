@@ -403,7 +403,7 @@ class DSSUserActivity(object):
         """
         Get the last successful login of the user as a :class:`datetime.datetime`
         
-        Returns None if there were no successful login for this user.
+        Returns None if there was no successful login for this user.
 
         :return: the last successful login
         :rtype: :class:`datetime.datetime` or None
@@ -428,7 +428,7 @@ class DSSUserActivity(object):
     def last_session_activity(self):
         """
         Get the last session activity of the user as a :class:`datetime.datetime`, i.e. the last time
-        he opened a new DSS tab or refreshed his session.
+        the user opened a new DSS tab or refreshed his session.
 
         Returns None if there is no session activity yet.
 
