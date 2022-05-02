@@ -1193,7 +1193,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/delete-finished-jobs" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/jobs/delete-finished" % self.cluster_id,
             params={'deleteFailed': delete_failed, 'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
     def delete_finished_pods(self, namespace=None, label_filter=None, dry_run=False):
@@ -1210,7 +1210,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/delete-finished-pods" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/pods/delete-finished" % self.cluster_id,
             params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
     def delete_all_pods(self, namespace=None, label_filter=None, dry_run=False):
@@ -1227,7 +1227,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/delete-all-pods" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/pods/delete-all" % self.cluster_id,
             params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
 
