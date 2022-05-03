@@ -91,7 +91,7 @@ class DSSMLflowExtension(object):
         Permanently deletes the experiments and runs marked as "Deleted"
         """
         self.client._perform_http(
-            "GET", "/api/2.0/mlflow/extension/garbage-collect",
+            "POST", "/api/2.0/mlflow/extension/garbage-collect",
             headers={"x-dku-mlflow-project-key": self.project_key}
         )
 
