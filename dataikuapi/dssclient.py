@@ -670,7 +670,7 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific Personal API key
 
-        :param str id: the secret id of the desired API key
+        :param str id: the id of the desired API key
        
         :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
         """
