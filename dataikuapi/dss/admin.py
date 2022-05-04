@@ -1,3 +1,5 @@
+import datetime
+
 from .future import DSSFuture
 import json, warnings
 
@@ -164,10 +166,21 @@ class DSSUser(object):
     def get_settings(self):
         """
         Gets the settings of the user
+
         :rtype: :class:`DSSUserSettings`
         """
         raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
         return DSSUserSettings(self.client, self.login, raw)
+
+    def get_activity(self):
+        """
+        Gets the activity of the user
+
+        :return: the user's activity
+        :rtype: :class:`DSSUserActivity`
+        """
+        activity = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+        return DSSUserActivity(self.client, self.login, activity)
 
     ########################################################
     # Legacy
@@ -224,6 +237,7 @@ class DSSUser(object):
         else:
             raise ValueError("Don't know how to proxy this client")
 
+
 class DSSOwnUser(object):
     """
     A handle to interact with your own user
@@ -250,8 +264,7 @@ class DSSUserSettingsBase(object):
 
     def get_raw(self):
         """
-        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
-        are reflected when saving
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object are reflected when saving
         :rtype: dict
         """
         return self.settings
@@ -331,7 +344,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         """
         The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
 
-        :rtype dict
+        :rtype: dict
         """
         return self.settings["adminProperties"]
 
@@ -339,7 +352,7 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled
-        :rtype boolean
+        :rtype: boolean
         """
         return self.settings["enabled"]
 
@@ -363,6 +376,67 @@ class DSSOwnUserSettings(DSSUserSettingsBase):
     def save(self):
         """Saves the settings"""
         self.client._perform_empty("PUT", "/current-user", body = self.settings)
+
+
+class DSSUserActivity(object):
+    """
+    Activity for a DSS user.
+    Do not call this directly, use :meth:`DSSUser.get_activity` or :meth:`DSSClient.list_users_activity`
+    """
+
+    def __init__(self, client, login, activity):
+        self.client = client
+        self.login = login
+        self.activity = activity
+
+    def get_raw(self):
+        """
+        Get the raw activity of the user as a dict.
+
+        :return: the raw activity
+        :rtype: dict
+        """
+        return self.activity
+
+    @property
+    def last_successful_login(self):
+        """
+        Get the last successful login of the user as a :class:`datetime.datetime`
+        
+        Returns None if there was no successful login for this user.
+
+        :return: the last successful login
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastSuccessfulLogin"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+
+    @property
+    def last_failed_login(self):
+        """
+        Get the last failed login of the user as a :class:`datetime.datetime`
+
+        Returns None if there were no failed login for this user.
+
+        :return: the last failed login
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastFailedLogin"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+
+    @property
+    def last_session_activity(self):
+        """
+        Get the last session activity of the user as a :class:`datetime.datetime`, i.e. the last time
+        the user opened a new DSS tab or refreshed his session.
+
+        Returns None if there is no session activity yet.
+
+        :return: the last session activity
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastSessionActivity"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
 
 class DSSGroup(object):
