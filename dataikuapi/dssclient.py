@@ -10,7 +10,8 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
+from .dss.admin import DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
+
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -329,17 +330,21 @@ class DSSClient(object):
     # Users
     ########################################################
 
-    def list_users(self):
+    def list_users(self, as_objects=False):
         """
         List all users setup on the DSS instance
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of users, as a list of dicts
-        :rtype: list of dicts
+        :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
         """
-        return self._perform_json(
-            "GET", "/admin/users/")
+        users = self._perform_json("GET", "/admin/users/")
+
+        if as_objects:
+            return [DSSUser(self, user["login"]) for user in users]
+        else:
+            return users
 
     def get_user(self, login):
         """
@@ -381,6 +386,23 @@ class DSSClient(object):
 
     def get_own_user(self):
         return DSSOwnUser(self)
+
+    def list_users_activity(self, enabled_users_only=False):
+        """
+        List all users activity
+
+        Note: this call requires an API key with admin rights
+
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity` if as_objects is True, else as a list of dict
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity` or a list of dict
+        """
+        params = {
+            "enabledUsersOnly": enabled_users_only
+        }
+        all_activity = self._perform_json("GET", "/admin/users-activity", params=params)
+
+        return [DSSUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
+
 
     ########################################################
     # Groups
