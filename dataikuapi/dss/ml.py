@@ -2663,7 +2663,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_python_stream(self):
         """
-        Get a scoring zip for this trained model, provided that you have the license to do so and that the model
+        Download the zip containing data to use for this trained model, provided that you have the license to do so and that the model
         is compatible with Python scoring. You need to close the stream after download. Failure to do so will
         result in the DSSClient becoming unusable.
 
@@ -2691,7 +2691,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_mlflow_stream(self):
         """
-        Get a scoring zip for this trained model using MLflow Model format, provided that you have the license to
+        Download the zip containing this trained model using MLflow Model format, provided that you have the license to
         do so and that the model is compatible with MLflow scoring. You need to close the stream after download.
         Failure to do so will result in the DSSClient becoming unusable.
 
@@ -2707,21 +2707,15 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python?mlflowExport=true" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
 
-    def get_scoring_mlflow(self, path):
+    def get_scoring_mlflow(self, filename):
         """
-        Download and extract a scoring zip for this trained model in path, using MLflow Model format,
+        Download the zip containing data for this trained model, using MLflow Model format,
         provided that you have the license to do so and that the model is compatible with MLflow scoring
 
-        :param str path: path to the resulting MLflow Model
+        :param str filename: filename to the resulting MLflow Model zip
         """
-        tmpfile = tempfile.mktemp()
-        try:
-            with open(tmpfile, "wb") as f:
-                f.write(self.get_scoring_mlflow_stream().content)
-            with zipfile.ZipFile(tmpfile, "r") as zip_file:
-                zip_file.extractall(path)
-        finally:
-            os.remove(tmpfile)
+        with open(filename, "wb") as f:
+            f.write(self.get_scoring_mlflow_stream().content)
 
     ## Post-train computations
 
