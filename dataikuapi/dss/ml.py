@@ -1,5 +1,8 @@
 import re
+import os
+import zipfile
 from six import string_types
+import tempfile
 
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
@@ -2660,29 +2663,59 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_python_stream(self):
         """
-        Get a zip containing data to use Python scoring for this trained model,
-        provided that you have the license to do so and that the model is compatible with Python scoring
-        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+        Download the zip containing data to use for this trained model, provided that you have the license to do so and that the model
+        is compatible with Python scoring. You need to close the stream after download. Failure to do so will
+        result in the DSSClient becoming unusable.
 
         :returns: an archive file, as a stream
         :rtype: file-like
         """
         if self.mltask is not None:
             return self.mltask.client._perform_raw(
-                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-python" %
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-python?mlflowExport=false" %
                 (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
         else:
             return self.saved_model.client._perform_raw(
-                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python" %
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python?mlflowExport=false" %
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
 
     def get_scoring_python(self, filename):
         """
         Download the zip containing data to use Python scoring for this trained model in filename,
-        provided that you have the license to do so and that the model is compatible with Python scoring
+        provided that you have the license to do so and that the model is compatible with Python scoring.
+
+        :param str filename: filename of the resulting downloaded file
         """
         with open(filename, "wb") as f:
             f.write(self.get_scoring_python_stream().content)
+
+    def get_scoring_mlflow_stream(self):
+        """
+        Download the zip containing this trained model using MLflow Model format, provided that you have the license to
+        do so and that the model is compatible with MLflow scoring. You need to close the stream after download.
+        Failure to do so will result in the DSSClient becoming unusable.
+
+        :returns: an archive file, as a stream
+        :rtype: file-like
+        """
+        if self.mltask is not None:
+            return self.mltask.client._perform_raw(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-python?mlflowExport=true" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+        else:
+            return self.saved_model.client._perform_raw(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python?mlflowExport=true" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+
+    def get_scoring_mlflow(self, filename):
+        """
+        Download the zip containing data for this trained model, using MLflow Model format,
+        provided that you have the license to do so and that the model is compatible with MLflow scoring
+
+        :param str filename: filename to the resulting MLflow Model zip
+        """
+        with open(filename, "wb") as f:
+            f.write(self.get_scoring_mlflow_stream().content)
 
     ## Post-train computations
 
