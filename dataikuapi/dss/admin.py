@@ -347,9 +347,12 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self, new_value):
         self.settings["enabled"] = new_value
 
-    def save(self):
+    def save(self, allow_survey_settings_edit=False):
         """Saves the settings"""
-        self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
+        if allow_survey_settings_edit:
+            self.client._perform_json("PUT", "/admin/users/allow-survey-settings-edit/%s" % self.login, body = self.settings)
+        else:
+            self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
 
 
 class DSSOwnUserSettings(DSSUserSettingsBase):
