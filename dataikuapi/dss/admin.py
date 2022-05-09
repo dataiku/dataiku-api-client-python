@@ -1274,15 +1274,15 @@ class DSSGlobalUsageSummary(object):
         return self.data["scenarios"]["activeWithTriggers"]
 
 
-class DSSKubikleTemplateListItem(object):
-    """An item in a list of kubikle templates. Do not instantiate this class, use :meth:`dataikuapi.DSSClient.list_kubikle_templates`"""
+class DSSCodeStudioTemplateListItem(object):
+    """An item in a list of code studio templates. Do not instantiate this class, use :meth:`dataikuapi.DSSClient.list_code_studio_templates`"""
     def __init__(self, client, data):
         self.client = client
         self._data = data
 
-    def to_kubikle_template(self):
-        """Gets the :class:`DSSKubikleTemplate` corresponding to this kubikle template """
-        return DSSKubikleTemplate(self.client, self._data["id"])
+    def to_code_studio_template(self):
+        """Gets the :class:`DSSCodeStudioTemplate` corresponding to this code studio template """
+        return DSSCodeStudioTemplate(self.client, self._data["id"])
 
     @property
     def name(self):
@@ -1310,12 +1310,12 @@ class DSSKubikleTemplateListItem(object):
         else:
             return None
 
-class DSSKubikleTemplate(object):
+class DSSCodeStudioTemplate(object):
     """
-    A handle to interact with a kubikle template on the DSS instance
+    A handle to interact with a code studio template on the DSS instance
     """
     def __init__(self, client, template_id):
-        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_kubikle_template`"""
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_code_studio_template`"""
         self.client = client
         self.template_id = template_id
             
@@ -1327,18 +1327,18 @@ class DSSKubikleTemplate(object):
         """
         Get the template's settings. 
 
-        :returns: a :class:`DSSKubikleTemplateSettings` object to interact with kubikle template settings
-        :rtype: :class:`DSSKubikleTemplateSettings`
+        :returns: a :class:`DSSCodeStudioTemplateSettings` object to interact with code studio template settings
+        :rtype: :class:`DSSCodeStudioTemplateSettings`
         """
-        settings = self.client._perform_json("GET", "/admin/kubikles/%s" % (self.template_id))
-        return DSSKubikleTemplateSettings(self.client, self.template_id, settings)
+        settings = self.client._perform_json("GET", "/admin/code-studios/%s" % (self.template_id))
+        return DSSCodeStudioTemplateSettings(self.client, self.template_id, settings)
 
-class DSSKubikleTemplateSettings(object):
+class DSSCodeStudioTemplateSettings(object):
     """
-    The settings of a kubikle template
+    The settings of a code studio template
     """
     def __init__(self, client, template_id, settings):
-        """Do not call directly, use :meth:`DSSKubikleTemplate.get_settings`"""
+        """Do not call directly, use :meth:`DSSCodeStudioTemplate.get_settings`"""
         self.client = client
         self.template_id = template_id
         self.settings = settings

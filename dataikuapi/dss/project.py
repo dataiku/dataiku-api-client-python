@@ -25,7 +25,7 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-from .kubikle import DSSKubikleObject, DSSKubikleObjectListItem
+from .codestudio import DSSCodeStudioObject, DSSCodeStudioObjectListItem
 
 class DSSProject(object):
     """
@@ -1632,55 +1632,55 @@ class DSSProject(object):
 
 
     ########################################################
-    # Kubikles
+    # Code studios
     ########################################################
-    def list_kubikle_objects(self, as_type="listitems"):
+    def list_code_studio_objects(self, as_type="listitems"):
         """
-        List the kubikle objects in this project
+        List the code studio objects in this project
         
         Returns:
-            the list of the kubikle objects, each one as a JSON object
+            the list of the code studio objects, each one as a JSON object
         """
         items = self.client._perform_json(
-            "GET", "/projects/%s/kubikles/" % self.project_key)
+            "GET", "/projects/%s/code-studios/" % self.project_key)
         if as_type == "listitems" or as_type == "listitem":
-            return [DSSKubikleObjectListItem(self.client, self.project_key, item) for item in items]
+            return [DSSCodeStudioObjectListItem(self.client, self.project_key, item) for item in items]
         elif as_type == "objects" or as_type == "object":
-            return [DSSKubikleObject(self.client, self.project_key, item["id"]) for item in items]
+            return [DSSCodeStudioObject(self.client, self.project_key, item["id"]) for item in items]
         else:
             raise ValueError("Unknown as_type") 
 
-    def get_kubikle_object(self, kubikle_object_id):
+    def get_code_studio_object(self, code_studio_object_id):
         """
-        Get a handle to interact with a specific kubikle object
+        Get a handle to interact with a specific code studio object
        
         Args:
-            kubikle_object_id: the identifier of the desired kubikle object
+            code_studio_object_id: the identifier of the desired code studio object
         
         Returns:
-            A :class:`dataikuapi.dss.kubikle.DSSKubikleObject` kubikle object handle
+            A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
-        return DSSKubikleObject(self.client, self.project_key, kubikle_object_id)
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_object_id)
 
-    def create_kubikle_object(self, name, template_id):
+    def create_code_studio_object(self, name, template_id):
         """
-        Create a new kubikle object in the project, and return a handle to interact with it
+        Create a new code studio object in the project, and return a handle to interact with it
         
         Args:
-            name: the name of the kubikle object
-            template_id: the identifier of a kubikle template
+            name: the name of the code studio object
+            template_id: the identifier of a code studio template
         
         Returns:
-            A :class:`dataikuapi.dss.kubikle.DSSKubikleObject` kubikle object handle
+            A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
         obj = {
             "name" : name,
             "projectKey" : self.project_key,
             "templateId" : template_id
         }
-        res = self.client._perform_json("POST", "/projects/%s/kubikles/" % self.project_key, body = obj)
-        kubikle_object_id = res['id']
-        return DSSKubikleObject(self.client, self.project_key, kubikle_object_id)
+        res = self.client._perform_json("POST", "/projects/%s/code-studios/" % self.project_key, body = obj)
+        code_studio_object_id = res['codeStudio']['id']
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_object_id)
 
 
 

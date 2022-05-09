@@ -11,7 +11,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSKubikleTemplate, DSSKubikleTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables
+from .dss.admin import DSSUser, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -595,35 +595,35 @@ class DSSClient(object):
 
 
     ########################################################
-    # Kubikle templates
+    # Code studio templates
     ########################################################
 
-    def list_kubikle_templates(self, as_type='listitems'):
+    def list_code_studio_templates(self, as_type='listitems'):
         """
-        List all kubikle templates on the DSS instance
+        List all code studio templates on the DSS instance
 
         Returns:
             List of templates (name, type)
         """
-        items = self._perform_json("GET", "/admin/kubikles/")
+        items = self._perform_json("GET", "/admin/code-studios/")
         if as_type == "listitems" or as_type == "listitem":
-            return [DSSKubikleTemplateListItem(self, item) for item in items]
+            return [DSSCodeStudioTemplateListItem(self, item) for item in items]
         elif as_type == "objects" or as_type == "object":
-            return [DSSKubikleTemplate(self, item["id"]) for item in items]
+            return [DSSCodeStudioTemplate(self, item["id"]) for item in items]
         else:
             raise ValueError("Unknown as_type") 
 
-    def get_kubikle_template(self, template_id):
+    def get_code_studio_template(self, template_id):
         """
-        Get a handle to interact with a specific kubikle template
+        Get a handle to interact with a specific code studio template
         
         Args:
-            template_id: the template id of the desired kubikle template
+            template_id: the template id of the desired code studio template
         
         Returns:
-            A :class:`dataikuapi.dss.admin.DSSKubikleTemplate` kubikle template handle
+            A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
         """
-        return DSSKubikleTemplate(self, template_id)
+        return DSSCodeStudioTemplate(self, template_id)
 
 
     ########################################################
