@@ -62,22 +62,38 @@ class MLflowHandle:
                 "DSS_MLFLOW_INTERNAL_TICKET": self.client.internal_ticket
             })
 
-        if not isinstance(managed_folder, DSSManagedFolder):
-            raise TypeError('managed_folder must a DSSManagedFolder.')
-
         if not client._session.verify:
             self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "true"})
         elif isinstance(client._session.verify, str):
             self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
 
+        mf_full_id = None
+        if isinstance(managed_folder, DSSManagedFolder):
+            mf_full_id = managed_folder.project.project_key + "." + managed_folder.id
+        elif isinstance(managed_folder, str):
+            mf_full_id = managed_folder
+        else:
+            try:
+                from dataiku import Folder
+                if isinstance(managed_folder, Folder):
+                    mf_full_id = managed_folder.name
+            except ImportError:
+                pass
 
-        mf_project = managed_folder.project.project_key
-        mf_id = managed_folder.id
+        if not mf_full_id:
+            raise TypeError('Type of managed_folder must be "str", "DSSManagedFolder" or "dataiku.Folder".')
+
+        if not "." in mf_full_id:
+            mf_full_id = self.project_key + "." + mf_full_id
+
+        mf_project = mf_full_id.split(".")[0]
+        mf_id = mf_full_id.split(".")[1]
+
         try:
             client.get_project(mf_project).get_managed_folder(mf_id).get_definition()
         except DataikuException as e:
             if "NotFoundException" in str(e):
-                logging.error('The managed folder "%s" does not exist, please create it in your project flow before running this command.' % (mf_id))
+                logging.error('The managed folder "%s" does not exist, please create it in your project flow before running this command.' % (mf_full_id))
             raise
 
         # Set host, tracking URI, project key and managed_folder_id
@@ -85,7 +101,7 @@ class MLflowHandle:
             "DSS_MLFLOW_PROJECTKEY": self.project_key,
             "MLFLOW_TRACKING_URI": self.client.host + "/dip/publicapi" if host is None else host,
             "DSS_MLFLOW_HOST": self.client.host,
-            "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_project + "." + mf_id
+            "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_full_id
         })
 
         os.environ.update(self.mlflow_env)
