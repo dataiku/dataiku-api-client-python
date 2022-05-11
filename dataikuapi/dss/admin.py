@@ -1162,7 +1162,7 @@ class DSSCluster(object):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def kubectl_command(self, args):
+    def run_kubectl(self, args):
         """
         Runs an arbitrary kubectl command on the cluster.
 
@@ -1175,7 +1175,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/kubectl" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/actions/run-kubectl" % self.cluster_id,
             body={'args': args})
 
     def delete_finished_jobs(self, delete_failed=False, namespace=None, label_filter=None, dry_run=False):
@@ -1193,7 +1193,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/jobs/delete-finished" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/jobs/actions/delete-finished" % self.cluster_id,
             params={'deleteFailed': delete_failed, 'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
     def delete_finished_pods(self, namespace=None, label_filter=None, dry_run=False):
@@ -1210,7 +1210,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/pods/delete-finished" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/pods/actions/delete-finished" % self.cluster_id,
             params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
     def delete_all_pods(self, namespace=None, label_filter=None, dry_run=False):
@@ -1227,7 +1227,7 @@ class DSSCluster(object):
         :rtype: dict
         """
         return self.client._perform_json(
-            "POST", "/admin/clusters/%s/k8s/pods/delete-all" % self.cluster_id,
+            "POST", "/admin/clusters/%s/k8s/pods/actions/delete-all" % self.cluster_id,
             params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
 
 
