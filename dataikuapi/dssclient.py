@@ -742,7 +742,7 @@ class DSSClient(object):
         else:
             return resp
 
-    def create_personal_api_key_for_user(self, label="", description="", user="", as_type='dict'):
+    def create_personal_api_key_for_user(self, user, label="", description="", as_type='dict'):
         """
         Create a Personal API key associated on behalf of a user
         Only admin can create a key for another user

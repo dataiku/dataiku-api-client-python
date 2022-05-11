@@ -1142,7 +1142,6 @@ class DSSPersonalApiKey(object):
     Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`
     """
     def __init__(self, client, id_):
-        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key`"""
         self.client = client
         self.id_ = id_
 
