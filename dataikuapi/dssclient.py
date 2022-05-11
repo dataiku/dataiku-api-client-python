@@ -674,7 +674,7 @@ class DSSClient(object):
     # Personal API Keys
     ########################################################
 
-    def list_personal_api_keys(self, as_type='dict'):
+    def list_personal_api_keys(self, as_type='object'):
         """
         List all your personal API keys
 
@@ -725,7 +725,7 @@ class DSSClient(object):
         else:
             return resp
 
-    def list_all_personal_api_keys(self, as_type='dict'):
+    def list_all_personal_api_keys(self, as_type='object'):
         """
         List all personal API keys
         Only admin can list all the keys
@@ -742,7 +742,7 @@ class DSSClient(object):
         else:
             return resp
 
-    def create_personal_api_key_for_user(self, user, label="", description="", as_type='dict'):
+    def create_personal_api_key_for_user(self, user, label="", description="", as_type='object'):
         """
         Create a Personal API key associated on behalf of a user
         Only admin can create a key for another user
