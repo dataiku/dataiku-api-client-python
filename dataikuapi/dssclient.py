@@ -590,20 +590,22 @@ class DSSClient(object):
         """
         return DSSCluster(self, cluster_id)
 
-    def create_cluster(self, cluster_name, cluster_type='manual', params=None):
+    def create_cluster(self, cluster_name, cluster_type='manual', params=None, cluster_architecture='HADOOP'):
         """
         Create a cluster, and return a handle to interact with it
 
         :param cluster_name: the name of the new cluster
         :param cluster_type: the type of the new cluster
         :param params: the parameters of the new cluster, as a JSON object
-        
+        :param cluster_architecture: the architecture of the new cluster. 'HADOOP' or 'KUBERNETES'
+
         :returns: A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
         
         """
         definition = {}
         definition['name'] = cluster_name
         definition['type'] = cluster_type
+        definition['architecture'] = cluster_architecture
         definition['params'] = params if params is not None else {}
         resp = self._perform_json(
                "POST", "/admin/clusters/", body=definition)
