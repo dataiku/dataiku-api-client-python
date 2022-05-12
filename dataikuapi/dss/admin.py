@@ -1333,6 +1333,19 @@ class DSSCodeStudioTemplate(object):
         settings = self.client._perform_json("GET", "/admin/code-studios/%s" % (self.template_id))
         return DSSCodeStudioTemplateSettings(self.client, self.template_id, settings)
 
+    ########################################################
+    # Building
+    ########################################################
+    
+    def build(self):
+        """
+        Build or rebuild the template. 
+
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of building the image
+        """
+        future_response = self.client._perform_json("POST", "/admin/code-studios/%s/build" % (self.template_id))
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
 class DSSCodeStudioTemplateSettings(object):
     """
     The settings of a code studio template
