@@ -678,7 +678,7 @@ class DSSClient(object):
         """
         List all your personal API keys.
 
-        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
         
         :return: if as_type=dict, each personal API keys is returned as a dict.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
