@@ -674,14 +674,14 @@ class DSSClient(object):
     # Personal API Keys
     ########################################################
 
-    def list_personal_api_keys(self, as_type='object'):
+    def list_personal_api_keys(self, as_type='objects'):
         """
         List all your personal API keys
 
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
         
         :return: if as_type=dict, each personal API keys is returned as a dict.
-                 if as_type=object, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "GET", "/personal-api-keys/")
@@ -709,7 +709,7 @@ class DSSClient(object):
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
         
         :return: if as_type=dict, the new personal API key is returned as a dict.
-                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=objects, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "POST", "/personal-api-keys/", body={"label": label, "description": description})
@@ -720,12 +720,12 @@ class DSSClient(object):
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
 
-        if as_type == 'object':
+        if as_type == 'objects':
             return DSSPersonalApiKey(self, resp["id"])
         else:
             return resp
 
-    def list_all_personal_api_keys(self, as_type='object'):
+    def list_all_personal_api_keys(self, as_type='objects'):
         """
         List all personal API keys
         Only admin can list all the keys
@@ -733,7 +733,7 @@ class DSSClient(object):
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
         
         :return: if as_type=dict, each personal API keys is returned as a dict.
-                 if as_type=object, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "GET", "/admin/personal-api-keys/")
@@ -742,7 +742,7 @@ class DSSClient(object):
         else:
             return resp
 
-    def create_personal_api_key_for_user(self, user, label="", description="", as_type='object'):
+    def create_personal_api_key_for_user(self, user, label="", description="", as_type='objects'):
         """
         Create a Personal API key associated on behalf of a user
         Only admin can create a key for another user
@@ -750,10 +750,10 @@ class DSSClient(object):
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str user: the id of the user to impersonate
-        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
         
         :return: if as_type=dict, the new personal API key is returned as a dict.
-                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=objects, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "POST", "/admin/personal-api-keys/", body={"user": user, "label": label, "description": description})
@@ -764,7 +764,7 @@ class DSSClient(object):
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
 
-        if as_type == 'object':
+        if as_type == 'objects':
             return DSSPersonalApiKey(self, resp["id"])
         else:
             return resp
