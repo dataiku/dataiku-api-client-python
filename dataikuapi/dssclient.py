@@ -676,7 +676,7 @@ class DSSClient(object):
 
     def list_personal_api_keys(self, as_type='objects'):
         """
-        List all your personal API keys
+        List all your personal API keys.
 
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
         
@@ -692,7 +692,7 @@ class DSSClient(object):
 
     def get_personal_api_key(self, id):
         """
-        Get a handle to interact with a specific Personal API key
+        Get a handle to interact with a specific Personal API key.
 
         :param str id: the id of the desired API key
        
@@ -702,7 +702,7 @@ class DSSClient(object):
 
     def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
-        Create a Personal API key associated with your user
+        Create a Personal API key associated with your user.
         
         :param str label: the label of the new API key
         :param str description: the description of the new API key
@@ -715,8 +715,6 @@ class DSSClient(object):
             "POST", "/personal-api-keys/", body={"label": label, "description": description})
         if resp is None:
             raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
 
@@ -727,8 +725,8 @@ class DSSClient(object):
 
     def list_all_personal_api_keys(self, as_type='objects'):
         """
-        List all personal API keys
-        Only admin can list all the keys
+        List all personal API keys.
+        Only admin can list all the keys.
         
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
         
@@ -744,8 +742,8 @@ class DSSClient(object):
 
     def create_personal_api_key_for_user(self, user, label="", description="", as_type='object'):
         """
-        Create a Personal API key associated on behalf of a user
-        Only admin can create a key for another user
+        Create a Personal API key associated on behalf of a user.
+        Only admin can create a key for another user.
         
         :param str label: the label of the new API key
         :param str description: the description of the new API key
@@ -759,8 +757,6 @@ class DSSClient(object):
             "POST", "/admin/personal-api-keys/", body={"user": user, "label": label, "description": description})
         if resp is None:
             raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
 
