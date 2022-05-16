@@ -114,3 +114,11 @@ def _make_zipfile(output_filename, source_dir):
                     arcname = os.path.join(os.path.relpath(root, relroot), file)
                     zipfp.write(filename, arcname)
     return output_filename
+
+
+def _write_response_content_to_file(response, path):
+    with open(path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=10000):
+            if chunk:
+                f.write(chunk)
+                f.flush()

@@ -1,3 +1,4 @@
+from ..utils import _write_response_content_to_file
 from .utils import AnyLoc
 from .dataset import DSSDataset
 from .managedfolder import DSSManagedFolder
@@ -7,6 +8,7 @@ from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
 from .future import DSSFuture
 from .streaming_endpoint import DSSStreamingEndpoint
 import logging, json
+
 
 class DSSProjectFlow(object):
     def __init__(self, client, project):
@@ -110,6 +112,58 @@ class DSSProjectFlow(object):
                 dap = recipe_obj.get_definition_and_payload()
                 dap.replace_input(current_ref, new_ref)
                 recipe_obj.set_definition_and_payload(dap)
+
+    def generate_documentation(self, folder_id=None, path=None):
+        """
+        Start the flow document generation from a template docx file in a managed folder,
+        or from the default template if no folder id and path are specified.
+
+        :param folder_id: (optional) the id of the managed folder
+        :param path: (optional) the path to the file from the root of the folder
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+        """
+        if bool(folder_id) != bool(path):
+            raise ValueError("Both folder id and path arguments are required to use a template from folder. " +
+                             "Use without argument to generate the flow documentation using the default template")
+
+        template_mode_url = "" if folder_id is None and path is None else "-with-template-in-folder"
+
+        f = self.client._perform_json("POST", "/projects/%s/flow/documentation/generate%s" % (self.project.project_key, template_mode_url),
+                                      params={"folderId": folder_id, "path": path})
+        return DSSFuture(self.client, f["jobId"])
+
+    def generate_documentation_from_custom_template(self, fp):
+        """
+        Start the flow document generation from a docx template (as a file object).
+
+        :param object fp: A file-like object pointing to a template docx file
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+        """
+        files = {'file': fp}
+        f = self.client._perform_json("POST", "/projects/%s/flow/documentation/generate-with-template" % self.project.project_key, files=files)
+        return DSSFuture(self.client, f["jobId"])
+
+    def download_documentation_stream(self, export_id):
+        """
+        Download a flow documentation, as a binary stream.
+
+        Warning: this stream will monopolize the DSSClient until closed.
+
+        :param export_id: the id of the generated flow documentation returned as the result of the future
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+        """
+        return self.client._perform_raw("GET", "/projects/%s/flow/documentation/generated/%s" % (self.project.project_key, export_id))
+
+    def download_documentation_to_file(self, export_id, path):
+        """
+        Download a flow documentation into the given output file.
+
+        :param export_id: the id of the generated flow documentation returned as the result of the future
+        :param path: the path where to download the flow documentation
+        :return: None
+        """
+        stream = self.download_documentation_stream(export_id)
+        _write_response_content_to_file(stream, path)
 
     ########################################################
     # Flow tools
