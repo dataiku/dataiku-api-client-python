@@ -10,7 +10,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
+from .dss.admin import DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
 
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
@@ -674,21 +674,24 @@ class DSSClient(object):
     # Personal API Keys
     ########################################################
 
-    def list_personal_api_keys(self, as_type='objects'):
+    def list_personal_api_keys(self, as_type='listitems'):
         """
         List all your personal API keys.
 
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
         
-        :return: if as_type=dict, each personal API keys is returned as a dict.
+        :return: if as_type=listitems, each one as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "GET", "/personal-api-keys/")
-        if as_type == 'objects':
+
+        if as_type == "listitems":
+            return [DSSPersonalApiKeyListItem(self, item) for item in resp]
+        elif as_type == 'objects':
             return [DSSPersonalApiKey(self, item['id']) for item in resp]
         else:
-            return resp
+            raise ValueError("Unknown as_type")
 
     def get_personal_api_key(self, id):
         """
@@ -723,22 +726,24 @@ class DSSClient(object):
         else:
             return resp
 
-    def list_all_personal_api_keys(self, as_type='objects'):
+    def list_all_personal_api_keys(self, as_type='listitems'):
         """
         List all personal API keys.
         Only admin can list all the keys.
         
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
         
-        :return: if as_type=dict, each personal API keys is returned as a dict.
+        :return: if as_type=listitems, each one as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
             "GET", "/admin/personal-api-keys/")
-        if as_type == 'objects':
+        if as_type == "listitems":
+            return [DSSPersonalApiKeyListItem(self, item) for item in resp]
+        elif as_type == 'objects':
             return [DSSPersonalApiKey(self, item['id']) for item in resp]
         else:
-            return resp
+            raise ValueError("Unknown as_type")
 
     def create_personal_api_key_for_user(self, user, label="", description="", as_type='object'):
         """

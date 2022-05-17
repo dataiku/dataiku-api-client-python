@@ -1,5 +1,7 @@
 import datetime
 
+from dataikuapi.dss.utils import DSSTaggableObjectListItem
+
 from .future import DSSFuture
 import json, warnings
 
@@ -1169,6 +1171,38 @@ class DSSPersonalApiKey(object):
         return self.client._perform_empty(
             "DELETE", "/personal-api-keys/%s" % self.id_)
 
+class DSSPersonalApiKeyListItem(DSSTaggableObjectListItem):
+    """An item in a list of datasets. Do not instantiate this class, :meth:`dataikuapi.DSSClient.list_personal_api_keys` or :meth:`dataikuapi.DSSClient.list_all_personal_api_keys`"""
+    def __init__(self, client, data):
+        super(DSSPersonalApiKeyListItem, self).__init__(data)
+        self.client = client
+
+    def to_personal_api_key(self):
+        """Gets the :class:`DSSPersonalApiKey` corresponding to this item"""
+        return DSSPersonalApiKey(self.client, self._data["id"])
+
+    @property
+    def id(self):
+        return self._data["id"]
+    @property
+    def user(self):
+        return self._data["user"]
+    @property
+    def key(self):
+        return self._data["key"]
+    @property
+    def label(self):
+        return self._data["label"]
+    @property
+    def description(self):
+        return self._data["description"]
+    @property
+    def created_on(self):
+        return self._data["createdOn"]
+    @property
+    def created_by(self):
+        return self._data["createdBy"]
+        
 class DSSCluster(object):
     """
     A handle to interact with a cluster on the DSS instance
