@@ -678,9 +678,9 @@ class DSSClient(object):
         """
         List all your personal API keys.
 
-        :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
+        :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
         
-        :return: if as_type=listitems, each one as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
@@ -731,9 +731,9 @@ class DSSClient(object):
         List all personal API keys.
         Only admin can list all the keys.
         
-        :param str as_type: How to return the personal API keys. Possible values are "dict" and "objects"
+        :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
         
-        :return: if as_type=listitems, each one as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
         """
         resp = self._perform_json(
