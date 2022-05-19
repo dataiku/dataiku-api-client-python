@@ -1,9 +1,8 @@
 import datetime
 
-from dataikuapi.dss.utils import DSSTaggableObjectListItem
-
 from .future import DSSFuture
 import json, warnings
+
 
 class DSSConnectionInfo(dict):
     """A class holding read-only information about a connection.
@@ -1182,36 +1181,36 @@ class DSSPersonalApiKeyListItem(dict):
 
     def to_personal_api_key(self):
         """Gets the :class:`DSSPersonalApiKey` corresponding to this item"""
-        return DSSPersonalApiKey(self.client, self._data["id"])
+        return DSSPersonalApiKey(self.client, self["id"])
 
     @property
     def id(self):
-        return self._data["id"]
+        return self["id"]
    
     @property
     def user(self):
-        return self._data["user"]
+        return self["user"]
    
     @property
     def key(self):
-        return self._data["key"]
+        return self["key"]
    
     @property
     def label(self):
-        return self._data["label"]
+        return self["label"]
    
     @property
     def description(self):
-        return self._data["description"]
+        return self["description"]
    
     @property
     def created_on(self):
-        timestamp = self._data["createdOn"]
+        timestamp = self["createdOn"]
         return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
    
     @property
     def created_by(self):
-        return self._data["createdBy"]
+        return self["createdBy"]
 
 
 class DSSCluster(object):
@@ -1350,7 +1349,7 @@ class DSSClusterSettings(object):
 class DSSClusterStatus(object):
     """
     The status of a cluster.
-    Do not create this object directly, use :meth:`DSSCluster.get_Status` instead.
+    Do not create this object directly, use :meth:`DSSCluster.get_status` instead.
     """
     def __init__(self, client, cluster_id, status):
         self.client = client

@@ -20,6 +20,7 @@ from .dss.projectdeployer import DSSProjectDeployer
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
 
+
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
@@ -1146,7 +1147,6 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
-
     ########################################################
     # Global Instance Info
     ########################################################
@@ -1154,7 +1154,8 @@ class DSSClient(object):
     def get_instance_info(self):
         """
         Get global information about the DSS instance
-        :return: a :classss:`DSSInstanceInfo` 
+
+        :returns: a :class:`DSSInstanceInfo`
         """
         resp = self._perform_json("GET", "/instance-info")
         return DSSInstanceInfo(resp)
@@ -1283,6 +1284,7 @@ class TemporaryImportHandle(object):
             settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)
+
 
 class DSSInstanceInfo(object):
     """Global information about the DSS instance"""
