@@ -4,16 +4,15 @@ import zipfile
 from six import string_types
 import tempfile
 
+from ..utils import _write_response_content_to_file
 from ..utils import DataikuException
-from ..utils import DataikuUTF8CSVReader
-from ..utils import DataikuStreamedHttpUTF8CSVReader
 
 import json, warnings
 import time
 
-from .metrics import ComputedMetrics
 from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
 from .future import DSSFuture
+
 
 class PredictionSplitParamsHandler(object):
     """Object to modify the train/test splitting params."""
@@ -1946,11 +1945,7 @@ class DSSTrainedModelDetails(object):
         :return: None
         """
         stream = self.download_documentation_stream(export_id)
-        with open(path, 'wb') as f:
-            for chunk in stream.iter_content(chunk_size=10000):
-                if chunk:
-                    f.write(chunk)
-                    f.flush()
+        _write_response_content_to_file(stream, path)
 
 class DSSMLDiagnostic(object):
     """
