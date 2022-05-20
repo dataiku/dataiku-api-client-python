@@ -1041,7 +1041,7 @@ class DSSClient(object):
     def get_instance_info(self):
         """
         Get global information about the DSS instance
-        :return: a :classss:`DSSInstanceInfo` 
+        :return: a :class:`DSSInstanceInfo`
         """
         resp = self._perform_json("GET", "/instance-info")
         return DSSInstanceInfo(resp)
