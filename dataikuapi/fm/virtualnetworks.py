@@ -1,4 +1,4 @@
-from dataikuapi.fm.future import FMFuture
+from .future import FMFuture
 
 
 class FMVirtualNetworkCreator(object):

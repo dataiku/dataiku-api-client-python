@@ -1,18 +1,20 @@
+import datetime
+
 from .future import DSSFuture
 import json, warnings
 
+
 class DSSConnectionInfo(dict):
     """A class holding read-only information about a connection.
-    This class should not be created directly. Instead, use :meth:`DSSConnection.get_info`
+    Do not create this object directly, use :meth:`DSSConnection.get_info` instead.
 
     The main use case of this class is to retrieve the decrypted credentials for a connection,
     if allowed by the connection permissions.
 
     Depending on the connection kind, the credential may be available using :meth:`get_basic_credential` 
-    or :meth:`get_aws_credential`
+    or :meth:`get_aws_credential`.
     """
     def __init__(self, data):
-        """Do not call this directly, use :meth:`DSSConnection.get_info`"""
         super(DSSConnectionInfo, self).__init__(data)
 
     def get_type(self):
@@ -50,9 +52,9 @@ class DSSConnectionInfo(dict):
 class DSSConnection(object):
     """
     A connection on the DSS instance.
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_connection` instead.
     """
     def __init__(self, client, name):
-        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_connection`"""
         self.client = client
         self.name = name
 
@@ -147,10 +149,9 @@ class DSSConnection(object):
 class DSSUser(object):
     """
     A handle for a user on the DSS instance.
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_user`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_user` instead.
     """
     def __init__(self, client, login):
-        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_user`"""
         self.client = client
         self.login = login
 
@@ -164,10 +165,21 @@ class DSSUser(object):
     def get_settings(self):
         """
         Gets the settings of the user
+
         :rtype: :class:`DSSUserSettings`
         """
         raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
         return DSSUserSettings(self.client, self.login, raw)
+
+    def get_activity(self):
+        """
+        Gets the activity of the user
+
+        :return: the user's activity
+        :rtype: :class:`DSSUserActivity`
+        """
+        activity = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
+        return DSSUserActivity(self.client, self.login, activity)
 
     ########################################################
     # Legacy
@@ -224,10 +236,11 @@ class DSSUser(object):
         else:
             raise ValueError("Don't know how to proxy this client")
 
+
 class DSSOwnUser(object):
     """
     A handle to interact with your own user
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_own_user`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_own_user` instead.
     """
     def __init__(self, client):
         self.client = client
@@ -243,15 +256,16 @@ class DSSOwnUser(object):
 
 
 class DSSUserSettingsBase(object):
-    """Settings for a DSS user"""
+    """
+    Settings for a DSS user.
+    Do not create this object directly, use :meth:`DSSUser.get_settings` or :meth:`DSSOwnUser.get_settings` instead.
+    """
     def __init__(self, settings):
-        """Do not call this directly, use :meth:`DSSUser.get_settings` or :meth:`DSSOwnUser.get_settings` """
         self.settings = settings
 
     def get_raw(self):
         """
-        :return: the raw settings of the user, as a dict. Modifications made to the returned object 
-        are reflected when saving
+        :return: the raw settings of the user, as a dict. Modifications made to the returned object are reflected when saving
         :rtype: dict
         """
         return self.settings
@@ -318,10 +332,11 @@ class DSSUserSettingsBase(object):
 
 
 class DSSUserSettings(DSSUserSettingsBase):
-    """Settings for a DSS user"""
-
+    """
+    Settings for a DSS user.
+    Do not create this object directly, use :meth:`DSSUser.get_settings` instead.
+    """
     def __init__(self, client, login, settings):
-        """Do not call this directly, use :meth:`DSSUser.get_settings`"""
         super(DSSUserSettings, self).__init__(settings)
         self.client = client
         self.login = login
@@ -331,7 +346,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         """
         The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
 
-        :rtype dict
+        :rtype: dict
         """
         return self.settings["adminProperties"]
 
@@ -339,7 +354,7 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled
-        :rtype boolean
+        :rtype: boolean
         """
         return self.settings["enabled"]
 
@@ -353,10 +368,11 @@ class DSSUserSettings(DSSUserSettingsBase):
 
 
 class DSSOwnUserSettings(DSSUserSettingsBase):
-    """Settings for the current DSS user"""
-
+    """
+    Settings for the current DSS user.
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_own_user` instead.
+    """
     def __init__(self, client, settings):
-        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_own_user`"""
         super(DSSOwnUserSettings, self).__init__(settings)
         self.client = client
 
@@ -365,13 +381,72 @@ class DSSOwnUserSettings(DSSUserSettingsBase):
         self.client._perform_empty("PUT", "/current-user", body = self.settings)
 
 
+class DSSUserActivity(object):
+    """
+    Activity for a DSS user.
+    Do not create this object directly, use :meth:`DSSUser.get_activity` or :meth:`DSSClient.list_users_activity` instead.
+    """
+    def __init__(self, client, login, activity):
+        self.client = client
+        self.login = login
+        self.activity = activity
+
+    def get_raw(self):
+        """
+        Get the raw activity of the user as a dict.
+
+        :return: the raw activity
+        :rtype: dict
+        """
+        return self.activity
+
+    @property
+    def last_successful_login(self):
+        """
+        Get the last successful login of the user as a :class:`datetime.datetime`
+        
+        Returns None if there was no successful login for this user.
+
+        :return: the last successful login
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastSuccessfulLogin"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+
+    @property
+    def last_failed_login(self):
+        """
+        Get the last failed login of the user as a :class:`datetime.datetime`
+
+        Returns None if there were no failed login for this user.
+
+        :return: the last failed login
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastFailedLogin"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+
+    @property
+    def last_session_activity(self):
+        """
+        Get the last session activity of the user as a :class:`datetime.datetime`, i.e. the last time
+        the user opened a new DSS tab or refreshed his session.
+
+        Returns None if there is no session activity yet.
+
+        :return: the last session activity
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.activity["lastSessionActivity"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+
+
 class DSSGroup(object):
     """
     A group on the DSS instance.
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_group`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_group` instead.
     """
     def __init__(self, client, name):
-        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_group`"""
         self.client = client
         self.name = name
     
@@ -414,10 +489,9 @@ class DSSGroup(object):
 class DSSGeneralSettings(object):
     """
     The general settings of the DSS instance.
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_general_settings` instead.
     """
     def __init__(self, client):
-        """Do not call this directly, use :meth:`dataikuapi.DSSClient.get_general_settings`"""
         self.client = client
         self.settings = self.client._perform_json("GET", "/admin/general-settings")
     
@@ -540,6 +614,7 @@ class DSSGeneralSettings(object):
             raise Exception('Container exec base image push failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
+
 class DSSUserImpersonationRule(object):
     """
     Helper to build user-level rule items for the impersonation settings
@@ -602,6 +677,7 @@ class DSSUserImpersonationRule(object):
         self.raw['targetHadoop'] = hadoop_user
         return self
 
+
 class DSSGroupImpersonationRule(object):
     """
     Helper to build group-level rule items for the impersonation settings
@@ -646,10 +722,11 @@ class DSSGroupImpersonationRule(object):
         self.raw['targetHadoop'] = hadoop_user
         return self
 
+
 class DSSCodeEnv(object):
     """
     A code env on the DSS instance.
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_code_env`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_code_env` instead.
     """
     def __init__(self, client, env_lang, env_name):
         self.client = client
@@ -849,7 +926,7 @@ class DSSCodeEnv(object):
 class DSSCodeEnvSettings(object):
     """
     Base settings class for a DSS code env.
-    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+    Do not create this object directly, use :meth:`DSSCodeEnv.get_settings` instead.
 
     Use :meth:`save` to save your changes
     """
@@ -873,6 +950,7 @@ class DSSCodeEnvSettings(object):
     def save(self):
         self.codeenv.client._perform_json(
             "PUT", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name), body=self.settings)
+
 
 class DSSCodeEnvPackageListBearer(object):
     def get_required_packages(self, as_list=False):
@@ -951,11 +1029,10 @@ class DSSCodeEnvContainerConfsBearer(object):
 class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, DSSCodeEnvContainerConfsBearer):
     """
     Base settings class for a DSS code env on a design node.
-    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+    Do not create this object directly, use :meth:`DSSCodeEnv.get_settings` instead.
 
     Use :meth:`save` to save your changes
     """
-
     def __init__(self, codeenv, settings):
         super(DSSDesignCodeEnvSettings, self).__init__(codeenv, settings)
 
@@ -963,14 +1040,12 @@ class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, 
 class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsBearer):
     """
     Base settings class for a DSS code env on an automation node.
-    Do not instantiate this class directly, use :meth:`DSSCodeEnv.get_settings`
+    Do not create this object directly, use :meth:`DSSCodeEnv.get_settings` instead.
 
     Use :meth:`save` to save your changes
     """
-
     def __init__(self, codeenv, settings):
         super(DSSAutomationCodeEnvSettings, self).__init__(codeenv, settings)
-
 
     def get_version(self, version_id=None):
         """
@@ -1001,11 +1076,10 @@ class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsB
 class DSSAutomationCodeEnvVersionSettings(DSSCodeEnvPackageListBearer):
     """
     Base settings class for a DSS code env version on an automation node.
-    Do not instantiate this class directly, use :meth:`DSSAutomationCodeEnvSettings.get_version`
+    Do not create this object directly, use :meth:`DSSAutomationCodeEnvSettings.get_version` instead.
 
     Use :meth:`save` on the :class:`DSSAutomationCodeEnvSettings` to save your changes
     """
-
     def __init__(self, codeenv_settings, version_settings):
         self.codeenv_settings = codeenv_settings
         self.settings = version_settings
@@ -1062,12 +1136,89 @@ class DSSGlobalApiKey(object):
             body = definition)
 
 
+class DSSPersonalApiKey(object):
+    """
+    A personal API key on the DSS instance.
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key` instead.
+    """
+    def __init__(self, client, id_):
+        self.client = client
+        self.id_ = id_
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+        
+        :returns: the personal API key definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/personal-api-keys/%s" % (self.id_))
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the API key
+        """
+        return self.client._perform_empty(
+            "DELETE", "/personal-api-keys/%s" % self.id_)
+
+
+class DSSPersonalApiKeyListItem(dict):
+    """
+    An item in a list of personal API key. 
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.list_personal_api_keys` or :meth:`dataikuapi.DSSClient.list_all_personal_api_keys` instead.
+    """
+    def __init__(self, client, data):
+        super(DSSPersonalApiKeyListItem, self).__init__(data)
+        self.client = client
+
+    def to_personal_api_key(self):
+        """Gets the :class:`DSSPersonalApiKey` corresponding to this item"""
+        return DSSPersonalApiKey(self.client, self["id"])
+
+    @property
+    def id(self):
+        return self["id"]
+   
+    @property
+    def user(self):
+        return self["user"]
+   
+    @property
+    def key(self):
+        return self["key"]
+   
+    @property
+    def label(self):
+        return self["label"]
+   
+    @property
+    def description(self):
+        return self["description"]
+   
+    @property
+    def created_on(self):
+        timestamp = self["createdOn"]
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+   
+    @property
+    def created_by(self):
+        return self["createdBy"]
+
+
 class DSSCluster(object):
     """
-    A handle to interact with a cluster on the DSS instance
+    A handle to interact with a cluster on the DSS instance.
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_cluster` instead.
     """
     def __init__(self, client, cluster_id):
-        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_cluster`"""
         self.client = client
         self.cluster_id = cluster_id
     
@@ -1143,28 +1294,100 @@ class DSSCluster(object):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def stop(self, terminate=True):
+    def stop(self, terminate=True, force_stop=False):
         """
         Stops or detaches the cluster
 
         This operation is only valid for a managed cluster.
-        :param boolean terminate: whether to delete the cluster after stopping it
+
+        :param bool terminate: whether to delete the cluster after stopping it
+        :param bool force_stop: whether to try to force stop the cluster,
+            useful if DSS expects the cluster to already be stopped
         """
         resp = self.client._perform_json(
             "POST", "/admin/clusters/%s/actions/stop" % (self.cluster_id),
-            params = {'terminate':terminate})
+            params={'terminate': terminate, 'forceStop': force_stop})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster operation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
+    def run_kubectl(self, args):
+        """
+        Runs an arbitrary kubectl command on the cluster.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        Note: this call requires an API key with DSS instance admin rights
+
+        :param str args: the arguments to pass to kubectl (without the "kubectl")
+        :return: a dict containing the return value, standard output, and standard error of the command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/actions/run-kubectl" % self.cluster_id,
+            body={'args': args})
+
+    def delete_finished_jobs(self, delete_failed=False, namespace=None, label_filter=None, dry_run=False):
+        """
+        Runs a kubectl command to delete finished jobs.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param bool delete_failed: if True, delete both completed and failed jobs, otherwise only delete completed jobs
+        :param str namespace: the namespace in which to delete the jobs, if None, uses the namespace set in kubectl's current context
+        :param str label_filter: delete only jobs matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing whether the deletion succeeded, a list of deleted job names, and
+            debug info for the underlying kubectl command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/jobs/actions/delete-finished" % self.cluster_id,
+            params={'deleteFailed': delete_failed, 'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
+
+    def delete_finished_pods(self, namespace=None, label_filter=None, dry_run=False):
+        """
+        Runs a kubectl command to delete finished (succeeded and failed) pods.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param str namespace: the namespace in which to delete the pods, if None, uses the namespace set in kubectl's current context
+        :param str label_filter: delete only pods matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing whether the deletion succeeded, a list of deleted pod names, and
+            debug info for the underlying kubectl command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/pods/actions/delete-finished" % self.cluster_id,
+            params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
+
+    def delete_all_pods(self, namespace=None, label_filter=None, dry_run=False):
+        """
+        Runs a kubectl command to delete all pods.
+
+        This operation is only valid for a Kubernetes cluster.
+
+        :param str namespace: the namespace in which to delete the pods, if None, uses the namespace set in kubectl's current context
+        :param str label_filter: delete only pods matching a label filter
+        :param bool dry_run: if True, execute the command as a "dry run"
+        :return: a dict containing whether the deletion succeeded, a list of deleted pod names, and
+            debug info for the underlying kubectl command
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/admin/clusters/%s/k8s/pods/actions/delete-all" % self.cluster_id,
+            params={'namespace': namespace, 'labelFilter': label_filter, 'dryRun': dry_run})
+
+
 class DSSClusterSettings(object):
     """
-    The settings of a cluster
+    The settings of a cluster.
+    Do not create this object directly, use :meth:`DSSCluster.get_settings` instead.
     """
     def __init__(self, client, cluster_id, settings):
-        """Do not call directly, use :meth:`DSSCluster.get_settings`"""
         self.client = client
         self.cluster_id = cluster_id
         self.settings = settings
@@ -1194,12 +1417,13 @@ class DSSClusterSettings(object):
         return self.client._perform_json(
             "PUT", "/admin/clusters/%s" % (self.cluster_id), body=self.settings)
 
+
 class DSSClusterStatus(object):
     """
-    The status of a cluster
+    The status of a cluster.
+    Do not create this object directly, use :meth:`DSSCluster.get_status` instead.
     """
     def __init__(self, client, cluster_id, status):
-        """Do not call directly, use :meth:`DSSCluster.get_Status`"""
         self.client = client
         self.cluster_id = cluster_id
         self.status = status
@@ -1215,9 +1439,8 @@ class DSSInstanceVariables(dict):
     """
     Dict containing the instance variables. The variables can be modified directly in the dict and persisted using its :meth:`save` method.
 
-    Do not create this directly, use :meth:`dataikuapi.DSSClient.get_global_variables`
+    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_global_variables` instead.
     """
-
     def __init__(self, client, variables):
         super(dict, self).__init__()
         self.update(variables)
@@ -1235,7 +1458,7 @@ class DSSInstanceVariables(dict):
 class DSSGlobalUsageSummary(object):
     """
     The summary of the usage of the DSS instance.
-    Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_global_usage_summary`
+    Do not create this object directly, use :meth:`dataikuapi.dss.DSSClient.get_global_usage_summary` instead.
     """
     def __init__(self, data):
         self.data = data
