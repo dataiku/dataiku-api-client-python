@@ -283,7 +283,7 @@ class DSSProject(object):
           - createdBy: who created this project
           - createdOn: when the project was created
           - lastModifiedBy: who modified this project for the last time
-          - lastModifiedBy: when this modification took place
+          - lastModifiedOn: when this modification took place
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/timeline" % self.project_key, params = {
