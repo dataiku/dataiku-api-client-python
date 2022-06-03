@@ -11,7 +11,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
+from .dss.admin import DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
 
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
@@ -617,6 +617,36 @@ class DSSClient(object):
         if resp.get('messages', {}).get('error', False):
             raise Exception('Cluster creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return DSSCluster(self, resp['id'])
+
+
+    ########################################################
+    # Code studio templates
+    ########################################################
+
+    def list_code_studio_templates(self, as_type='listitems'):
+        """
+        List all code studio templates on the DSS instance
+
+        :returns: List of templates (name, type)
+        """
+        items = self._perform_json("GET", "/admin/code-studios/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSCodeStudioTemplateListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSCodeStudioTemplate(self, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type") 
+
+    def get_code_studio_template(self, template_id):
+        """
+        Get a handle to interact with a specific code studio template
+        
+        :param str template_id: the template id of the desired code studio template
+        
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
+        """
+        return DSSCodeStudioTemplate(self, template_id)
+
 
     ########################################################
     # Global API Keys

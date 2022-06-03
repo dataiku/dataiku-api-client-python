@@ -2,6 +2,7 @@ import datetime
 
 from .future import DSSFuture
 import json, warnings
+from datetime import datetime
 
 
 class DSSConnectionInfo(dict):
@@ -1494,3 +1495,114 @@ class DSSGlobalUsageSummary(object):
     @property
     def total_active_with_trigger_scenarios_count(self):
         return self.data["scenarios"]["activeWithTriggers"]
+
+
+class DSSCodeStudioTemplateListItem(object):
+    """An item in a list of code studio templates. Do not instantiate this class, use :meth:`dataikuapi.DSSClient.list_code_studio_templates`"""
+    def __init__(self, client, data):
+        self.client = client
+        self._data = data
+
+    def to_code_studio_template(self):
+        """Gets the :class:`DSSCodeStudioTemplate` corresponding to this code studio template """
+        return DSSCodeStudioTemplate(self.client, self._data["id"])
+
+    @property
+    def name(self):
+        return self._data["name"]
+    @property
+    def id(self):
+        return self._data["id"]
+    @property
+    def build_for_configs(self):
+        return self._data.get("buildFor", [])
+    @property
+    def last_built(self):
+        ts = self._data.get("lastBuilt", 0)
+        if ts > 0:
+            return datetime.fromtimestamp(ts / 1000)
+        else:
+            return None
+
+class DSSCodeStudioTemplate(object):
+    """
+    A handle to interact with a code studio template on the DSS instance
+    """
+    def __init__(self, client, template_id):
+        """Do not call that directly, use :meth:`dataikuapi.DSSClient.get_code_studio_template`"""
+        self.client = client
+        self.template_id = template_id
+            
+    ########################################################
+    # Template description
+    ########################################################
+    
+    def get_settings(self):
+        """
+        Get the template's settings. 
+
+        :returns: a :class:`DSSCodeStudioTemplateSettings` object to interact with code studio template settings
+        :rtype: :class:`DSSCodeStudioTemplateSettings`
+        """
+        settings = self.client._perform_json("GET", "/admin/code-studios/%s" % (self.template_id))
+        return DSSCodeStudioTemplateSettings(self.client, self.template_id, settings)
+
+    ########################################################
+    # Building
+    ########################################################
+    
+    def build(self):
+        """
+        Build or rebuild the template. 
+
+        :returns: a :class:`~dataikuapi.dss.future.DSSFuture` handle to the task of building the image
+        """
+        future_response = self.client._perform_json("POST", "/admin/code-studios/%s/build" % (self.template_id))
+        return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
+class DSSCodeStudioTemplateSettings(object):
+    """
+    The settings of a code studio template
+    """
+    def __init__(self, client, template_id, settings):
+        """Do not call directly, use :meth:`DSSCodeStudioTemplate.get_settings`"""
+        self.client = client
+        self.template_id = template_id
+        self.settings = settings
+
+    def get_raw(self):
+        """
+        Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
+        """
+        return self.settings
+
+    def get_built_for_all_container_confs(self):
+        """
+        Return whether the template an image for each container config
+        """
+        return self.settings.get("allContainerConfs", False)
+
+    def get_built_container_confs(self):
+        """
+        Return the list of container configs for which the template builds an image (if not all)
+        """
+        return self.settings.get("containerConfs", [])
+
+    def set_built_container_confs(self, *configs, **kwargs):
+        """
+        Set the list of container configs for which the template builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allContainerConfs'] = all
+        if not all:
+            self.settings['containerConfs'] = configs
+
+    def save(self):
+        """
+        Saves the settings of the code studio template
+        """
+        self.client._perform_empty("PUT", "/admin/code-studios/%s" % (self.template_id), body=self.settings)
+
