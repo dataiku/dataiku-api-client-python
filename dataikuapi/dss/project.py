@@ -1670,7 +1670,6 @@ class DSSProject(object):
         """
         obj = {
             "name" : name,
-            "projectKey" : self.project_key,
             "templateId" : template_id
         }
         res = self.client._perform_json("POST", "/projects/%s/code-studios/" % self.project_key, body = obj)
