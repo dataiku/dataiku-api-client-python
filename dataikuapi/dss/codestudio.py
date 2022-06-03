@@ -51,9 +51,9 @@ class DSSCodeStudioObject(object):
 
     def get_settings(self):
         """
-        Get the code studio object's settings
+        Get the code studio object's definition
 
-        :returns: a handle to manage the code studio settings
+        :returns: a handle to manage the code studio definition
         :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObjectSettings`
         """
         settings = self.client._perform_json("GET", "/projects/%s/code-studios/%s" % (self.project_key, self.code_studio_object_id))
@@ -77,10 +77,7 @@ class DSSCodeStudioObject(object):
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/stop" % (self.project_key, self.code_studio_object_id))
-        if 'jobId' in ret:
-            return self.client.get_future(ret["jobId"])
-        else:
-            return None
+        return DSSFuture.from_resp(self.client, ret)
 
     def restart(self):
         """
@@ -90,10 +87,7 @@ class DSSCodeStudioObject(object):
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/restart" % (self.project_key, self.code_studio_object_id))
-        if 'jobId' in ret:
-            return self.client.get_future(ret["jobId"])
-        else:
-            return None
+        return DSSFuture.from_resp(self.client, ret)
 
 class DSSCodeStudioObjectSettings(object):
     """
@@ -111,6 +105,14 @@ class DSSCodeStudioObjectSettings(object):
         Gets all settings as a raw dictionary. This returns a reference to the raw settings, not a copy,
         """
         return self.settings
+
+    @property
+    def template_id(self):
+        return self.settings["templateId"]
+    @property
+    def lib_name(self):
+        return self.settings["libName"]
+
 
 class DSSCodeStudioObjectStatus(object):
     """
@@ -133,7 +135,7 @@ class DSSCodeStudioObjectStatus(object):
     def state(self):
         return self.status["state"]
     @property
-    def last_built(self):
+    def last_state_change(self):
         ts = self.status.get("lastStateChange", 0)
         if ts > 0:
             return datetime.fromtimestamp(ts / 1000)

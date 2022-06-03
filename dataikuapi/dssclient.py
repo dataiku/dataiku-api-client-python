@@ -627,8 +627,7 @@ class DSSClient(object):
         """
         List all code studio templates on the DSS instance
 
-        Returns:
-            List of templates (name, type)
+        :returns: List of templates (name, type)
         """
         items = self._perform_json("GET", "/admin/code-studios/")
         if as_type == "listitems" or as_type == "listitem":
@@ -642,11 +641,9 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific code studio template
         
-        Args:
-            template_id: the template id of the desired code studio template
+        :param str template_id: the template id of the desired code studio template
         
-        Returns:
-            A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
         """
         return DSSCodeStudioTemplate(self, template_id)
 

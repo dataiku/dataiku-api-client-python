@@ -1514,15 +1514,6 @@ class DSSCodeStudioTemplateListItem(object):
     def id(self):
         return self._data["id"]
     @property
-    def type(self):
-        return self._data["type"]
-    @property
-    def type_label(self):
-        return self._data.get("desc", {}).get("label", self._data["type"])
-    @property
-    def type_description(self):
-        return self._data.get("desc", {}).get("description", self._data["type"])
-    @property
     def build_for_configs(self):
         return self._data.get("buildFor", [])
     @property

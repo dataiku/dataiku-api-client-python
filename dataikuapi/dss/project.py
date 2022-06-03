@@ -1634,12 +1634,11 @@ class DSSProject(object):
     ########################################################
     # Code studios
     ########################################################
-    def list_code_studio_objects(self, as_type="listitems"):
+    def list_code_studios(self, as_type="listitems"):
         """
         List the code studio objects in this project
         
-        Returns:
-            the list of the code studio objects, each one as a JSON object
+        :returns: the list of the code studio objects, each one as a JSON object
         """
         items = self.client._perform_json(
             "GET", "/projects/%s/code-studios/" % self.project_key)
@@ -1650,28 +1649,24 @@ class DSSProject(object):
         else:
             raise ValueError("Unknown as_type") 
 
-    def get_code_studio_object(self, code_studio_object_id):
+    def get_code_studio(self, code_studio_object_id):
         """
         Get a handle to interact with a specific code studio object
        
-        Args:
-            code_studio_object_id: the identifier of the desired code studio object
+        :param str code_studio_object_id: the identifier of the desired code studio object
         
-        Returns:
-            A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
+        :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
         return DSSCodeStudioObject(self.client, self.project_key, code_studio_object_id)
 
-    def create_code_studio_object(self, name, template_id):
+    def create_code_studio(self, name, template_id):
         """
         Create a new code studio object in the project, and return a handle to interact with it
         
-        Args:
-            name: the name of the code studio object
-            template_id: the identifier of a code studio template
+        :param str name: the name of the code studio object
+        :param str template_id: the identifier of a code studio template
         
-        Returns:
-            A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
+        :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
         obj = {
             "name" : name,
