@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 import json
 from datetime import datetime
+from .future import DSSFuture
 
 class DSSCodeStudioObjectListItem(object):
     """An item in a list of code studios. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_code_studios`"""
