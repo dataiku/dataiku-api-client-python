@@ -3,13 +3,13 @@ import json
 from datetime import datetime
 
 class DSSCodeStudioObjectListItem(object):
-    """An item in a list of code studios. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_code_studio_objects`"""
+    """An item in a list of code studios. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_code_studios`"""
     def __init__(self, client, project_key, data):
         self.client = client
         self.project_key = project_key
         self._data = data
 
-    def to_code_studio_object(self):
+    def to_code_studio(self):
         """Gets the :class:`DSSCodeStudioObject` corresponding to this code studio object """
         return DSSCodeStudioObject(self.client, self.project_key, self._data["id"])
 
@@ -37,17 +37,17 @@ class DSSCodeStudioObject(object):
     """
     A handle to manage a code studio object of a project
     """
-    def __init__(self, client, project_key, code_studio_object_id):
-        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_code_studio_object`"""
+    def __init__(self, client, project_key, code_studio_id):
+        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_code_studio`"""
         self.client = client
         self.project_key = project_key
-        self.code_studio_object_id = code_studio_object_id
+        self.code_studio_id = code_studio_id
 
     def delete(self):
         """
         Delete the code studio
         """
-        self.client._perform_empty("DELETE", "/projects/%s/code-studios/%s" % (self.project_key, self.code_studio_object_id))
+        self.client._perform_empty("DELETE", "/projects/%s/code-studios/%s" % (self.project_key, self.code_studio_id))
 
     def get_settings(self):
         """
@@ -56,8 +56,8 @@ class DSSCodeStudioObject(object):
         :returns: a handle to manage the code studio definition
         :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObjectSettings`
         """
-        settings = self.client._perform_json("GET", "/projects/%s/code-studios/%s" % (self.project_key, self.code_studio_object_id))
-        return DSSCodeStudioObjectSettings(self.client, self.project_key, self.code_studio_object_id, settings)
+        settings = self.client._perform_json("GET", "/projects/%s/code-studios/%s" % (self.project_key, self.code_studio_id))
+        return DSSCodeStudioObjectSettings(self.client, self.project_key, self.code_studio_id, settings)
 
     def get_status(self):
         """
@@ -66,8 +66,8 @@ class DSSCodeStudioObject(object):
         :returns: a handle to inspect the code studio state
         :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObjectStatus`
         """
-        status = self.client._perform_json("GET", "/projects/%s/code-studios/%s/status" % (self.project_key, self.code_studio_object_id))
-        return DSSCodeStudioObjectStatus(self.client, self.project_key, self.code_studio_object_id, status)
+        status = self.client._perform_json("GET", "/projects/%s/code-studios/%s/status" % (self.project_key, self.code_studio_id))
+        return DSSCodeStudioObjectStatus(self.client, self.project_key, self.code_studio_id, status)
 
     def stop(self):
         """
@@ -76,7 +76,7 @@ class DSSCodeStudioObject(object):
         :returns: a future to wait on the stop, or None if already stopped
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
-        ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/stop" % (self.project_key, self.code_studio_object_id))
+        ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/stop" % (self.project_key, self.code_studio_id))
         return DSSFuture.from_resp(self.client, ret)
 
     def restart(self):
@@ -86,18 +86,18 @@ class DSSCodeStudioObject(object):
         :returns: a future to wait on the start
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
-        ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/restart" % (self.project_key, self.code_studio_object_id))
+        ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/restart" % (self.project_key, self.code_studio_id))
         return DSSFuture.from_resp(self.client, ret)
 
 class DSSCodeStudioObjectSettings(object):
     """
     Settings for the code studio object
     """
-    def __init__(self, client, project_key, code_studio_object_id, settings):
+    def __init__(self, client, project_key, code_studio_id, settings):
         """Do not call directly, use :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObject.get_settings`"""
         self.client = client
         self.project_key = project_key
-        self.code_studio_object_id = code_studio_object_id
+        self.code_studio_id = code_studio_id
         self.settings = settings
 
     def get_raw(self):
@@ -118,11 +118,11 @@ class DSSCodeStudioObjectStatus(object):
     """
     Status of a code studio object
     """
-    def __init__(self, client, project_key, code_studio_object_id, status):
+    def __init__(self, client, project_key, code_studio_id, status):
         """Do not call directly, use :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObject.get_state`"""
         self.client = client
         self.project_key = project_key
-        self.code_studio_object_id = code_studio_object_id
+        self.code_studio_id = code_studio_id
         self.status = status
 
     def get_raw(self):

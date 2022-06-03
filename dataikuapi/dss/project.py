@@ -1649,15 +1649,15 @@ class DSSProject(object):
         else:
             raise ValueError("Unknown as_type") 
 
-    def get_code_studio(self, code_studio_object_id):
+    def get_code_studio(self, code_studio_id):
         """
         Get a handle to interact with a specific code studio object
        
-        :param str code_studio_object_id: the identifier of the desired code studio object
+        :param str code_studio_id: the identifier of the desired code studio object
         
         :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
-        return DSSCodeStudioObject(self.client, self.project_key, code_studio_object_id)
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
 
     def create_code_studio(self, name, template_id):
         """
@@ -1673,8 +1673,8 @@ class DSSProject(object):
             "templateId" : template_id
         }
         res = self.client._perform_json("POST", "/projects/%s/code-studios/" % self.project_key, body = obj)
-        code_studio_object_id = res['codeStudio']['id']
-        return DSSCodeStudioObject(self.client, self.project_key, code_studio_object_id)
+        code_studio_id = res['codeStudio']['id']
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
 
 
 

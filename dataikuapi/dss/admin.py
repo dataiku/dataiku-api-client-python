@@ -1576,3 +1576,33 @@ class DSSCodeStudioTemplateSettings(object):
         """
         return self.settings
 
+    def get_built_for_all_container_confs(self):
+        """
+        Return whether the template an image for each container config
+        """
+        return self.settings.get("allContainerConfs", False)
+
+    def get_built_container_confs(self):
+        """
+        Return the list of container configs for which the template builds an image (if not all)
+        """
+        return self.settings.get("containerConfs", [])
+
+    def set_built_container_confs(self, *configs, **kwargs):
+        """
+        Set the list of container configs for which the template builds an image
+
+        :param boolean all: if True, an image is built for each config
+        :param list configs: list of configuration names to build images for
+        """
+        all = kwargs.get("all", False)
+        self.settings['allContainerConfs'] = all
+        if not all:
+            self.settings['containerConfs'] = configs
+
+    def save(self):
+        """
+        Saves the settings of the code studio template
+        """
+        self.client._perform_empty("PUT", "/admin/code-studios/%s" % (self.template_id), body=self.settings)
+
