@@ -90,6 +90,37 @@ class DSSCodeStudioObject(object):
         ret = self.client._perform_json("POST", "/projects/%s/code-studios/%s/restart" % (self.project_key, self.code_studio_id))
         return DSSFuture.from_resp(self.client, ret)
 
+    def check_conflicts(self, zone):
+        """
+        Checks whether the files in a zone of the code studio have conflicting changes
+        with what the DSS instance has
+
+        :param str zone: name of the zone to check (see :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObjectStatus.get_zones`)
+
+        :returns: a summary of the conflicts that were found
+        """
+        return self.client._perform_json("GET", "/projects/%s/code-studios/%s/conflicts/%s" % (self.project_key, self.code_studio_id, zone))
+
+    def pull_from_code_studio(self, zone):
+        """
+        Copies the files from a zone of the code studio to the DSS instance
+
+        :param str zone: name of the zone to pull (see :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObjectStatus.get_zones`)
+
+        :returns: a dictionary mapping each zone to the changes that were foiund
+        """
+        return self.client._perform_json("GET", "/projects/%s/code-studios/%s/pull/%s" % (self.project_key, self.code_studio_id, zone))
+
+    def push_to_code_studio(self, zone):
+        """
+        Copies the files from the DSS instance to a zone of the code studio
+
+        :param str zone: name of the zone to push (see :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObjectStatus.get_zones`)
+
+        :returns: a dictionary of {count: <number of files copied>, size: <total size copied>}
+        """
+        return self.client._perform_json("GET", "/projects/%s/code-studios/%s/push/%s" % (self.project_key, self.code_studio_id, zone))
+
 class DSSCodeStudioObjectSettings(object):
     """
     Settings for the code studio object
@@ -142,3 +173,14 @@ class DSSCodeStudioObjectStatus(object):
             return datetime.fromtimestamp(ts / 1000)
         else:
             return None
+    def get_zones(self, as_type="names"):
+        """
+        Get the list of the zones synchronized inside the code studio
+        """
+        zones = self.status.get("syncedZones", [])
+        if as_type == 'name' or as_type == 'names':
+            return [z.get('id') for z in zones]
+        if as_type == 'object' or as_type == 'objects':
+            return zones
+        else:
+            raise Exception("Only 'names' or 'objects' is supported for as_type")
