@@ -1508,8 +1508,8 @@ class DSSCodeStudioTemplateListItem(object):
         return DSSCodeStudioTemplate(self.client, self._data["id"])
 
     @property
-    def name(self):
-        return self._data["name"]
+    def label(self):
+        return self._data["label"]
     @property
     def id(self):
         return self._data["id"]
