@@ -137,7 +137,7 @@ class DSSProject(object):
     def export_to_file(self, path, options=None):
         """
         Export the project to a file
-        
+
         :param str path: the path of the file in which the exported project should be saved
         :param dict options: Dictionary of export options (defaults to `{}`). The following options are available:
 
@@ -220,7 +220,7 @@ class DSSProject(object):
         checklists, tags and custom metadata of the project.
 
         For more information on available metadata, please see https://doc.dataiku.com/dss/api/6.0/rest/
-        
+
         :returns: a dict object containing the project metadata.
         :rtype: dict
         """
@@ -229,7 +229,7 @@ class DSSProject(object):
     def set_metadata(self, metadata):
         """
         Set the metadata on this project.
-        
+
         :param metadata dict: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_empty(
@@ -249,7 +249,7 @@ class DSSProject(object):
        """
        Get the permissions attached to this project
 
-        :returns: A dict containing the owner and the permissions, as a list of pairs of group name and permission type
+       :returns: A dict containing the owner and the permissions, as a list of pairs of group name and permission type
        """
        return self.client._perform_json(
           "GET", "/projects/%s/permissions" % self.project_key)
@@ -257,7 +257,7 @@ class DSSProject(object):
     def set_permissions(self, permissions):
         """
         Sets the permissions on this project
-        
+
         :param permissions dict: a permissions object with the same structure as the one returned by :meth:`get_permissions` call
         """
         return self.client._perform_empty(
@@ -281,7 +281,7 @@ class DSSProject(object):
         and a list of modifications. This list of modifications contains a maximum of `item_count` elements (default: 100).
         If `item_count` is greater than the real number of modification, `item_count` is adjusted.
 
-        :return: a dict object containing a timeline where the top-level fields are :
+        :returns: a dict object containing a timeline where the top-level fields are :
           - allContributors: all contributors who have been involve in this project
           - items: a history of the modifications of the project
           - createdBy: who created this project
@@ -318,9 +318,9 @@ class DSSProject(object):
     def get_dataset(self, dataset_name):
         """
         Get a handle to interact with a specific dataset
-       
+
         :param string dataset_name: the name of the desired dataset
-        
+
         :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
         return DSSDataset(self.client, self.project_key, dataset_name)
@@ -330,22 +330,21 @@ class DSSProject(object):
         """
         Create a new dataset in the project, and return a handle to interact with it.
 
-        The precise structure of ``params`` and ``formatParams`` depends on the specific dataset 
+        The precise structure of ``params`` and ``formatParams`` depends on the specific dataset
         type and dataset format type. To know which fields exist for a given dataset type and format type,
         create a dataset from the UI, and use :meth:`get_dataset` to retrieve the configuration
         of the dataset and inspect it. Then reproduce a similar structure in the :meth:`create_dataset` call.
 
         Not all settings of a dataset can be set at creation time (for example partitioning). After creation,
         you'll have the ability to modify the dataset
-        
+
         :param string dataset_name: the name for the new dataset
         :param string type: the type of the dataset
         :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
         :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
         :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to `{}`)
-        
-        Returns:
-            A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
         if params is None:
             params = {}
@@ -383,7 +382,7 @@ class DSSProject(object):
         """
         Creates a new external S3 dataset in the project and returns a :class:`~dataikuapi.dss.dataset.DSSDataset` to interact with it.
 
-        The created dataset doesn not have its format and schema initialized, it is recommend to use 
+        The created dataset doesn not have its format and schema initialized, it is recommend to use
         :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
 
         :param dataset_name: Name of the dataset to create. Must not already exist
@@ -444,8 +443,8 @@ class DSSProject(object):
             dataset = builder.create()
 
         :param str dataset_name: Name of the dataset to create
+        :returns: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
         :rtype: :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper`
-        :return: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
         """
         return DSSManagedDatasetCreationHelper(self, dataset_name)
 
@@ -473,9 +472,9 @@ class DSSProject(object):
     def get_streaming_endpoint(self, streaming_endpoint_name):
         """
         Get a handle to interact with a specific streaming endpoint
-       
+
         :param string streaming_endpoint_name: the name of the desired streaming endpoint
-        
+
         :returns: A :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint` streaming endpoint handle
         """
         return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
@@ -484,20 +483,19 @@ class DSSProject(object):
         """
         Create a new streaming endpoint in the project, and return a handle to interact with it.
 
-        The precise structure of ``params`` depends on the specific streaming endpoint 
+        The precise structure of ``params`` depends on the specific streaming endpoint
         type. To know which fields exist for a given streaming endpoint type,
         create a streaming endpoint from the UI, and use :meth:`get_streaming_endpoint` to retrieve the configuration
         of the streaming endpoint and inspect it. Then reproduce a similar structure in the :meth:`create_streaming_endpoint` call.
 
         Not all settings of a streaming endpoint can be set at creation time (for example partitioning). After creation,
         you'll have the ability to modify the streaming endpoint
-        
+
         :param string streaming_endpoint_name: the name for the new streaming endpoint
         :param string type: the type of the streaming endpoint
         :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
-        
-        Returns:
-            A :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint` streaming endpoint handle
+
+        :returns: A :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint` streaming endpoint handle
         """
         if params is None:
             params = {}
@@ -546,7 +544,7 @@ class DSSProject(object):
 
         :param string streaming_endpoint_name: Name of the new streaming endpoint - must be unique in the project
         :param string streaming_endpoint_type: Type of the new streaming endpoint (optional if it can be inferred from a connection type)
-        :return: A :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper` object to create the streaming endpoint
+        :returns: A :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper` object to create the streaming endpoint
         """
         return DSSManagedStreamingEndpointCreationHelper(self, streaming_endpoint_name, streaming_endpoint_type)
 
@@ -633,32 +631,30 @@ class DSSProject(object):
     def list_ml_tasks(self):
         """
         List the ML tasks in this project
-        
-        Returns:
-            the list of the ML tasks summaries, each one as a JSON object
+
+        :returns: the list of the ML tasks summaries, each one as a JSON object
         """
         return self.client._perform_json("GET", "/projects/%s/models/lab/" % self.project_key)
 
     def get_ml_task(self, analysis_id, mltask_id):
         """
         Get a handle to interact with a specific ML task
-       
+
         Args:
             analysis_id: the identifier of the visual analysis containing the desired ML task
-            mltask_id: the identifier of the desired ML task 
-        
-        Returns:
-            A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle
+            mltask_id: the identifier of the desired ML task
+
+        :returns: A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
     def list_mltask_queues(self):
         """
-        List non-empty ML task queues in this project 
-        
+        List non-empty ML task queues in this project
+
         :returns: an iterable :class:`DSSMLTaskQueues` listing of MLTask queues (each a dict)
         :rtype: :class:`DSSMLTaskQueues`
-        """ 
+        """
         data = self.client._perform_json("GET", "/projects/%s/models/labs/mltask-queues" % self.project_key)
         return DSSMLTaskQueues(data)
 
@@ -678,21 +674,18 @@ class DSSProject(object):
     def list_analyses(self):
         """
         List the visual analyses in this project
-        
-        Returns:
-            the list of the visual analyses summaries, each one as a JSON object
+
+        :returns: the list of the visual analyses summaries, each one as a JSON object
         """
         return self.client._perform_json("GET", "/projects/%s/lab/" % self.project_key)
 
     def get_analysis(self, analysis_id):
         """
         Get a handle to interact with a specific visual analysis
-       
-        Args:
-            analysis_id: the identifier of the desired visual analysis
-        
-        Returns:
-            A :class:`dataikuapi.dss.analysis.DSSAnalysis` visual analysis handle
+
+        :param string analysis_id: the identifier of the desired visual analysis
+
+        :returns: A :class:`dataikuapi.dss.analysis.DSSAnalysis` visual analysis handle
         """
         return DSSAnalysis(self.client, self.project_key, analysis_id)
 
@@ -703,9 +696,8 @@ class DSSProject(object):
     def list_saved_models(self):
         """
         List the saved models in this project
-        
-        Returns:
-            the list of the saved models, each one as a JSON object
+
+        :returns: the list of the saved models, each one as a JSON object
         """
         return self.client._perform_json(
             "GET", "/projects/%s/savedmodels/" % self.project_key)
@@ -713,12 +705,10 @@ class DSSProject(object):
     def get_saved_model(self, sm_id):
         """
         Get a handle to interact with a specific saved model
-       
-        Args:
-            sm_id: the identifier of the desired saved model
-        
-        Returns:
-            A :class:`dataikuapi.dss.savedmodel.DSSSavedModel` saved model handle
+
+        :param string sm_id: the identifier of the desired saved model
+
+        :returns: A :class:`dataikuapi.dss.savedmodel.DSSSavedModel` saved model handle
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
@@ -745,9 +735,8 @@ class DSSProject(object):
     def list_managed_folders(self):
         """
         List the managed folders in this project
-        
-        Returns:
-            the list of the managed folders, each one as a JSON object
+
+        :returns: the list of the managed folders, each one as a JSON object
         """
         return self.client._perform_json(
             "GET", "/projects/%s/managedfolders/" % self.project_key)
@@ -755,24 +744,20 @@ class DSSProject(object):
     def get_managed_folder(self, odb_id):
         """
         Get a handle to interact with a specific managed folder
-       
-        Args:
-            odb_id: the identifier of the desired managed folder
-        
-        Returns:
-            A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
+
+        :param string odb_id: the identifier of the desired managed folder
+
+        :returns: A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
         """
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
     def create_managed_folder(self, name, folder_type=None, connection_name="filesystem_folders"):
         """
         Create a new managed folder in the project, and return a handle to interact with it
-        
-        Args:
-            name: the name of the managed folder
-        
-        Returns:
-            A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
+
+        :param string name: the name of the managed folder
+
+        :returns: A :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` managed folder handle
         """
         obj = {
             "name" : name,
@@ -806,9 +791,9 @@ class DSSProject(object):
     def get_model_evaluation_store(self, mes_id):
         """
         Get a handle to interact with a specific model evaluation store
-       
+
         :param string mes_id: the id of the desired model evaluation store
-        
+
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
@@ -816,7 +801,7 @@ class DSSProject(object):
     def create_model_evaluation_store(self, name):
         """
         Create a new model evaluation store in the project, and return a handle to interact with it.
-        
+
         :param string name: the name for the new model evaluation store
 
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` model evaluation store handle
@@ -882,9 +867,8 @@ class DSSProject(object):
     def list_jobs(self):
         """
         List the jobs in this project
-        
-        Returns:
-            a list of the jobs, each one as a JSON object, containing both the definition and the state
+
+        :returns: a list of the jobs, each one as a JSON object, containing both the definition and the state
         """
         return self.client._perform_json(
             "GET", "/projects/%s/jobs/" % self.project_key)
@@ -892,22 +876,21 @@ class DSSProject(object):
     def get_job(self, id):
         """
         Get a handler to interact with a specific job
-        
-        Returns:
-            A :class:`dataikuapi.dss.job.DSSJob` job handle
+
+        :returns: A :class:`dataikuapi.dss.job.DSSJob` job handle
         """
         return DSSJob(self.client, self.project_key, id)
 
     def start_job(self, definition):
         """
         Create a new job, and return a handle to interact with it
-        
-        :param dict definition: The definition should contain: 
-            
+
+        :param dict definition: The definition should contain:
+
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
-        
+
         :returns: A :class:`dataikuapi.dss.job.DSSJob` job handle
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
@@ -916,9 +899,9 @@ class DSSProject(object):
     def start_job_and_wait(self, definition, no_fail=False):
         """
         Starts a new job and waits for it to complete.
-        
+
         :param dict definition: The definition should contain:
-            
+
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
@@ -953,7 +936,7 @@ class DSSProject(object):
     ########################################################
     # Jupyter Notebooks
     ########################################################
-    
+
     def list_jupyter_notebooks(self, active=False, as_type="object"):
         """
         List the jupyter notebooks of a project.
@@ -962,7 +945,7 @@ class DSSProject(object):
         :param bool active: if True, only return currently running jupyter notebooks.
 
         :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
-        
+
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`
         """
         notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
@@ -1005,9 +988,8 @@ class DSSProject(object):
     def list_continuous_activities(self, as_objects=True):
         """
         List the continuous activities in this project
-        
-        Returns:
-            a list of the continuous activities, each one as a JSON object, containing both the definition and the state
+
+        :returns: a list of the continuous activities, each one as a JSON object, containing both the definition and the state
         """
         list = self.client._perform_json("GET", "/projects/%s/continuous-activities/" % self.project_key)
         if as_objects:
@@ -1018,9 +1000,8 @@ class DSSProject(object):
     def get_continuous_activity(self, recipe_id):
         """
         Get a handler to interact with a specific continuous activities
-        
-        Returns:
-            A :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` job handle
+
+        :returns: A :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` job handle
         """
         return DSSContinuousActivity(self.client, self.project_key, recipe_id)
 
@@ -1032,10 +1013,9 @@ class DSSProject(object):
         """
         Gets the variables of this project.
 
-        Returns:
-            a dictionary containing two dictionaries : "standard" and "local".
-            "standard" are regular variables, exported with bundles.
-            "local" variables are not part of the bundles for this project
+        :returns: a dictionary containing two dictionaries : "standard" and "local".
+                  "standard" are regular variables, exported with bundles.
+                  "local" variables are not part of the bundles for this project
         """
         return self.client._perform_json(
             "GET", "/projects/%s/variables/" % self.project_key)
@@ -1079,8 +1059,7 @@ class DSSProject(object):
         """
         List the API services in this project
 
-        Returns:
-            the list of API services, each one as a JSON object
+        :returns: the list of API services, each one as a JSON object
         """
         return self.client._perform_json(
             "GET", "/projects/%s/apiservices/" % self.project_key)
@@ -1121,9 +1100,9 @@ class DSSProject(object):
 
     def export_bundle(self, bundle_id):
         """
-        Creates a new project bundle on the Design node 
-        
-        :param str bundle_id: bundle id tag 
+        Creates a new project bundle on the Design node
+
+        :param str bundle_id: bundle id tag
         """
         return self.client._perform_json("PUT",
                 "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
@@ -1131,21 +1110,21 @@ class DSSProject(object):
     def get_exported_bundle_archive_stream(self, bundle_id):
         """
         Download a bundle archive that can be deployed in a DSS automation Node, as a binary stream.
-        
+
         .. warning::
-            
+
             The stream must be closed after use. Use a ``with`` statement to handle closing the stream at the end of the block by default. For example:
-            
-            .. code-block:: python 
-        
+
+            .. code-block:: python
+
                     with project.get_exported_bundle_archive_stream('v1') as fp:
-                        # use fp 
-                    
+                        # use fp
+
                     # or explicitly close the stream after use
                     fp = project.get_exported_bundle_archive_stream('v1')
-                    # use fp, then close 
+                    # use fp, then close
                     fp.close()
-                    
+
         """
         return self.client._perform_raw("GET",
                 "/projects/%s/bundles/exported/%s/archive" % (self.project_key, bundle_id))
@@ -1153,7 +1132,7 @@ class DSSProject(object):
     def download_exported_bundle_archive_to_file(self, bundle_id, path):
         """
         Download a bundle archive that can be deployed in a DSS automation Node into the given output file.
-        
+
         :param string path: if "-", will write to /dev/stdout
         """
         if path == "-":
@@ -1176,9 +1155,9 @@ class DSSProject(object):
             A new published project will be created if none matches the key.
             If the parameter is not set, the key from the current :class:`DSSProject` is used.
 
-        :rtype: dict
-        :return: a dict with info on the bundle state once published. It contains the keys "publishedOn" for the publish date,
+        :returns: a dict with info on the bundle state once published. It contains the keys "publishedOn" for the publish date,
         "publishedBy" for the user who published the bundle, and "publishedProjectKey" for the key of the Project Deployer project used.
+        :rtype: dict
         """
         params = None
         if published_project_key is not None:
@@ -1199,7 +1178,7 @@ class DSSProject(object):
     def import_bundle_from_archive(self, archive_path):
         """
         Imports a bundle from a zip archive path on the Automation node.
-        
+
         :param str archive_path: A full path to a zip archive, for example `/home/dataiku/my-bundle-v1.zip`
         """
         return self.client._perform_json("POST",
@@ -1208,10 +1187,10 @@ class DSSProject(object):
 
     def import_bundle_from_stream(self, fp):
         """
-        Imports a bundle from a file stream, on the Automation node. 
-        
-        :param file-like fp: file handler. Usage example: 
-        
+        Imports a bundle from a file stream, on the Automation node.
+
+        :param file-like fp: file handler. Usage example:
+
         .. code-block:: python
 
             project = client.get_project('MY_PROJECT')
@@ -1240,8 +1219,8 @@ class DSSProject(object):
 
     def preload_bundle(self, bundle_id):
         """
-        Preloads a bundle that has been imported on the Automation node 
-        
+        Preloads a bundle that has been imported on the Automation node
+
         :param str bundle_id: the bundle_id for an existing imported bundle
         """
         return self.client._perform_json("POST",
@@ -1278,7 +1257,7 @@ class DSSProject(object):
         :returns: a :class:`dataikuapi.dss.scenario.DSSScenario` scenario handle
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
-        
+
     def create_scenario(self, scenario_name, type, definition=None):
         """
         Create a new scenario in the project, and return a handle to interact with it
@@ -1298,7 +1277,7 @@ class DSSProject(object):
         scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
                        body = definition)['id']
         return DSSScenario(self.client, self.project_key, scenario_id)
-        
+
     ########################################################
     # Recipes
     ########################################################
@@ -1324,7 +1303,7 @@ class DSSProject(object):
     def get_recipe(self, recipe_name):
         """
         Gets a :class:`dataikuapi.dss.recipe.DSSRecipe` handle to interact with a recipe
-        
+
         :param str recipe_name: The name of the recipe
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipe`
         """
@@ -1344,8 +1323,7 @@ class DSSProject(object):
             recipe_proto: a prototype for the recipe object. Must contain at least 'type' and 'name'
             creation_settings: recipe-specific creation settings
 
-        Returns:
-            A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
+        :returns: A :class:`dataikuapi.dss.recipe.DSSRecipe` recipe handle
         """
         recipe_proto["projectKey"] = self.project_key
         definition = {'recipePrototype': recipe_proto, 'creationSettings' : creation_settings}
@@ -1365,7 +1343,7 @@ class DSSProject(object):
             grouping_recipe_builder = project.new_recipe("grouping")
             grouping_recipe_builder.with_input("dataset_to_group_on")
             # Create a new managed dataset for the output in the "filesystem_managed" connection
-            grouping_recipe_builder.with_new_output("grouped_dataset", "filesystem_managed")                                    
+            grouping_recipe_builder.with_new_output("grouped_dataset", "filesystem_managed")
             grouping_recipe_builder.with_group_key("column")
             recipe = grouping_recipe_builder.build()
 
@@ -1432,14 +1410,13 @@ class DSSProject(object):
     ########################################################
     # Security
     ########################################################
-    
+
     def sync_datasets_acls(self):
         """
         Resync permissions on HDFS datasets in this project
-        
-        Returns:
-            a DSSFuture handle to the task of resynchronizing the permissions
-        
+
+        :returns: a DSSFuture handle to the task of resynchronizing the permissions
+
         Note: this call requires an API key with admin rights
         """
         future_response = self.client._perform_json(
@@ -1455,8 +1432,7 @@ class DSSProject(object):
         Deprecated. Use :meth:`DSSProject.list_jupyter_notebooks`
         List the currently-running notebooks
 
-        Returns:
-            list of notebooks. Each object contains at least a 'name' field
+        :returns: ist of notebooks. Each object contains at least a 'name' field
         """
         notebook_list = self.client._perform_json("GET", "/projects/%s/notebooks/active" % self.project_key)
         if as_objects:
@@ -1472,8 +1448,7 @@ class DSSProject(object):
         """
         List the tags of this project.
 
-        Returns:
-            a dictionary containing the tags with a color
+        :returns: a dictionary containing the tags with a color
         """
         return self.client._perform_json("GET", "/projects/%s/tags" % self.project_key)
 
@@ -1494,8 +1469,8 @@ class DSSProject(object):
     def list_macros(self, as_objects=False):
         """
         List the macros accessible in this project
-        
-        :param as_objects: if True, return the macros as :class:`dataikuapi.dss.macro.DSSMacro` 
+
+        :param as_objects: if True, return the macros as :class:`dataikuapi.dss.macro.DSSMacro`
                         macro handles instead of raw JSON
         :returns: the list of the macros
         """
@@ -1509,8 +1484,8 @@ class DSSProject(object):
     def get_macro(self, runnable_type):
         """
         Get a handle to interact with a specific macro
-       
-        :param runnable_type: the identifier of a macro        
+
+        :param runnable_type: the identifier of a macro
         :returns: A :class:`dataikuapi.dss.macro.DSSMacro` macro handle
         """
         return DSSMacro(self.client, self.project_key, runnable_type)
@@ -1637,7 +1612,7 @@ class DSSProject(object):
     def list_code_studios(self, as_type="listitems"):
         """
         List the code studio objects in this project
-        
+
         :returns: the list of the code studio objects, each one as a JSON object
         """
         items = self.client._perform_json(
@@ -1647,14 +1622,14 @@ class DSSProject(object):
         elif as_type == "objects" or as_type == "object":
             return [DSSCodeStudioObject(self.client, self.project_key, item["id"]) for item in items]
         else:
-            raise ValueError("Unknown as_type") 
+            raise ValueError("Unknown as_type")
 
     def get_code_studio(self, code_studio_id):
         """
         Get a handle to interact with a specific code studio object
-       
+
         :param str code_studio_id: the identifier of the desired code studio object
-        
+
         :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
         return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
@@ -1662,10 +1637,10 @@ class DSSProject(object):
     def create_code_studio(self, name, template_id):
         """
         Create a new code studio object in the project, and return a handle to interact with it
-        
+
         :param str name: the name of the code studio object
         :param str template_id: the identifier of a code studio template
-        
+
         :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
         """
         obj = {
@@ -1707,7 +1682,7 @@ class TablesImportDefinition(object):
     def prepare(self):
         """
         Run the first step of the import process. In this step, DSS will check
-        the tables whose import you have requested and prepare dataset names and 
+        the tables whose import you have requested and prepare dataset names and
         target connections
 
         :returns: a :class:`TablesPreparedImport` object that allows you to finalize the import process
@@ -1723,7 +1698,7 @@ class TablesImportDefinition(object):
 
 class TablesPreparedImport(object):
     """Result of preparing a tables import. Import can now be finished"""
-    
+
     def __init__(self, client, project_key, candidates):
         """Do not call this directly, use :meth:`DSSProject.init_tables_import` and then prepare"""
         self.client = client
@@ -1798,7 +1773,7 @@ class DSSProjectSettings(object):
     def set_k8s_cluster(self, cluster, fallback_cluster=None):
         """Sets the Kubernetes cluster used by this project
 
-        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project 
+        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project
                             to use the globally-defined cluster
         :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
         """
@@ -1812,7 +1787,7 @@ class DSSProjectSettings(object):
     def set_cluster(self, cluster, fallback_cluster=None):
         """Sets the Hadoop/Spark cluster used by this project
 
-        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project 
+        :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project
                             to use the globally-defined cluster
         :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
         """
@@ -1866,7 +1841,7 @@ class JobDefinitionBuilder(object):
         """
         Sets the build type
 
-        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, 
+        :param job_type: the build type for the job  RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD,
                             RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD
         """
         self.definition['type'] = job_type
@@ -1883,10 +1858,10 @@ class JobDefinitionBuilder(object):
     def with_output(self, name, object_type=None, object_project_key=None, partition=None):
         """
         Adds an item to build in this job
-        
+
         :param name: name of the output object
         :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT
-        :param object_project_key: PROJECT_KEY for the project that contains the object to build 
+        :param object_project_key: PROJECT_KEY for the project that contains the object to build
         :param partition: specify partition to build
         """
         self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
@@ -1901,11 +1876,11 @@ class JobDefinitionBuilder(object):
         Starts the job, and return a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it.
 
         You need to wait for the returned job to complete
-        
-        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+
+        :returns: the :class:`dataikuapi.dss.job.DSSJob` job handle
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
-        job_def = self.project.client._perform_json("POST", 
+        job_def = self.project.client._perform_json("POST",
                             "/projects/%s/jobs/" % self.project.project_key, body = self.definition)
         return DSSJob(self.project.client, self.project.project_key, job_def['id'])
 
@@ -1916,7 +1891,7 @@ class JobDefinitionBuilder(object):
         Raises if the job failed.
 
         :param no_fail: if True, does not raise if the job failed.
-        :return: the :class:`dataikuapi.dss.job.DSSJob` job handle
+        :returns: the :class:`dataikuapi.dss.job.DSSJob` job handle
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
         job = self.start()
