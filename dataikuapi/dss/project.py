@@ -230,6 +230,14 @@ class DSSProject(object):
         """
         Set the metadata on this project.
 
+        Usage example:
+
+        .. code-block:: python
+
+            project_metadata = project.get_metadata()
+            project_metadata['tags'] = ['tag1','tag2']
+            project.set_metadata(project_metadata)
+
         :param dict metadata: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_empty(
@@ -258,6 +266,14 @@ class DSSProject(object):
     def set_permissions(self, permissions):
         """
         Sets the permissions on this project
+
+        Usage example:
+
+        .. code-block:: python
+
+            project_permissions = project.get_permissions()
+            project_permissions['permissions'].append({'group':'data_scientists','readProjectContent': True, 'readDashboards': True})
+            project.set_permissions(project_permissions)
 
         :param permissions dict: a permissions object with the same structure as the one returned by :meth:`get_permissions` call
         """
