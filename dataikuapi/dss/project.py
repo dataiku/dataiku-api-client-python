@@ -188,9 +188,9 @@ class DSSProject(object):
         :param bool export_insights_data:
         :param dict remapping: dict of connections to be remapped for the new project (defaults to `{}`)
         :param target_project_folder: the project folder where to put the duplicated project
-        :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder
+        :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         :returns: A dict containing the original and duplicated project's keys
-        :rtype: :class:`ProjectDuplicateResult`
+        :rtype: dict
         """
         if remapping is None:
             remapping = {}
@@ -230,7 +230,7 @@ class DSSProject(object):
         """
         Set the metadata on this project.
 
-        :param metadata dict: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
+        :param dict metadata: the new state of the metadata for the project. You should only set a metadata object that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_empty(
             "PUT", "/projects/%s/metadata" % self.project_key, body = metadata)
@@ -239,7 +239,7 @@ class DSSProject(object):
         """
         Gets the settings of this project. This does not contain permissions. See :meth:`get_permissions`
 
-        :returns a handle to read, modify and save the settings
+        :returns: a handle to read, modify and save the settings
         :rtype: :class:`DSSProjectSettings`
         """
         ret = self.client._perform_json("GET", "/projects/%s/settings" % self.project_key)
@@ -269,8 +269,8 @@ class DSSProject(object):
         Get the interest of this project. The interest means the number of watchers and the number of stars.
 
         :returns: a dict object containing the interest of the project with two fields:
-           - starCount: number of stars for this project
-           - watchCount: number of users watching this project
+            * starCount: number of stars for this project
+            * watchCount: number of users watching this project
         :rtype: dict
         """
         return self.client._perform_json("GET","/projects/%s/interest" % self.project_key)
@@ -282,13 +282,15 @@ class DSSProject(object):
         and a list of modifications. This list of modifications contains a maximum of `item_count` elements (default: 100).
         If `item_count` is greater than the real number of modification, `item_count` is adjusted.
 
+        :param int item_count: maximum number of modifications to retrieve in the items list
+
         :returns: a dict object containing a timeline where the top-level fields are :
-          - allContributors: all contributors who have been involve in this project
-          - items: a history of the modifications of the project
-          - createdBy: who created this project
-          - createdOn: when the project was created
-          - lastModifiedBy: who modified this project for the last time
-          - lastModifiedOn: when this modification took place
+            * allContributors: all contributors who have been involve in this project
+            * items: a history of the modifications of the project
+            * createdBy: who created this project
+            * createdOn: when the project was created
+            * lastModifiedBy: who modified this project for the last time
+            * lastModifiedOn: when this modification took place
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/timeline" % self.project_key, params = {
@@ -339,7 +341,7 @@ class DSSProject(object):
         Not all settings of a dataset can be set at creation time (for example partitioning). After creation,
         you'll have the ability to modify the dataset
 
-        :param string dataset_name: the name for the new dataset
+        :param string dataset_name: the name of the dataset to create. Must not already exist
         :param string type: the type of the dataset
         :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
         :param string formatType: an optional format to create the dataset with (only for file-oriented datasets)
@@ -364,6 +366,14 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_upload_dataset(self, dataset_name, connection=None):
+        """
+        Create a new dataset of type 'UploadedFiles' in the project, and return a handle to interact with it.
+
+        :param string dataset_name: the name of the dataset to create. Must not already exist
+        :param string connection: the name of the upload connection
+
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        """
         obj = {
             "name" : dataset_name,
             "projectKey" : self.project_key,
@@ -377,17 +387,30 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_filesystem_dataset(self, dataset_name, connection, path_in_connection):
+        """
+        Create a new filesystem dataset in the project, and return a handle to interact with it.
+
+        :param string dataset_name: the name of the dataset to create. Must not already exist
+        :param string connection: the name of the connection
+        :param string path_in_connection: the path of the dataset in the connection
+
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        """
         return self.create_fslike_dataset(dataset_name, "Filesystem", connection, path_in_connection)
 
     def create_s3_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
         """
         Creates a new external S3 dataset in the project and returns a :class:`~dataikuapi.dss.dataset.DSSDataset` to interact with it.
 
-        The created dataset doesn not have its format and schema initialized, it is recommend to use
+        The created dataset does not have its format and schema initialized, it is recommend to use
         :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
 
-        :param dataset_name: Name of the dataset to create. Must not already exist
-        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        :param string dataset_name: the name of the dataset to create. Must not already exist
+        :param string connection: the name of the connection
+        :param string path_in_connection: the path of the dataset in the connection
+        :param string bucket: the name of the s3 bucket
+
+        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
         """
         extra_params = {}
         if bucket is not None:
