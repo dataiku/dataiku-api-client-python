@@ -250,6 +250,7 @@ class DSSProject(object):
        Get the permissions attached to this project
 
        :returns: A dict containing the owner and the permissions, as a list of pairs of group name and permission type
+       :rtype: dict
        """
        return self.client._perform_json(
           "GET", "/projects/%s/permissions" % self.project_key)
@@ -386,7 +387,7 @@ class DSSProject(object):
         :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
 
         :param dataset_name: Name of the dataset to create. Must not already exist
-        :rtype: `~dataikuapi.dss.dataset.DSSDataset`
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         extra_params = {}
         if bucket is not None:
@@ -571,6 +572,9 @@ class DSSProject(object):
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
+
+        :returns: A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         obj = {
             "inputDataset": input_dataset,
@@ -612,6 +616,9 @@ class DSSProject(object):
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
+
+        :returns: A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle of type 'CLUSTERING'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
 
         obj = {
@@ -633,6 +640,7 @@ class DSSProject(object):
         List the ML tasks in this project
 
         :returns: the list of the ML tasks summaries, each one as a JSON object
+        :rtype: list
         """
         return self.client._perform_json("GET", "/projects/%s/models/lab/" % self.project_key)
 
@@ -640,9 +648,8 @@ class DSSProject(object):
         """
         Get a handle to interact with a specific ML task
 
-        Args:
-            analysis_id: the identifier of the visual analysis containing the desired ML task
-            mltask_id: the identifier of the desired ML task
+        :param string analysis_id: the identifier of the visual analysis containing the desired ML task
+        :param string mltask_id: the identifier of the desired ML task
 
         :returns: A :class:`dataikuapi.dss.ml.DSSMLTask` ML task handle
         """
@@ -662,6 +669,9 @@ class DSSProject(object):
         """
         Creates a new visual analysis lab for a dataset.
 
+        :param string input_dataset: the dataset to use for the analysis
+
+        :returns: A :class:`dataikuapi.dss.analysis.DSSAnalysis` visual analysis handle
         """
 
         obj = {
@@ -676,6 +686,7 @@ class DSSProject(object):
         List the visual analyses in this project
 
         :returns: the list of the visual analyses summaries, each one as a JSON object
+        :rtype: list
         """
         return self.client._perform_json("GET", "/projects/%s/lab/" % self.project_key)
 
@@ -698,6 +709,7 @@ class DSSProject(object):
         List the saved models in this project
 
         :returns: the list of the saved models, each one as a JSON object
+        :rtype: list
         """
         return self.client._perform_json(
             "GET", "/projects/%s/savedmodels/" % self.project_key)
@@ -718,6 +730,8 @@ class DSSProject(object):
 
         :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+
+        :returns: a :class:`dataikuapi.dss.savedmodel.DSSSavedModel` saved model handle
         """
         model = {
             "savedModelType" : "MLFLOW_PYFUNC",
@@ -737,6 +751,7 @@ class DSSProject(object):
         List the managed folders in this project
 
         :returns: the list of the managed folders, each one as a JSON object
+        :rtype: list
         """
         return self.client._perform_json(
             "GET", "/projects/%s/managedfolders/" % self.project_key)
@@ -847,8 +862,7 @@ class DSSProject(object):
         :param string name: the name for the new model comparison
         :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
 
-        :returns: A handle on a new model comparison
-        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        :returns: A new :class:`dataikuapi.dss.modelcomparison.DSSModelComparison` model comparison handle
         """
         obj = {
             "projectKey": self.project_key,
@@ -869,6 +883,7 @@ class DSSProject(object):
         List the jobs in this project
 
         :returns: a list of the jobs, each one as a JSON object, containing both the definition and the state
+        :rtype: list
         """
         return self.client._perform_json(
             "GET", "/projects/%s/jobs/" % self.project_key)
@@ -945,7 +960,6 @@ class DSSProject(object):
         :param bool active: if True, only return currently running jupyter notebooks.
 
         :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
-
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`
         """
         notebook_items = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/" % self.project_key, params={"active": active})
@@ -990,6 +1004,7 @@ class DSSProject(object):
         List the continuous activities in this project
 
         :returns: a list of the continuous activities, each one as a JSON object, containing both the definition and the state
+        :rtype: list
         """
         list = self.client._perform_json("GET", "/projects/%s/continuous-activities/" % self.project_key)
         if as_objects:
@@ -1016,6 +1031,7 @@ class DSSProject(object):
         :returns: a dictionary containing two dictionaries : "standard" and "local".
                   "standard" are regular variables, exported with bundles.
                   "local" variables are not part of the bundles for this project
+        :rtype: dict
         """
         return self.client._perform_json(
             "GET", "/projects/%s/variables/" % self.project_key)
@@ -1060,6 +1076,7 @@ class DSSProject(object):
         List the API services in this project
 
         :returns: the list of API services, each one as a JSON object
+        :rtype: list
         """
         return self.client._perform_json(
             "GET", "/projects/%s/apiservices/" % self.project_key)
@@ -1094,6 +1111,7 @@ class DSSProject(object):
     def list_exported_bundles(self):
         """
         :returns: A dictionary of all bundles for a project on the Design node.
+        :rtype: dict
         """
         return self.client._perform_json("GET",
                 "/projects/%s/bundles/exported" % self.project_key)
