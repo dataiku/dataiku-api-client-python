@@ -134,7 +134,8 @@ class DSSScenario(object):
     def get_status(self):
         """
         Returns the status of this scenario
-        :rtype :class:`DSSScenarioStatus`
+
+        :rtype: :class:`DSSScenarioStatus`
         """
         data = self.client._perform_json("GET", "/projects/%s/scenarios/%s/light" % (self.project_key, self.id))
         return DSSScenarioStatus(self, data)
@@ -142,7 +143,8 @@ class DSSScenario(object):
     def get_settings(self):
         """
         Returns the settings of this scenario
-        :rtype :class:`StepBasedDSSScenarioSettings` or :class:`PythonScriptBasedScenarioSettings`
+
+        :rtype: :class:`StepBasedScenarioSettings` or :class:`PythonScriptBasedScenarioSettings`
         """
         data = self.client._perform_json("GET", "/projects/%s/scenarios/%s" % (self.project_key, self.id))
 
