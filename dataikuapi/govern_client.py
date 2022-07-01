@@ -4,10 +4,11 @@ from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser
-from dataikuapi.govern.blueprint_designer import BlueprintDesigner
+from dataikuapi.govern.blueprint_designer import GovernBlueprintDesigner
+from dataikuapi.govern.custom_page_editor import GovernCustomPageEditor
 from dataikuapi.govern.models import GovernArtifact
-from dataikuapi.govern.models.blueprint import GovernBlueprint
 from dataikuapi.govern.models.admin.admin_custom_page import GovernAdminCustomPage
+from dataikuapi.govern.models.blueprint import GovernBlueprint
 from dataikuapi.govern.roles_permissions_editor import GovernRolesPermissionsEditor
 from dataikuapi.utils import DataikuException
 
@@ -101,7 +102,7 @@ class GovernClient(object):
 
         :rtype: A :class:`dataikuapi.govern.blueprint_designer.GovernBlueprintDesigner`
         """
-        return BlueprintDesigner(self)
+        return GovernBlueprintDesigner(self)
 
     ########################################################
     # Roles and Permissions
@@ -128,16 +129,16 @@ class GovernClient(object):
         blueprint_list = self._perform_json('GET', '/blueprints')
         return blueprint_list
 
-    def get_blueprint(self, blueprintId):
+    def get_blueprint(self, blueprint_id):
         """
         Retrieve a blueprint from a Govern node. If you want to edit a blueprint or its version, use:
         :class: `dataikuapi.govern.blueprint_designer.GovernBlueprintDesigner`
 
-        :param str blueprintId: id of the blueprint to retrieve
+        :param str blueprint_id: id of the blueprint to retrieve
         :returns The handle of the blueprint
         :rtype: :class:`dataikuapi.govern.models.blueprint.Blueprint`
         """
-        return GovernBlueprint(self, blueprintId)
+        return GovernBlueprint(self, blueprint_id)
 
     ########################################################
     # Artifacts
@@ -147,7 +148,7 @@ class GovernClient(object):
         """
         Retrieve an artifact from a Govern node
 
-        :param str artifactId: id of the artifact to retrieve
+        :param str artifact_id: id of the artifact to retrieve
 
         :return: the corresponding :class:`govern.models.Artifact`
         """
@@ -165,17 +166,25 @@ class GovernClient(object):
         result = self._perform_json('POST', '/artifacts', body=artifact)
         return GovernArtifact(self, result.id, result)
 
-    def delete_artifact(self, artifactId):
+    def delete_artifact(self, artifact_id):
         """
         Delete an artifact from a Govern node
 
-        :param str artifactId: id of the artifact to delete
+        :param str artifact_id: id of the artifact to delete
         """
-        self._perform_empty('DELETE', '/artifact/%s' % artifactId)
+        self._perform_empty('DELETE', '/artifact/%s' % artifact_id)
 
     ########################################################
     # Custom  Pages
     ########################################################
+
+    def get_custom_page_editor(self):
+        """
+        Return a handle to edit custom pages on the Govern instance
+
+        :rtype: A :class:`dataikuapi.govern.custom_page_editor.GovernCustomPageEditor
+        """
+        return GovernCustomPageEditor(self)
 
     def get_custom_page(self, custom_page_id):
         """

@@ -1,7 +1,7 @@
 from dataikuapi.govern.models.admin.admin_blueprint import GovernAdminBlueprint
 
 
-class BlueprintDesigner(object):
+class GovernBlueprintDesigner(object):
     """
     Handle to interact with the blueprint designer
     Do not create this directly, use :meth:`dataikuapi.govern_client.get_blueprint_designer()`
@@ -32,7 +32,7 @@ class BlueprintDesigner(object):
         Get a specific blueprint.
 
         :param str blueprint_id: the id of the blueprint
-        :returns: a admin blueprint object
+        :returns: an admin blueprint object
         :rtype: :class: `dataikuapi.govern.models.admin.admin_blueprint.GovernAdminBlueprint`
         """
 
