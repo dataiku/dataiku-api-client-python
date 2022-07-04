@@ -389,7 +389,8 @@ class DSSProject(object):
         :param str dataset_name: the name of the dataset to create. Must not already exist
         :param str connection: the name of the upload connection
 
-        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        :returns: A dataset handle
+        :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         obj = {
             "name" : dataset_name,
