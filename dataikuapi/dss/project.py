@@ -412,7 +412,8 @@ class DSSProject(object):
         :param str connection: the name of the connection
         :param str path_in_connection: the path of the dataset in the connection
 
-        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        :returns: A dataset handle
+        :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         return self.create_fslike_dataset(dataset_name, "Filesystem", connection, path_in_connection)
 
