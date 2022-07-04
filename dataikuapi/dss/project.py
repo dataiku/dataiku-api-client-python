@@ -340,7 +340,8 @@ class DSSProject(object):
 
         :param str dataset_name: the name of the desired dataset
 
-        :returns: A :class:`dataikuapi.dss.dataset.DSSDataset` dataset handle
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset` 
         """
         return DSSDataset(self.client, self.project_key, dataset_name)
 
