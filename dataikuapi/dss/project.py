@@ -419,7 +419,7 @@ class DSSProject(object):
 
     def create_s3_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
         """
-        Creates a new external S3 dataset in the project and returns a :class:`~dataikuapi.dss.dataset.DSSDataset` to interact with it.
+        Creates a new external S3 dataset in the project and returns a :class:`dataikuapi.dss.dataset.DSSDataset` to interact with it.
 
         The created dataset does not have its format and schema initialized, it is recommend to use
         :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
