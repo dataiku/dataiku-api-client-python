@@ -486,7 +486,8 @@ class DSSProject(object):
             dataset = builder.create()
 
         :param str dataset_name: Name of the dataset to create
-        :returns: A :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper` object to create the managed dataset
+
+        :returns: An object to create the managed dataset
         :rtype: :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper`
         """
         return DSSManagedDatasetCreationHelper(self, dataset_name)
