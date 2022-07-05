@@ -825,6 +825,8 @@ class DSSProject(object):
         Create a new managed folder in the project, and return a handle to interact with it
 
         :param str name: the name of the managed folder
+        :param str folder_type: type of storage (defaults to `None`)
+        :param str connection_name: the connection name (defaults to `filesystem_folders`)
 
         :returns: A managed folder handle
         :rtype:  :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`
@@ -950,6 +952,8 @@ class DSSProject(object):
         """
         Get a handler to interact with a specific job
 
+        :param str id: the id of the desired job
+
         :returns: A job handle
         :rtype:  :class:`dataikuapi.dss.job.DSSJob`
         """
@@ -1057,7 +1061,7 @@ class DSSProject(object):
             The data will be converted to a JSON string internally.
             Use ``get_content()`` on a similar existing ``DSSNotebook`` object in order to get a sample definition object
         :returns: A handle to interact with the newly created jupyter notebook
-        :rtype: :class:`~dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
+        :rtype: :class:`dataikuapi.dss.notebook.DSSNotebook` jupyter notebook handle
         """
         self.client._perform_json("POST", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name), body=notebook_content)
         return self.get_jupyter_notebook(notebook_name)
@@ -1159,7 +1163,8 @@ class DSSProject(object):
         service does not have any endpoint.
 
         :param str service_id: the ID of the API service to create
-        :returns: A :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        :returns: A API Service handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSAPIService`
         """
         self.client._perform_empty(
             "POST", "/projects/%s/apiservices/%s" % (self.project_key, service_id))
@@ -1172,7 +1177,7 @@ class DSSProject(object):
 
         :param str service_id: The identifier of the API Designer API Service to retrieve
         :returns: A handle to interact with this API Service
-        :rtype: :class:`~dataikuapi.dss.dataset.DSSAPIService` API Service handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSAPIService` API Service handle
         """
         return DSSAPIService(self.client, self.project_key, service_id)
 
@@ -1460,6 +1465,7 @@ class DSSProject(object):
 
         :param str type: Type of the recipe
         :param str name: Optional, base name for the new recipe.
+        :returns: A new DSS Recipe Creator handle
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         """
 
@@ -1506,6 +1512,7 @@ class DSSProject(object):
 
     def get_flow(self):
         """
+        :returns: A Flow handle
         :rtype: A :class:`dataikuapi.dss.flow.DSSProjectFlow`
         """
         return DSSProjectFlow(self.client, self)
@@ -1663,6 +1670,9 @@ class DSSProject(object):
         """
         Lists tables to import in a SQL connection
 
+        :param str connection_name: name of the SQL connection
+        :param str schema_name: Optional, name of the schema in the SQL connection in which to list tables.
+
         :returns: an array of tables
         :rtype: list
         """
@@ -1676,6 +1686,8 @@ class DSSProject(object):
     def list_hive_tables(self, hive_database):
         """
         Lists tables to import in a Hive database
+
+        :param str hive_database: name of the Hive database
 
         :returns: an array of tables
         :rtype: list
@@ -1713,7 +1725,8 @@ class DSSProject(object):
         """
         Get a handle to interact with the extension of MLflow provided by DSS
 
-        :returns: A :class:`dataikuapi.dss.mlflow.DSSMLflowExtension` Mlflow Extension handle
+        :returns: A Mlflow Extension handle
+        :rtype: :class:`dataikuapi.dss.mlflow.DSSMLflowExtension`
 
         """
         return DSSMLflowExtension(client=self.client, project_key=self.project_key)
@@ -1921,6 +1934,10 @@ class DSSProjectSettings(object):
         """
         Exposes an object from this project to another project.
         Does nothing if the object was already exposed to the target project
+
+        :param str object_type: type of the object to expose
+        :param str object_id: id of the object to expose
+        :param str target_project: id of the project in which to expose the object
         """
         found_eo = None
         for eo in self.settings["exposedObjects"]["objects"]:
@@ -1970,6 +1987,8 @@ class JobDefinitionBuilder(object):
         """
         Sets whether the hive tables built by the job should have their definitions
         refreshed after the corresponding dataset is built
+
+        :param bool refresh_metastore:
         """
         self.definition['refreshHiveMetastore'] = refresh_metastore
         return self
