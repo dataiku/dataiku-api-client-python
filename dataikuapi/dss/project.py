@@ -89,9 +89,9 @@ class DSSProject(object):
 
         This call requires an API key with admin rights
 
-        :param bool clear_managed_datasets: Should the data of managed datasets be cleared
-        :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared
-        :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared
+        :param bool clear_managed_datasets: Should the data of managed datasets be cleared (defaults to `False)
+        :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared (defaults to `False`)
+        :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared (defaults to `True`)
         """
         # For backwards compatibility
         if 'drop_data' in kwargs and kwargs['drop_data']:
@@ -181,13 +181,13 @@ class DSSProject(object):
 
         :param str target_project_key: The key of the new project
         :param str target_project_name: The name of the new project
-        :param str duplication_mode: can be one of the following values: MINIMAL, SHARING, FULL, NONE
-        :param bool export_analysis_models:
-        :param bool export_saved_models:
-        :param bool export_git_repository:
-        :param bool export_insights_data:
+        :param str duplication_mode: can be one of the following values: MINIMAL, SHARING, FULL, NONE (defaults to `MINIMAL`)
+        :param bool export_analysis_models: (defaults to `True`)
+        :param bool export_saved_models: (defaults to `True`)
+        :param bool export_git_repository: (defaults to `True`)
+        :param bool export_insights_data: (defaults to `True`)
         :param dict remapping: dict of connections to be remapped for the new project (defaults to `{}`)
-        :param target_project_folder: the project folder where to put the duplicated project
+        :param target_project_folder: the project folder where to put the duplicated project (defaults to `None`)
         :type target_project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         :returns: A dict containing the original and duplicated project's keys
         :rtype: dict
@@ -321,7 +321,7 @@ class DSSProject(object):
         """
         List the datasets in this project.
 
-        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
         :returns: The list of the datasets. If "as_type" is "listitems", each one as a :class:`dataset.DSSDatasetListItem`.
                   If "as_type" is "objects", each one as a :class:`dataset.DSSDataset`
         :rtype: list
@@ -341,7 +341,7 @@ class DSSProject(object):
         :param str dataset_name: the name of the desired dataset
 
         :returns: A dataset handle
-        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset` 
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         return DSSDataset(self.client, self.project_key, dataset_name)
 
@@ -365,7 +365,8 @@ class DSSProject(object):
         :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to `{}`)
 
         :returns: A dataset handle
-        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset` 
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
         if params is None:
             params = {}
         if formatParams is None:
@@ -387,7 +388,7 @@ class DSSProject(object):
         Create a new dataset of type 'UploadedFiles' in the project, and return a handle to interact with it.
 
         :param str dataset_name: the name of the dataset to create. Must not already exist
-        :param str connection: the name of the upload connection
+        :param str connection: the name of the upload connection (defaults to `None`)
 
         :returns: A dataset handle
         :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
@@ -427,7 +428,7 @@ class DSSProject(object):
         :param str dataset_name: the name of the dataset to create. Must not already exist
         :param str connection: the name of the connection
         :param str path_in_connection: the path of the dataset in the connection
-        :param str bucket: the name of the s3 bucket
+        :param str bucket: the name of the s3 bucket (defaults to `None`)
 
         :returns: A dataset handle
         :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
@@ -501,7 +502,7 @@ class DSSProject(object):
         """
         List the streaming endpoints in this project.
 
-        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
         :returns: The list of the streaming endpoints. If "as_type" is "listitems", each one as a :class:`streaming_endpoint.DSSStreamingEndpointListItem`.
                   If "as_type" is "objects", each one as a :class:`streaming_endpoint.DSSStreamingEndpoint`
         :rtype: list
@@ -612,10 +613,10 @@ class DSSProject(object):
 
         :param str input_dataset: the dataset to use for training/testing the model
         :param str target_variable: the variable to predict
-        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
-        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
-        :param str prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS
-        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O (defaults to `PY_MEMORY`)
+        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE (defaults to `DEFAULT`)
+        :param str prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS (defaults to `None`)
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms (defaults to `True`).
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
@@ -657,9 +658,9 @@ class DSSProject(object):
         ``wait_guess_complete`` on the returned object before doing anything
         else (in particular calling ``train`` or ``get_settings``)
 
-        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
-        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
-        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O (defaults to `PY_MEMORY`)
+        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION (defaults to `KMEANS`)
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms (defaults to `True`).
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
@@ -746,7 +747,7 @@ class DSSProject(object):
         :param str analysis_id: the identifier of the desired visual analysis
 
         :returns: A visual analysis handle
-        :rtype: :class:`dataikuapi.dss.analysis.DSSAnalysis` 
+        :rtype: :class:`dataikuapi.dss.analysis.DSSAnalysis`
         """
         return DSSAnalysis(self.client, self.project_key, analysis_id)
 
@@ -783,7 +784,7 @@ class DSSProject(object):
         :param str prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
 
        :returns: A saved model handle
-       :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel` 
+       :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
         """
         model = {
             "savedModelType" : "MLFLOW_PYFUNC",
@@ -815,7 +816,7 @@ class DSSProject(object):
         :param str odb_id: the identifier of the desired managed folder
 
         :returns: A managed folder handle
-        :rtype: :class:`dataikuapi.dss.managedfolder.DSSManagedFolder` 
+        :rtype: :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`
         """
         return DSSManagedFolder(self.client, self.project_key, odb_id)
 
@@ -875,7 +876,8 @@ class DSSProject(object):
         :param str name: the name for the new model evaluation store
 
         :returns: A model evaluation store handle
-        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore` 
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
+        """
         obj = {
             "projectKey" : self.project_key,
             "name" : name
@@ -949,7 +951,7 @@ class DSSProject(object):
         Get a handler to interact with a specific job
 
         :returns: A job handle
-        :rtype:  :class:`dataikuapi.dss.job.DSSJob` 
+        :rtype:  :class:`dataikuapi.dss.job.DSSJob`
         """
         return DSSJob(self.client, self.project_key, id)
 
@@ -964,7 +966,7 @@ class DSSProject(object):
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
 
         :returns: A job handle
-        :rtype: :class:`dataikuapi.dss.job.DSSJob` 
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
         job_def = self.client._perform_json("POST", "/projects/%s/jobs/" % self.project_key, body = definition)
         return DSSJob(self.client, self.project_key, job_def['id'])
@@ -978,7 +980,7 @@ class DSSProject(object):
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive metastore for recomputed HDFS datasets.
-        :param bool no_fail: if true, the function won't fail even if the job fails or aborts
+        :param bool no_fail: if true, the function won't fail even if the job fails or aborts (defaults to `False`)
 
         :returns: the final status of the job
         :rtype: str
@@ -1000,7 +1002,7 @@ class DSSProject(object):
             complete_job = job_builder.start_and_wait()
             print("Job %s done" % complete_job.id)
 
-        :param str job_type: the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD)
+        :param str job_type: the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD, RECURSIVE_MISSING_ONLY_BUILD) (defaults to `NON_RECURSIVE_FORCED_BUILD`)
 
         :returns: A job handle
         :rtype: :class:`JobDefinitionBuilder`
@@ -1020,8 +1022,8 @@ class DSSProject(object):
         """
         List the jupyter notebooks of a project.
 
-        :param bool active: if True, only return currently running jupyter notebooks.
-        :param bool as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param bool active: if True, only return currently running jupyter notebooks (defaults to `active`).
+        :param bool as_type: How to return the list. Supported values are "listitems" and "object" (defaults to `object`).
 
         :returns: The list of the notebooks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`, if "as_type" is "objects", each one as a :class:`dataikuapi.dss.notebook.DSSJupyterNotebook`
         :rtype: list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebook` or list of :class:`dataikuapi.dss.notebook.DSSJupyterNotebookListItem`
@@ -1068,7 +1070,7 @@ class DSSProject(object):
         """
         List the continuous activities in this project
 
-        :param bool as_objects: if True, returns a list of :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` objects, else returns a list of JSON objects
+        :param bool as_objects: if True, returns a list of :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` objects, else returns a list of JSON objects (defaults to `True`)
 
         :returns: a list of the continuous activities, each one as a JSON object, containing both the definition and the state
         :rtype: list
@@ -1130,7 +1132,7 @@ class DSSProject(object):
         :param variables dict: a dict of variable name -> value to set. Keys of the dict must be strings.
                     Values in the dict can be strings, numbers, booleans, lists or dicts
         :param type str: Can be "standard" to update regular variables or "local" to update local-only
-                    variables that are not part of bundles for this project
+                    variables that are not part of bundles for this project (defaults to `standard`)
         """
 
         current_variables = self.get_variables()
@@ -1306,7 +1308,7 @@ class DSSProject(object):
 
         :param str bundle_id: The ID of the bundle to activate
         :param dict scenarios_to_enable: An optional dict of scenarios to enable or disable upon bundle activation. The
-               format of the dict should be scenario IDs as keys with values of True or False.
+               format of the dict should be scenario IDs as keys with values of True or False (defaults to `{}`).
         :returns: A report containing any error or warning messages that occurred during bundle activation
         :rtype: dict
         """
@@ -1333,7 +1335,7 @@ class DSSProject(object):
         """
         List the scenarios in this project.
 
-        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
         :returns: The list of the datasets. If "rtype" is "listitems", each one as a :class:`scenario.DSSScenarioListItem`.
                   If "rtype" is "objects", each one as a :class:`scenario.DSSScenario`
         :rtype: list
@@ -1385,7 +1387,7 @@ class DSSProject(object):
         """
         List the recipes in this project
 
-        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
         :returns: The list of the recipes. If "as_type" is "listitems", each one as a :class:`recipe.DSSRecipeListItem`.
                   If "as_type" is "objects", each one as a :class:`recipe.DSSRecipe`
         :rtype: list
@@ -1575,7 +1577,7 @@ class DSSProject(object):
         List the macros accessible in this project
 
         :param as_objects: if True, return the macros as :class:`dataikuapi.dss.macro.DSSMacro`
-                        macro handles instead of raw JSON
+                        macro handles instead of raw JSON (defaults to `False`)
         :returns: the list of the macros
         :rtype: list
         """
@@ -1703,7 +1705,7 @@ class DSSProject(object):
         :param object managed_folder: the managed folder where MLflow artifacts should be stored.
                                       Can be either a managed folder id as a string,
                                       a :class:`dataikuapi.dss.DSSManagedFolder`, or a :class:`dataiku.Folder`
-        :param str host: setup a custom host if the backend used is not DSS.
+        :param str host: setup a custom host if the backend used is not DSS (defaults to `None`).
         """
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
@@ -1725,7 +1727,7 @@ class DSSProject(object):
         """
         List the code studio objects in this project
 
-        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
 
         :returns: the list of the code studio objects, each one as a JSON object
         :rtype: list
@@ -1892,7 +1894,7 @@ class DSSProjectSettings(object):
 
         :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project
                             to use the globally-defined cluster
-        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
+        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist (defaults to `None`)
         """
         if cluster is None:
             self.settings["settings"]["k8sCluster"]["clusterMode"] = "INHERIT"
@@ -1906,7 +1908,7 @@ class DSSProjectSettings(object):
 
         :param str cluster: Identifier of the cluster to use. May use variables expansion. If None, sets the project
                             to use the globally-defined cluster
-        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist
+        :param str fallback_cluster: Identifier of the cluster to use if the variable used for "cluster" does not exist (defaults to `None`)
         """
         if cluster is None:
             self.settings["settings"]["cluster"]["clusterMode"] = "INHERIT"
@@ -1977,9 +1979,9 @@ class JobDefinitionBuilder(object):
         Adds an item to build in this job
 
         :param name: name of the output object
-        :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT
-        :param object_project_key: PROJECT_KEY for the project that contains the object to build
-        :param partition: specify partition to build
+        :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT (defaults to `None`)
+        :param object_project_key: PROJECT_KEY for the project that contains the object to build (defaults to `None`)
+        :param partition: specify partition to build (defaults to `None`)
         """
         self.definition['outputs'].append({'type':object_type, 'id':name, 'projectKey':object_project_key, 'partition':partition})
         return self
@@ -2007,7 +2009,7 @@ class JobDefinitionBuilder(object):
 
         Raises if the job failed.
 
-        :param no_fail: if True, does not raise if the job failed.
+        :param no_fail: if True, does not raise if the job failed (defaults to `False`).
         :returns: A job handle
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """
