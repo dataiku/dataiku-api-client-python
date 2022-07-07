@@ -210,6 +210,7 @@ class GovernAdminBlueprintVersion(object):
         Gets the definition of this blueprint version. If you want to modify the definition, you need to
         object call :meth:`~dataikuapi.govern.models.admin.GovernAdminBlueprintVersionDefinition.save` on the returned
         object
+
         :returns: The definition of the blueprint version as an object.
         :rtype: :class:`dataikuapi.govern.models.admin.GovernAdminBlueprintVersionDefinition`
 
@@ -221,9 +222,14 @@ class GovernAdminBlueprintVersion(object):
 
     def get_status(self):
         """
-        TODO
+        Gets the current status of the blueprint version.
+
+        :return: the status of the blueprint versions. Can be DRAFT, ACTIVE, or ARCHIVED
+        :rtype: str
+
         """
-        return
+        return self.client._perform_json("GET", "/admin/blueprint/%s/version/%s/status" %
+                                         (self.blueprint_id, self.blueprint_version_id))
 
     def update_status(self, status):
         """

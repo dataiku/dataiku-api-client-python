@@ -106,12 +106,12 @@ class GovernRolesPermissionsEditor(object):
     def get_role_assignment(self, blueprint_id):
         """
         Get the role assignment for a specific blueprint. Returns a handle to interact with it.
-        TODO: the endpoints returns a 404 when not assignment exist.
+
         :param str blueprint_id: id of the blueprint
         :returns: a list of role assignment
         :rtype: :class:`dataikuapi.govern.models.blueprint_role_assignment.GovernBlueprintRoleAssignment`
         """
-        assignment = self.client._perform_json("GET", "/admin/blueprint-role-assignment/%s" % (
+        assignment = self.client._perform_json("GET", "/admin/blueprint-role-assignments/%s" % (
             blueprint_id))
         return GovernBlueprintRoleAssignment(self.client, assignment)
 

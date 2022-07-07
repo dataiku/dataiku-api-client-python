@@ -41,6 +41,7 @@ class GovernBlueprintDesigner(object):
     def create_blueprint(self, name, icon, color, new_identifier, background_color=""):
         """
         Create a new blueprint and returns a handle to interact with it.
+
         :param str name: the name of the blueprint
         :param str icon: the icon of the blueprint, can be chosen from: 'account_balance','account_balance_wallet',
         'account_box','account_circle','analytics','announcement','assignment','assignment_ind','assignment_late',
