@@ -55,6 +55,7 @@ class GovernBlueprintRoleAssignment(object):
     def save(self):
         """
         Save this role assignment.
+
         """
         self.role_assignment = self.client._perform_json("PUT", "/admin/blueprint-role-assignments/%s/" % (
             self.id), body=self.role_assignment)

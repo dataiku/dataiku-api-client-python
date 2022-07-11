@@ -4,6 +4,7 @@ from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser
+from dataikuapi.govern.artifact_sign_off_handler import GovernArtifactSignOffHandler
 from dataikuapi.govern.blueprint_designer import GovernBlueprintDesigner
 from dataikuapi.govern.custom_page_editor import GovernCustomPageEditor
 from dataikuapi.govern.models import GovernArtifact
@@ -185,6 +186,16 @@ class GovernClient(object):
         :rtype: A :class:`dataikuapi.govern.custom_page_editor.GovernCustomPageEditor
         """
         return GovernCustomPageEditor(self)
+
+    def get_artifact_sign_off_handler(self, artifact_id):
+        """
+        Return a handle to interact with the sign-off of a specific artifact
+
+        :param str artifact_id: id of the artifact for which the handler will interact
+        :rtype: A :class:`dataikuapi.govern.sign_off_handler.GovernArtifactSignOffHandler`
+        """
+
+        return GovernArtifactSignOffHandler(self, artifact_id)
 
     def get_custom_page(self, custom_page_id):
         """

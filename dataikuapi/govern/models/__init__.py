@@ -1,1 +1,1 @@
-from .govern_artifact import GovernArtifact
+from .artifact import GovernArtifact

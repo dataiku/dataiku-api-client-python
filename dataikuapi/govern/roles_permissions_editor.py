@@ -27,7 +27,7 @@ class GovernRolesPermissionsEditor(object):
         Returns a specific role on the Govern instance
 
         :param str role_id: Identifier of the role to get
-        :rtype: :class:`dataikuapi.govern.models.admin_role.GovernAdminRole
+        :rtype: :class:`dataikuapi.govern.models.admin_role.GovernAdminRole`
         """
         return GovernAdminRole(self.client, role_id)
 
@@ -38,7 +38,7 @@ class GovernRolesPermissionsEditor(object):
         :param str new_identifier: Identifier of the new role
         :param str role_label: Label of the new role
         :param str role_description: Description of the new role
-        :rtype: :class:`GovernAPIRole
+        :rtype: :class: `dataikuapi.govern.models.admin_role.GovernAdminRole`
         """
         result = self.client._perform_json("POST", "/admin/roles/", params={"newIdentifier": new_identifier},
                                            body={"label": role_label, "description": role_description})
