@@ -365,7 +365,8 @@ class DSSProject(object):
         :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to `{}`)
 
         :returns: A dataset handle
-        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset` 
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
         if params is None:
             params = {}
         if formatParams is None:
