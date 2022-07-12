@@ -4,6 +4,7 @@ from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser
+from dataikuapi.govern.admin_roles_audit import GovernAdminRolesAudit
 from dataikuapi.govern.artifact_sign_off_handler import GovernArtifactSignOffHandler
 from dataikuapi.govern.blueprint_designer import GovernBlueprintDesigner
 from dataikuapi.govern.custom_page_editor import GovernCustomPageEditor
@@ -196,6 +197,15 @@ class GovernClient(object):
         """
 
         return GovernArtifactSignOffHandler(self, artifact_id)
+
+    def get_admin_roles_audit(self):
+        """
+        Return a handle to get audit information on roles and permissions for Govern objects.
+
+        :rtype: A :class:`dataikuapi.govern.admin_roles_audit.GovernAdminRolesAudit`
+        """
+
+        return GovernAdminRolesAudit(self)
 
     def get_custom_page(self, custom_page_id):
         """

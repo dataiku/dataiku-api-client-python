@@ -114,7 +114,7 @@ class GovernArtifactSignOffHandler(object):
 
         :param str step_id: id of the step
         :param str status: target feedback status to be chosen from: NOT_STARTED, WAITING_FOR_FEEDBACK, WAITING_FOR_APPROVAL,
-        APPROVED, REJECTED, ABANDONED;
+        APPROVED, REJECTED, ABANDONED
         :param list of dict users_to_notify: List of the user to notify. The list should be a list of dict containing
         two keys "userLogin" and "groupId" for each user to notify. Each user will be notified as part of the given
         group.
