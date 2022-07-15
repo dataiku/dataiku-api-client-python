@@ -65,4 +65,4 @@ class GovernBlueprintDesigner(object):
                   "icon": icon,
                   "color": color,
                   "backgroundColor": background_color})
-        return GovernAdminBlueprint(self, result["blueprint"]["id"])
+        return GovernAdminBlueprint(self.client, result["blueprint"]["id"])

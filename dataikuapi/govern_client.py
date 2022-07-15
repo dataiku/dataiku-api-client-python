@@ -5,6 +5,7 @@ from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser
 from dataikuapi.govern.admin_roles_audit import GovernAdminRolesAudit
+from dataikuapi.govern.artifact_search_handler import GovernArtifactSearchHandler
 from dataikuapi.govern.artifact_sign_off_handler import GovernArtifactSignOffHandler
 from dataikuapi.govern.blueprint_designer import GovernBlueprintDesigner
 from dataikuapi.govern.custom_page_editor import GovernCustomPageEditor
@@ -197,6 +198,15 @@ class GovernClient(object):
         """
 
         return GovernArtifactSignOffHandler(self, artifact_id)
+
+    def get_artifact_search_handler(self):
+        """
+        Return a handle to build and perform artifact search requests.
+
+        :rtype: A :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchHandler`
+        """
+
+        return GovernArtifactSearchHandler(self)
 
     def get_admin_roles_audit(self):
         """
