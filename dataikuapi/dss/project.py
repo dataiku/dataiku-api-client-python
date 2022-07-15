@@ -391,7 +391,7 @@ class DSSProject(object):
         :param str connection: the name of the upload connection (defaults to `None`)
 
         :returns: A dataset handle
-        :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         obj = {
             "name" : dataset_name,
@@ -414,7 +414,7 @@ class DSSProject(object):
         :param str path_in_connection: the path of the dataset in the connection
 
         :returns: A dataset handle
-        :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         return self.create_fslike_dataset(dataset_name, "Filesystem", connection, path_in_connection)
 
@@ -431,7 +431,7 @@ class DSSProject(object):
         :param str bucket: the name of the s3 bucket (defaults to `None`)
 
         :returns: A dataset handle
-        :rtype:  :class:`dataikuapi.dss.dataset.DSSDataset`
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
         extra_params = {}
         if bucket is not None:
@@ -522,7 +522,7 @@ class DSSProject(object):
         :param str streaming_endpoint_name: the name of the desired streaming endpoint
 
         :returns: A streaming endpoint handle
-        :rtype:  :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint`
+        :rtype: :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint`
         """
         return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
 
@@ -593,7 +593,7 @@ class DSSProject(object):
         :param str streaming_endpoint_name: Name of the new streaming endpoint - must be unique in the project
         :param str streaming_endpoint_type: Type of the new streaming endpoint (optional if it can be inferred from a connection type)
         :returns: An object to create the streaming endpoint
-        :rtype:  :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper`
+        :rtype: :class:`dataikuapi.dss.streaming_endpoint.DSSManagedStreamingEndpointCreationHelper`
         """
         return DSSManagedStreamingEndpointCreationHelper(self, streaming_endpoint_name, streaming_endpoint_type)
 
@@ -622,7 +622,7 @@ class DSSProject(object):
                                             else (in particular calling ``train`` or ``get_settings``)
 
         :returns: A ML task handle of type 'PREDICTION'
-        :rtype:  :class:`dataikuapi.dss.ml.DSSMLTask`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         obj = {
             "inputDataset": input_dataset,
@@ -666,7 +666,7 @@ class DSSProject(object):
                                             else (in particular calling ``train`` or ``get_settings``)
 
         :returns: A ML task handle of type 'CLUSTERING'
-        :rtype:  :class:`dataikuapi.dss.ml.DSSMLTask`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
 
         obj = {
@@ -700,7 +700,7 @@ class DSSProject(object):
         :param str mltask_id: the identifier of the desired ML task
 
         :returns: A ML task handle
-        :rtype:  :class:`dataikuapi.dss.ml.DSSMLTask`
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         return DSSMLTask(self.client, self.project_key, analysis_id, mltask_id)
 
@@ -721,7 +721,7 @@ class DSSProject(object):
         :param str input_dataset: the dataset to use for the analysis
 
         :returns: A visual analysis handle
-        :rtype:  :class:`dataikuapi.dss.analysis.DSSAnalysis`
+        :rtype: :class:`dataikuapi.dss.analysis.DSSAnalysis`
         """
 
         obj = {
@@ -772,7 +772,7 @@ class DSSProject(object):
         :param str sm_id: the identifier of the desired saved model
 
         :returns: A saved model handle
-        :rtype:  :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
+        :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
@@ -829,7 +829,7 @@ class DSSProject(object):
         :param str connection_name: the connection name (defaults to `filesystem_folders`)
 
         :returns: A managed folder handle
-        :rtype:  :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`
+        :rtype: :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`
         """
         obj = {
             "name" : name,
@@ -867,7 +867,7 @@ class DSSProject(object):
         :param str mes_id: the id of the desired model evaluation store
 
         :returns: A model evaluation store handle
-        :rtype:  :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
@@ -910,7 +910,7 @@ class DSSProject(object):
         :param str mec_id: the id of the desired model comparison
 
         :returns: A model comparison handle
-        :rtype:  :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
         """
         return DSSModelComparison(self.client, self.project_key, mec_id)
 
@@ -922,7 +922,7 @@ class DSSProject(object):
         :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
 
         :returns: A new model comparison handle
-        :rtype:  :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
+        :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
         """
         obj = {
             "projectKey": self.project_key,
@@ -955,7 +955,11 @@ class DSSProject(object):
         :param str id: the id of the desired job
 
         :returns: A job handle
+<<<<<<< HEAD
         :rtype:  :class:`dataikuapi.dss.job.DSSJob`
+=======
+        :rtype: :class:`dataikuapi.dss.job.DSSJob`
+>>>>>>> 98e9804986c774b1315f2c1fdadb896c726e00c7
         """
         return DSSJob(self.client, self.project_key, id)
 
@@ -1360,7 +1364,7 @@ class DSSProject(object):
         :param str: scenario_id: the ID of the desired scenario
 
         :returns: A scenario handle
-        :rtype:  :class:`dataikuapi.dss.scenario.DSSScenario`
+        :rtype: :class:`dataikuapi.dss.scenario.DSSScenario`
         """
         return DSSScenario(self.client, self.project_key, scenario_id)
 
@@ -1431,7 +1435,7 @@ class DSSProject(object):
         :param dict creation_settings: recipe-specific creation settings
 
         :returns: A recipe handle
-        :rtype:  :class:`dataikuapi.dss.recipe.DSSRecipe`
+        :rtype: :class:`dataikuapi.dss.recipe.DSSRecipe`
         """
         recipe_proto["projectKey"] = self.project_key
         definition = {'recipePrototype': recipe_proto, 'creationSettings' : creation_settings}
@@ -1600,8 +1604,8 @@ class DSSProject(object):
         Get a handle to interact with a specific macro
 
         :param str runnable_type: the identifier of a macro
-       :returns: A macro handle
-       :rtype: :class:`dataikuapi.dss.macro.DSSMacro`
+        :returns: A macro handle
+        :rtype: :class:`dataikuapi.dss.macro.DSSMacro`
         """
         return DSSMacro(self.client, self.project_key, runnable_type)
 
@@ -1761,7 +1765,7 @@ class DSSProject(object):
         :param str code_studio_id: the identifier of the desired code studio object
 
         :returns: A code studio object handle
-        :rtype:  :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
+        :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
         """
         return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
 
@@ -1773,7 +1777,7 @@ class DSSProject(object):
         :param str template_id: the identifier of a code studio template
 
         :returns: A code studio object handle
-        :rtype:  :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
+        :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
         """
         obj = {
             "name" : name,
