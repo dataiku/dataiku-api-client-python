@@ -11,21 +11,26 @@ from .fm.virtualnetworks import (
     FMVirtualNetwork,
     FMAWSVirtualNetworkCreator,
     FMAzureVirtualNetworkCreator,
+    FMGCPVirtualNetworkCreator,
     FMAWSVirtualNetwork,
     FMAzureVirtualNetwork,
+    FMGCPVirtualNetwork
 )
 from .fm.instances import (
     FMInstance,
     FMInstanceEncryptionMode,
     FMAWSInstanceCreator,
     FMAzureInstanceCreator,
+    FMGCPInstanceCreator,
     FMAWSInstance,
     FMAzureInstance,
+    FMGCPInstance
 )
 from .fm.instancesettingstemplates import (
     FMInstanceSettingsTemplate,
     FMAWSInstanceSettingsTemplateCreator,
     FMAzureInstanceSettingsTemplateCreator,
+    FMGCPInstanceSettingsTemplateCreator
 )
 
 import sys
@@ -49,11 +54,11 @@ class FMClient(object):
     ):
         """
         Base class for the different FM Clients
-        Do not create this class, instead use :class:`dataikuapi.FMClientAWS` or :class:`dataikuapi.FMClientAzure`
+        Do not create this class, instead use :class:`dataikuapi.FMClientAWS`, :class:`dataikuapi.FMClientAzure` or :class:`dataikuapi.FMClientGCP`
         """
         if self.cloud == None:
             raise NotImplementedError(
-                "Do not use FMClient directly, instead use FMClientAWS or FMClientAzure"
+                "Do not use FMClient directly, instead use FMClientAWS, FMClientAzure or FMClientGCP"
             )
         self.api_key_id = api_key_id
         self.api_key_secret = api_key_secret
@@ -104,6 +109,8 @@ class FMClient(object):
             return FMAWSVirtualNetwork(self, vn)
         elif self.cloud == "Azure":
             return FMAzureVirtualNetwork(self, vn)
+        elif self.cloud == "GCP":
+            return FMGCPVirtualNetwork(self, vn)
         else:
             raise Exception("Unknown cloud type %s" % self.cloud)
 
@@ -168,6 +175,8 @@ class FMClient(object):
             return FMAWSInstance(self, i)
         elif self.cloud == "Azure":
             return FMAzureInstance(self, i)
+        elif self.cloud == "GCP":
+            return FMGCPInstance(self, i)
         else:
             raise Exception("Unknown cloud type %s" % self.cloud)
 
@@ -407,5 +416,62 @@ class FMClientAzure(FMClient):
         :rtype: :class:`dataikuapi.fm.instances.FMAzureInstanceCreator`
         """
         return FMAzureInstanceCreator(
+            self, label, instance_settings_template_id, virtual_network_id, image_id
+        )
+
+class FMClientGCP(FMClient):
+    def __init__(
+        self,
+        host,
+        api_key_id,
+        api_key_secret,
+        tenant_id="main",
+        extra_headers=None,
+    ):
+        """
+        GCP Only - Instantiate a new FM API client on the given host with the given API key.
+
+        API keys can be managed in FM on the project page or in the global settings.
+
+        The API key will define which operations are allowed for the client.
+
+        :param str host: Full url of the FM
+        """
+        self.cloud = "GCP"
+        super(FMClientGCP, self).__init__(
+            host, api_key_id, api_key_secret, tenant_id, extra_headers
+        )
+
+    def new_virtual_network_creator(self, label):
+        """
+        Instantiate a new virtual network creator
+
+        :param str label: The label of the
+        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMGCPVirtualNetworkCreator`
+        """
+        return FMGCPVirtualNetworkCreator(self, label)
+
+    def new_instance_template_creator(self, label):
+        """
+        Instantiate a new instance template creator
+
+        :param str label: The label of the instance
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMGCPInstanceSettingsTemplateCreator`
+        """
+        return FMGCPInstanceSettingsTemplateCreator(self, label)
+
+    def new_instance_creator(
+        self, label, instance_settings_template_id, virtual_network_id, image_id
+    ):
+        """
+        Instantiate a new instance creator
+
+        :param str label: The label of the instance
+        :param str instance_settings_template: The instance settings template id this instance should be based on
+        :param str virtual_network: The virtual network where the instance should be spawned
+        :param str image_id: The ID of the DSS runtime image (ex: dss-9.0.3-default)
+        :rtype: :class:`dataikuapi.fm.instances.FMGCPInstanceCreator`
+        """
+        return FMGCPInstanceCreator(
             self, label, instance_settings_template_id, virtual_network_id, image_id
         )

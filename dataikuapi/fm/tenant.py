@@ -146,3 +146,18 @@ class FMCloudAuthentication(dict):
         }
 
         return FMCloudAuthentication(data)
+
+    @staticmethod
+    def gcp(project_id, service_account_key):
+        """
+        Azure Only
+
+        :param str project_id: GCP project
+        :param str service_account_key: Optional, service account key (JSON)
+        """
+        data = {
+            "gcpProjectId": project_id,
+            "gcpServiceAccountKey": service_account_key
+        }
+
+        return FMCloudAuthentication(data)
