@@ -107,7 +107,7 @@ class DSSRecipe(object):
             raise Exception("Recipe has unsupported output type {}, can't run it".format(first_output["type"]))
 
         if wait:
-            return jd.start_and_wait()
+            return jd.start_and_wait(no_fail)
         else:
             return jd.start()
 

@@ -25,7 +25,7 @@ from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
-
+from .codestudio import DSSCodeStudioObject, DSSCodeStudioObjectListItem
 
 class DSSProject(object):
     """
@@ -287,7 +287,7 @@ class DSSProject(object):
           - createdBy: who created this project
           - createdOn: when the project was created
           - lastModifiedBy: who modified this project for the last time
-          - lastModifiedBy: when this modification took place
+          - lastModifiedOn: when this modification took place
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/timeline" % self.project_key, params = {
@@ -1606,6 +1606,7 @@ class DSSProject(object):
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
+    ########################################################
     # MLflow experiment tracking
     ########################################################
     def setup_mlflow(self, managed_folder, host=None):
@@ -1627,6 +1628,55 @@ class DSSProject(object):
 
         """
         return DSSMLflowExtension(client=self.client, project_key=self.project_key)
+
+
+
+    ########################################################
+    # Code studios
+    ########################################################
+    def list_code_studios(self, as_type="listitems"):
+        """
+        List the code studio objects in this project
+        
+        :returns: the list of the code studio objects, each one as a JSON object
+        """
+        items = self.client._perform_json(
+            "GET", "/projects/%s/code-studios/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSCodeStudioObjectListItem(self.client, self.project_key, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSCodeStudioObject(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type") 
+
+    def get_code_studio(self, code_studio_id):
+        """
+        Get a handle to interact with a specific code studio object
+       
+        :param str code_studio_id: the identifier of the desired code studio object
+        
+        :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
+        """
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
+
+    def create_code_studio(self, name, template_id):
+        """
+        Create a new code studio object in the project, and return a handle to interact with it
+        
+        :param str name: the name of the code studio object
+        :param str template_id: the identifier of a code studio template
+        
+        :returns: A :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject` code studio object handle
+        """
+        obj = {
+            "name" : name,
+            "templateId" : template_id
+        }
+        res = self.client._perform_json("POST", "/projects/%s/code-studios/" % self.project_key, body = obj)
+        code_studio_id = res['codeStudio']['id']
+        return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
+
+
 
 class TablesImportDefinition(object):
     """
