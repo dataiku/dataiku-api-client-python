@@ -529,7 +529,6 @@ class DataDriftResult(object):
         """
         return self.data
 
-
 class DriftModelResult(object):
     """
     A handle on the drift model result.
