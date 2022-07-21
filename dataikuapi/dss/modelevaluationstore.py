@@ -322,6 +322,34 @@ class DSSModelEvaluation:
         future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=DataDriftResult)
         return future.wait_for_result() if wait else future
 
+    def compute_prediction_drift(self, reference=None, prediction_drift_params=None, wait=True):
+        """
+        Compute prediction drift against a reference model or model evaluation. The reference is determined automatically unless specified.
+
+        :param reference: saved model version (full ID or DSSTrainedPredictionModelDetails)
+                or model evaluation (full ID or DSSModelEvaluation) to use as reference (optional)
+        :type reference: Union[str, DSSModelEvaluation, DSSTrainedPredictionModelDetails]
+        :param prediction_drift_params: prediction drift computation settings as a :class:`dataikuapi.dss.modelevaluationstore.PredictionDriftParams` (optional)
+        :type prediction_drift_params: PredictionDriftParams
+        :param wait: prediction drift computation settings (optional)
+        :returns: a :class:`dataikuapi.dss.modelevaluationstore.PredictionDriftResult` containing prediction drift analysis results if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
+        """
+
+        if hasattr(reference, 'full_id'):
+            reference = reference.full_id
+
+        if prediction_drift_params:
+            prediction_drift_params = prediction_drift_params.data
+
+        future_response = self.client._perform_json(
+            "POST", "/projects/%s/modelevaluationstores/%s/evaluations/%s/computePredictionDrift" % (self.project_key, self.mes_id, self.evaluation_id),
+            body={
+                "referenceId": reference,
+                "predictionDriftParams": prediction_drift_params
+            })
+        future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=DataDriftResult)
+        return future.wait_for_result() if wait else future
+
     def get_metrics(self):
         """
         Get the metrics for this model evaluation. Metrics must be understood here as Metrics in DSS Metrics & Checks
@@ -418,6 +446,35 @@ class DataDriftParams(object):
             "columns": per_column_settings,
             "nbBins": nb_bins,
             "computeHistograms": compute_histograms,
+            "confidenceLevel": confidence_level
+        })
+
+
+class PredictionDriftParams(object):
+    """
+    Object that represents parameters for prediction drift computation.
+    Do not create this object directly, use :meth:`dataikuapi.dss.modelevaluationstore.PredictionDriftParams.from_params` instead.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def __repr__(self):
+        return u"{}({})".format(self.__class__.__name__, self.data)
+
+    @staticmethod
+    def from_params(prediction_type, prediction_column_name="prediction", confidence_level=0.995):
+        """
+        Creates parameters for prediction drift computation: prediction column name, prediction type and confidence interval to accept or reject drift hypothesis
+
+        :param string prediction_type: "REGRESSION", "BINARY_CLASSIFICATION" or "MULTICLASS"
+        :param string prediction_column_name: (optional) the name of the prediction column in the scored dataset. Default value is "prediction"
+        :param float confidence_level: (optional) Used to compute confidence interval on statistical tests (KS test and/or Chi-square test) - default: 0.995
+
+        :rtype: :class:`dataikuapi.dss.modelevaluationstore.PredictionDriftParams`
+        """
+        return PredictionDriftParams({
+            "predictionType": prediction_type,
+            "predictionColumnName": prediction_column_name,
             "confidenceLevel": confidence_level
         })
 
