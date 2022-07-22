@@ -360,9 +360,9 @@ class DSSProject(object):
 
         :param str dataset_name: the name of the dataset to create. Must not already exist
         :param str type: the type of the dataset
-        :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
+        :param dict params: the parameters for the type, as a python dict (defaults to `{}`)
         :param str formatType: an optional format to create the dataset with (only for file-oriented datasets)
-        :param dict formatParams: the parameters to the format, as a JSON object (only for file-oriented datasets, default to `{}`)
+        :param dict formatParams: the parameters to the format, as a python dict (only for file-oriented datasets, default to `{}`)
 
         :returns: A dataset handle
         :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
@@ -540,7 +540,7 @@ class DSSProject(object):
 
         :param str streaming_endpoint_name: the name for the new streaming endpoint
         :param str type: the type of the streaming endpoint
-        :param dict params: the parameters for the type, as a JSON object (defaults to `{}`)
+        :param dict params: the parameters for the type, as a python dict (defaults to `{}`)
 
         :returns: A streaming endpoint handle
         :rtype: :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint`
@@ -687,7 +687,7 @@ class DSSProject(object):
         """
         List the ML tasks in this project
 
-        :returns: the list of the ML tasks summaries, each one as a JSON object
+        :returns: the list of the ML tasks summaries, each one as a python dict
         :rtype: list
         """
         return self.client._perform_json("GET", "/projects/%s/models/lab/" % self.project_key)
@@ -735,7 +735,7 @@ class DSSProject(object):
         """
         List the visual analyses in this project
 
-        :returns: the list of the visual analyses summaries, each one as a JSON object
+        :returns: the list of the visual analyses summaries, each one as a python dict
         :rtype: list
         """
         return self.client._perform_json("GET", "/projects/%s/lab/" % self.project_key)
@@ -759,7 +759,7 @@ class DSSProject(object):
         """
         List the saved models in this project
 
-        :returns: the list of the saved models, each one as a JSON object
+        :returns: the list of the saved models, each one as a python dict
         :rtype: list
         """
         return self.client._perform_json(
@@ -803,7 +803,7 @@ class DSSProject(object):
         """
         List the managed folders in this project
 
-        :returns: the list of the managed folders, each one as a JSON object
+        :returns: the list of the managed folders, each one as a python dict
         :rtype: list
         """
         return self.client._perform_json(
@@ -942,7 +942,7 @@ class DSSProject(object):
         """
         List the jobs in this project
 
-        :returns: a list of the jobs, each one as a JSON object, containing both the definition and the state
+        :returns: a list of the jobs, each one as a python dict, containing both the definition and the state
         :rtype: list
         """
         return self.client._perform_json(
@@ -955,11 +955,7 @@ class DSSProject(object):
         :param str id: the id of the desired job
 
         :returns: A job handle
-<<<<<<< HEAD
-        :rtype:  :class:`dataikuapi.dss.job.DSSJob`
-=======
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
->>>>>>> 98e9804986c774b1315f2c1fdadb896c726e00c7
         """
         return DSSJob(self.client, self.project_key, id)
 
@@ -1078,9 +1074,9 @@ class DSSProject(object):
         """
         List the continuous activities in this project
 
-        :param bool as_objects: if True, returns a list of :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` objects, else returns a list of JSON objects (defaults to `True`)
+        :param bool as_objects: if True, returns a list of :class:`dataikuapi.dss.continuousactivity.DSSContinuousActivity` objects, else returns a list of python dicts (defaults to `True`)
 
-        :returns: a list of the continuous activities, each one as a JSON object, containing both the definition and the state
+        :returns: a list of the continuous activities, each one as a python dict, containing both the definition and the state
         :rtype: list
         """
         list = self.client._perform_json("GET", "/projects/%s/continuous-activities/" % self.project_key)
@@ -1155,7 +1151,7 @@ class DSSProject(object):
         """
         List the API services in this project
 
-        :returns: the list of API services, each one as a JSON object
+        :returns: the list of API services, each one as a python dict
         :rtype: list
         """
         return self.client._perform_json(
@@ -1588,7 +1584,7 @@ class DSSProject(object):
         List the macros accessible in this project
 
         :param as_objects: if True, return the macros as :class:`dataikuapi.dss.macro.DSSMacro`
-                        macro handles instead of raw JSON (defaults to `False`)
+                        macro handles instead of a list of python dicts (defaults to `False`)
         :returns: the list of the macros
         :rtype: list
         """
@@ -1746,7 +1742,7 @@ class DSSProject(object):
 
         :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to `listitems`).
 
-        :returns: the list of the code studio objects, each one as a JSON object
+        :returns: the list of the code studio objects, each one as a python dict
         :rtype: list
         """
         items = self.client._perform_json(
