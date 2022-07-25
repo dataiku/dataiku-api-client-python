@@ -26,6 +26,7 @@ from .analysis import DSSAnalysis
 from .flow import DSSProjectFlow
 from .app import DSSAppManifest
 from .codestudio import DSSCodeStudioObject, DSSCodeStudioObjectListItem
+from .projectlibrary import DSSLibrary
 
 class DSSProject(object):
     """
@@ -1679,65 +1680,14 @@ class DSSProject(object):
     ########################################################
     # Project libraries
     ########################################################
-    def list_library_files(self):
+    def get_library(self):
         """
-        Get the hierarchy of files in the library
-        """
-        return self.client._perform_json("GET", "/projects/%s/libraries/contents" % (self.project_key))
+        Get the library
 
-    def get_library_file(self, path):
+        :returns: the library associated to the project
+        :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibrary`
         """
-        Get a file from the libraries folder
-
-        :param str path: the path of the file, relative to the root of the library
-
-        :return: a file-like object containing the file's content
-        """
-        return self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, path))
-
-    def put_library_file(self, path, f):
-        """
-        Update a file in the library folder
-
-        :param file-like f: the file contents, as a file-like object
-        :param str path: the path of the file, relative ot the root of the library
-        """
-        data = f.read()
-        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, path), raw_body=data)
-
-    def delete_library_file(self, path):
-        """
-        Delete a file in the library folder
-
-        :param str path: the path of the file, relative ot the root of the library
-        """
-        return self.client._perform_empty("DELETE", "/projects/%s/libraries/contents/%s" % (self.project_key, path))
-
-    def add_library_folder(self, path):
-        """
-        Create a folder in the library
-
-        :param str path: the path of the folder, relative ot the root of the library
-        """
-        return self.client._perform_empty("POST", "/projects/%s/libraries/folders/%s" % (self.project_key, path))
-
-    def rename_library_file(self, path, new_name):
-        """
-        Rename a file/folder in the library
-
-        :param str path: the path of the file/folder, relative ot the root of the library
-        :param str new_name: the parameters containing the new name of the file/folder
-        """
-        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, path), body={"newName": new_name})
-
-    def move_library_file(self, path, new_path):
-        """
-        Move a file/folder in the library
-
-        :param str path: the path of the file/folder, relative ot the root of the library
-        :param str new_path: the new path relative at the root of the library
-        """
-        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
+        return DSSLibrary(self.client, self.project_key)
 
 class TablesImportDefinition(object):
     """
