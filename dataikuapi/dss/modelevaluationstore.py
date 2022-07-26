@@ -347,7 +347,7 @@ class DSSModelEvaluation:
                 "referenceId": reference,
                 "predictionDriftParams": prediction_drift_params
             })
-        future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=DataDriftResult)
+        future = DSSFuture(self.client, future_response.get('jobId', None), future_response, result_wrapper=PredictionDriftResult)
         return future.wait_for_result() if wait else future
 
     def get_metrics(self):
@@ -528,6 +528,23 @@ class DataDriftResult(object):
         :rtype: dict
         """
         return self.data
+
+
+class PredictionDriftResult(object):
+    """
+    A handle on the prediction drift result of a model evaluation.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.DSSModelEvaluation.compute_prediction_drift`
+    """
+    def __init__(self, prediction_drift_result):
+        self.prediction_drift_result = prediction_drift_result
+
+    def get_raw(self):
+        """
+        :return: the raw prediction drift result
+        :rtype: dict
+        """
+        return self.prediction_drift_result
 
 
 class DriftModelResult(object):
