@@ -45,6 +45,27 @@ class GovernAdminBlueprint(object):
         else:
             return versions
 
+    def create_version(self, new_identifier, blueprint_version_definition, origin_version_id=None):
+        """
+        Create a new blueprint version and returns a handle to interact with it.
+
+        :param str new_identifier: the new identifier of the blueprint version. This str should be made of letters,
+        digits or hyphen (-,_).
+        :param dict blueprint_version_definition: The definition of the blueprint version.
+        :param str origin_version_id: (Optional) The blueprint version id of the origin version id if there is one.
+        :return: the created :class:`govern.models.AdminBlueprint`
+        :returns The handle of the newly created blueprint
+        :rtype: :class:`dataikuapi.govern.models.admin.blueprint.GovernAdminBlueprintVersion`
+        """
+        params = {"newIdentifier": new_identifier}
+        if origin_version_id is not None:
+            params["originVersionId"] = origin_version_id
+
+        result = self.client._perform_json(
+            "POST", "/admin/blueprint/%s/versions" % self.id, params=params,
+            body=blueprint_version_definition)
+        return GovernAdminBlueprintVersion(self.client, self.id, result["blueprintVersion"]["id"]["versionID"])
+
     def get_version(self, version_id):
         """
         Returns a handle to interact with a blueprint version
@@ -384,7 +405,7 @@ class GovernAdminSignOffConfiguration(object):
     Do not create this directly, use :meth:`dataikuapi.govern.models.admin.GovernAdminBlueprintVersion.get_sign_off_configuration`
     """
 
-    def __init__(self, client, blueprint_id, version_id, step_id,configuration):
+    def __init__(self, client, blueprint_id, version_id, step_id, configuration):
         self.client = client
         self.blueprint_id = blueprint_id
         self.version_id = version_id

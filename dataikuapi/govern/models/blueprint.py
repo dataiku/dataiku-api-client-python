@@ -26,7 +26,7 @@ class GovernBlueprint(object):
         :rtype: :class:`dataikuapi.govern.models.GovernBlueprintDefinition`
         """
         definition = self.client._perform_json(
-            "GET", "/admin/blueprint/%s" % self.blueprint_id).blueprint
+            "GET", "/admin/blueprint/%s" % self.blueprint_id)["blueprint"]
         return GovernBlueprintDefinition(self.client, self.blueprint_id, definition)
 
     def list_versions(self, as_objects=True):

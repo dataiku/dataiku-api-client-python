@@ -55,12 +55,11 @@ class GovernBlueprintDesigner(object):
         :param str color: the color of the blueprint icon, to be specified in hexadecimal format
         :param str new_identifier: the new identifier for the blueprint
         :param str background_color: (Optional) the background color, to be specified in hexadecimal format
-        :return: the created :class:`govern.models.Blueprint`
         :returns The handle of the newly created blueprint
-        :rtype: :class:`dataikuapi.govern.models.blueprint.Blueprint`
+        :rtype: :class:`dataikuapi.govern.models.admin.GovernAdminBlueprint`
         """
         result = self.client._perform_json(
-            'POST', '/admin/blueprints', params={"newIdentifier": new_identifier},
+            "POST", "/admin/blueprints", params={"newIdentifier": new_identifier},
             body={"name": name,
                   "icon": icon,
                   "color": color,
