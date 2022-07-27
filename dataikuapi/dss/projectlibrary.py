@@ -25,10 +25,10 @@ class DSSLibrary(object):
 
     def put_file(self, path, f):
         """
-        Update a file in the library folder
+        Create / Update a file in the library folder
 
-        :param file-like f: the file contents, as a file-like object
-        :param str path: the path of the file, relative ot the root of the library
+        :param file f: the file content to create / update
+        :param str path: the path of the file, relative at the root of the library
         """
         data = f.read()
         return self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, path), raw_body=data)
@@ -37,7 +37,7 @@ class DSSLibrary(object):
         """
         Delete a file in the library folder
 
-        :param str path: the path of the file, relative ot the root of the library
+        :param str path: the path of the file, relative at the root of the library
         """
         return self.client._perform_empty("DELETE", "/projects/%s/libraries/contents/%s" % (self.project_key, path))
 
@@ -45,7 +45,7 @@ class DSSLibrary(object):
         """
         Create a folder in the library
 
-        :param str path: the path of the folder, relative ot the root of the library
+        :param str path: the path of the folder, relative at the root of the library
         """
         return self.client._perform_empty("POST", "/projects/%s/libraries/folders/%s" % (self.project_key, path))
 
@@ -53,7 +53,7 @@ class DSSLibrary(object):
         """
         Rename a file/folder in the library
 
-        :param str path: the path of the file/folder, relative ot the root of the library
+        :param str path: the path of the file/folder, relative at the root of the library
         :param str new_name: the parameters containing the new name of the file/folder
         """
         return self.client._perform_empty("POST", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, path), body={"newName": new_name})
@@ -62,7 +62,7 @@ class DSSLibrary(object):
         """
         Move a file/folder in the library
 
-        :param str path: the path of the file/folder, relative ot the root of the library
+        :param str path: the path of the file/folder, relative at the root of the library
         :param str new_path: the new path relative at the root of the library
         """
         return self.client._perform_empty("POST", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
