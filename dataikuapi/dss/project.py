@@ -1,5 +1,7 @@
 import warnings, os.path as osp
 
+from dataikuapi.dss.dashboard import DSSDashboard, DASHBOARDS_URI_FORMAT, DSSDashboardListItem
+from dataikuapi.dss.insight import DSSInsight, INSIGHTS_URI_FORMAT
 from ..dss_plugin_mlflow import MLflowHandle
 
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
@@ -1738,6 +1740,90 @@ class DSSProject(object):
         :param str new_path: the new path relative at the root of the library
         """
         return self.client._perform_empty("POST", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
+
+    ########################################################
+    # Dashboards
+    ########################################################
+    def list_dashboards(self, as_type="listitems"):
+        """
+        List the Dashboards in this project.
+
+        :returns: The list of the dashboards.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", DASHBOARDS_URI_FORMAT % self.project_key)
+        if as_type == "listitems":
+            return [DSSDashboardListItem(self.client, item) for item in items]
+        elif as_type == "objects":
+            return [DSSDashboard(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+
+    def get_dashboard(self, dashboard_id):
+        """
+        Get a handle to interact with a specific dashboard object
+
+        :param str dashboard_id: the identifier of the desired dashboard object
+
+        :returns: A :class:`dataikuapi.dss.dashboard.DSSDashboard` dashboard object handle
+        """
+        return DSSDashboard(self.client, self.project_key, dashboard_id)
+
+    def create_dashboard(self, dashboard_name, settings=None):
+        """
+        Create a new dashboard in the project, and return a handle to interact with it
+
+        :param str dashboard_name: The name for the new dashboard. This does not need to be unique
+                                (although this is strongly recommended)
+        :param dict settings: the JSON definition of the dashboard. Use ``get_settings()`` on an
+                existing ``DSSDashboard`` object in order to get a sample settings object (defaults to `{'pages': []}`)
+
+        :returns: a :class:`.dashboard.DSSDashboard` handle to interact with the newly-created dashboard
+        """
+        if settings is None:
+            settings = {'pages': []}
+        settings['name'] = dashboard_name
+        dashboard_id = self.client._perform_json("POST", DASHBOARDS_URI_FORMAT % self.project_key,
+                       body = settings)['id']
+        return DSSDashboard(self.client, self.project_key, dashboard_id)
+
+    ########################################################
+    # Insights
+    ########################################################
+    def list_insights(self):
+        """
+        List the Insights in this project.
+
+        :returns: The list of the insights.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", INSIGHTS_URI_FORMAT % self.project_key)
+        return [DSSInsight(self.client, self.project_key, item["id"]) for item in items]
+
+    def get_insight(self, insight_id):
+        """
+        Get a handle to interact with a specific insight object
+
+        :param str insight_id: the identifier of the desired insight object
+
+        :returns: A :class:`dataikuapi.dss.insight.DSSInsight` insight object handle
+        """
+        return DSSInsight(self.client, self.project_key, insight_id)
+
+    def create_insight(self, creation_info):
+        """
+        Create a new insight in the project, and return a handle to interact with it
+
+        :param dict creation_info: the JSON definition of the insight creation. Use ``get_settings()`` on an
+                existing ``DSSInsight`` object in order to get a sample settings object
+
+        :returns: a :class:`.insight.DSSInsight` handle to interact with the newly-created insight
+        """
+        insight_id = self.client._perform_json("POST", INSIGHTS_URI_FORMAT % self.project_key,
+                       body = {"insightPrototype": creation_info})['id']
+        return DSSInsight(self.client, self.project_key, insight_id)
+
 
 class TablesImportDefinition(object):
     """
