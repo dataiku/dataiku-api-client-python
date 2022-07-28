@@ -3,6 +3,10 @@ from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
 import json, logging, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
+try:
+    basestring
+except NameError:
+    basestring = str
 
 class DSSRecipeListItem(DSSTaggableObjectListItem):
     """An item in a list of recipes. Do not instantiate this class, use :meth:`dataikuapi.dss.project.DSSProject.list_recipes`"""
@@ -33,6 +37,11 @@ class DSSRecipe(object):
         self.client = client
         self.project_key = project_key
         self.recipe_name = recipe_name
+
+    @property
+    def id(self):
+        """The id of the recipe"""
+        return self.recipe_name
 
     @property
     def name(self):
@@ -98,7 +107,7 @@ class DSSRecipe(object):
             raise Exception("Recipe has unsupported output type {}, can't run it".format(first_output["type"]))
 
         if wait:
-            return jd.start_and_wait()
+            return jd.start_and_wait(no_fail)
         else:
             return jd.start()
 
@@ -224,6 +233,16 @@ class DSSRecipe(object):
         """
         from .continuousactivity import DSSContinuousActivity
         return DSSContinuousActivity(self.client, self.project_key, self.recipe_name)
+
+    def move_to_zone(self, zone):
+        """
+        Moves this object to a flow zone
+
+        :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
+        """
+        if isinstance(zone, basestring):
+           zone = self.client.get_project(self.project_key).get_flow().get_zone(zone)
+        zone.add_item(self)
 
 class DSSRecipeStatus(object):
     """Status of a recipce.
@@ -1328,10 +1347,10 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
 
     .. code-block:: python
 
-        # Create a new prediction scoring recipe outputing to a new dataset
+        # Create a new evaluation recipe outputing to a new dataset, to a metrics dataset and/or to a model evaluation store
 
         project = client.get_project("MYPROJECT")
-        builder = EvaluationRecipeCreator("my_scoring_recipe", project)
+        builder = project.new_recipe("evaluation")
         builder.with_input_model(saved_model_id)
         builder.with_input("dataset_to_evaluate")
 
@@ -1340,7 +1359,28 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_output_evaluation_store(evaluation_store_id)
 
         new_recipe = builder.build()
-    
+
+        # Access the settings
+
+        er_settings = new_recipe.get_settings()
+        payload = er_settings.obj_payload
+
+        # Change the settings
+
+        payload['dontComputePerformance'] = True
+        payload['outputProbabilities'] = False
+        payload['metrics'] = ["precision", "recall", "auc", "f1", "costMatrixGain"]
+
+        # Manage evaluation labels
+
+        payload['labels'] = [dict(key="label_1", value="value_1"), dict(key="label_2", value="value_2")]
+
+        # Save the settings and run the recipe
+
+        er_settings.save()
+
+        new_recipe.run()
+
     Outputs must exist. They can be created using the following:
 
     .. code-block:: python
@@ -1374,6 +1414,85 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
     def with_output_evaluation_store(self, mes_id):
         """Sets the output model evaluation store"""
         return self._with_output(mes_id, role="evaluationStore")
+
+
+class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
+    """
+    Builder for the creation of a new "Standalone Evaluate" recipe, from an
+    input dataset
+
+    .. code-block:: python
+
+        # Create a new standalone evaluation of a scored dataset
+
+        project = client.get_project("MYPROJECT")
+        builder = project.new_recipe("standalone_evaluation")
+        builder.with_input("scored_dataset_to_evaluate")
+        builder.with_output_evaluation_store(evaluation_store_id)
+
+        # Add a reference dataset (optional) to compute data drift
+
+        builder.with_reference_dataset("reference_dataset")
+
+        # Finish creation of the recipe
+
+        new_recipe = builder.create()
+
+        # Modify the model parameters in the SER settings
+
+        ser_settings = new_recipe.get_settings()
+        payload = ser_settings.obj_payload
+
+        payload['predictionType'] = "BINARY_CLASSIFICATION"
+        payload['targetVariable'] = "Survived"
+        payload['predictionVariable'] = "prediction"
+        payload['isProbaAware'] = True
+        payload['dontComputePerformance'] = False
+
+        # For a classification model with probabilities, the 'probas' section can be filled with the mapping of the class and the probability column
+        # e.g. for a binary classification model with 2 columns: proba_0 and proba_1
+
+        class_0 = dict(key=0, value="proba_0")
+        class_1 = dict(key=1, value="proba_1")
+        payload['probas'] = [class_0, class_1]
+
+        # Change the 'features' settings for this standalone evaluation
+        # e.g. reject the features that you do not want to use in the evaluation
+
+        feature_passengerid = dict(name="Passenger_Id", role="REJECT", type="TEXT")
+        feature_ticket = dict(name="Ticket", role="REJECT", type="TEXT")
+        feature_cabin = dict(name="Cabin", role="REJECT", type="TEXT")
+
+        payload['features'] = [feature_passengerid, feature_ticket, feature_cabin]
+
+        # To set the cost matrix properly, access the 'metricParams' section of the payload and set the cost matrix weights:
+
+        payload['metricParams'] = dict(costMatrixWeights=dict(tpGain=0.4, fpGain=-1.0, tnGain=0.2, fnGain=-0.5))
+
+        # Save the recipe and run the recipe
+        # Note that with this method, all the settings that were not explicitly set are instead set to their default value.
+
+        ser_settings.save()
+
+        new_recipe.run()
+
+    Output model evaluation store must exist. It can be created using the following:
+
+    .. code-block:: python
+
+        evaluation_store_id = project.create_model_evaluation_store("output_model_evaluation").mes_id
+    """
+
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, 'standalone_evaluation', name, project)
+
+    def with_output_evaluation_store(self, mes_id):
+        """Sets the output model evaluation store"""
+        return self._with_output(mes_id, role="main")
+
+    def with_reference_dataset(self, dataset_name):
+        """Sets the dataset to use as a reference in data drift computation (optional)."""
+        return self._with_input(dataset_name, self.project.project_key, role="reference")
 
 
 class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):

@@ -1,7 +1,7 @@
 import json
 from io import BytesIO
 
-from dataikuapi.dss.metrics import ComputedMetrics
+from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .future import DSSFuture
 

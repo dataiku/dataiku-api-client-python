@@ -6,15 +6,16 @@ class APINodeClient(DSSBaseClient):
     This is an API client for the user-facing API of DSS API Node server (user facing API)
     """
 
-    def __init__(self, uri, service_id, api_key=None):
+    def __init__(self, uri, service_id, api_key=None, bearer_token=None):
         """
         Instantiate a new DSS API client on the given base URI with the given API key.
 
         :param str uri: Base URI of the DSS API node server (http://host:port/ or https://host:port/)
         :param str service_id: Identifier of the service to query
-        :param str api_key: Optional, API key for the service. Only required if the service has authentication
+        :param str api_key: Optional, API key for the service. Only required if the service has its authorization setup to API keys
+        :param str bearer_token: Optional, The bearer token. Only required if the service has its authorization setup to OAuth2/JWT
         """
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key)
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token)
 
     def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None,
                        with_explanations=None, explanation_method=None, n_explanations=None, n_explanations_mc_steps=None):

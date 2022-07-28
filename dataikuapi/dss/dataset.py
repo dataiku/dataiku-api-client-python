@@ -1,3 +1,5 @@
+import datetime
+
 from ..utils import DataikuException
 from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
@@ -511,7 +513,6 @@ class DSSDataset(object):
         return ComputedMetrics(self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/last/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition)))
 
-
     def get_metric_history(self, metric, partition=''):
         """
         Get the history of the values of the metric on this dataset
@@ -522,6 +523,16 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
                 params={'metricLookup' : metric if isinstance(metric, str) or isinstance(metric, unicode) else json.dumps(metric)})
+
+    def get_info(self):
+        """
+        Retrieve all the information about a dataset
+
+        :returns: a :class:`DSSDatasetInfo` containing all the information about a dataset.
+        :rtype: :class:`DSSDatasetInfo`
+        """
+        data = self.client._perform_json("GET", "/projects/%s/datasets/%s/info" % (self.project_key, self.dataset_name))
+        return DSSDatasetInfo(self, data)
 
     ########################################################
     # Misc
@@ -542,7 +553,7 @@ class DSSDataset(object):
         :param object zone: a :class:`dataikuapi.dss.flow.DSSFlowZone` where to move the object
         """
         if isinstance(zone, basestring):
-           zone = self.project.get_flow().get_zone(zone)
+            zone = self.project.get_flow().get_zone(zone)
         zone.add_item(self)
 
     def share_to_zone(self, zone):
@@ -737,6 +748,25 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
     def add_raw_schema_column(self, column):
         self.settings["schema"]["columns"].append(column)
 
+    @property
+    def is_feature_group(self):
+        """
+        Indicates whether the Dataset is defined as a Feature Group, available in the Feature Store.
+
+        :rtype: bool
+        """
+        return self.settings["featureGroup"]
+
+    def set_feature_group(self, status):
+        """
+        (Un)sets the dataset as a Feature Group, available in the Feature Store.
+        Changes of this property will be applied when calling :meth:`save` and require the "Manage Feature Store" permission.
+
+        :param status: whether the dataset should be defined as a feature group
+        :type status: bool
+        """
+        self.settings["featureGroup"] = status
+
     def save(self):
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
@@ -859,3 +889,59 @@ class DSSManagedDatasetCreationHelper(object):
             return True
         except Exception as e:
             return False
+
+
+class DSSDatasetInfo(object):
+    """
+    Info class for a DSS dataset (Read-Only).
+    Do not instantiate this class directly, use :meth:`DSSDataset.get_info`
+    """
+
+    def __init__(self, dataset, info):
+        self.dataset = dataset
+        self.info = info
+
+    def get_raw(self):
+        """
+        Get the raw dataset full information as a dict
+
+        :return: the raw dataset full information
+        :rtype: dict
+        """
+        return self.info
+
+    @property
+    def last_build_start_time(self):
+        """
+        The last build start time of the dataset as a :class:`datetime.datetime` or None if there is no last build information.
+
+        :return: the last build start time
+        :rtype: :class:`datetime.datetime` or None
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        timestamp = last_build_info.get("buildStartTime", None)
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+
+    @property
+    def last_build_end_time(self):
+        """
+        The last build end time of the dataset as a :class:`datetime.datetime` or None if there is no last build information.
+
+        :return: the last build end time
+        :rtype: :class:`datetime.datetime` or None
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        timestamp = last_build_info.get("buildEndTime", None)
+        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+
+    @property
+    def is_last_build_successful(self):
+        """
+        Get whether the last build of the dataset is successful.
+
+        :return: True if the last build is successful
+        :rtype: bool
+        """
+        last_build_info = self.info.get("lastBuild", dict())
+        success = last_build_info.get("buildSuccess", False)
+        return success
