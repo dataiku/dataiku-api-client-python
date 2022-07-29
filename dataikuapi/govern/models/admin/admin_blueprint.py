@@ -38,7 +38,7 @@ class GovernAdminBlueprint(object):
         :rtype: list of :class: `dataikuapi.govern.models.GovernAdminBlueprintVersion` or list of dict
         """
         versions = self.client._perform_json(
-            "GET", "/admin/blueprint/%s/versions" % self.id)
+            "GET", "/admin/blueprint/%s/versions" % self.blueprint_id)
         if as_objects:
             return [GovernAdminBlueprintVersion(self.client, self.blueprint_id, version["id"]["versionId"]) for version
                     in versions]
@@ -61,10 +61,13 @@ class GovernAdminBlueprint(object):
         if origin_version_id is not None:
             params["originVersionId"] = origin_version_id
 
-        result = self.client._perform_json(
-            "POST", "/admin/blueprint/%s/versions" % self.id, params=params,
-            body=blueprint_version_definition)
-        return GovernAdminBlueprintVersion(self.client, self.id, result["blueprintVersion"]["id"]["versionID"])
+        if "id" not in blueprint_version_definition:
+            blueprint_version_definition["id"] = {"blueprintId": self.blueprint_id}
+
+        self.client._perform_json("POST", "/admin/blueprint/%s/versions" % self.blueprint_id, params=params,
+                                  body=blueprint_version_definition)
+
+        return self.get_version("bv" + new_identifier)
 
     def get_version(self, version_id):
         """

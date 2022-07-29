@@ -38,10 +38,11 @@ class GovernBlueprintDesigner(object):
 
         return GovernAdminBlueprint(self.client, blueprint_id)
 
-    def create_blueprint(self, name, icon, color, new_identifier, background_color=""):
+    def create_blueprint(self, new_identifier, name, icon, color, background_color=""):
         """
         Create a new blueprint and returns a handle to interact with it.
 
+        :param str new_identifier: the new identifier for the blueprint
         :param str name: the name of the blueprint
         :param str icon: the icon of the blueprint, can be chosen from: 'account_balance','account_balance_wallet',
         'account_box','account_circle','analytics','announcement','assignment','assignment_ind','assignment_late',
@@ -53,7 +54,6 @@ class GovernBlueprintDesigner(object):
         'speaker_notes','star','sticky_note_2','table_view','thumb_up','thumb_down','timeline','toc','track_changes',
         'work','movie','new_releases','web','chat','qr_code','vpn_key','monetization_on','pie_chart','cloud','computer'
         :param str color: the color of the blueprint icon, to be specified in hexadecimal format
-        :param str new_identifier: the new identifier for the blueprint
         :param str background_color: (Optional) the background color, to be specified in hexadecimal format
         :returns The handle of the newly created blueprint
         :rtype: :class:`dataikuapi.govern.models.admin.GovernAdminBlueprint`
