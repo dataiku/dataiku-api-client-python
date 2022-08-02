@@ -3,16 +3,16 @@ import json
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
-from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser
-from dataikuapi.govern.admin_roles_audit import GovernAdminRolesAudit
+from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
+from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
+from dataikuapi.govern.admin_custom_page_editor import GovernAdminCustomPageEditor
+from dataikuapi.govern.admin_roles_and_permissions_audit import GovernAdminRolesAndPermissionsAudit
+from dataikuapi.govern.admin_roles_permissions_editor import GovernAdminRolesPermissionsEditor
 from dataikuapi.govern.artifact_search_handler import GovernArtifactSearchHandler
-from dataikuapi.govern.artifact_sign_off_handler import GovernArtifactSignOffHandler
-from dataikuapi.govern.blueprint_designer import GovernBlueprintDesigner
-from dataikuapi.govern.custom_page_editor import GovernCustomPageEditor
-from dataikuapi.govern.models import GovernArtifact
+from dataikuapi.govern.artifact_sign_offs import GovernArtifactSignOffs
 from dataikuapi.govern.models.admin.admin_custom_page import GovernAdminCustomPage
+from dataikuapi.govern.models.artifact import GovernArtifact
 from dataikuapi.govern.models.blueprint import GovernBlueprint
-from dataikuapi.govern.roles_permissions_editor import GovernRolesPermissionsEditor
 from dataikuapi.utils import DataikuException
 
 
@@ -99,25 +99,46 @@ class GovernClient(object):
     # Blueprint Designer
     ########################################################
 
-    def get_blueprint_designer(self):
+    def get_admin_blueprint_designer(self):
         """
         Return a handle to interact with the blueprint designer
 
-        :rtype: A :class:`dataikuapi.govern.blueprint_designer.GovernBlueprintDesigner`
+        :rtype: A :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
-        return GovernBlueprintDesigner(self)
+        return GovernAdminBlueprintDesigner(self)
 
     ########################################################
     # Roles and Permissions
     ########################################################
 
-    def get_roles_and_permissions_editor(self):
+    def get_admin_roles_permissions_editor(self):
         """
-        Return a handle to edit roles and permissions on the Govern instance
+        Return a handle to edit the roles and permissions of the Govern instance
 
-        :rtype: A :class:`dataikuapi.govern.roles_permissions_editor.GovernRolesPermissionsEditor`
+        :rtype: A :class:`dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor`
         """
-        return GovernRolesPermissionsEditor(self)
+        return GovernAdminRolesPermissionsEditor(self)
+
+    def get_admin_roles_and_permissions_audit(self):
+        """
+        Return a handle to get audit information on roles and permissions for Govern objects.
+
+        :rtype: A :class:`dataikuapi.govern.admin_roles_and_permissions_audit.GovernAdminRolesAndPermissionsAudit`
+        """
+
+        return GovernAdminRolesAndPermissionsAudit(self)
+
+    ########################################################
+    # Custom Pages editor
+    ########################################################
+
+    def get_admin_custom_page_editor(self):
+        """
+        Return a handle to edit custom pages
+
+        :rtype: A :class:`dataikuapi.govern.custom_page_editor.GovernAdminCustomPageEditor
+        """
+        return GovernAdminCustomPageEditor(self)
 
     ########################################################
     # Blueprints
@@ -125,20 +146,21 @@ class GovernClient(object):
 
     def list_blueprints(self):
         """
-        List all blueprints of a Govern node
+        List all the blueprints
 
-        :return: a Python list of :class:`govern.models.Blueprint`
+        :return: a list of blueprints, each as a dict. Each dict contains at least an 'id' field
+        :rtype: list of dicts
         """
-        blueprint_list = self._perform_json('GET', '/blueprints')
+        blueprint_list = self._perform_json("GET", '/blueprints')
         return blueprint_list
 
     def get_blueprint(self, blueprint_id):
         """
-        Retrieve a blueprint from a Govern node. If you want to edit a blueprint or its version, use:
-        :class: `dataikuapi.govern.blueprint_designer.GovernBlueprintDesigner`
+        Get a handle to interact with a blueprint. If you want to edit it or one of its versions, use instead:
+        :class: `dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
 
         :param str blueprint_id: id of the blueprint to retrieve
-        :returns The handle of the blueprint
+        :returns: The handle of the blueprint
         :rtype: :class:`dataikuapi.govern.models.blueprint.Blueprint`
         """
         return GovernBlueprint(self, blueprint_id)
@@ -149,55 +171,33 @@ class GovernClient(object):
 
     def get_artifact(self, artifact_id):
         """
-        Retrieve an artifact from a Govern node
+        Retrieve an artifact
 
         :param str artifact_id: id of the artifact to retrieve
-
         :return: the corresponding :class:`govern.models.Artifact`
         """
-        result = self._perform_json('GET', '/artifact/%s' % artifact_id)
+        result = self._perform_json("GET", '/artifact/%s' % artifact_id)
         return GovernArtifact(self, artifact_id, result)
 
     def create_artifact(self, artifact):
         """
-        Create an artifact on a Govern node
+        Create an artifact
 
-        :param artifact: the :class:`govern.models.Artifact` to create
-
+        :param artifact: the definition of the artifact in dict format.
         :return: the created :class:`govern.models.Artifact`
         """
         result = self._perform_json('POST', '/artifacts', body=artifact)
         return GovernArtifact(self, result.id, result)
 
-    def delete_artifact(self, artifact_id):
-        """
-        Delete an artifact from a Govern node
-
-        :param str artifact_id: id of the artifact to delete
-        """
-        self._perform_empty('DELETE', '/artifact/%s' % artifact_id)
-
-    ########################################################
-    # Custom  Pages
-    ########################################################
-
-    def get_custom_page_editor(self):
-        """
-        Return a handle to edit custom pages on the Govern instance
-
-        :rtype: A :class:`dataikuapi.govern.custom_page_editor.GovernCustomPageEditor
-        """
-        return GovernCustomPageEditor(self)
-
-    def get_artifact_sign_off_handler(self, artifact_id):
+    def get_artifact_sign_offs(self, artifact_id):
         """
         Return a handle to interact with the sign-off of a specific artifact
 
         :param str artifact_id: id of the artifact for which the handler will interact
-        :rtype: A :class:`dataikuapi.govern.sign_off_handler.GovernArtifactSignOffHandler`
+        :rtype: A :class:`dataikuapi.govern.sign_offs.GovernArtifactSignOffHandler`
         """
 
-        return GovernArtifactSignOffHandler(self, artifact_id)
+        return GovernArtifactSignOffs(self, artifact_id)
 
     def get_artifact_search_handler(self):
         """
@@ -208,14 +208,9 @@ class GovernClient(object):
 
         return GovernArtifactSearchHandler(self)
 
-    def get_admin_roles_audit(self):
-        """
-        Return a handle to get audit information on roles and permissions for Govern objects.
-
-        :rtype: A :class:`dataikuapi.govern.admin_roles_audit.GovernAdminRolesAudit`
-        """
-
-        return GovernAdminRolesAudit(self)
+    ########################################################
+    # Custom  Pages
+    ########################################################
 
     def get_custom_page(self, custom_page_id):
         """
@@ -225,9 +220,26 @@ class GovernClient(object):
 
         :return: the corresponding :class:`govern.models.CustomPage`
         """
-        result = self._perform_json('GET', '/customPage/%s' % custom_page_id)
+        result = self._perform_json("GET", '/customPage/%s' % custom_page_id)
 
         return GovernAdminCustomPage(self, custom_page_id, result)
+
+    def list_custom_pages(self, as_objects=False):
+        """
+        Lists custom pages.
+
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.models.admin.admin_custom_page.GovernAdminCustomPage`,
+         else returns a list of dict. Each dict contains at least a field "id" indicating the identifier of the custom page
+        :returns: a list of custom pages
+        :rtype: list of :class: `dataikuapi.govern.models.admin.admin_custom_page.GovernAdminCustomPage` or list of
+        dict, see param as_objects
+        """
+        pages = self._perform_json("GET", '/custom-pages')
+
+        if as_objects:
+            return [GovernAdminCustomPage(self, page['id'], page) for page in pages]
+        else:
+            return pages
 
     ########################################################
     # Users
@@ -235,13 +247,12 @@ class GovernClient(object):
 
     def list_users(self, as_objects=False):
         """
-        List all user setup on the DSS instance
-
+        List all user setup on the Govern instance
         Note: this call requires an API key with admin rights
 
-        :return: A list of users, as a list of :class:`dataikuapi.govern.admin.admin.GovernUser` if as_objects is True,
+        :return: A list of users, as a list of :class:`dataikuapi.govern.admin.GovernUser` if as_objects is True,
          else as a list of dicts
-        :rtype: list of :class:`dataikuapi.govern.admin.admin.GovernUser` or list of dicts
+        :rtype: list of :class:`dataikuapi.govern.admin.GovernUser` or list of dicts
         """
         users = self._perform_json("GET", "/admin/users/")
 
@@ -256,7 +267,7 @@ class GovernClient(object):
 
         :param str login: the login of the desired user
 
-        :return: A :class:`dataikuapi.govern.admin.admin.GovernUser` user handle
+        :return: A :class:`dataikuapi.govern.admin.GovernUser` user handle
         """
         return GovernUser(self, login)
 
@@ -266,7 +277,7 @@ class GovernClient(object):
         Get a handle to interact with the current user
 
 
-        :return: A :class:`dataikuapi.govern.admin.admin.GovernOwnUser` user handle
+        :return: A :class:`dataikuapi.govern.admin.GovernOwnUser` user handle
         """
         return GovernOwnUser(self)
 
@@ -283,12 +294,12 @@ class GovernClient(object):
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user, can be one of READER, DATA_ANALYST or DATA_SCIENTIST
 
-        :return: A :class:`dataikuapi.govern.admin.admin.GovernUser` user handle
+        :return: A :class:`dataikuapi.govern.admin.GovernUser` user handle
         """
         if groups is None:
             groups = []
 
-        self._perform_json('POST', '/admin/users/', body={
+        self._perform_json("POST", '/admin/users/', body={
             "login": login,
             "password": password,
             "displayName": display_name,
@@ -304,7 +315,7 @@ class GovernClient(object):
 
     def list_groups(self):
         """
-        List all groups setup on the DSS instance
+        List all groups setup on the Govern instance
 
         Note: this call requires an API key with admin rights
 
@@ -319,6 +330,200 @@ class GovernClient(object):
         Get a handle to interact with a specific group
 
         :param str name: the name of the desired group
-        :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
+        :returns: A :class:`dataikuapi.govern.admin.GovernGroup` group handle
         """
         return GovernGroup(self, name)
+
+    def create_group(self, name, description=None, source_type='LOCAL'):
+        """
+        Create a group, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        :param str name: the name of the new group
+        :param str description: (optional) a description of the new group
+        :param source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
+
+        :returns: A :class:`dataikuapi.govern.admin.GovernGroup` group handle
+        """
+        self._perform_text(
+            "POST", "/admin/groups/", body={
+                "name": name,
+                "description": description,
+                "sourceType": source_type
+            })
+        return GovernGroup(self, name)
+
+    ########################################################
+    # Global API Keys
+    ########################################################
+
+    def list_global_api_keys(self):
+        """
+        List all global API keys set up on the Govern instance
+
+        Note: this call requires an API key with admin rights
+
+        :returns: All global API keys, as a list of dicts
+        """
+        return self._perform_json(
+            "GET", "/admin/globalAPIKeys/")
+
+    def get_global_api_key(self, key):
+        """
+        Get a handle to interact with a specific Global API key
+
+        :param str key: the secret key of the desired API key
+
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        """
+        return GovernGlobalApiKey(self, key)
+
+    def create_global_api_key(self, label=None, description=None, admin=False):
+        """
+        Create a Global API key, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str admin: has the new API key admin rights (True or False)
+
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        """
+        resp = self._perform_json(
+            "POST", "/admin/globalAPIKeys/", body={
+                "label": label,
+                "description": description,
+                "globalPermissions": {
+                    "admin": admin
+                }
+            })
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+        key = resp.get('key', '')
+        return GovernGlobalApiKey(self, key)
+
+    ########################################################
+    # Logs
+    ########################################################
+
+    def list_logs(self):
+        """
+        List all available log files on the Govern instance
+        This call requires an API key with admin rights
+
+        :returns: A list of log file names
+        """
+        return self._perform_json(
+            "GET", "/admin/logs/")
+
+    def get_log(self, name):
+        """
+        Get the contents of a specific log file
+        This call requires an API key with admin rights
+
+        :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
+        :returns: The full content of the log file, as a string
+        """
+        return self._perform_json(
+            "GET", "/admin/logs/%s" % name)
+
+    def log_custom_audit(self, custom_type, custom_params=None):
+        """
+        Log a custom entry to the audit trail
+
+        :param str custom_type: value for customMsgType in audit trail item
+        :param dict custom_params: value for customMsgParams in audit trail item (defaults to `{}`)
+        """
+        if custom_params is None:
+            custom_params = {}
+        return self._perform_empty("POST",
+                                   "/admin/audit/custom/%s" % custom_type,
+                                   body=custom_params)
+
+    ########################################################
+    # General settings
+    ########################################################
+
+    def get_general_settings(self):
+        """
+        Gets a handle to interact with the general settings.
+
+        This call requires an API key with admin rights
+
+        :returns: a :class:`dataikuapi.govern.admin.GovernGeneralSettings` handle
+        """
+        return GovernGeneralSettings(self)
+
+    ########################################################
+    # Auth
+    ########################################################
+
+    def get_auth_info(self):
+        """
+        Returns various information about the user currently authenticated using
+        this instance of the API client.
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is a user)
+
+        :returns: a dict
+        :rtype: dict
+        """
+        return self._perform_json("GET", "/auth/info")
+
+    def get_auth_info_from_browser(self):
+        """
+        Returns various information about the DSS user authenticated
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is a user)
+
+        :returns: a dict
+        :rtype: dict
+        """
+        return self._perform_json("GET", "/auth/info-from-browser")
+
+    def get_auth_info_from_browser_headers(self, headers_dict):
+        """
+        Returns a ticket for the Govern user authenticated by the dictionary of
+        HTTP headers provided in headers_dict.
+
+        This method returns a ticket to use as a X-DKU-APITicket header
+
+        :param: headers_dict dict: Dictionary of HTTP headers
+        :returns: a string
+        :rtype: string
+        """
+        return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
+
+    ########################################################
+    # Licensing
+    ########################################################
+
+    def get_licensing_status(self):
+        """
+        Returns a dictionary with information about licensing status of this Govern instance
+
+        :rtype: dict
+        """
+        return self._perform_json("GET", "/admin/licensing/status")
+
+    def set_license(self, license):
+        """
+        Sets a new licence for Govern
+
+        :param license: license (content of license file)
+        :return: None
+        """
+        self._perform_empty(
+            "POST", "/admin/licensing/license", body=json.loads(license))

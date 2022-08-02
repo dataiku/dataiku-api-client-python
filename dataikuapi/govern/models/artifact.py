@@ -33,7 +33,7 @@ class GovernArtifact(object):
 
         :return: the artifact name as a Python str
         """
-        return self.definition["name"]
+        return self.artifact.get("name")
 
     @property
     def fields(self):
@@ -42,16 +42,16 @@ class GovernArtifact(object):
 
         :return: the artifact fields as a Python dict
         """
-        return self.definition["fields"]
+        return self.artifact.get("fields")
 
     @property
     def attachments(self):
         """
         Return the artifact attachments.
 
-        :return: the artifact attachmentss as a Python dict
+        :return: the artifact attachments as a Python dict
         """
-        return self.definition["attachments"]
+        return self.artifact.get("attachments")
 
     @property
     def blueprint_version_id(self):
@@ -60,7 +60,7 @@ class GovernArtifact(object):
 
         :return: the artifact blueprint version id as a Python dict
         """
-        return self.definition["blueprintVersionId"]
+        return self.artifact.get("blueprintVersionId")
 
     @property
     def status(self):
@@ -69,7 +69,7 @@ class GovernArtifact(object):
 
         :return: the artifact status as a Python dict
         """
-        return self.definition["status"]
+        return self.artifact.get("status")
 
     @name.setter
     def name(self, name):
@@ -80,11 +80,18 @@ class GovernArtifact(object):
 
         :return: None
         """
-        self.definition["name"] = name
+        self.artifact["name"] = name
 
     def save(self):
         """
         Save this settings back to the artifact.
         """
-        self.definition = self.client._perform_json("PUT", "/artifact/%s" % (
-            self.artifact_id), body=self.definition)
+        self.artifact = self.client._perform_json("PUT", "/artifact/%s" % self.artifact_id, body=self.artifact)
+
+    def delete(self):
+        """
+        Delete the artifact
+
+        :return: None
+        """
+        self.client._perform_empty("DELETE", "/artifact/%s" % self.artifact_id)

@@ -1,20 +1,21 @@
-class GovernBlueprintRoleAssignment(object):
+class GovernAdminBlueprintRoleAssignments(object):
     """
-    A handle to interact with a blueprint permission the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.GovernRolesPermissionsEditor.get_role_assignment`
+    A handle to interact with the blueprint role assignments
+    Do not create this directly, use :meth:`dataikuapi.govern.admin_roles_permission_editor.GovernAdminRolesPermissionsEditor.get_role_assignments`
     """
 
-    def __init__(self, client, role_assignment):
+    def __init__(self, client, role_assignments):
         self.client = client
-        self.role_assignment = role_assignment
+        self.role_assignments = role_assignments
 
     @property
     def id(self):
         """
         Gets blueprint_id relative to this role assignment object.
+
         :rtype: str
         """
-        return self.role_assignment["blueprintId"]
+        return self.role_assignments["blueprintId"]
 
     def get_raw(self):
         """
@@ -23,7 +24,7 @@ class GovernBlueprintRoleAssignment(object):
 
         :rtype: dict
         """
-        return self.role_assignment
+        return self.role_assignments
 
     def get_role_assignments_rules(self):
         """
@@ -32,7 +33,7 @@ class GovernBlueprintRoleAssignment(object):
         :return: A python dict containing the role assignments rules
 `       :rtype: dict`
         """
-        return self.role_assignment["roleAssignmentsRules"]
+        return self.role_assignments["roleAssignmentsRules"]
 
     def get_inherit_blueprint_id(self):
         """
@@ -41,7 +42,7 @@ class GovernBlueprintRoleAssignment(object):
         :return: str inherit blueprint id
         :rtype: str
         """
-        return self.role_assignment["inheritBlueprintId"]
+        return self.role_assignments["inheritBlueprintId"]
 
     def get_inherit_artifact_field_id(self):
         """
@@ -50,12 +51,22 @@ class GovernBlueprintRoleAssignment(object):
         :return: str inherit artifact field id
         :rtype: str
         """
-        return self.role_assignment["inheritArtifactFieldId"]
+        return self.role_assignments["inheritArtifactFieldId"]
 
     def save(self):
         """
         Save this role assignment.
 
+        :return: None
         """
-        self.role_assignment = self.client._perform_json("PUT", "/admin/blueprint-role-assignments/%s/" % (
-            self.id), body=self.role_assignment)
+        self.role_assignments = self.client._perform_json("PUT", "/admin/blueprint-role-assignments/%s/" % (
+            self.id), body=self.role_assignments)
+
+    def delete_role_assignments(self):
+        """
+        Delete the role assignments for a specific blueprint.
+
+        :return: None
+        """
+        self.client._perform_empty("DELETE", "/admin/blueprint-role-assignments/%s" % (
+            self.id))

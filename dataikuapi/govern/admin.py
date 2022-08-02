@@ -1,8 +1,9 @@
 class GovernUser(object):
     """
-    A handle for a user on the DSS instance.
-    Do not create this object directly, use :meth:`dataikuapi.DSSClient.get_user` instead.
+    A handle for a user on the Govern instance.
+    Do not create this object directly, use :meth:`dataikuapi.govern_client.get_user` instead.
     """
+
     def __init__(self, client, login):
         self.client = client
         self.login = login
@@ -23,12 +24,30 @@ class GovernUser(object):
         raw = self.client._perform_json("GET", "/admin/users/%s" % self.login)
         return GovernUserSettings(self.client, self.login, raw)
 
+    def get_client_as(self):
+        """
+        Gets a :class:`dataikuapi.GovernClient` that has the permissions of this user.
+
+        This allows administrators to impersonate actions on behalf of other users, in order to perform
+        actions on their behalf
+        """
+        from dataikuapi.govern_client import GovernClient
+
+        if self.client.api_key is not None:
+            return GovernClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser": self.login})
+        elif self.client.internal_ticket is not None:
+            return GovernClient(self.client.host, internal_ticket=self.client.internal_ticket,
+                                extra_headers={"X-DKU-ProxyUser": self.login})
+        else:
+            raise ValueError("Don't know how to proxy this client")
+
 
 class GovernOwnUser(object):
     """
     A handle to interact with your own user
     Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_own_user` instead.
     """
+
     def __init__(self, client):
         self.client = client
 
@@ -36,7 +55,7 @@ class GovernOwnUser(object):
         """
         Get your own settings
 
-        :rtype: :class:`DSSOwnUserSettings`
+        :rtype: :class:`GovernOwnUserSettings`
         """
         raw = self.client._perform_json("GET", "/current-user")
         return GovernOwnUserSettings(self.client, raw)
@@ -47,6 +66,7 @@ class GovernUserSettingsBase(object):
     Settings for a Govern user.
     Do not create this object directly, use :meth:`GovernUser.get_settings` or :meth:`GovernOwnUser.get_settings` instead.
     """
+
     def __init__(self, settings):
         self.settings = settings
 
@@ -57,34 +77,17 @@ class GovernUserSettingsBase(object):
         """
         return self.settings
 
-    @property
-    def user_properties(self):
-        """
-        The user properties (editable by the user) for this user. Do not set this property, modify the dict in place
-
-        :rtype dict
-        """
-        return self.settings["userProperties"]
-
 
 class GovernUserSettings(GovernUserSettingsBase):
     """
     Settings for a Govern user.
     Do not create this object directly, use :meth:`GovernUser.get_settings` instead.
     """
+
     def __init__(self, client, login, settings):
         super(GovernUserSettings, self).__init__(settings)
         self.client = client
         self.login = login
-
-    @property
-    def admin_properties(self):
-        """
-        The user properties (not editable by the user) for this user. Do not set this property, modify the dict in place
-
-        :rtype: dict
-        """
-        return self.settings["adminProperties"]
 
     @property
     def enabled(self):
@@ -108,6 +111,7 @@ class GovernOwnUserSettings(GovernUserSettingsBase):
     Settings for the current Govern user.
     Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_own_user` instead.
     """
+
     def __init__(self, client, settings):
         super(GovernOwnUserSettings, self).__init__(settings)
         self.client = client
@@ -122,6 +126,7 @@ class GovernGroup(object):
     A group on the Govern instance.
     Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_group` instead.
     """
+
     def __init__(self, client, name):
         self.client = client
         self.name = name
@@ -155,3 +160,87 @@ class GovernGroup(object):
         return self.client._perform_json(
             "PUT", "/admin/groups/%s" % self.name,
             body=definition)
+
+
+class GovernGlobalApiKey(object):
+    """
+    A global API key on the Govern instance
+    """
+
+    def __init__(self, client, key):
+        self.client = client
+        self.key = key
+
+    ########################################################
+    # Key deletion
+    ########################################################
+
+    def delete(self):
+        """
+        Delete the api key
+
+        Note: this call requires an API key with admin rights
+        """
+        return self.client._perform_empty(
+            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+
+    ########################################################
+    # Key description
+    ########################################################
+
+    def get_definition(self):
+        """
+        Get the API key's definition
+
+        Note: this call requires an API key with admin rights
+
+        Returns:
+            the code env definition, as a JSON object
+        """
+        return self.client._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+
+    def set_definition(self, definition):
+        """
+        Set the API key's definition.
+
+        Note: this call requires an API key with admin rights
+
+        Args:
+            definition: the definition for the API key, as a JSON object.
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/globalAPIKeys/%s" % self.key,
+            body=definition)
+
+
+class GovernGeneralSettings(object):
+    """
+    The general settings of the DSS instance.
+    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_general_settings` instead.
+    """
+
+    def __init__(self, client):
+        self.client = client
+        self.settings = self.client._perform_json("GET", "/admin/general-settings")
+
+    ########################################################
+    # Update settings on instance
+    ########################################################
+
+    def save(self):
+        """
+        Save the changes that were made to the settings on the DSS instance
+        Note: this call requires an API key with admin rights
+        """
+        return self.client._perform_empty("PUT", "/admin/general-settings", body=self.settings)
+
+    ########################################################
+    # Value accessors
+    ########################################################
+
+    def get_raw(self):
+        """
+        Get the settings as a dictionary
+        """
+        return self.settings

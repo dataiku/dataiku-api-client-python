@@ -1,7 +1,7 @@
 class GovernAdminRole(object):
     """
     A handle to interact with the roles of the instance as an admin.
-    Do not create this directly, use :meth:`~dataikuapi.govern.roles_permissions_editor.GovernRolesPermissionsEditor.get_role
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor.get_role
     """
 
     def __init__(self, client, role_id):
@@ -67,7 +67,7 @@ class GovernAdminRoleInfo(object):
 
         :rtype: str
         """
-        return self.role_info["label"]
+        return self.role_info.get("label")
 
     @property
     def description(self):
@@ -76,7 +76,7 @@ class GovernAdminRoleInfo(object):
 
         :rtype: str
         """
-        return self.role_info["description"]
+        return self.role_info.get("description")
 
     @label.setter
     def label(self, label):
@@ -102,3 +102,11 @@ class GovernAdminRoleInfo(object):
         """
         self.role_info = self.client._perform_json(
             "PUT", "/admin/role/%s" % self.role_id, body=self.role_info)
+
+    def delete_role(self):
+        """
+        Delete the role
+
+        :return: None
+        """
+        self.client._perform_empty("DELETE", "/admin/role/%s" % self.role_id)

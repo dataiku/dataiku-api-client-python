@@ -1,10 +1,10 @@
 from dataikuapi.govern.models.admin.admin_blueprint import GovernAdminBlueprint
 
 
-class GovernBlueprintDesigner(object):
+class GovernAdminBlueprintDesigner(object):
     """
     Handle to interact with the blueprint designer
-    Do not create this directly, use :meth:`dataikuapi.govern_client.get_blueprint_designer()`
+    Do not create this directly, use :meth:`dataikuapi.govern_client.get_admin_blueprint_designer()`
     """
 
     def __init__(self, client):
@@ -23,7 +23,7 @@ class GovernBlueprintDesigner(object):
         blueprints = self.client._perform_json("GET", "/admin/blueprints")
 
         if as_objects:
-            return [GovernAdminBlueprint(self.client, blueprint["blueprint"]["id"]) for blueprint in blueprints]
+            return [GovernAdminBlueprint(self.client, blueprint.get("blueprint").get("id")) for blueprint in blueprints]
         else:
             return blueprints
 

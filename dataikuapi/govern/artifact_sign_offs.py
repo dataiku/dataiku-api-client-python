@@ -1,7 +1,7 @@
-class GovernArtifactSignOffHandler(object):
+class GovernArtifactSignOffs(object):
     """
     Handle to interact with the different steps of a workflow.
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_artifact_sign_off_handler()`
+    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_artifact_sign_offs()`
     """
 
     def __init__(self, client, artifact_id):
@@ -41,20 +41,20 @@ class GovernArtifactSignOffHandler(object):
         """
         return self.client._perform_json("GET", "/artifact/%s/signoffs/%s" % (self.artifact_id, step_id))
 
-    def delegate_feedback(self, step_id, group_id, user_login):
+    def delegate_feedback(self, step_id, group_id, auth_identifier):
         """
         Delegate a feedback to a specific user. Takes as input a step_id, a group_id (the feedback group that should
-        have done the feedback originally), and a user login that will be the delegated user.
+        have done the feedback originally), and an authentication context that will be the delegated "user".
 
         :param str step_id: id of the step
         :param str group_id: id of the feedback group
-        :param str user_login: delegated user
+        :param str auth_identifier: an authentication identifier of the delegated user aka. the user login
         :returns: sign off cycle as a python dict
         :rtype: dict
         """
 
         return self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-feedback" % (
-            self.artifact_id, step_id), params={"groupId": group_id}, body={"type": "user", "login": user_login})
+            self.artifact_id, step_id), params={"groupId": group_id}, body={"type": "user", "login": auth_identifier})
 
     def add_feedback(self, step_id, group_id, status, comment=None):
         """
@@ -75,19 +75,19 @@ class GovernArtifactSignOffHandler(object):
         return self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/add-feedback" % (
             self.artifact_id, step_id), params={"groupId": group_id}, body=body)
 
-    def delegate_approval(self, step_id, user_login):
+    def delegate_approval(self, step_id, auth_identifier):
         """
-        Delegate an approval to a specific user. Takes as input a step_id, and a user login that will be in charge of
-        the approval.
+        Delegate an approval to a specific user. Takes as input a step_id, and an authentication context that will be
+        the user in charge of the approval.
 
         :param str step_id: id of the step
-        :param str user_login: delegated user
+        :param str auth_identifier: authentication identifier of the delegated user aka. the user login
         :returns: sign off cycle as a python dict
         :rtype: dict
         """
 
         return self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-approval" % (
-            self.artifact_id, step_id), body={"type": "user", "login": user_login})
+            self.artifact_id, step_id), body={"type": "user", "login": auth_identifier})
 
     def add_approval(self, step_id, status, comment=None):
         """
@@ -110,13 +110,14 @@ class GovernArtifactSignOffHandler(object):
     def update_status(self, step_id, status, users_to_notify):
         """
         Change the status of the sign-off, takes as input a list of pairs user, group_id to notify. The user will be
-        notified as part of the group group_id.
+        notified as part of the group group_id. A list of the possible users to notify is available using:
+        :meth:`dataikuapi.govern.artifact_sign_offs.get_details(step_id)`
 
         :param str step_id: id of the step
         :param str status: target feedback status to be chosen from: NOT_STARTED, WAITING_FOR_FEEDBACK, WAITING_FOR_APPROVAL,
         APPROVED, REJECTED, ABANDONED
         :param list of dict users_to_notify: List of the user to notify. The list should be a list of dict containing
-        two keys "userLogin" and "groupId" for each user to notify. Each user will be notified as part of the given
+        two keys "authIdentifier" and "groupId" for each user to notify. Each user will be notified as part of the given
         group.
         :returns: sign off cycle as a python dict
         :rtype: dict

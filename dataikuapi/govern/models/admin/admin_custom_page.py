@@ -62,5 +62,5 @@ class GovernAdminCustomPage(object):
         """
         Save this settings back to the custom page.
         """
-        self.custom_page = self.client._perform_json("PUT", "/custom-page/%s" % (
+        self.custom_page = self.client._perform_json("PUT", "/admin/custom-page/%s" % (
             self.custom_page_id), body=self.custom_page)

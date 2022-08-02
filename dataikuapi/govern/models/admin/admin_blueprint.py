@@ -118,7 +118,7 @@ class GovernAdminBlueprintDefinition(object):
         :return: the blueprint name
         :rtype: str
         """
-        return self.definition["name"]
+        return self.definition.get("name")
 
     @property
     def icon(self):
@@ -128,7 +128,7 @@ class GovernAdminBlueprintDefinition(object):
         :return: the blueprint icon
         :rtype: str
         """
-        return self.definition["icon"]
+        return self.definition.get("icon")
 
     @property
     def color(self):
@@ -138,7 +138,7 @@ class GovernAdminBlueprintDefinition(object):
         :return: the blueprint color
         :rtype: str
         """
-        return self.definition["color"]
+        return self.definition.get("color")
 
     @property
     def background_color(self):
@@ -148,7 +148,7 @@ class GovernAdminBlueprintDefinition(object):
         :return: the blueprint background color
         :rtype: str
         """
-        return self.definition["backgroundColor"]
+        return self.definition.get("backgroundColor")
 
     @color.setter
     def color(self, color):
@@ -266,22 +266,21 @@ class GovernAdminBlueprintVersion(object):
 
     def list_sign_off_configurations(self):
         """
-        Gets the blueprint sign off configuration list of this blueprint version.
+        Gets the blueprint sign off configurations list of this blueprint version.
 
         :returns: The list of configuration as a Python list of dict
         :rtype: List of dict
         """
 
-        # TODO: Throw a 404 and catch com.dataiku.dip.server.controllers.NotFoundException: Not restful ?
         return self.client._perform_json(
             "GET", "/admin/blueprint/%s/version/%s/signoffs" % (self.blueprint_id, self.blueprint_version_id))
 
     def get_sign_off_configuration(self, step_id):
         """
-        Gets the sign off configuration for a specific step. If you want to modify the configuration, you need to call
+        Gets the sign off configurations for a specific step. If you want to modify the configurations, you need to call
         :meth:`~dataikuapi.govern.models.admin.GovernAdminSignOffConfiguration.save` on the returned object
 
-        :returns: The signoff configuration as a object
+        :returns: The signoff configuration as an object
         :rtype: a :class:`dataikuapi.govern.models.admin.GovernAdminSignOffConfiguration`
         """
         sign_off_config = self.client._perform_json(
@@ -293,8 +292,8 @@ class GovernAdminBlueprintVersion(object):
 
     def delete_sign_off_configuration(self, step_id):
         """
-        Delete the sign off configuration of a specific step.
-        :param str step_id: Identifier of the step of which the sign off configuration will be deleted.
+        Delete the sign-    off configuration of a specific step.
+        :param str step_id: Identifier of the step of which the sign-off configuration will be deleted.
         """
         self.client._perform_empty(
             "DELETE", "/admin/blueprint/%s/version/%s/workflow/step/%s/signoff" % (self.blueprint_id,
@@ -329,7 +328,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: str
         """
-        return self.definition["name"]
+        return self.definition.get("name")
 
     def get_instructions(self):
         """
@@ -337,7 +336,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: str
         """
-        return self.definition["instructions"]
+        return self.definition.get("instructions")
 
     def get_hierarchical_parent_field_id(self):
         """
@@ -345,7 +344,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: str
         """
-        return self.definition["hierarchicalParentFieldId"]
+        return self.definition.get("hierarchicalParentFieldId")
 
     def get_field_definitions(self):
         """
@@ -354,7 +353,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: dict
         """
-        return self.definition["fieldDefinitions"]
+        return self.definition.get("fieldDefinitions")
 
     def get_field_definition(self, field_definition_id):
         """
@@ -363,7 +362,7 @@ class GovernAdminBlueprintVersionDefinition(object):
         :param str field_definition_id: id of the desired field
         :rtype: dict
         """
-        return self.definition["fieldDefinitions"][field_definition_id]
+        return self.definition.get("fieldDefinitions").get(field_definition_id)
 
     def get_workflow_definition(self):
         """
@@ -371,7 +370,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: dict
         """
-        return self.definition["workflowDefinition"]
+        return self.definition.get("workflowDefinition")
 
     def get_logical_hook_list(self):
         """
@@ -379,7 +378,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: list
         """
-        return self.definition["logicalHookList"]
+        return self.definition.get("logicalHookList")
 
     def get_ui_definition(self):
         """
@@ -387,7 +386,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
         :rtype: dict
         """
-        return self.definition["uiDefinition"]
+        return self.definition.get("uiDefinition")
 
     def save(self, danger_zone_accepted=None):
         """
@@ -404,8 +403,8 @@ class GovernAdminBlueprintVersionDefinition(object):
 
 class GovernAdminSignOffConfiguration(object):
     """
-    A handle to interact with the signoff configuration of a blueprint version
-    Do not create this directly, use :meth:`dataikuapi.govern.models.admin.GovernAdminBlueprintVersion.get_sign_off_configuration`
+    A handle to interact with the sign-off configurations of a blueprint version.
+    Do not create this directly, use :meth:`dataikuapi.govern.models.admin.GovernAdminBlueprintVersion.get_sign_off_configurations`
     """
 
     def __init__(self, client, blueprint_id, version_id, step_id, configuration):
