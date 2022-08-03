@@ -198,6 +198,45 @@ class FMAzureInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
         return self
 
 
+class FMGCPInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
+    def with_ssh_key(self, ssh_public_key):
+        """
+        Add an SSH public key to the DSS Instance.
+        Needed to access it through SSH, using the centos user.
+
+        :param str ssh_public_key: The content of the public key to add to the instance.
+        """
+        self.data["gcpSshKey"] = ssh_public_key
+        return self
+
+    def with_restrict_metadata_server_access(self, restrict_metadata_server_access=True):
+        """
+        Restrict GCloud metadata server access on the DSS instance.
+
+        :param boolean restrict_metadata_server_access: Optional, If true, restrict the access to the metadata server access. Defaults to true
+        """
+        self.data["restrictGcpMetadataServerAccess"] = restrict_metadata_server_access
+        return self
+
+    def with_block_project_wide_keys(self, block_project_wide_keys=True):
+        """
+        Restrict GCloud metadata server access on the DSS instance.
+
+        :param boolean block_project_wide_keys: Optional, If true, block project-wide ssh keys on the instance. Defaults to true
+        """
+        self.data["gcpBlockProjectWideKeys"] = block_project_wide_keys
+        return self
+
+    def with_runtime_service_account(self, startup_service_account):
+        """
+        Add a service account to be assigned to the DSS instance on startup
+
+        :param str startup_service_account: service account email
+        """
+        self.data["startupServiceAccount"] = startup_service_account
+        return self
+
+
 class FMInstanceSettingsTemplate(object):
     def __init__(self, client, ist_data):
         self.client = client

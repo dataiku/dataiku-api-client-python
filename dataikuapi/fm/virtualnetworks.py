@@ -110,6 +110,42 @@ class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
         return FMAzureVirtualNetwork(self.client, vn)
 
 
+class FMGCPVirtualNetworkCreator(FMVirtualNetworkCreator):
+    def with_vpc(self, project_id, network, subnetwork):
+        """
+        Setup the VPC which the virtual network will use
+
+        :param str project_id: ID of the project in which the network is defined
+        :param str network: name of the network
+        :param str subnetwork: name of the subnetwork
+        """
+        self.data["gcpProjectId"] = project_id
+        self.data["gcpNetwork"] = network
+        self.data["gcpSubnetwork"] = subnetwork
+        return self
+
+    def with_network_tags(self, *network_tags):
+        """
+        Use network tags on the instances created in the virtual network
+
+        :param str *network_tags: network tags to assign to the instances created in this virtual network.
+        """
+        self.data["gcpNetworkTags"] = network_tags
+        return self
+
+    def create(self):
+        """
+        Create the virtual network
+
+        :return: Created virtual network
+        :rtype: :class:`dataikuapi.fm.virtualnetworks.FMGCPVirtualNetwork`
+        """
+        vn = self.client._perform_tenant_json(
+            "POST", "/virtual-networks", body=self.data, params={ 'useDefaultValues':self.use_default_values }
+        )
+        return FMGCPVirtualNetwork(self.client, vn)
+
+
 class FMVirtualNetwork(object):
     def __init__(self, client, vn_data):
         self.client = client
@@ -206,6 +242,58 @@ class FMAzureVirtualNetwork(FMVirtualNetwork):
         if assign_domain_name:
             self.vn_data["dnsStrategy"] = "VN_SPECIFIC_CLOUD_DNS_SERVICE"
             self.vn_data["azureDnsZoneId"] = azure_dns_zone_id
+        else:
+            self.vn_data["dnsStrategy"] = "NONE"
+
+        return self
+
+
+class FMGCPVirtualNetwork(FMVirtualNetwork):
+
+    def set_assign_public_ip(self, public_ip=True):
+        """
+        Sets whether the instances on this network will have a publicly accessible IP
+
+        :param bool public_ip: if False, the instances will not be accessible from outside GCP
+        """
+
+        if public_ip is not None:
+            self.vn_data["gcpAssignPublicIP"] = public_ip
+        return self
+
+    def set_location_for_created_resources(self, project_id=None, zone=None):
+        """
+        Set the location in GCP of the instances created using this virtual network
+
+        :param str project_id: Optional, the project in which instances should be created. If empty string, then the project 
+                               of the FM instance is used
+        :param str zone: Optional, the zone in which instances should be created. If empty string, then the zone 
+                         of the FM instance is used
+        """
+
+        if zone == '':
+            self.vn_data["gcpZone"] = None
+        elif zone is not None:
+            self.vn_data["gcpZone"] = zone
+        if project_id == '':
+            self.vn_data["gcpProjectIdForCreatedResources"] = None
+        elif project_id is not None:
+            self.vn_data["gcpProjectIdForCreatedResources"] = project_id
+        return self
+
+    def set_dns_strategy(self, assign_domain_name, private_ip_zone_id=None,public_ip_zone_id=None):
+        """
+        Set the DNS strategy for this virtual network
+
+        :param boolean assign_domain_name: If false, don't assign domain names, use ip_only
+        :param str private_ip_zone_id: Optional, the ID of the Cloud DNS Zone to use for private ip
+        :param str public_ip_zone_id: Optional, the ID of the Cloud DNS Zone to use for public ip
+        """
+
+        if assign_domain_name:
+            self.vn_data["dnsStrategy"] = "VN_SPECIFIC_CLOUD_DNS_SERVICE"
+            self.vn_data["gcpCloudDnsPrivateIPZoneId"] = private_ip_zone_id
+            self.vn_data["gcpCloudDnsPublicIPZoneId"] = public_ip_zone_id
         else:
             self.vn_data["dnsStrategy"] = "NONE"
 
