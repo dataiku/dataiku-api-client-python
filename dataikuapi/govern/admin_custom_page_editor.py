@@ -39,10 +39,3 @@ class GovernAdminCustomPageEditor(object):
 
         return GovernAdminCustomPage(self, custom_page_id, result)
 
-    def delete_custom_page(self, custom_page_id):
-        """
-        Delete a custom page from
-
-        :param str custom_page_id: id of the custom page to delete
-        """
-        self._perform_empty('DELETE', '/admin/custom-page/%s' % custom_page_id)

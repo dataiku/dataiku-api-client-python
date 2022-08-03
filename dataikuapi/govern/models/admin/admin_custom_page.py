@@ -64,3 +64,11 @@ class GovernAdminCustomPage(object):
         """
         self.custom_page = self.client._perform_json("PUT", "/admin/custom-page/%s" % (
             self.custom_page_id), body=self.custom_page)
+
+    def delete_custom_page(self):
+        """
+        Delete the custom page.
+
+        :return: None
+        """
+        self.client._perform_empty('DELETE', '/admin/custom-page/%s' % self.custom_page_id)
