@@ -4,6 +4,9 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 import os.path as osp
 
+from .dssclient import DSSClient
+# from .governclient import GovernClient
+
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials, FMCloudTags
@@ -209,6 +212,27 @@ class FMClient(object):
         :return: list of images, as a pair of id and label
         """
         return self._perform_tenant_json("GET", "/images")
+
+    def get_instance_client(self, instance_id, api_key):
+        """
+        Get a Python client to communicate with an instance
+
+        :param str instance_id: The instance ID
+        :param str api_key: The API key generated from the target DSS instance
+
+        :return: a Python client to communicate with the target instance
+        :rtype: :class:`dataikuapi.dssclient.DSSClient`
+        """
+        instance = self.get_instance(instance_id)
+        instance_status = instance.get_status()
+        public_url = instance_status.get("publicURL")
+
+        # TODO waiting for PR merge to be uncommented
+        # https://github.com/dataiku/dataiku-api-client-python/pull/245
+        # if instance.instance_data.get("nodeType") == "govern":
+            # return GovernClient(public_url, api_key)
+
+        return DSSClient(public_url, api_key)
 
     ########################################################
     # Internal Request handling
