@@ -261,7 +261,7 @@ class FMGCPVirtualNetwork(FMVirtualNetwork):
             self.vn_data["gcpAssignPublicIP"] = public_ip
         return self
 
-    def set_location_for_created_resources(self, project_id=None,zone=None):
+    def set_location_for_created_resources(self, project_id=None, zone=None):
         """
         Set the location in GCP of the instances created using this virtual network
 

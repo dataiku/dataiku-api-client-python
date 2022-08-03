@@ -150,7 +150,7 @@ class FMCloudAuthentication(dict):
     @staticmethod
     def gcp(project_id, service_account_key):
         """
-        Azure Only
+        GCP Only
 
         :param str project_id: GCP project
         :param str service_account_key: Optional, service account key (JSON)
