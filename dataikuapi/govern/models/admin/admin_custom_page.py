@@ -38,7 +38,7 @@ class GovernAdminCustomPage(object):
 
         :return: the name of the custom page as a Python str.
         """
-        return self.custom_page["name"]
+        return self.custom_page.get("name")
 
     @property
     def index(self):
@@ -47,7 +47,7 @@ class GovernAdminCustomPage(object):
 
         :return: the index of the custom page as a Python integer. 
         """
-        return self.custom_page["index"]
+        return self.custom_page.get("index")
 
     @property
     def icon(self):
@@ -56,7 +56,7 @@ class GovernAdminCustomPage(object):
 
         :return: the icon of the custom page as a Python integer. 
         """
-        return self.custom_page["icon"]
+        return self.custom_page.get("icon")
 
     def save(self):
         """

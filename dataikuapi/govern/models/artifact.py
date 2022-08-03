@@ -1,3 +1,6 @@
+from dataikuapi.govern.artifact_sign_offs import GovernArtifactSignOffs
+
+
 class GovernArtifact(object):
     def __init__(self, client, artifact_id, artifact):
         """
@@ -81,6 +84,15 @@ class GovernArtifact(object):
         :return: None
         """
         self.artifact["name"] = name
+
+    def get_sign_offs(self):
+        """
+        Return a handle to interact with the sign-offs of this artifact
+
+        :rtype: A :class:`dataikuapi.govern.artifact_sign_offs.GovernArtifactSignOffs`
+        """
+
+        return GovernArtifactSignOffs(self, self.artifact_id)
 
     def save(self):
         """

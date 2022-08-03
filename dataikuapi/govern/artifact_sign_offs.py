@@ -1,7 +1,7 @@
 class GovernArtifactSignOffs(object):
     """
-    Handle to interact with the different steps of a workflow.
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_artifact_sign_offs()`
+    Handle to interact with the sign-offs of a workflow
+    Do not create this directly, use :meth:`dataikuapi.govern.models.artifact.get_sign_offs()`
     """
 
     def __init__(self, client, artifact_id):

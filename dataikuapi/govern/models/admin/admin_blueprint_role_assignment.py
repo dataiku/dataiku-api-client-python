@@ -15,7 +15,7 @@ class GovernAdminBlueprintRoleAssignments(object):
 
         :rtype: str
         """
-        return self.role_assignments["blueprintId"]
+        return self.role_assignments.get("blueprintId")
 
     def get_raw(self):
         """
@@ -33,7 +33,7 @@ class GovernAdminBlueprintRoleAssignments(object):
         :return: A python dict containing the role assignments rules
 `       :rtype: dict`
         """
-        return self.role_assignments["roleAssignmentsRules"]
+        return self.role_assignments.get("roleAssignmentsRules")
 
     def get_inherit_blueprint_id(self):
         """
@@ -42,7 +42,7 @@ class GovernAdminBlueprintRoleAssignments(object):
         :return: str inherit blueprint id
         :rtype: str
         """
-        return self.role_assignments["inheritBlueprintId"]
+        return self.role_assignments.get("inheritBlueprintId")
 
     def get_inherit_artifact_field_id(self):
         """
@@ -51,7 +51,7 @@ class GovernAdminBlueprintRoleAssignments(object):
         :return: str inherit artifact field id
         :rtype: str
         """
-        return self.role_assignments["inheritArtifactFieldId"]
+        return self.role_assignments.get("inheritArtifactFieldId")
 
     def save(self):
         """

@@ -24,7 +24,7 @@ class GovernAdminDefaultPermissions(object):
         :return: A python dict containing everyone's permissions
         :rtype: dict
         """
-        return self.permissions["everyonePermissions"]
+        return self.permissions.get("everyonePermissions")
 
     def list_role_permissions(self):
         """
@@ -33,7 +33,7 @@ class GovernAdminDefaultPermissions(object):
         :return: A python dict with the different roles as keys and permission for this role as values
         :rtype: dict
         """
-        return self.permissions["rolePermissions"]
+        return self.permissions.get("rolePermissions")
 
     def get_role_permissions(self, role_id):
         """
@@ -43,7 +43,7 @@ class GovernAdminDefaultPermissions(object):
         :return: A python dict with the permissions for this role.
         :rtype: dict
         """
-        return self.permissions["rolePermissions"][role_id]
+        return self.permissions.get("rolePermissions").get(role_id)
 
     def save(self):
         """

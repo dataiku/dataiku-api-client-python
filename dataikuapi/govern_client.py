@@ -189,16 +189,6 @@ class GovernClient(object):
         result = self._perform_json('POST', '/artifacts', body=artifact)
         return GovernArtifact(self, result.id, result)
 
-    def get_artifact_sign_offs(self, artifact_id):
-        """
-        Return a handle to interact with the sign-off of a specific artifact
-
-        :param str artifact_id: id of the artifact for which the handler will interact
-        :rtype: A :class:`dataikuapi.govern.sign_offs.GovernArtifactSignOffHandler`
-        """
-
-        return GovernArtifactSignOffs(self, artifact_id)
-
     def get_artifact_search_handler(self):
         """
         Return a handle to build and perform artifact search requests.
