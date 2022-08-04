@@ -227,6 +227,9 @@ class FMClient(object):
         instance_status = instance.get_status()
         public_url = instance_status.get("publicURL")
 
+        if not public_url:
+            raise ValueError("No public URL available. This node may not be provisioned yet")
+
         if instance.instance_data.get("nodeType") == "govern":
             # TODO waiting for PR merge to be uncommented
             # https://github.com/dataiku/dataiku-api-client-python/pull/245
