@@ -227,9 +227,10 @@ class FMClient(object):
         instance_status = instance.get_status()
         public_url = instance_status.get("publicURL")
 
-        # TODO waiting for PR merge to be uncommented
-        # https://github.com/dataiku/dataiku-api-client-python/pull/245
-        # if instance.instance_data.get("nodeType") == "govern":
+        if instance.instance_data.get("nodeType") == "govern":
+            # TODO waiting for PR merge to be uncommented
+            # https://github.com/dataiku/dataiku-api-client-python/pull/245
+            raise Exception("DSS client for Govern nodes is not available")
             # return GovernClient(public_url, api_key)
 
         return DSSClient(public_url, api_key)
