@@ -1,7 +1,7 @@
 class GovernAdminRolesAndPermissionsAudit(object):
     """
     Handle to get audit information on the computed roles and permissions
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_admin_roles_permissions_editormissions_audit()`
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_admin_roles_and_permissions_audit()`
     """
 
     def __init__(self, client):

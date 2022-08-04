@@ -5,7 +5,7 @@ from abc import ABC
 class GovernArtifactSearchHandler(object):
     """
     Handler to perform search queries on artifacts.
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_artifact_search_handler()`
+    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_artifact_search_handler()`
     """
 
     def __init__(self, client):
@@ -47,23 +47,21 @@ class GovernArtifactSearchHandler(object):
 
     @staticmethod
     def build_query(artifact_search_source_type, ids_list=None, artifact_filters_list=None, sort_direction=None,
-                    sort_column=None, page_size=20, last_artifact_id=None):
+                    sort_column=None):
         """
         Create a new search query that will be used to perform the search request.
 
         :param str artifact_search_source_type: a python str that represents the source type of the artifacts. The
         artifact_search_source value must be chosen from: "all", "blueprint", "blueprintVersions" or "artifacts".
         :param list of str ids_list: a list of ids of the parent objects to filter. If only artifacts related to some
-         blueprints are wanted, specify the list of blueprint ids that are needed. TODO: what about bp versions ids ?
-        :param list artifact_filters_list: A list of :class: `dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
-         or :class: `dataikuapi.govern.artifact_search_handler.GovernArchivedStatusArtifactFilter`.
+         blueprints are wanted, specify the list of blueprint ids that are needed.
+        :param list artifact_filters_list: A list of :class:`dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
+         or :class:`dataikuapi.govern.artifact_search_handler.GovernArchivedStatusArtifactFilter`.
 
         :param str sort_column: the column on which the results will be sorted. This parameter must be chosen between:
         "name", "workflow", "field".
         :param str sort_direction: the direction on which the results will be sorted. The sort direction must be either
         "ASC" or "DESC".
-        :param int page_size: the size of the pagination. Default page size is 20.
-        :param str last_artifact_id: the last artifact id to paginate
         :return: the created :class:`govern.models.Blueprint`
         :returns The query object that will perform the search.
         :rtype: :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
@@ -90,13 +88,7 @@ class GovernArtifactSearchHandler(object):
         if sort_direction is not None or sort_column is not None:
             query["artifactSearchSort"] = {"direction": sort_direction, "column": {"type": sort_column}}
 
-        artifact_search_pagination = {}
-        if page_size != 20:
-            artifact_search_pagination["pageSize"] = page_size
-        if last_artifact_id is not None:
-            artifact_search_pagination["lastArtifactId"] = last_artifact_id
-
-        return GovernArtifactSearchQuery(artifact_search_source, query, artifact_search_pagination)
+        return GovernArtifactSearchQuery(artifact_search_source, query, )
 
     def build_request(self, query):
         """
@@ -132,7 +124,7 @@ class GovernArtifactSearchRequest(object):
     query using :meth:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search()`
     """
 
-    def __init__(self, client, query, artifact_search_pagination):
+    def __init__(self, client, query):
         self.client = client
         self.query = query
 

@@ -216,7 +216,7 @@ class GovernGlobalApiKey(object):
 
 class GovernGeneralSettings(object):
     """
-    The general settings of the DSS instance.
+    The general settings of the Govern instance.
     Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_general_settings` instead.
     """
 
@@ -230,7 +230,7 @@ class GovernGeneralSettings(object):
 
     def save(self):
         """
-        Save the changes that were made to the settings on the DSS instance
+        Save the changes that were made to the settings on the Govern instance
         Note: this call requires an API key with admin rights
         """
         return self.client._perform_empty("PUT", "/admin/general-settings", body=self.settings)

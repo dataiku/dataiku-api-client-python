@@ -5,14 +5,12 @@ from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
-from dataikuapi.govern.admin_custom_page_editor import GovernAdminCustomPageEditor
+from dataikuapi.govern.admin_custom_page_editor import GovernAdminCustomPageEditor, GovernCustomPage
 from dataikuapi.govern.admin_roles_and_permissions_audit import GovernAdminRolesAndPermissionsAudit
 from dataikuapi.govern.admin_roles_permissions_editor import GovernAdminRolesPermissionsEditor
+from dataikuapi.govern.artifact import GovernArtifact
 from dataikuapi.govern.artifact_search_handler import GovernArtifactSearchHandler
-from dataikuapi.govern.artifact_sign_offs import GovernArtifactSignOffs
-from dataikuapi.govern.models.admin.admin_custom_page import GovernAdminCustomPage
-from dataikuapi.govern.models.artifact import GovernArtifact
-from dataikuapi.govern.models.blueprint import GovernBlueprint
+from dataikuapi.govern.blueprint import GovernBlueprint
 from dataikuapi.utils import DataikuException
 
 
@@ -136,7 +134,7 @@ class GovernClient(object):
         """
         Return a handle to edit custom pages
 
-        :rtype: A :class:`dataikuapi.govern.custom_page_editor.GovernAdminCustomPageEditor
+        :rtype: A :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
         """
         return GovernAdminCustomPageEditor(self)
 
@@ -157,7 +155,7 @@ class GovernClient(object):
     def get_blueprint(self, blueprint_id):
         """
         Get a handle to interact with a blueprint. If you want to edit it or one of its versions, use instead:
-        :class: `dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
+        :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
 
         :param str blueprint_id: id of the blueprint to retrieve
         :returns: The handle of the blueprint
@@ -174,7 +172,7 @@ class GovernClient(object):
         Retrieve an artifact
 
         :param str artifact_id: id of the artifact to retrieve
-        :return: the corresponding :class:`govern.models.Artifact`
+        :return: the corresponding :class:`dataikuapi.govern.artifact.GovernArtifact`
         """
         result = self._perform_json("GET", '/artifact/%s' % artifact_id)
         return GovernArtifact(self, artifact_id, result)
@@ -183,8 +181,8 @@ class GovernClient(object):
         """
         Create an artifact
 
-        :param artifact: the definition of the artifact in dict format.
-        :return: the created :class:`govern.models.Artifact`
+        :param artifact: the definition of the artifact as a dict
+        :return: the created :class:`dataikuapi.govern.artifact.GovernArtifact`
         """
         result = self._perform_json('POST', '/artifacts', body=artifact)
         return GovernArtifact(self, result.id, result)
@@ -204,30 +202,30 @@ class GovernClient(object):
 
     def get_custom_page(self, custom_page_id):
         """
-        Retrieve a custom page from a Govern node
+        Retrieve a custom page. To edit a custom page use instead the custom page editor :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
 
         :param str custom_page_id: id of the custom page to retrieve
-
-        :return: the corresponding :class:`govern.models.CustomPage`
+        :return: the corresponding custom page object
+        :rtype: a :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage`
         """
         result = self._perform_json("GET", '/customPage/%s' % custom_page_id)
 
-        return GovernAdminCustomPage(self, custom_page_id, result)
+        return GovernCustomPage(self, custom_page_id, result)
 
     def list_custom_pages(self, as_objects=False):
         """
         Lists custom pages.
 
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.models.admin.admin_custom_page.GovernAdminCustomPage`,
-         else returns a list of dict. Each dict contains at least a field "id" indicating the identifier of the custom page
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage`,
+         else returns a list of dict. Each dict contains at least a field "id"
         :returns: a list of custom pages
-        :rtype: list of :class: `dataikuapi.govern.models.admin.admin_custom_page.GovernAdminCustomPage` or list of
+        :rtype: list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage` or list of
         dict, see param as_objects
         """
         pages = self._perform_json("GET", '/custom-pages')
 
         if as_objects:
-            return [GovernAdminCustomPage(self, page['id'], page) for page in pages]
+            return [GovernCustomPage(self, page['id'], page) for page in pages]
         else:
             return pages
 
@@ -456,8 +454,7 @@ class GovernClient(object):
 
     def get_auth_info(self):
         """
-        Returns various information about the user currently authenticated using
-        this instance of the API client.
+        Returns various information about the user currently authenticated using this instance of the API client.
 
         This method returns a dict that may contain the following keys (may also contain others):
 
@@ -468,20 +465,6 @@ class GovernClient(object):
         :rtype: dict
         """
         return self._perform_json("GET", "/auth/info")
-
-    def get_auth_info_from_browser(self):
-        """
-        Returns various information about the DSS user authenticated
-
-        This method returns a dict that may contain the following keys (may also contain others):
-
-        * authIdentifier: login for a user, id for an API key
-        * groups: list of group names (if  context is a user)
-
-        :returns: a dict
-        :rtype: dict
-        """
-        return self._perform_json("GET", "/auth/info-from-browser")
 
     def get_auth_info_from_browser_headers(self, headers_dict):
         """
