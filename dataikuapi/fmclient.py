@@ -228,7 +228,7 @@ class FMClient(object):
         public_url = instance_status.get("publicURL")
 
         if not public_url:
-            raise ValueError("No public URL available. This node may not be provisioned yet")
+            raise ValueError("No public URL available for node %s. This node may not be provisioned yet" % instance_id)
 
         if instance.instance_data.get("nodeType") == "govern":
             # TODO waiting for PR merge to be uncommented
