@@ -213,31 +213,6 @@ class FMClient(object):
         """
         return self._perform_tenant_json("GET", "/images")
 
-    def get_instance_client(self, instance_id, api_key):
-        """
-        Get a Python client to communicate with an instance
-
-        :param str instance_id: The instance ID
-        :param str api_key: The API key generated from the target DSS instance
-
-        :return: a Python client to communicate with the target instance
-        :rtype: :class:`dataikuapi.dssclient.DSSClient`
-        """
-        instance = self.get_instance(instance_id)
-        instance_status = instance.get_status()
-        public_url = instance_status.get("publicURL")
-
-        if not public_url:
-            raise ValueError("No public URL available for node %s. This node may not be provisioned yet" % instance_id)
-
-        if instance.instance_data.get("nodeType") == "govern":
-            # TODO waiting for PR merge to be uncommented
-            # https://github.com/dataiku/dataiku-api-client-python/pull/245
-            raise Exception("DSS client for Govern nodes is not available")
-            # return GovernClient(public_url, api_key)
-
-        return DSSClient(public_url, api_key)
-
     ########################################################
     # Internal Request handling
     ########################################################

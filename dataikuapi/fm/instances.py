@@ -1,5 +1,8 @@
 from .future import FMFuture
 
+from ..dssclient import DSSClient
+# from ..governclient import GovernClient
+
 import sys
 
 if sys.version_info > (3, 4):
@@ -182,6 +185,31 @@ class FMInstance(object):
         self.client = client
         self.instance_data = instance_data
         self.id = instance_data["id"]
+
+    def get_client(self, instance_id, api_key):
+        """
+        Get a Python client to communicate with a DSS instance
+
+        :param str instance_id: The target DSS instance ID
+        :param str api_key: The API key generated from the target DSS instance
+
+        :return: a Python client to communicate with the target instance
+        :rtype: :class:`dataikuapi.dssclient.DSSClient`
+        """
+        instance = self.client.get_instance(instance_id)
+        instance_status = instance.get_status()
+        public_url = instance_status.get("publicURL")
+
+        if instance.instance_data.get("dssNodeType") == "govern":
+            # TODO waiting for PR merge to be uncommented
+            # https://github.com/dataiku/dataiku-api-client-python/pull/245
+            raise Exception("DSS client for Govern nodes is not available")
+            # return GovernClient(public_url, api_key)
+
+        if not public_url:
+            raise ValueError("No public URL available for node %s. This node may not be provisioned yet" % instance_id)
+
+        return DSSClient(public_url, api_key)
 
     def reprovision(self):
         """
