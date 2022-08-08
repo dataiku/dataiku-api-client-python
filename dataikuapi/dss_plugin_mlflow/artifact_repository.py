@@ -1,5 +1,4 @@
 import os
-import posixpath
 import tempfile
 import urllib
 import re
@@ -7,8 +6,8 @@ import sys
 from dataikuapi import DSSClient
 
 
-if sys.version_info > (3, 0):  # MLflow only work for python3 (in >1.18.0)
-    from pathlib import Path
+if sys.version_info > (3, 0):  # MLflow only work for python3 (in > 1.18.0)
+    from pathlib import PurePosixPath, Path
 
 
 def parse_dss_managed_folder_uri(uri):
@@ -37,7 +36,7 @@ class PluginDSSManagedFolderArtifactRepository:
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
         parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
         self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
-        self.base_artifact_path = Path(parsed_uri.path).resolve()
+        self.base_artifact_path = PurePosixPath(parsed_uri.path)
 
     def __get_managed_folder(self, managed_folder_smart_id):
         chunks = managed_folder_smart_id.split('.')
@@ -62,7 +61,7 @@ class PluginDSSManagedFolderArtifactRepository:
         path = self.base_artifact_path
         if artifact_path is not None:
             path /= artifact_path
-        self.managed_folder.put_file(os.path.join(path, os.path.basename(local_file)), open(local_file, "rb"))
+        self.managed_folder.put_file(str(path / os.path.basename(local_file)), open(local_file, "rb"))
 
     def log_artifacts(self, local_dir, artifact_path=None):
         """
@@ -76,7 +75,7 @@ class PluginDSSManagedFolderArtifactRepository:
         path = self.base_artifact_path
         if artifact_path is not None:
             path /= artifact_path
-        self.managed_folder.upload_folder(path, local_dir)
+        self.managed_folder.upload_folder(str(path), local_dir)
 
     def list_artifacts(self, path=""):
         """
@@ -88,7 +87,7 @@ class PluginDSSManagedFolderArtifactRepository:
         :return: List of artifacts as FileInfo listed directly under path.
         """
         path = self.base_artifact_path / path
-        files = [Path(x["path"]) for x in self.managed_folder.list_contents().get("items", [])]
+        files = [PurePosixPath(x["path"]) for x in self.managed_folder.list_contents().get("items", [])]
         return [file.relative_to(path) for file in files if path in file.parents]
 
     def download_artifacts(self, artifact_path, dst_path=None):
@@ -143,7 +142,7 @@ class PluginDSSManagedFolderArtifactRepository:
         :param local_path: The path to which to save the downloaded file.
         """
         full_path = self.base_artifact_path / artifact_path
-        with self.managed_folder.get_file(full_path.as_posix()) as remote_file:
+        with self.managed_folder.get_file(str(full_path)) as remote_file:
             with open(local_path, "wb") as local_file:
                 for line in remote_file:
                     local_file.write(line)
@@ -156,9 +155,9 @@ class PluginDSSManagedFolderArtifactRepository:
         :param artifact_path: Path of the artifact to delete
         """
         path = (
-            os.path.join(self.base_artifact_path, artifact_path) if artifact_path else self.base_artifact_path
+            self.base_artifact_path / artifact_path if artifact_path else self.base_artifact_path
         )
-        self.managed_folder.delete_file(path)
+        self.managed_folder.delete_file(str(path))
 
 
 def verify_artifact_path(artifact_path):

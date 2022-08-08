@@ -123,7 +123,8 @@ class DSSManagedFolder(object):
             for file in files:
                 filename = os.path.join(root, file)
                 with open(filename, "rb") as f:
-                    self.put_file(os.path.join(path, os.path.relpath(filename, folder)), f)
+                    rel_posix_path = os.path.relpath(filename, folder).replace("\\", "/")
+                    self.put_file("{}/{}".format(path, rel_posix_path), f)
 
     ########################################################
     # Managed folder actions
