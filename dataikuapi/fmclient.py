@@ -4,9 +4,6 @@ from requests import exceptions
 from requests.auth import HTTPBasicAuth
 import os.path as osp
 
-from .dssclient import DSSClient
-# from .governclient import GovernClient
-
 from .utils import DataikuException
 
 from .fm.tenant import FMCloudCredentials, FMCloudTags
