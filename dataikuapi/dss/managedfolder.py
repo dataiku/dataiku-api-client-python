@@ -116,14 +116,14 @@ class DSSManagedFolder(object):
         Note: upload_folder("target", "source") will result in "target" containing the content
         of "source", not in "target" containing "source".
 
-        :param str path: the destination path of the folder in the managed folder
+        :param str path: the destination path of the folder in the managed folder (POSIX)
         :param str folder: path  (absolute or relative) of the source folder to upload
         """
         for root, _, files in os.walk(folder):
             for file in files:
                 filename = os.path.join(root, file)
                 with open(filename, "rb") as f:
-                    rel_posix_path = os.path.relpath(filename, folder).replace("\\", "/")
+                    rel_posix_path = "/".join(os.path.relpath(filename, folder).split(os.sep))
                     self.put_file("{}/{}".format(path, rel_posix_path), f)
 
     ########################################################
