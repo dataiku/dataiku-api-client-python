@@ -33,6 +33,18 @@ class DSSAPIServiceSettings(object):
             "modelRef": saved_model_id
         })
 
+    def add_clustering_endpoint(self, endpoint_id, saved_model_id):
+        """Adds a new "visual clustering" endpoint to this API service
+
+        :param str endpoint_id: Identifier of the new endpoint to create
+        :param str saved_model_id: Identifier of the saved model (deployed to Flow) to use
+        """
+        self.settings["endpoints"].append({
+            "id" : endpoint_id,
+            "type" : "STD_CLUSTERING",
+            "modelRef": saved_model_id
+        })
+
     def save(self):
         """Saves back these settings to the API Service"""
         self.client._perform_empty(
