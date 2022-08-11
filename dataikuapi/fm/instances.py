@@ -195,7 +195,7 @@ class FMInstance(object):
         """
         instance_status = self.get_status()
         public_url = instance_status.get("publicURL")
-        api_key = self.instance_data.get('adminAPIKey')
+        api_key = self.instance_data.get("adminAPIKey")
 
         if self.instance_data.get("dssNodeType") == "govern":
             # TODO waiting for PR merge to be uncommented
