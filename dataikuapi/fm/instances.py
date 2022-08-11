@@ -186,21 +186,18 @@ class FMInstance(object):
         self.instance_data = instance_data
         self.id = instance_data["id"]
 
-    def get_client(self, instance_id, api_key):
+    def get_client(self):
         """
         Get a Python client to communicate with a DSS instance
-
-        :param str instance_id: The target DSS instance ID
-        :param str api_key: The API key generated from the target DSS instance
 
         :return: a Python client to communicate with the target instance
         :rtype: :class:`dataikuapi.dssclient.DSSClient`
         """
-        instance = self.client.get_instance(instance_id)
-        instance_status = instance.get_status()
+        instance_status = self.get_status()
         public_url = instance_status.get("publicURL")
+        api_key = self.instance_data.get('adminAPIKey')
 
-        if instance.instance_data.get("dssNodeType") == "govern":
+        if self.instance_data.get("dssNodeType") == "govern":
             # TODO waiting for PR merge to be uncommented
             # https://github.com/dataiku/dataiku-api-client-python/pull/245
             raise Exception("DSS client for Govern nodes is not available")
