@@ -363,6 +363,17 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self, new_value):
         self.settings["enabled"] = new_value
 
+    @property
+    def creation_date(self):
+        """
+        Get the creation date of the user
+
+        :return: the creation date
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
+
     def save(self):
         """Saves the settings"""
         self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
