@@ -55,8 +55,8 @@ class DSSJobWaiter(object):
         job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
         sleep_time = 2
         while job_state not in ["DONE", "ABORTED", "FAILED"]:
-            sleep_time = 300 if sleep_time >= 300 else sleep_time * 2
-            time.sleep(sleep_time)
+            sleep_time = 60 if sleep_time >= 60 else sleep_time * 1.2
+            time.sleep(int(sleep_time))
             job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
             if job_state in ["ABORTED", "FAILED"]:
                 if no_fail:
