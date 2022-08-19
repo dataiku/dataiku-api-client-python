@@ -197,6 +197,43 @@ class DSSSavedModel(object):
         """
         return MLFlowVersionHandler(self, version_id)
 
+    def create_proxy_model_version(self, version_id, protocol, configuration, code_env_name="INHERIT",
+                                   container_exec_config_name="INHERIT"):
+        """
+        Create a new version for this saved model from a path containing a MLFlow model.
+
+        Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_mlflow_pyfunc_model`.
+
+        :param str version_id: Identifier of the version to create
+        :param str protocol: one of ["KServe", "DSS_API_NODE"]
+        :param str configuration: A dictionnary containing the required params for the selected protocol
+        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
+                                  mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
+                                  If value is "INHERIT", the default active code env of the project will be used
+        :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
+                                  this model version.
+                                  If value is "INHERIT", the container execution configuration of the project will be used.
+                                  If value is "NONE", local execution will be used (no container)
+        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        """
+        import json
+        configuration["protocol"] = protocol  # TODO question this (but easier for now)
+        self.client._perform_empty(
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}&containerExecConfigName={containerExecConfigName}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name, containerExecConfigName=container_exec_config_name
+            ),
+            params={"protocol": protocol, "configuration": json.dumps(configuration)},
+            files={"file": (None, None)}  # required for backend-mandated multipart request
+        )
+        return self.get_proxy_model_version_handler(version_id)
+
+    def get_proxy_model_version_handler(self, version_id):
+        """
+        Returns a :class:MLFlowVersionHandler to interact with a MLFlow model version
+        """
+        ## TODO check if we need another
+        return MLFlowVersionHandler(self, version_id)
+
     ########################################################
     # Metrics
     ########################################################
