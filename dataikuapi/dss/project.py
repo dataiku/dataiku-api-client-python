@@ -722,7 +722,7 @@ class DSSProject(object):
         """
         return DSSSavedModel(self.client, self.project_key, sm_id)
 
-    def create_mlflow_pyfunc_model(self, name, prediction_type = None):
+    def create_mlflow_pyfunc_model(self, name, prediction_type=None):
         """
         Creates a new external saved model for storing and managing MLFlow models
 
@@ -730,13 +730,29 @@ class DSSProject(object):
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
         """
         model = {
-            "savedModelType" : "MLFLOW_PYFUNC",
-            "predictionType" : prediction_type,
+            "savedModelType": "MLFLOW_PYFUNC",
+            "predictionType": prediction_type,
             "name": name
         }
 
-        id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body = model)["id"]
-        return self.get_saved_model(id)
+        saved_model_id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
+        return self.get_saved_model(saved_model_id)
+
+    def create_proxy_model(self, name, prediction_type=None):
+        """
+        Creates a new external saved model for storing and managing MLFlow models
+
+        :param string name: Human readable name for the new saved model in the flow
+        :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        """
+        model = {
+            "savedModelType": "PROXY_MODEL",
+            "predictionType": prediction_type,
+            "name": name
+        }
+
+        saved_model_id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
+        return self.get_saved_model(saved_model_id)
 
     ########################################################
     # Managed folders
