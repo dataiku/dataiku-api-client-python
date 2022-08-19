@@ -355,6 +355,7 @@ class DSSUserSettings(DSSUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled
+        
         :rtype: boolean
         """
         return self.settings["enabled"]
