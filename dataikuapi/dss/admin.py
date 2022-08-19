@@ -369,7 +369,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         Get the creation date of the user
 
         :return: the creation date
-        :rtype: :class:`datetime.datetime`
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
         return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
