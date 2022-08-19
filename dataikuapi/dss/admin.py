@@ -366,7 +366,7 @@ class DSSUserSettings(DSSUserSettingsBase):
     @property
     def creation_date(self):
         """
-        Get the creation date of the user
+        Get the creation date of the user as a :class:`datetime.datetime`
 
         :return: the creation date
         :rtype: :class:`datetime.datetime` or None
