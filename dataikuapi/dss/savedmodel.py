@@ -368,7 +368,7 @@ class MLFlowVersionHandler:
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
         :param str override_selection: will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
-        :type card: :class:`DSSDatasetSelectionBuilder` or dict (obtained from ``get_raw_sampling_selection()``)
+        :type override_selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation
         """
         sampling_param = override_selection.build() if isinstance(
             override_selection, DSSDatasetSelectionBuilder) else override_selection
