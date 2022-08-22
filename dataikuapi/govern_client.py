@@ -100,6 +100,7 @@ class GovernClient(object):
     def get_admin_blueprint_designer(self):
         """
         Return a handle to interact with the blueprint designer
+        Note: this call requires an API key with admin rights
 
         :rtype: A :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
