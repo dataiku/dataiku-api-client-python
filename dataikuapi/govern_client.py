@@ -113,6 +113,7 @@ class GovernClient(object):
     def get_admin_roles_permissions_editor(self):
         """
         Return a handle to edit the roles and permissions of the Govern instance
+        Note: this call requires an API key with admin rights
 
         :rtype: A :class:`dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor`
         """
