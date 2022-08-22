@@ -1,7 +1,7 @@
 class GovernAdminCustomPageEditor(object):
     """
     Handle to edit the roles and permissions
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_admin_custom_page_editor()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_custom_page_editor`
     """
 
     def __init__(self, client):
@@ -11,16 +11,16 @@ class GovernAdminCustomPageEditor(object):
         """
         List custom pages
 
-        :param boolean as_objects: (Optional) If True, this method returns a list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`,
+        :param boolean as_objects: (Optional) If True, this method returns a list of :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`,
         else returns a list of dict. Each dict contains at least a field "id"
         :returns: A list of custom pages
-        :rtype: list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage` or list of
+        :rtype: list of :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage` or list of
         dict, see parameter as_objects
         """
         pages = self.client._perform_json("GET", "/admin/custom-pages")
 
         if as_objects:
-            return [GovernAdminCustomPage(self.client, page['id'], page) for page in pages]
+            return [GovernAdminCustomPage(self.client, page["id"], page) for page in pages]
         else:
             return pages
 
@@ -40,7 +40,7 @@ class GovernAdminCustomPageEditor(object):
 class GovernAdminCustomPage(object):
     """
     A handle to interact with a custom page
-    Do not create this directly, use :meth:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor.get_custom_page()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor.get_custom_page`
     """
 
     def __init__(self, client, custom_page_id, custom_page):
@@ -57,14 +57,6 @@ class GovernAdminCustomPage(object):
         """
         return self.custom_page
 
-    @property
-    def id(self):
-        """
-        Return the artifact id.
-
-        :return: the artifact id as a Python str
-        """
-        return self.custom_page_id
 
     @property
     def name(self):
@@ -144,7 +136,7 @@ class GovernAdminCustomPage(object):
 class GovernCustomPage(object):
     """
     A non-admin handle to interact with a custom page
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_custom_page()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_custom_page`
     """
 
     def __init__(self, client, custom_page_id, custom_page):
@@ -160,14 +152,6 @@ class GovernCustomPage(object):
         """
         return self.custom_page
 
-    @property
-    def id(self):
-        """
-        Return the artifact id.
-
-        :return: the artifact id as a Python str
-        """
-        return self.custom_page_id
 
     @property
     def name(self):

@@ -1,7 +1,7 @@
 class GovernAdminRolesPermissionsEditor(object):
     """
     Handle to edit the roles and permissions
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_admin_roles_permissions_editor()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_roles_permissions_editor`
     """
 
     def __init__(self, client):

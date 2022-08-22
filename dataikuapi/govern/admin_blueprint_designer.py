@@ -1,7 +1,7 @@
 class GovernAdminBlueprintDesigner(object):
     """
     Handle to interact with the blueprint designer
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_admin_blueprint_designer()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_blueprint_designer`
     """
 
     def __init__(self, client):
@@ -11,15 +11,15 @@ class GovernAdminBlueprintDesigner(object):
         """
         List blueprints
 
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`,
-         else returns a list of dict. Each dict contains at least a field "id".
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`,
+         else returns a list of dict. Each dict contains at least a field "blueprint.id".
         :returns: the list of blueprints
-        :rtype: list of :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint` or list of dict
+        :rtype: list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint` or list of dict
         """
         blueprints = self.client._perform_json("GET", "/admin/blueprints")
 
         if as_objects:
-            return [GovernAdminBlueprint(self.client, blueprint.get("blueprint", {}).get("id")) for blueprint in
+            return [GovernAdminBlueprint(self.client, blueprint.get["blueprint"]["id"]) for blueprint in
                     blueprints]
         else:
             return blueprints
@@ -30,7 +30,7 @@ class GovernAdminBlueprintDesigner(object):
 
         :param str blueprint_id: the id of the blueprint
         :returns: an admin blueprint object
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`
         """
 
         return GovernAdminBlueprint(self.client, blueprint_id)
@@ -45,7 +45,7 @@ class GovernAdminBlueprintDesigner(object):
         :param str color: the color of the blueprint icon, to be specified in hexadecimal format
         :param str background_color: (Optional) the background color, to be specified in hexadecimal format
         :returns The handle for the newly created blueprint
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`
         """
 
         result = self.client._perform_json(
@@ -60,42 +60,34 @@ class GovernAdminBlueprintDesigner(object):
 class GovernAdminBlueprint(object):
     """
     A handle to interact with a blueprint as an admin on the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner.get_blueprint()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner.get_blueprint`
     """
 
     def __init__(self, client, blueprint_id):
         self.client = client
         self.blueprint_id = blueprint_id
 
-    @property
-    def id(self):
-        """
-        Return the blueprint id.
-
-        :rtype: str
-        """
-        return self.blueprint_id
 
     def get_definition(self):
         """
-        Get the definition of the blueprint as an object. To modify the definition, call :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save()`
+        Get the definition of the blueprint as an object. To modify the definition, call :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save`
         on the returned object.
 
         :returns: The blueprint definition as an object.
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition`
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition`
         """
         definition = self.client._perform_json(
-            "GET", "/admin/blueprint/%s" % self.blueprint_id).blueprint
+            "GET", "/admin/blueprint/%s" % self.blueprint_id)["blueprint"]
         return GovernAdminBlueprintDefinition(self.client, self.blueprint_id, definition)
 
     def list_versions(self, as_objects=True):
         """
         Lists versions of this blueprint.
 
-        :param boolean as_objects: (Optional) If True, returns a list of :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`,
-         else returns a list of dict. Each dict contains a field "id" indicating the identifier of this version
+        :param boolean as_objects: (Optional) If True, returns a list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`,
+         else returns a list of dict. Each dict contains a field "id.versionId" indicating the identifier of this version
         :returns: The list of the versions of the blueprint
-        :rtype: list of :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion` or list of dict
+        :rtype: list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion` or list of dict
         """
         versions = self.client._perform_json(
             "GET", "/admin/blueprint/%s/versions" % self.blueprint_id)
@@ -114,7 +106,7 @@ class GovernAdminBlueprint(object):
         :param dict blueprint_version_definition: The definition of the blueprint version.
         :param str origin_version_id: (Optional) The blueprint version id of the origin version id if there is one.
         :returns The handle of the newly created blueprint
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`
         """
         params = {"newIdentifier": new_identifier}
         if origin_version_id is not None:
@@ -133,7 +125,7 @@ class GovernAdminBlueprint(object):
         Get a blueprint version and return a handle to interact with it.
 
         :param str version_id: id of the version
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`
         """
         return GovernAdminBlueprintVersion(self.client, self.blueprint_id, version_id)
 
@@ -141,7 +133,7 @@ class GovernAdminBlueprint(object):
 class GovernAdminBlueprintDefinition(object):
     """
     A handle to interact with the definition of a blueprint
-    Do not create this class directly, instead use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_definition()`
+    Do not create this class directly, instead use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_definition`
     """
 
     def __init__(self, client, blueprint_id, definition):
@@ -159,15 +151,6 @@ class GovernAdminBlueprintDefinition(object):
         """
         return self.definition
 
-    @property
-    def id(self):
-        """
-        Return the blueprint id
-
-        :return: the blueprint id
-        :rtype: str
-        """
-        return self.blueprint_id
 
     @property
     def name(self):
@@ -214,7 +197,7 @@ class GovernAdminBlueprintDefinition(object):
         """
         Set the icon color of the blueprint
 
-        :param str color: the new color to set, has to be in hexadecimal format. Use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save()`
+        :param str color: the new color to set, has to be in hexadecimal format. Use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save`
         to save this new value back to the blueprint version
         :return: None
         """
@@ -225,7 +208,7 @@ class GovernAdminBlueprintDefinition(object):
         """
         Set the icon color of the blueprint
 
-        :param str name: the new name to set. Use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save()`
+        :param str name: the new name to set. Use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save`
         to save this new value back to the blueprint version
         :return: None
         """
@@ -234,7 +217,7 @@ class GovernAdminBlueprintDefinition(object):
     @icon.setter
     def icon(self, icon):
         """
-        Set the icon of the blueprint. Use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save()`
+        Set the icon of the blueprint. Use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save`
         to save this new value back to the blueprint version
 
         :param str icon: the new icon to set
@@ -245,7 +228,7 @@ class GovernAdminBlueprintDefinition(object):
     @background_color.setter
     def background_color(self, background_color):
         """
-        Set the backgroundColor of the blueprint. Use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save()`
+        Set the backgroundColor of the blueprint. Use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition.save`
         to save this new value back to the blueprint version
 
         :param str background_color: the new background_color to set, has to be in hexadecimal format.
@@ -273,36 +256,27 @@ class GovernAdminBlueprintDefinition(object):
 class GovernAdminBlueprintVersion(object):
     """
     A handle to interact with a blueprint version
-    Do not create this directly, use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_version()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_version`
     """
 
-    def __init__(self, client, blueprint_id, blueprint_version_id):
+    def __init__(self, client, blueprint_id, version_id):
         self.client = client
         self.blueprint_id = blueprint_id
-        self.blueprint_version_id = blueprint_version_id
+        self.version_id = version_id
 
-    @property
-    def id(self):
-        """
-        Return the blueprint version id.
-
-        :return: The blueprint version id
-        :rtype: str
-        """
-        return self.blueprint_version_id
 
     def get_definition(self):
         """
-        Gets the definition of this blueprint version. To modify the definition, call :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersionDefinition.save()`
+        Gets the definition of this blueprint version. To modify the definition, call :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersionDefinition.save`
         on the returned object.
 
         :returns: The definition of the blueprint version as an object.
-        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersionDefinition.
+        :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersionDefinition`.
 
         """
         definition = self.client._perform_json(
-            "GET", "/admin/blueprint/%s/version/%s" % (self.blueprint_id, self.blueprint_version_id))
-        return GovernAdminBlueprintVersionDefinition(self.client, self.blueprint_id, self.blueprint_version_id,
+            "GET", "/admin/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
+        return GovernAdminBlueprintVersionDefinition(self.client, self.blueprint_id, self.version_id,
                                                      definition)
 
     def get_status(self):
@@ -313,7 +287,7 @@ class GovernAdminBlueprintVersion(object):
         :rtype: str
         """
         return self.client._perform_json("GET", "/admin/blueprint/%s/version/%s/status" %
-                                         (self.blueprint_id, self.blueprint_version_id))
+                                         (self.blueprint_id, self.version_id))
 
     def update_status(self, status):
         """
@@ -323,9 +297,9 @@ class GovernAdminBlueprintVersion(object):
         :return: None
         """
         self.client._perform_json("PUT", "/admin/blueprint/%s/version/%s/status" %
-                                  (self.blueprint_id, self.blueprint_version_id), body=status)
+                                  (self.blueprint_id, self.version_id), body=status)
 
-    def list_sign_off_configurations(self):
+    def list_signoff_configurations(self):
         """
         Gets the blueprint sign-off configurations list of this blueprint version.
 
@@ -334,24 +308,24 @@ class GovernAdminBlueprintVersion(object):
         """
 
         return self.client._perform_json(
-            "GET", "/admin/blueprint/%s/version/%s/signoffs" % (self.blueprint_id, self.blueprint_version_id))
+            "GET", "/admin/blueprint/%s/version/%s/signoffs" % (self.blueprint_id, self.version_id))
 
-    def get_sign_off_configuration(self, step_id):
+    def get_signoff_configuration(self, step_id):
         """
         Gets the sign off configurations for a specific step. If you want to modify the configurations, you need to call
-        :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration.save()` on the returned object
+        :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration.save` on the returned object
 
         :return: The signoff configuration as an object
-        :rtype: a :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration`
+        :rtype: a :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration`
         """
         sign_off_config = self.client._perform_json(
             "GET", "/admin/blueprint/%s/version/%s/workflow/step/%s/signoff" %
-                   (self.blueprint_id, self.blueprint_version_id, step_id))
+                   (self.blueprint_id, self.version_id, step_id))
 
-        return GovernAdminSignOffConfiguration(self.client, self.blueprint_id, self.blueprint_version_id, step_id,
+        return GovernAdminSignOffConfiguration(self.client, self.blueprint_id, self.version_id, step_id,
                                                sign_off_config)
 
-    def delete_sign_off_configuration(self, step_id):
+    def delete_signoff_configuration(self, step_id):
         """
         Delete the sign-off configuration of a specific step.
         :param str step_id: Identifier of the step of which the sign-off configuration will be deleted.
@@ -359,19 +333,19 @@ class GovernAdminBlueprintVersion(object):
         """
         self.client._perform_empty(
             "DELETE", "/admin/blueprint/%s/version/%s/workflow/step/%s/signoff" % (self.blueprint_id,
-                                                                                   self.blueprint_version_id, step_id))
+                                                                                   self.version_id, step_id))
 
 
 class GovernAdminBlueprintVersionDefinition(object):
     """
     A handle to interact with a blueprint version definition
-    Do not create this directly, use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_definition()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_definition`
     """
 
-    def __init__(self, client, blueprint_id, blueprint_version_id, definition):
+    def __init__(self, client, blueprint_id, version_id, definition):
         self.client = client
         self.blueprint_id = blueprint_id
-        self.blueprint_version_id = blueprint_version_id
+        self.version_id = version_id
         self.definition = definition
 
     def get_raw(self):
@@ -416,14 +390,14 @@ class GovernAdminBlueprintVersionDefinition(object):
         """
         return self.definition.get("fieldDefinitions")
 
-    def get_field_definition(self, field_definition_id):
+    def get_field_definition(self, field_id):
         """
         Get the definition of a specific field. This returns a dictionary with the definition of the field.
 
-        :param str field_definition_id: id of the desired field
+        :param str field_id: id of the desired field
         :rtype: dict
         """
-        return self.definition.get("fieldDefinitions", {}).get(field_definition_id)
+        return self.definition.get("fieldDefinitions", {}).get(field_id)
 
     def get_workflow_definition(self):
         """
@@ -453,21 +427,20 @@ class GovernAdminBlueprintVersionDefinition(object):
         """
         Save this definition back to the blueprint version definition.
 
-        :param boolean danger_zone_accepted: accept the warning about existing artifacts. If this parameter is set to
-        true, the existing artifact will be updated to reflect changes.
+        :param boolean danger_zone_accepted: ignore the warning about existing artifacts. If there are existing artifacts using this blueprint version, modifying it may break them (ie. removing artifact field values). By default, the save call will fail in this case. If this parameter is set to true, the call will ignore the warning and be run anyway.
         :return: None
         """
         params = {}
         if danger_zone_accepted is not None:
             params["dangerZoneAccepted"] = danger_zone_accepted
         self.definition = self.client._perform_json("PUT", "/admin/blueprint/%s/version/%s" % (
-            self.blueprint_id, self.blueprint_version_id), params=params, body=self.definition)
+            self.blueprint_id, self.version_id), params=params, body=self.definition)
 
 
-class GovernAdminSignOffConfiguration(object):
+class GovernAdminSignoffConfiguration(object):
     """
     A handle to interact with the sign-off configuration of a specific step of a workflow.
-    Do not create this directly, use :meth:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_sign_off_configuration()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_sign_off_configuration`
     """
 
     def __init__(self, client, blueprint_id, version_id, step_id, configuration):
@@ -477,14 +450,6 @@ class GovernAdminSignOffConfiguration(object):
         self.step_id = step_id
         self.configuration = configuration
 
-    @property
-    def id(self):
-        """
-        Gets the step id of the signoff configuration
-
-        :rtype: str
-        """
-        return self.step_id
 
     def get_raw(self):
         """

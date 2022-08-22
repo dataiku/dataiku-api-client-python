@@ -194,8 +194,8 @@ class GovernGlobalApiKey(object):
 
         Note: this call requires an API key with admin rights
 
-        Returns:
-            the code env definition, as a JSON object
+        :returns: a dict - the definition of the API key
+        :rtype: dict
         """
         return self.client._perform_json(
             "GET", "/admin/globalAPIKeys/%s" % (self.key))
@@ -206,8 +206,9 @@ class GovernGlobalApiKey(object):
 
         Note: this call requires an API key with admin rights
 
-        Args:
-            definition: the definition for the API key, as a JSON object.
+        :param: dict definition: the definition for the API key, as a dict
+        :returns: a dict - the definition of the API key
+        :rtype: dict
         """
         return self.client._perform_empty(
             "PUT", "/admin/globalAPIKeys/%s" % self.key,

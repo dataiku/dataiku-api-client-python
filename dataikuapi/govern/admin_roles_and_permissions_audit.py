@@ -1,7 +1,7 @@
 class GovernAdminRolesAndPermissionsAudit(object):
     """
     Handle to get audit information on the computed roles and permissions
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_admin_roles_and_permissions_audit()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_roles_and_permissions_audit`
     """
 
     def __init__(self, client):
@@ -18,7 +18,7 @@ class GovernAdminRolesAndPermissionsAudit(object):
         """
 
         return self.client._perform_json("POST", "/admin/roles-audit/level-blueprint",
-                                         body={"userLogin": auth_identifier, "blueprintId": blueprint_id})
+                                         body={"authIdentifier": auth_identifier, "blueprintId": blueprint_id})
 
     def audit_blueprint_version_roles(self, auth_identifier, blueprint_id, version_id):
         """
