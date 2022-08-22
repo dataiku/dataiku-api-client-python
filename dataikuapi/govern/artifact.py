@@ -95,10 +95,10 @@ class GovernArtifact(object):
         self.client._perform_empty("DELETE", "/artifact/%s" % self.artifact_id)
 
 
-class GovernArtifactSignOffs(object):
+class GovernArtifactSignoffs(object):
     """
     Handle to interact with the sign-offs of a workflow
-    Do not create this directly, use :meth:`dataikuapi.govern.artifact.GovernArtifact.get_sign_offs()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoffs`
     """
 
     def __init__(self, client, artifact_id):

@@ -1,22 +1,14 @@
 class GovernBlueprint(object):
     """
     A handle to read a blueprint on the Govern instance. If you wish to edit blueprints or the blueprint versions, use 
-    the blueprint designer object :class:`dataikuapi.admin_blueprint_designer.GovernAdminBlueprintDesigner()`.
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_blueprint()`
+    the blueprint designer object :class:`dataikuapi.admin_blueprint_designer.GovernAdminBlueprintDesigner`.
+    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_blueprint`
     """
 
     def __init__(self, client, blueprint_id):
         self.client = client
         self.blueprint_id = blueprint_id
 
-    @property
-    def id(self):
-        """
-        Return the blueprint id.
-
-        :rtype: str
-        """
-        return self.blueprint_id
 
     def get_definition(self):
         """
@@ -26,15 +18,15 @@ class GovernBlueprint(object):
         :rtype: :class:`dataikuapi.govern.blueprint.GovernBlueprintDefinition`
         """
         definition = self.client._perform_json(
-            "GET", "/blueprint/%s" % self.blueprint_id).get("definition")
+            "GET", "/blueprint/%s" % self.blueprint_id).get("blueprint")
         return GovernBlueprintDefinition(self.client, self.blueprint_id, definition)
 
     def list_versions(self, as_objects=True):
         """
         Lists versions of this blueprint.
 
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`GovernAPIBlueprintDesignerBlueprintVersion`
-        , else returns a list of dict. Each dict contains a field "id" indicating the identifier of this version
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.blueprint.GovernBlueprintVersion`
+        , else returns a list of dict. Each dict contains a field "id.versionId" indicating the identifier of this version
         :returns: The list of the versions
         :rtype: list of :class:`dataikuapi.govern.blueprint.GovernBlueprintVersion` or list of dict
         """
@@ -59,7 +51,7 @@ class GovernBlueprint(object):
 class GovernBlueprintDefinition(object):
     """
     A handle of the definition of a blueprint
-    Do not create this class directly, instead use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_definition()`
+    Do not create this class directly, instead use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_definition`
     """
 
     def __init__(self, client, blueprint_id, definition):
@@ -76,15 +68,6 @@ class GovernBlueprintDefinition(object):
         """
         return self.definition
 
-    @property
-    def id(self):
-        """
-        Return the blueprint id.
-
-        :return: The blueprint id
-        :rtype: str
-        """
-        return self.blueprint_id
 
     @property
     def name(self):
@@ -130,21 +113,14 @@ class GovernBlueprintDefinition(object):
 class GovernBlueprintVersion(object):
     """
     A handle to interact with a blueprint version on the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_version()`
+    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_version`
     """
 
-    def __init__(self, client, blueprint_id, blueprint_version_id):
+    def __init__(self, client, blueprint_id, version_id):
         self.client = client
         self.blueprint_id = blueprint_id
-        self.blueprint_version_id = blueprint_version_id
+        self.version_id = version_id
 
-    @property
-    def id(self):
-        """
-        Return the blueprint version id.
-        :rtype: str
-        """
-        return self.blueprint_version_id
 
     def get_definition(self):
         """
@@ -155,8 +131,8 @@ class GovernBlueprintVersion(object):
 
         """
         definition = self.client._perform_json(
-            "GET", "/blueprint/%s/version/%s" % (self.blueprint_id, self.blueprint_version_id))
-        return GovernBlueprintVersionDefinition(self.client, self.blueprint_id, self.blueprint_version_id,
+            "GET", "/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
+        return GovernBlueprintVersionDefinition(self.client, self.blueprint_id, self.version_id,
                                                 definition)
 
     def get_status(self):
@@ -168,19 +144,19 @@ class GovernBlueprintVersion(object):
         """
 
         return self.client._perform_json("GET", "/blueprint/%s/version/%s/status" % (self.blueprint_id,
-                                                                                     self.blueprint_version_id))
+                                                                                     self.version_id))
 
 
 class GovernBlueprintVersionDefinition(object):
     """
     A handle to interact with a blueprint version definition on the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprintVersion.get_definition()`
+    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprintVersion.get_definition`
     """
 
-    def __init__(self, client, blueprint_id, blueprint_version_id, definition):
+    def __init__(self, client, blueprint_id, version_id, definition):
         self.client = client
         self.blueprint_id = blueprint_id
-        self.blueprint_version_id = blueprint_version_id
+        self.version_id = version_id
         self.definition = definition
 
     def get_raw(self):

@@ -5,7 +5,7 @@ from abc import ABC
 class GovernArtifactSearchHandler(object):
     """
     Handler to perform search queries on artifacts.
-    Do not create this directly, use :meth:`dataikuapi.GovernClient.get_artifact_search_handler()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact_search_handler`
     """
 
     def __init__(self, client):
@@ -88,7 +88,7 @@ class GovernArtifactSearchHandler(object):
         if sort_direction is not None or sort_column is not None:
             query["artifactSearchSort"] = {"direction": sort_direction, "column": {"type": sort_column}}
 
-        return GovernArtifactSearchQuery(artifact_search_source, query, )
+        return GovernArtifactSearchQuery(artifact_search_source, query)
 
     def build_request(self, query):
         """
@@ -120,8 +120,8 @@ class GovernArtifactSearchQuery(object):
 class GovernArtifactSearchRequest(object):
     """
     A search request object.
-    Do not create this directly, use :meth:`dataikuapi.govern.artifact_search_handler.build_query()` and then run the
-    query using :meth:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search()`
+    Do not create this directly, use :meth:`dataikuapi.govern.artifact_search_handler.build_query` and then run the
+    query using :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search`
     """
 
     def __init__(self, client, query):
@@ -141,8 +141,7 @@ class GovernArtifactSearchRequest(object):
         :rtype: dict
         """
         body = self.query
-        if page_size != 20:
-            body["pageSize"] = page_size
+        body["pageSize"] = page_size
         if last_artifact_id is not None:
             body["lastArtifactId"] = last_artifact_id
 
@@ -165,7 +164,7 @@ class GovernArtifactFilter(ABC):
 class GovernFieldValueArtifactFilter(GovernArtifactFilter):
     """
     A handle to apply filters on specific fields on a search request.
-    Do not create this directly, use :meth:`dataikuapi.govern.ArtifactSearchHandler.build_field_artifact_filter()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.ArtifactSearchHandler.build_field_artifact_filter`
     """
 
     def __init__(self, condition_type, condition, field_id, negate_condition, case_sensitive):
@@ -192,7 +191,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
 class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
     """
     A handle to apply filters on the archived status of artifacts. Do not create this directly,
-    use :meth:`dataikuapi.govern.artifact_search_handler.build_archived_status_artifact_filter()`
+    use :meth:`~dataikuapi.govern.artifact_search_handler.build_archived_status_artifact_filter`
     """
 
     def __init__(self, is_archived):

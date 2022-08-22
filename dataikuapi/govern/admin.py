@@ -1,7 +1,7 @@
 class GovernUser(object):
     """
     A handle for a user on the Govern instance.
-    Do not create this object directly, use :meth:`dataikuapi.govern_client.get_user` instead.
+    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_user` instead.
     """
 
     def __init__(self, client, login):

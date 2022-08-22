@@ -122,6 +122,7 @@ class GovernClient(object):
     def get_admin_roles_and_permissions_audit(self):
         """
         Return a handle to get audit information on roles and permissions for Govern objects.
+        Note: this call requires an API key with admin rights
 
         :rtype: A :class:`dataikuapi.govern.admin_roles_and_permissions_audit.GovernAdminRolesAndPermissionsAudit`
         """
@@ -135,6 +136,7 @@ class GovernClient(object):
     def get_admin_custom_page_editor(self):
         """
         Return a handle to edit custom pages
+        Note: this call requires an API key with admin rights
 
         :rtype: A :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
         """
