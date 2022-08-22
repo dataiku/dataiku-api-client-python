@@ -2,7 +2,7 @@ class GovernArtifact(object):
     def __init__(self, client, artifact_id, artifact):
         """
         A handle to interact with an artifact on the Govern instance.
-        Do not create this directly, use :meth:`dataikuapi.GovernClient.get_artifact()`
+        Do not create this directly, use :meth:`dataikuapi.GovernClient.get_artifact`
         """
         self.client = client
         self.artifact_id = artifact_id
@@ -17,14 +17,6 @@ class GovernArtifact(object):
         """
         return self.artifact
 
-    @property
-    def id(self):
-        """
-        Return the artifact id.
-
-        :return: the artifact id as a Python str
-        """
-        return self.artifact_id
 
     @property
     def name(self):

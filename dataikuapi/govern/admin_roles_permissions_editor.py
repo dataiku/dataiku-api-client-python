@@ -33,7 +33,7 @@ class GovernAdminRolesPermissionsEditor(object):
         :param str new_identifier: Identifier of the new role
         :param str role_label: Label of the new role
         :param str role_description: (Optional) Description of the new role
-        :rtype: :class:`dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole`
+        :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole`
         """
         result = self.client._perform_json("POST", "/admin/roles/", params={"newIdentifier": new_identifier},
                                            body={"label": role_label, "description": role_description})
@@ -60,7 +60,7 @@ class GovernAdminRolesPermissionsEditor(object):
             blueprint_id))
         return GovernAdminBlueprintRoleAssignments(self.client, assignments)
 
-    def create_role_assignments(self, role_assignment):
+    def create_role_assignments(self, role_assignments):
         """
         Create a role assignments on the Govern instance and returns the handle to interact with it.
 
@@ -117,28 +117,20 @@ class GovernAdminRolesPermissionsEditor(object):
 class GovernAdminRole(object):
     """
     A handle to interact with the roles of the instance as an admin.
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor.get_role()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor.get_role`
     """
 
     def __init__(self, client, role_id):
         self.client = client
         self.role_id = role_id
 
-    @property
-    def id(self):
-        """
-        Return the id of the role.
 
-        :rtype: str
-        """
-        return self.role_id
-
-    def get_role_info(self):
+    def get_definition(self):
         """
         Return the information of the role as an object
 
         :returns: the information of the role.
-        :rtype: :class:`dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRoleInfo`
+        :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRoleDefinition`
         """
 
         role_info = self.client._perform_json(
@@ -146,16 +138,16 @@ class GovernAdminRole(object):
         return GovernAdminRoleInfo(self.client, self.role_id, role_info)
 
 
-class GovernAdminRoleInfo(object):
+class GovernAdminRoleDefinition(object):
     """
     An object with all the information on a role.
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole.get_role_info()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole.get_role_info`
     """
 
     def __init__(self, client, role_id, role_info):
         self.client = client
         self.role_id = role_id
-        self.role_info = role_info
+        self.role_definition = role_definition
 
     def get_raw(self):
         """
@@ -235,7 +227,7 @@ class GovernAdminRoleInfo(object):
 class GovernAdminBlueprintRoleAssignments(object):
     """
     A handle to interact with the blueprint role assignments
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_role_assignments()`
+    Do not create this directly, use :meth:`dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_role_assignments`
     """
 
     def __init__(self, client, role_assignments):
@@ -309,7 +301,7 @@ class GovernAdminBlueprintRoleAssignments(object):
 class GovernAdminBlueprintPermissions(object):
     """
     A handle to interact with blueprint permissions for a specific blueprint
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_blueprint_permissions()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_blueprint_permissions`
     """
 
     def __init__(self, client, permissions):
@@ -379,7 +371,7 @@ class GovernAdminBlueprintPermissions(object):
 class GovernAdminDefaultPermissions(object):
     """
     A handle to interact with the default permissions
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_default_permissions()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_default_permissions`
     """
 
     def __init__(self, client, permissions):
