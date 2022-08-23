@@ -5,12 +5,13 @@ from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
-from dataikuapi.govern.admin_custom_page_editor import GovernAdminCustomPageEditor, GovernCustomPage
+from dataikuapi.govern.admin_custom_page_editor import GovernAdminCustomPageEditor
 from dataikuapi.govern.admin_roles_and_permissions_audit import GovernAdminRolesAndPermissionsAudit
 from dataikuapi.govern.admin_roles_permissions_editor import GovernAdminRolesPermissionsEditor
 from dataikuapi.govern.artifact import GovernArtifact
 from dataikuapi.govern.artifact_search_handler import GovernArtifactSearchHandler
 from dataikuapi.govern.blueprint import GovernBlueprint
+from dataikuapi.govern.custom_page import GovernCustomPage
 from dataikuapi.utils import DataikuException
 
 
@@ -210,26 +211,24 @@ class GovernClient(object):
 
         :param str custom_page_id: id of the custom page to retrieve
         :return: the corresponding custom page object
-        :rtype: a :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage`
+        :rtype: a :class:`dataikuapi.govern.custom_page.GovernCustomPage`
         """
-        result = self._perform_json("GET", '/customPage/%s' % custom_page_id)
 
-        return GovernCustomPage(self, custom_page_id, result)
+        return GovernCustomPage(self, custom_page_id)
 
     def list_custom_pages(self, as_objects=False):
         """
         Lists custom pages.
 
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage`,
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.custom_page.GovernCustomPage`,
          else returns a list of dict. Each dict contains at least a field "id"
         :returns: a list of custom pages
-        :rtype: list of :class:`dataikuapi.govern.admin_custom_page_editor.GovernCustomPage` or list of
-        dict, see param as_objects
+        :rtype: list of :class:`dataikuapi.govern.custom_page.GovernCustomPage` or list of dict, see param as_objects
         """
         pages = self._perform_json("GET", '/custom-pages')
 
         if as_objects:
-            return [GovernCustomPage(self, page['id'], page) for page in pages]
+            return [GovernCustomPage(self, page['id']) for page in pages]
         else:
             return pages
 
@@ -311,7 +310,7 @@ class GovernClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :returns: A list of groups, as an list of dicts
+        :returns: A list of groups, as a list of dicts
         :rtype: list of dicts
         """
         return self._perform_json(
@@ -472,16 +471,22 @@ class GovernClient(object):
 
     def get_auth_info_from_browser_headers(self, headers_dict):
         """
-        Returns a ticket for the Govern user authenticated by the dictionary of
+        Returns various information about the DSS user authenticated by the dictionary of
         HTTP headers provided in headers_dict.
 
-        This method returns a ticket to use as a X-DKU-APITicket header
+        This is generally only used in webapp backends
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is a user)
+        * secrets: list of dicts containing user secrets (if context is a user)
 
         :param: headers_dict dict: Dictionary of HTTP headers
-        :returns: a string
-        :rtype: string
+        :returns: a dict
+        :rtype: dict
         """
-        return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
+        return self._perform_json("POST", "/auth/info-from-browser-headers", body=headers_dict)
 
     ########################################################
     # Licensing

@@ -1,7 +1,7 @@
 class GovernAdminCustomPageEditor(object):
     """
     Handle to edit the roles and permissions
-    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_custom_page_editor`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_custom_page_editor()`
     """
 
     def __init__(self, client):
@@ -20,7 +20,7 @@ class GovernAdminCustomPageEditor(object):
         pages = self.client._perform_json("GET", "/admin/custom-pages")
 
         if as_objects:
-            return [GovernAdminCustomPage(self.client, page["id"], page) for page in pages]
+            return [GovernAdminCustomPage(self.client, page["id"]) for page in pages]
         else:
             return pages
 
@@ -32,21 +32,51 @@ class GovernAdminCustomPageEditor(object):
         :return: A custom page as an object
         :rtype: :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`
         """
-        result = self.client._perform_json("GET", "/admin/custom-page/%s" % custom_page_id)
 
-        return GovernAdminCustomPage(self, custom_page_id, result)
+        return GovernAdminCustomPage(self, custom_page_id)
 
 
 class GovernAdminCustomPage(object):
     """
-    A handle to interact with a custom page
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor.get_custom_page`
+    A handle to interact with a custom page as an administrator
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor.get_custom_page()`
     """
 
-    def __init__(self, client, custom_page_id, custom_page):
+    def __init__(self, client, custom_page_id):
         self.client = client
         self.custom_page_id = custom_page_id
-        self.custom_page = custom_page
+
+    def get_definition(self):
+        """
+        Get the definition of the custom page, to modify the definition call :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageDefinition.save()`
+        on the returned object.
+
+        :return: A custom page definition as an object
+        :rtype: :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`
+        """
+        definition = self.client._perform_json("GET", "/admin/custom-page/%s" % self.custom_page_id)
+
+        return GovernAdminCustomPageDefinition(self.client, self.custom_page_id, definition)
+
+    def delete(self):
+        """
+        Delete the custom page
+
+        :return: None
+        """
+        self.client._perform_empty("DELETE", "/admin/custom-page/%s" % self.custom_page_id)
+
+
+class GovernAdminCustomPageDefinition(object):
+    """
+    A handle to interact with the definition of a custom page.
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage.get_definition()`
+    """
+
+    def __init__(self, client, custom_page_id, definition):
+        self.client = client
+        self.custom_page_id = custom_page_id
+        self.definition = definition
 
     def get_raw(self):
         """
@@ -55,65 +85,7 @@ class GovernAdminCustomPage(object):
 
         :rtype: dict
         """
-        return self.custom_page
-
-
-    @property
-    def name(self):
-        """
-        Return the name of the custom page.
-
-        :return: the name of the custom page as a Python str.
-        """
-        return self.custom_page.get("name")
-
-    @property
-    def index(self):
-        """
-        Return the index of the custom page.
-
-        :return: the index of the custom page as a Python integer.
-        """
-        return self.custom_page.get("index")
-
-    @property
-    def icon(self):
-        """
-        Return the icon of the custom page.
-
-        :return: the icon of the custom page as a Python integer.
-        """
-        return self.custom_page.get("icon")
-
-    @name.setter
-    def name(self, name):
-        """
-        Set the name of the custom page
-
-        :param str name: the new name.
-        :return: None
-        """
-        self.custom_page["name"] = name
-
-    @index.setter
-    def index(self, index):
-        """
-        Set the index of the custom page
-
-        :param str index: the new index.
-        :return: None
-        """
-        self.custom_page["index"] = index
-
-    @icon.setter
-    def icon(self, icon):
-        """
-        Set the icon of the custom page
-
-        :param str icon: the new icon.
-        :return: None
-        """
-        self.custom_page["icon"] = icon
+        return self.definition
 
     def save(self):
         """
@@ -121,62 +93,5 @@ class GovernAdminCustomPage(object):
 
         :return: None
         """
-        self.custom_page = self.client._perform_json("PUT", "/admin/custom-page/%s" % (
-            self.custom_page_id), body=self.custom_page)
-
-    def delete(self):
-        """
-        Delete the custom page.
-
-        :return: None
-        """
-        self.client._perform_empty("DELETE", "/admin/custom-page/%s" % self.custom_page_id)
-
-
-class GovernCustomPage(object):
-    """
-    A non-admin handle to interact with a custom page
-    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_custom_page`
-    """
-
-    def __init__(self, client, custom_page_id, custom_page):
-        self.client = client
-        self.custom_page_id = custom_page_id
-        self.custom_page = custom_page
-
-    def get_raw(self):
-        """
-        Gets the raw content of the custom page.
-
-        :rtype: dict
-        """
-        return self.custom_page
-
-
-    @property
-    def name(self):
-        """
-        Return the name of the custom page.
-
-        :return: the name of the custom page as a Python str.
-        """
-        return self.custom_page.get("name")
-
-    @property
-    def index(self):
-        """
-        Return the index of the custom page.
-
-        :return: the index of the custom page as a Python integer.
-        """
-        return self.custom_page.get("index")
-
-    @property
-    def icon(self):
-        """
-        Return the icon of the custom page.
-
-        :return: the icon of the custom page as a Python integer.
-        """
-        return self.custom_page.get("icon")
-
+        self.definition = self.client._perform_json("PUT", "/admin/custom-page/%s" % self.custom_page_id,
+                                                    body=self.definition)

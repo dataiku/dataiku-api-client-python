@@ -1,7 +1,7 @@
 class GovernUser(object):
     """
     A handle for a user on the Govern instance.
-    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_user` instead.
+    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_user` instead.
     """
 
     def __init__(self, client, login):
@@ -26,7 +26,7 @@ class GovernUser(object):
 
     def get_client_as(self):
         """
-        Gets a :class:`dataikuapi.GovernClient` that has the permissions of this user.
+        Gets a :class:`~dataikuapi.GovernClient` that has the permissions of this user.
 
         This allows administrators to impersonate actions on behalf of other users, in order to perform
         actions on their behalf
@@ -45,7 +45,7 @@ class GovernUser(object):
 class GovernOwnUser(object):
     """
     A handle to interact with your own user
-    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_own_user` instead.
+    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_own_user` instead.
     """
 
     def __init__(self, client):
@@ -109,7 +109,7 @@ class GovernUserSettings(GovernUserSettingsBase):
 class GovernOwnUserSettings(GovernUserSettingsBase):
     """
     Settings for the current Govern user.
-    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_own_user` instead.
+    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_own_user` instead.
     """
 
     def __init__(self, client, settings):
@@ -124,7 +124,7 @@ class GovernOwnUserSettings(GovernUserSettingsBase):
 class GovernGroup(object):
     """
     A group on the Govern instance.
-    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_group` instead.
+    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_group` instead.
     """
 
     def __init__(self, client, name):
@@ -218,7 +218,7 @@ class GovernGlobalApiKey(object):
 class GovernGeneralSettings(object):
     """
     The general settings of the Govern instance.
-    Do not create this object directly, use :meth:`dataikuapi.GovernClient.get_general_settings` instead.
+    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_general_settings` instead.
     """
 
     def __init__(self, client):

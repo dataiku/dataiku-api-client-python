@@ -1,11 +1,10 @@
-import abc
-from abc import ABC
+import copy
 
 
 class GovernArtifactSearchHandler(object):
     """
     Handler to perform search queries on artifacts.
-    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact_search_handler`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact_search_handler()`
     """
 
     def __init__(self, client):
@@ -27,7 +26,7 @@ class GovernArtifactSearchHandler(object):
         :param str case_sensitive: (Optional) Can be used to activate case-sensitive filtering. By default, filters will
         not be case-sensitive.
         :returns The created filter that will be useful to perform the search.
-        :rtype: :class:`dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
+        :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
         """
 
         return GovernFieldValueArtifactFilter(condition_type, condition, field_id, negate_condition, case_sensitive)
@@ -40,7 +39,7 @@ class GovernArtifactSearchHandler(object):
         :param boolean is_archived: the value for filtering. If is_archived is set to True, all artifacts including
         archived ones will be part of the search result
         :returns The created filter that will be useful to filter the search result.
-        :rtype: :class:`dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
+        :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
         """
 
         return GovernArchivedStatusArtifactFilter(is_archived)
@@ -55,16 +54,15 @@ class GovernArtifactSearchHandler(object):
         artifact_search_source value must be chosen from: "all", "blueprint", "blueprintVersions" or "artifacts".
         :param list of str ids_list: a list of ids of the parent objects to filter. If only artifacts related to some
          blueprints are wanted, specify the list of blueprint ids that are needed.
-        :param list artifact_filters_list: A list of :class:`dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
-         or :class:`dataikuapi.govern.artifact_search_handler.GovernArchivedStatusArtifactFilter`.
+        :param list artifact_filters_list: A list of :class:`~dataikuapi.govern.artifact_search_handler.GovernFieldValueArtifactFilter`
+         or :class:`~dataikuapi.govern.artifact_search_handler.GovernArchivedStatusArtifactFilter`.
 
         :param str sort_column: the column on which the results will be sorted. This parameter must be chosen between:
         "name", "workflow", "field".
         :param str sort_direction: the direction on which the results will be sorted. The sort direction must be either
         "ASC" or "DESC".
-        :return: the created :class:`govern.models.Blueprint`
-        :returns The query object that will perform the search.
-        :rtype: :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
+        :return: The query object that will perform the search.
+        :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
         """
 
         if ids_list is None:
@@ -94,10 +92,10 @@ class GovernArtifactSearchHandler(object):
         """
         Create a new artifact search request and return the object that will be used to launch the request
 
-        :param :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchQuery` query: The query that will
+        :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchQuery` query: The query that will
         be addressed during the search.
         :returns The created artifact search request object
-        :rtype: :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
+        :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
         """
 
         return GovernArtifactSearchRequest(self.client, query)
@@ -112,7 +110,7 @@ class GovernArtifactSearchQuery(object):
         self.artifact_search_source = artifact_search_source
         self.query = query
 
-    def build_query(self):
+    def build(self):
         return {"artifactSearchSource": self.artifact_search_source,
                 "query": self.query}
 
@@ -120,13 +118,14 @@ class GovernArtifactSearchQuery(object):
 class GovernArtifactSearchRequest(object):
     """
     A search request object.
-    Do not create this directly, use :meth:`dataikuapi.govern.artifact_search_handler.build_query` and then run the
-    query using :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search`
+    Do not create this directly, use :meth:`~dataikuapi.govern.artifact_search_handler.build_request()` and then run the
+    query using :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search()`
     """
 
     def __init__(self, client, query):
         self.client = client
         self.query = query
+        self.last_artifact_id = None
 
     def perform_search(self, page_size=20, last_artifact_id=None):
         """
@@ -134,21 +133,25 @@ class GovernArtifactSearchRequest(object):
 
         :param int page_size: size of the result page, default value is set to 20.
         :param str last_artifact_id: id of the last artifact. Useful to get the next page of result starting from a
-        specific id.
+        specific id. If the perform_search is played more than once and that last_artifact_id is not specified, the
+        results will be browsed one page after another.
         :returns The result of the search request. This dict contains a key "uiArtifacts" which is the list of the
         results list. The dict contains a key "hasNextPage"  which value is boolean. If this value is set to true, it is
         possible to navigate through the results using the parameters page_size and last_artifact_id.
         :rtype: dict
         """
-        body = self.query
-        body["pageSize"] = page_size
+        body = copy.deepcopy(self.query)
+        body = body.build()
         if last_artifact_id is not None:
-            body["lastArtifactId"] = last_artifact_id
+            self.last_artifact_id = last_artifact_id
+        body["artifactSearchPagination"] = {"pageSize": page_size, last_artifact_id: self.last_artifact_id}
 
-        return self.client._perform_json("POST", "/artifacts/search", body=self.query)
+        result = self.client._perform_json("POST", "/artifacts/search", body=body)
+        self.last_artifact_id = result.get("lastArtifactId")
+        return result
 
 
-class GovernArtifactFilter(ABC):
+class GovernArtifactFilter(object):
     """
     An abstract class to represent artifact filters.
     """
@@ -156,7 +159,6 @@ class GovernArtifactFilter(ABC):
     def __init__(self, filter_type):
         self.filter_type = filter_type
 
-    @abc.abstractmethod
     def build(self):
         pass
 
@@ -164,7 +166,7 @@ class GovernArtifactFilter(ABC):
 class GovernFieldValueArtifactFilter(GovernArtifactFilter):
     """
     A handle to apply filters on specific fields on a search request.
-    Do not create this directly, use :meth:`~dataikuapi.govern.ArtifactSearchHandler.build_field_artifact_filter`
+    Do not create this directly, use :meth:`~dataikuapi.govern.ArtifactSearchHandler.build_field_artifact_filter()`
     """
 
     def __init__(self, condition_type, condition, field_id, negate_condition, case_sensitive):
@@ -191,7 +193,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
 class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
     """
     A handle to apply filters on the archived status of artifacts. Do not create this directly,
-    use :meth:`~dataikuapi.govern.artifact_search_handler.build_archived_status_artifact_filter`
+    use :meth:`~dataikuapi.govern.artifact_search_handler.build_archived_status_artifact_filter()`
     """
 
     def __init__(self, is_archived):

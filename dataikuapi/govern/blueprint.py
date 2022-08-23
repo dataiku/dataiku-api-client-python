@@ -1,8 +1,8 @@
 class GovernBlueprint(object):
     """
     A handle to read a blueprint on the Govern instance. If you wish to edit blueprints or the blueprint versions, use 
-    the blueprint designer object :class:`dataikuapi.admin_blueprint_designer.GovernAdminBlueprintDesigner`.
-    Do not create this directly, use :meth:`dataikuapi.govern_client.GovernClient.get_blueprint`
+    the blueprint designer object :class:`~dataikuapi.admin_blueprint_designer.GovernAdminBlueprintDesigner()`.
+    Do not create this directly, use :meth:`~dataikuapi.govern_client.GovernClient.get_blueprint()`
     """
 
     def __init__(self, client, blueprint_id):
@@ -15,7 +15,7 @@ class GovernBlueprint(object):
         Return the definition of the blueprint as an object.
 
         :returns: The blueprint definition as an object.
-        :rtype: :class:`dataikuapi.govern.blueprint.GovernBlueprintDefinition`
+        :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintDefinition`
         """
         definition = self.client._perform_json(
             "GET", "/blueprint/%s" % self.blueprint_id).get("blueprint")
@@ -28,7 +28,7 @@ class GovernBlueprint(object):
         :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.blueprint.GovernBlueprintVersion`
         , else returns a list of dict. Each dict contains a field "id.versionId" indicating the identifier of this version
         :returns: The list of the versions
-        :rtype: list of :class:`dataikuapi.govern.blueprint.GovernBlueprintVersion` or list of dict
+        :rtype: list of :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersion` or list of dict
         """
         versions = self.client._perform_json(
             "GET", "/blueprint/%s/versions" % self.id)
@@ -43,7 +43,7 @@ class GovernBlueprint(object):
         Returns a handle to interact with a blueprint version
 
         :param str version_id: id of the version
-        :rtype: :class:`dataikuapi.govern.models.GovernBlueprintVersion`
+        :rtype: :class:`~dataikuapi.govern.models.GovernBlueprintVersion`
         """
         return GovernBlueprintVersion(self.client, self.blueprint_id, version_id)
 
@@ -51,7 +51,7 @@ class GovernBlueprint(object):
 class GovernBlueprintDefinition(object):
     """
     A handle of the definition of a blueprint
-    Do not create this class directly, instead use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_definition`
+    Do not create this class directly, instead use :meth:`~dataikuapi.govern.blueprint.GovernBlueprint.get_definition()`
     """
 
     def __init__(self, client, blueprint_id, definition):
@@ -69,51 +69,10 @@ class GovernBlueprintDefinition(object):
         return self.definition
 
 
-    @property
-    def name(self):
-        """
-        Return the blueprint name.
-
-        :return: The blueprint name
-        :rtype: str
-        """
-        return self.definition.get("name")
-
-    @property
-    def icon(self):
-        """
-        Return the blueprint icon.
-
-        :return: The blueprint icon
-        :rtype: str
-        """
-        return self.definition.get("icon")
-
-    @property
-    def color(self):
-        """
-        Return the blueprint color.
-
-        :return: The blueprint color
-        :rtype: str
-        """
-        return self.definition.get("color")
-
-    @property
-    def background_color(self):
-        """
-        Return the blueprint background color.
-
-        :return: The blueprint background color
-        :rtype: str
-        """
-        return self.definition.get("backgroundColor")
-
-
 class GovernBlueprintVersion(object):
     """
     A handle to interact with a blueprint version on the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprint.get_version`
+    Do not create this directly, use :meth:`~dataikuapi.govern.blueprint.GovernBlueprint.get_version()`
     """
 
     def __init__(self, client, blueprint_id, version_id):
@@ -121,13 +80,12 @@ class GovernBlueprintVersion(object):
         self.blueprint_id = blueprint_id
         self.version_id = version_id
 
-
     def get_definition(self):
         """
         Gets the definition of this blueprint version.
 
         :return: The definition of the blueprint version as an object.
-        :rtype: :class:`dataikuapi.govern.blueprint.GovernBlueprintVersionDefinition`
+        :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersionDefinition`
 
         """
         definition = self.client._perform_json(
@@ -150,7 +108,7 @@ class GovernBlueprintVersion(object):
 class GovernBlueprintVersionDefinition(object):
     """
     A handle to interact with a blueprint version definition on the Govern instance.
-    Do not create this directly, use :meth:`dataikuapi.govern.blueprint.GovernBlueprintVersion.get_definition`
+    Do not create this directly, use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersion.get_definition()`
     """
 
     def __init__(self, client, blueprint_id, version_id, definition):
@@ -168,68 +126,3 @@ class GovernBlueprintVersionDefinition(object):
         """
         return self.definition
 
-    def get_name(self):
-        """
-        Gets the name of the version.
-
-        :rtype: str
-        """
-        return self.definition.get("name")
-
-    def get_instructions(self):
-        """
-        Gets the instructions for this version.
-
-        :rtype: str
-        """
-        return self.definition.get("instructions")
-
-    def get_hierarchical_parent_field_id(self):
-        """
-        Gets the parent field id.
-
-        :rtype: str
-        """
-        return self.definition.get("hierarchicalParentFieldId")
-
-    def get_field_definitions(self):
-        """
-        Gets the field definitions of this version. This returns a dictionary with the field ids of as the keys,
-        the values are the definition of the fields.
-
-        :rtype: dict
-        """
-        return self.definition.get("fieldDefinitions")
-
-    def get_field_definition(self, field_definition_id):
-        """
-        Gets the definition of a specific field. This returns a dictionary with the definition of the field.
-
-        :param str field_definition_id: id of the desired field
-        :rtype: dict
-        """
-        return self.definition.get("fieldDefinitions", {}).get(field_definition_id)
-
-    def get_workflow_definition(self):
-        """
-        Gets the workflow definition for this version. This returns a dictionary with the step definitions.
-
-        :rtype: dict
-        """
-        return self.definition.get("workflowDefinition")
-
-    def get_logical_hook_list(self):
-        """
-        Gets the list of the hooks for this version. This returns a list with the logical hooks.
-
-        :rtype: list
-        """
-        return self.definition.get("logicalHookList")
-
-    def get_ui_definition(self):
-        """
-        Gets the UI definition of this version. Returns a dict with the UI definition information.
-
-        :rtype: dict
-        """
-        return self.definition.get("uiDefinition")

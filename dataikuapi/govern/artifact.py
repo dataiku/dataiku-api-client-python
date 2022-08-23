@@ -1,82 +1,32 @@
 class GovernArtifact(object):
+    """
+    A handle to interact with an artifact on the Govern instance.
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact()`
+    """
+
     def __init__(self, client, artifact_id, artifact):
-        """
-        A handle to interact with an artifact on the Govern instance.
-        Do not create this directly, use :meth:`dataikuapi.GovernClient.get_artifact`
-        """
         self.client = client
         self.artifact_id = artifact_id
         self.artifact = artifact
 
-    def get_raw(self):
+    def get_definition(self):
         """
-        Gets the raw content of the artifact. This returns a reference to the artifact so changes made to the returned
-        object will be reflected when saving.
+        Retrieve the artifact definition and return it as an object.
 
-        :rtype: dict
+        :return: the corresponding artifact definition object
+        :rtype: :class:`dataikuapi.govern.artifact.GovernArtifactDefinition`
         """
-        return self.artifact
-
-
-    @property
-    def name(self):
-        """
-        Return the artifact name.
-
-        :return: the artifact name as a Python str
-        """
-        return self.artifact.get("name")
-
-    @property
-    def fields(self):
-        """
-        Return the artifact fields.
-
-        :return: the artifact fields as a Python dict
-        """
-        return self.artifact.get("fields")
-
-    @property
-    def attachments(self):
-        """
-        Return the artifact attachments.
-
-        :return: the artifact attachments as a Python dict
-        """
-        return self.artifact.get("attachments")
-
-    @property
-    def blueprint_version_id(self):
-        """
-        Return the artifact blueprint version id.
-
-        :return: the artifact blueprint version id as a Python dict
-        """
-        return self.artifact.get("blueprintVersionId")
-
-    @property
-    def status(self):
-        """
-        Return the artifact status.
-
-        :return: the artifact status as a Python dict
-        """
-        return self.artifact.get("status")
+        definition = self._perform_json("GET", '/artifact/%s' % self.artifact_id)
+        return GovernArtifactDefinition(self.client, self.artifact_id, definition)
 
     def get_sign_offs(self):
         """
         Return a handle to interact with the sign-offs of this artifact
 
-        :rtype: A :class:`dataikuapi.govern.artifact.GovernArtifactSignOffs`
+        :rtype: A :class:`~dataikuapi.govern.artifact.GovernArtifactSignOffs`
         """
 
         return GovernArtifactSignOffs(self, self.artifact_id)
-
-    def save(self):
-        """
-        Save this settings back to the artifact.
-        """
-        self.artifact = self.client._perform_json("PUT", "/artifact/%s" % self.artifact_id, body=self.artifact)
 
     def delete(self):
         """
@@ -87,10 +37,37 @@ class GovernArtifact(object):
         self.client._perform_empty("DELETE", "/artifact/%s" % self.artifact_id)
 
 
-class GovernArtifactSignoffs(object):
+class GovernArtifactDefinition(object):
+    """
+    A handle to interact with the definition of an artifact
+    Do not create this class directly, instead use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_definition()`
+    """
+
+    def __init__(self, client, artifact_id, definition):
+        self.client = client
+        self.artifact_id = artifact_id
+        self.definition = definition
+
+    def get_raw(self):
+        """
+        Gets the raw content of the artifact. This returns a reference to the artifact so changes made to the returned
+        object will be reflected when saving.
+
+        :rtype: dict
+        """
+        return self.definition
+
+    def save(self):
+        """
+        Save this settings back to the artifact.
+        """
+        self.definition = self.client._perform_json("PUT", "/artifact/%s" % self.artifact_id, body=self.definition)
+
+
+class GovernArtifactSignOffs(object):
     """
     Handle to interact with the sign-offs of a workflow
-    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoffs`
+    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_sign_offs()`
     """
 
     def __init__(self, client, artifact_id):
@@ -200,7 +177,7 @@ class GovernArtifactSignoffs(object):
         """
         Change the status of the sign-off, takes as input a list of pairs user, group_id to notify. The user will be
         notified as part of the group group_id. A list of the possible users to notify is available using:
-        :meth:`dataikuapi.govern.artifact_sign_offs.get_details(step_id)`
+        :meth:`~dataikuapi.govern.artifact_sign_offs.get_details(step_id)`
 
         :param str step_id: id of the step
         :param str status: target feedback status to be chosen from: NOT_STARTED, WAITING_FOR_FEEDBACK, WAITING_FOR_APPROVAL,
