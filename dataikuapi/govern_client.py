@@ -174,13 +174,12 @@ class GovernClient(object):
 
     def get_artifact(self, artifact_id):
         """
-        Retrieve an artifact
+        Return a handle to interact with an artifact.
 
         :param str artifact_id: id of the artifact to retrieve
         :return: the corresponding :class:`dataikuapi.govern.artifact.GovernArtifact`
         """
-        result = self._perform_json("GET", '/artifact/%s' % artifact_id)
-        return GovernArtifact(self, artifact_id, result)
+        return GovernArtifact(self, artifact_id)
 
     def create_artifact(self, artifact):
         """
@@ -190,7 +189,7 @@ class GovernClient(object):
         :return: the created :class:`dataikuapi.govern.artifact.GovernArtifact`
         """
         result = self._perform_json('POST', '/artifacts', body=artifact)
-        return GovernArtifact(self, result.id, result)
+        return GovernArtifact(self, result.get("id"))
 
     def get_artifact_search_handler(self):
         """

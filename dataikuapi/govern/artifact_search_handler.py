@@ -1,3 +1,6 @@
+from dataikuapi.govern.artifact import GovernArtifact
+
+
 class GovernArtifactSearchHandler(object):
     """
     Handler to perform search queries on artifacts.
@@ -32,18 +35,20 @@ class GovernArtifactSearchRequest(object):
         self.search_source, self.query = artifact_search_query.build()
         self.last_artifact_id = None
 
-    def perform_search(self, page_size=20, last_artifact_id=None):
+    def perform_search(self, as_object=False, page_size=20, last_artifact_id=None):
         """
         Run the search request. Use page_size and last_artifact_id to get the paginated results.
 
-        :param int page_size: size of the result page, default value is set to 20.
-        :param str last_artifact_id: id of the last artifact. Useful to get the next page of result starting from a
-        specific id. If the perform_search is played more than once and that last_artifact_id is not specified, the
-        results will be browsed one page after another.
-        :returns The result of the search request. This dict contains a key "uiArtifacts" which is the list of the
-        results list. The dict contains a key "hasNextPage"  which value is boolean. If this value is set to true, it is
-        possible to navigate through the results using the parameters page_size and last_artifact_id.
-        :rtype: dict
+        :param boolean as_object: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`,
+        else returns a list of dict. Each dict contains at least a field "id" indicating the identifier of the artifact.
+        :param int page_size: (Optional) size of the result page, default value is set to 20.
+        :param str last_artifact_id: (Optional) id of the last artifact. Useful to get the next page of result starting
+        from a specific id. If the perform_search is played more than once and that last_artifact_id is not specified,
+        the results will be browsed one page after another.
+        :return The result of the search request. This dict contains a key "uiArtifacts" which is the list of the
+        results list. The dict contains a key "hasNextPage"  which value is boolean. If param as_objects is set to True,
+        then the return value will be a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`
+        :rtype: dict or list of :class:`~dataikuapi.govern.artifact.GovernArtifact`
         """
 
         if last_artifact_id is not None:
@@ -59,11 +64,15 @@ class GovernArtifactSearchRequest(object):
         }
 
         result = self.client._perform_json("POST", "/artifacts/search", body=body)
-
+        artifact_list = result.get("uiArtifacts")
         # update local last_artifact_id for next requests
-        self.last_artifact_id = result.get("lastArtifactId")
+        if artifact_list:
+            self.last_artifact_id = artifact_list[-1]
 
-        return result
+        if as_object:
+            return [GovernArtifact(self.client, artifact.get("id")) for artifact in artifact_list]
+        else:
+            return result
 
 
 class GovernArtifactSearchQuery(object):
@@ -77,8 +86,8 @@ class GovernArtifactSearchQuery(object):
 
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSource` artifact_search_source:
         (Optional) The search source to restrict the artifact results. For example, use a
-         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints`. to restrict results
-        to artifacts that belongs to a specific blueprint,
+         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints` to restrict results
+        to artifacts that belongs to a specific blueprint.
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`,
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceArtifacts` can also be used to
         change the search source. By default, the search will be executed on all artifacts.
@@ -100,7 +109,7 @@ class GovernArtifactSearchQuery(object):
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSource` artifact_search_source:
         (Optional) The search source to restrict the artifact results. For example, use a
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints`. to restrict results
-        to artifacts that belongs to a specific blueprint,
+        to artifacts that belongs to a specific blueprint.
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`,
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceArtifacts` can also be used to
         change the search source. By default, the search will be executed on all artifacts.
@@ -205,9 +214,9 @@ class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
 
     def __init__(self, blueprint_version_ids=None):
         """
-        :param list of dict blueprint_version_ids: (Optional) the list of blueprint ids of which the artifact search will
-        be performed. Use :meth:`~dataikuapi.govern.artifact_search_handler.GovernBlueprintVersionIdBuilder.build()` to
-        create blueprint version ids from blueprint ids and versions ids.
+        :param list of dict blueprint_version_ids: (Optional) the list of blueprint version ids of which the artifact
+        search will be performed. Use :meth:`~dataikuapi.govern.artifact_search_handler.GovernBlueprintVersionIdBuilder.build()`
+        to create blueprint version ids from blueprint ids and versions ids.
         """
         super().__init__(search_source_type="blueprintVersions")
         self.blueprint_version_ids = blueprint_version_ids if blueprint_version_ids is not None else []
@@ -224,7 +233,7 @@ class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
 
     def __init__(self, artifact_ids=None):
         """
-        :param list of str artifact_ids: (Optional) the list of artifacts ids on which the request will be restricted.
+        :param list of str artifact_ids: (Optional) the list of artifacts ids on which the results will be restricted.
         """
         super().__init__(search_source_type="artifacts")
         self.artifact_ids = artifact_ids if artifact_ids is not None else []
@@ -290,8 +299,6 @@ class GovernArtifactSearchSortField(GovernArtifactSearchSort):
 
     def __init__(self, fields=None, direction="ASC"):
         """
-        field of dict {bpid, fielid}
-
         :param list of dicts fields: (Optional) A list of fields on which the artifacts will be sorted. Use
         :meth:`~dataikuapi.govern.artifact_search_handler.GovernSearchSortFieldBuilder.build()` to create fields based
         on the blueprint id and the field id.

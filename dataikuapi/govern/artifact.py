@@ -4,10 +4,9 @@ class GovernArtifact(object):
     Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact()`
     """
 
-    def __init__(self, client, artifact_id, artifact):
+    def __init__(self, client, artifact_id):
         self.client = client
         self.artifact_id = artifact_id
-        self.artifact = artifact
 
     def get_definition(self):
         """

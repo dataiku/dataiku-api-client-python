@@ -243,6 +243,21 @@ class GovernAdminBlueprintVersion(object):
 
         return GovernAdminSignoffConfiguration(self.client, self.blueprint_id, self.version_id, step_id)
 
+    def create_sign_off_configuration(self, step_id, sign_off_configuration):
+        """
+        Create a new signoff for a specific step of the workflow and return a handle to interact with it.
+
+        :param str step_id: The step id of the workflow on which the signoff will be added.
+        :param dict sign_off_configuration: The configuration of the signoff
+        :returns The handle of the newly created signoff configuration
+        :rtype: :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration`
+        """
+
+        self.client._perform_json("POST", "/admin/blueprint/%s/version/%s/workflow/step/%s/signoff" % (
+            self.blueprint_id, self.version_id, step_id), body=sign_off_configuration)
+
+        return GovernAdminSignoffConfiguration(self.client, self.blueprint_id, self.version_id, step_id)
+
     def delete(self):
         """
         Delete the blueprint version. To delete a blueprint, all related artifacts must be deleted beforehand.
@@ -343,7 +358,10 @@ class GovernAdminBlueprintVersionDefinition(object):
         """
         Save this definition back to the blueprint version definition.
 
-        :param boolean danger_zone_accepted: ignore the warning about existing artifacts. If there are existing artifacts using this blueprint version, modifying it may break them (ie. removing artifact field values). By default, the save call will fail in this case. If this parameter is set to true, the call will ignore the warning and be run anyway.
+        :param boolean danger_zone_accepted: ignore the warning about existing artifacts. If there are existing artifact
+        s using this blueprint version, modifying it may break them (ie. removing artifact field values). By default,
+        the save call will fail in this case. If this parameter is set to true, the call will ignore the warning
+        and be run anyway.
         :return: None
         """
         params = {}
