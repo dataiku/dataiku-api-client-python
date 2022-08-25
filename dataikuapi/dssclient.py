@@ -18,6 +18,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
+from .dss.workspace import DSSWorkspace
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
 
@@ -1289,6 +1290,52 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.feature_store.DSSFeatureStore`
         """
         return DSSFeatureStore(self)
+
+    ########################################################
+    # Workspaces
+    ########################################################
+
+    def list_workspaces(self, as_objects=False):
+        """
+        List the workspaces
+
+        :returns: The list of workspaces.
+        """
+        items = self._perform_json("GET", "/workspaces/")
+        if as_objects:
+            return [DSSWorkspace(self, item["workspaceKey"]) for item in items]
+        else:
+            return items
+
+    def get_workspace(self, workspace_key):
+        """
+        Get a handle to interact with a specific workspace
+
+        :param str workspace_key: the workspace key of the desired workspace
+        :returns: A :class:`dataikuapi.dss.workspace.DSSWorkspace` to interact with this workspace
+        """
+        return DSSWorkspace(self, workspace_key)
+
+    def create_workspace(self, workspace_key, name, permissions=None, description=None, color=None):
+        """
+        Create a new workspace and return a workspace handle to interact with it
+
+        :param str workspace_key: the identifier to use for the workspace. Must be globally unique
+        :param str name: the display name for the workspace.
+        :param str permissions: Initial permissions for the workspace (can be modified later).
+        :param str description: a description for the workspace.
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+
+        :returns: A :class:`dataikuapi.dss.workspace.DSSWorkspace` workspace handle to interact with this workspace
+        """
+        resp = self._perform_text("POST", "/workspaces/", body={
+            "workspaceKey": workspace_key,
+            "displayName": name,
+            "color": color,
+            "description": description,
+            "permissions": permissions
+        })
+        return DSSWorkspace(self, workspace_key)
 
 
 class TemporaryImportHandle(object):
