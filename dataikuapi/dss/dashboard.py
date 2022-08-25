@@ -23,7 +23,7 @@ class DSSDashboard(object):
         """
         :param DSSClient client: an api client to connect to the DSS backend
         :param str project_key: identifier of the project to access
-        :param str dashboard_id: identified of the dashboard
+        :param str dashboard_id: identifier of the dashboard
         """
         self.client = client
         self.project_key = project_key
