@@ -363,6 +363,29 @@ class DSSDataset(object):
     # Don't forget to synchronize with DSSProject.*
     ########################################################
 
+    def create_timeseries_forecasting_ml_task(self, target_variable,
+                                  time_variable=None,
+                                  timeseries_identifiers=None,
+                                  guess_policy="TIMESERIES_DEFAULT",
+                                  wait_guess_complete=True):
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+        :param string target_variable: the variable to predict
+        :param string time_variable:  Column to be used as time variable
+        :param list timeseries_identifiers:  List of columns to be used as time series identifiers
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: TIMESERIES_DEFAULT, TIMESERIES_STATISTICAL, and TIMESERIES_DEEP_LEARNING
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        """
+        return self.project.create_timeseries_forecasting_ml_task(self.dataset_name, target_variable=target_variable,
+                                                      time_variable=time_variable, timeseries_identifiers=timeseries_identifiers,
+                                                      guess_policy=guess_policy, wait_guess_complete=wait_guess_complete)
+
     def create_prediction_ml_task(self, target_variable,
                                   ml_backend_type="PY_MEMORY",
                                   guess_policy="DEFAULT",

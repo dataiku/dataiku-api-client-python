@@ -554,6 +554,44 @@ class DSSProject(object):
     # Lab and ML
     # Don't forget to synchronize with DSSDataset.*
     ########################################################
+    def create_timeseries_forecasting_ml_task(self, input_dataset, target_variable,
+                                              time_variable=None,
+                                              timeseries_identifiers=None,
+                                              guess_policy="TIMESERIES_DEFAULT",
+                                              wait_guess_complete=True):
+
+        """Creates a new prediction task in a new visual analysis lab
+        for a dataset.
+
+        :param string input_dataset: the dataset to use for training/testing the model
+        :param string target_variable: the variable to predict
+        :param string time_variable:  Column to be used as time variable
+        :param list timeseries_identifiers:  List of columns to be used as time series identifiers
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: TIMESERIES_DEFAULT, TIMESERIES_STATISTICAL, and TIMESERIES_DEEP_LEARNING
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return :class dataiku.dss.ml.DSSMLTask
+        """
+        obj = {
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariable": target_variable,
+            "timeVariable": time_variable,
+            "timeseriesIdentifiers": timeseries_identifiers,
+            "backendType": "PY_MEMORY",
+            "guessPolicy":  guess_policy,
+            "predictionType": "TIMESERIES_FORECAST"
+        }
+
+        ref = self.client._perform_json("POST", "/projects/%s/models/lab/" % self.project_key, body=obj)
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
 
     def create_prediction_ml_task(self, input_dataset, target_variable,
                                   ml_backend_type="PY_MEMORY",
@@ -860,7 +898,7 @@ class DSSProject(object):
         Create a new model comparison in the project, and return a handle to interact with it.
 
         :param string name: the name for the new model comparison
-        :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
+        :param string prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, and TIMESERIES_FORECAST
 
         :returns: A handle on a new model comparison
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`

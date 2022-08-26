@@ -93,6 +93,29 @@ class APINodeClient(DSSBaseClient):
 
         return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
 
+    def forecast(self, endpoint_id, records, forced_generation=None, dispatch_key=None):
+        """
+        Produce forecast using a time series forecasting model on a DSS API node endpoint
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param records: List of time series data records to be used as an input for the
+                        time series forecasting model. Each record should be a dict where
+                        keys are features names, and values features values.
+        :param forced_generation: See documentation about multi-version prediction
+        :param dispatch_key: See documentation about multi-version prediction
+
+        :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
+        """
+
+        obj = {"items": records}
+
+        if forced_generation is not None:
+            obj["dispatch"] = {"forcedGeneration" : forced_generation }
+        elif dispatch_key is not None:
+            obj["dispatch"] = {"dispatchKey" : dispatch_key }
+
+        return self._perform_json("POST", "%s/forecast" % endpoint_id, body = obj)
+
     def sql_query(self, endpoint_id, parameters):
         """
         Queries a "SQL query" endpoint on a DSS API node

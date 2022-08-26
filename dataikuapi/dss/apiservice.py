@@ -21,6 +21,18 @@ class DSSAPIServiceSettings(object):
         """
         return self.settings
 
+    def add_forecasting_endpoint(self, endpoint_id, saved_model_id):
+        """Adds a new "visual time series forecasting" endpoint to this API service
+
+        :param str endpoint_id: Identifier of the new endpoint to create
+        :param str saved_model_id: Identifier of the saved model (deployed to Flow) to use
+        """
+        self.settings["endpoints"].append({
+            "id" : endpoint_id,
+            "type" : "STD_FORECAST",
+            "modelRef": saved_model_id
+        })
+
     def add_prediction_endpoint(self, endpoint_id, saved_model_id):
         """Adds a new "visual prediction" endpoint to this API service
 
