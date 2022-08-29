@@ -187,7 +187,7 @@ class GovernAdminBlueprintVersion(object):
 
         :param boolean as_objects: (Optional) If True, returns a list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignoffConfiguration`,
          else returns a list of dict. Each dict contains a field "stepId" indicating the identifier of the step.
-        :return: The list of sign-off configurations 
+        :return: The list of sign-off configurations
         :rtype: list of :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignoffConfiguration` or list of dict, see parameter as_objects
         """
         configurations = self.client._perform_json("GET", "/admin/blueprint/%s/version/%s/signoffs" % (self.blueprint_id, self.version_id))
