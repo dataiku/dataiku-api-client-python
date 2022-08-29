@@ -4,7 +4,7 @@ from dataikuapi.govern.artifact import GovernArtifact
 class GovernArtifactSearchHandler(object):
     """
     Handler to perform search queries on artifacts.
-    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact_search_handler()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_artifact_search_handler`
     """
 
     def __init__(self, client):
@@ -16,18 +16,17 @@ class GovernArtifactSearchHandler(object):
 
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchQuery` artifact_search_query:
         The query that will be addressed during the search.
-        :returns The created artifact search request object
+        :returns: The created artifact search request object
         :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
         """
-
         return GovernArtifactSearchRequest(self.client, artifact_search_query)
 
 
 class GovernArtifactSearchRequest(object):
     """
     A search request object.
-    Do not create this directly, use :meth:`~dataikuapi.govern.artifact_search_handler.build_request()` and then run the
-    query using :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search()`
+    Do not create this directly, use :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchHandler.build_request` and then run the
+    query using :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest.perform_search`
     """
 
     def __init__(self, client, artifact_search_query):
@@ -40,7 +39,8 @@ class GovernArtifactSearchRequest(object):
         Run the search request. Use page_size and last_artifact_id to get the paginated results.
 
         :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`,
-        else returns a list of dict. Each dict contains at least a field "id" indicating the identifier of the artifact.
+        else returns a dict. This dict contains a key "uiArtifacts" which is the list of the
+        results list. Each dict contains at least a field "artifact.id" indicating the identifier of the artifact.
         :param int page_size: (Optional) size of the result page, default value is set to 20.
         :param str last_artifact_id: (Optional) id of the last artifact. Useful to get the next page of result starting
         from a specific id. If the perform_search is played more than once and that last_artifact_id is not specified,
@@ -64,13 +64,13 @@ class GovernArtifactSearchRequest(object):
         }
 
         result = self.client._perform_json("POST", "/artifacts/search", body=body)
-        artifact_list = result.get("uiArtifacts")
+        artifact_list = result.get("uiArtifacts", [])
         # update local last_artifact_id for next requests
         if artifact_list:
             self.last_artifact_id = artifact_list[-1]
 
         if as_objects:
-            return [GovernArtifact(self.client, artifact.get("artifact")["id"]) for artifact in artifact_list]
+            return [GovernArtifact(self.client, artifact["artifact"]["id"]) for artifact in artifact_list]
         else:
             return result
 
@@ -82,21 +82,17 @@ class GovernArtifactSearchQuery(object):
 
     def __init__(self, artifact_search_source=None, artifact_filters_list=None, artifact_search_sort=None):
         """
-        Create a new search query that will be used to perform the search request.
-
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSource` artifact_search_source:
         (Optional) The search source to restrict the artifact results. For example, use a
          :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints` to restrict results
         to artifacts that belongs to a specific blueprint.
-        :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`,
+        :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`, or
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceArtifacts` can also be used to
         change the search source. By default, the search will be executed on all artifacts.
-        :param list of `~dataikuapi.govern.artifact_search_handler.GovernArtifactFilter` artifact_filters_list: A list
+        :param list of :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactFilter` artifact_filters_list: A list
          of filters to apply on the query.
-        :param `~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSort` artifact_search_sort: The sort
+        :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSort` artifact_search_sort: The sort
         configuration to apply on the query
-        :return: The query object that will be passed to the search object.
-        :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
         """
         self.artifact_search_source = artifact_search_source if artifact_search_source is not None else GovernArtifactSearchSourceAll()
         self.artifact_filters_list = artifact_filters_list if artifact_filters_list is not None else []
@@ -107,10 +103,10 @@ class GovernArtifactSearchQuery(object):
         Set a search source for this query
 
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSource` artifact_search_source:
-        (Optional) The search source to restrict the artifact results. For example, use a
-        :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints`. to restrict results
+        (Optional) The search source to restrict the artifact results.
+        For example, use a :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprints` to restrict results
         to artifacts that belongs to a specific blueprint.
-        :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`,
+        :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceBlueprintVersions`, or
         :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSourceArtifacts` can also be used to
         change the search source. By default, the search will be executed on all artifacts.
         :return: None
@@ -129,8 +125,7 @@ class GovernArtifactSearchQuery(object):
         """
         Add a new artifact filter to the filter list of the query.
 
-        :param `~dataikuapi.govern.artifact_search_handler.GovernArtifactFilter` artifact_filter: A filter to add to the
-        filter list.
+        :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactFilter` artifact_filter: A filter to add to the filter list.
         :return: None
         """
         self.artifact_filters_list.append(artifact_filter)
@@ -147,13 +142,17 @@ class GovernArtifactSearchQuery(object):
         """
         Set a new search sort configuration for this request.
 
-        :param `~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSort` artifact_search_sort: The sort
+        :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSort` artifact_search_sort: The sort
         configuration to apply on the query
         :return: None
         """
         self.artifact_search_sort = artifact_search_sort
 
     def build(self):
+        """
+        :returns: the search query definition as a two dicts
+        :rtype: (dict, dict)
+        """
         query = {"artifactFilters": [artifact_filter.build() for artifact_filter in self.artifact_filters_list]}
         if self.artifact_search_sort is not None:
             query["artifactSearchSort"] = self.artifact_search_sort.build()
@@ -166,7 +165,7 @@ class GovernArtifactSearchQuery(object):
 
 class GovernArtifactSearchSource(object):
     """
-    An abstract class to embrace the different search source. Do not instantiate this class but its subclasses.
+    An abstract class to represent the different search source. Do not instantiate this class but one of its subclasses.
     """
 
     def __init__(self, search_source_type):
@@ -185,7 +184,11 @@ class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
         super(GovernArtifactSearchSourceAll, self).__init__(search_source_type="all")
 
     def build(self):
-        return {"type": "all"}
+        """
+        :returns: the search source definition as a dict
+        :rtype: dict
+        """
+        return {"type": self.search_source_type}
 
 
 class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
@@ -203,6 +206,10 @@ class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
         self.blueprint_ids = blueprint_ids if blueprint_ids is not None else []
 
     def build(self):
+        """
+        :returns: the search source definition as a dict
+        :rtype: dict
+        """
         return {"type": self.search_source_type, "blueprintIds": self.blueprint_ids}
 
 
@@ -215,13 +222,17 @@ class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
     def __init__(self, blueprint_version_ids=None):
         """
         :param list of dict blueprint_version_ids: (Optional) the list of blueprint version ids of which the artifact
-        search will be performed. Use :meth:`~dataikuapi.govern.artifact_search_handler.GovernBlueprintVersionIdBuilder.build()`
+        search will be performed. Use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersionId.build` to build a blueprint version ID definition.
         to create blueprint version ids from blueprint ids and versions ids.
         """
         super(GovernArtifactSearchSourceBlueprintVersions, self).__init__(search_source_type="blueprintVersions")
         self.blueprint_version_ids = blueprint_version_ids if blueprint_version_ids is not None else []
 
     def build(self):
+        """
+        :returns: the search source definition as a dict
+        :rtype: dict
+        """
         return {"type": self.search_source_type, "blueprintVersionIds": self.blueprint_version_ids}
 
 
@@ -239,6 +250,10 @@ class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
         self.artifact_ids = artifact_ids if artifact_ids is not None else []
 
     def build(self):
+        """
+        :returns: the search source definition as a dict
+        :rtype: dict
+        """
         return {"type": self.search_source_type, "artifactIds": self.artifact_ids}
 
 
@@ -246,10 +261,9 @@ class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
 # Search Sort
 ########################################################
 
-
 class GovernArtifactSearchSort(object):
     """
-    An abstract class to embrace the different search sort. Do not instantiate this class but its subclasses.
+    An abstract class to represent the different search sort. Do not instantiate this class but one of its subclasses.
     """
 
     def __init__(self, artifact_search_sort_type, direction):
@@ -267,12 +281,15 @@ class GovernArtifactSearchSortName(GovernArtifactSearchSort):
 
     def __init__(self, direction="ASC"):
         """
-        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
-        "DESC"
+        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or "DESC"
         """
         super(GovernArtifactSearchSortName, self).__init__(artifact_search_sort_type="name", direction=direction)
 
     def build(self):
+        """
+        :returns: the search sort definition as a dict
+        :rtype: dict
+        """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
 
 
@@ -283,12 +300,15 @@ class GovernArtifactSearchSortWorkflow(GovernArtifactSearchSort):
 
     def __init__(self, direction="ASC"):
         """
-        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
-        "DESC"
+        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or "DESC"
         """
         super(GovernArtifactSearchSortWorkflow, self).__init__(artifact_search_sort_type="workflow", direction=direction)
 
     def build(self):
+        """
+        :returns: the search sort definition as a dict
+        :rtype: dict
+        """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
 
 
@@ -300,26 +320,48 @@ class GovernArtifactSearchSortField(GovernArtifactSearchSort):
     def __init__(self, fields=None, direction="ASC"):
         """
         :param list of dicts fields: (Optional) A list of fields on which the artifacts will be sorted. Use
-        :meth:`~dataikuapi.govern.artifact_search_handler.GovernSearchSortFieldBuilder.build()` to create fields based
-        on the blueprint id and the field id.
-        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
-        "DESC"
+        :meth:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchSortFieldDefinition.build` to build a field based sort definition.
+        :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or "DESC"
         """
         super(GovernArtifactSearchSortField, self).__init__(artifact_search_sort_type="field", direction=direction)
         self.fields = fields if fields is not None else []
 
     def build(self):
+        """
+        :returns: the search sort definition as a dict
+        :rtype: dict
+        """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type, "fields": self.fields}}
+
+
+class GovernArtifactSearchSortFieldDefinition(object):
+    """
+    A sort definition builder to use in a search query in order to sort on a field of a blueprint
+    """
+
+    def __init__(self, blueprint_id, field_id):
+        """
+        :param str blueprint_id: the Blueprint ID
+        :param str field_id: the field ID
+        """
+        self.blueprint_id = blueprint_id
+        self.field_id = field_id
+
+    def build(self):
+        """
+        :returns: the field search sort definition
+        :rtype: dict
+        """
+        return {"blueprintId": self.blueprint_id, "fieldId": self.field_id}
 
 
 ########################################################
 # Search Filters
 ########################################################
 
-
 class GovernArtifactFilter(object):
     """
-    An abstract class to represent artifact filters.
+    An abstract class to represent artifact filters. Do not instance this class but one of its subclasses.
     """
 
     def __init__(self, filter_type):
@@ -336,18 +378,15 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
 
     def __init__(self, condition_type, condition=None, field_id=None, negate_condition=None, case_sensitive=None):
         """
-        :param str condition_type: the condition type of the filter. Has to be chosen from EQUALS, CONTAINS, START_WITH,
-        END_WITH.
+        :param str condition_type: the condition type of the filter. Has to be chosen from EQUALS, CONTAINS, START_WITH, END_WITH.
         :param str condition: (Optional) The value on which the condition will be applied.
         :param str field_id: (Optional) The id of the field on which the condition will be applied. If not specified the
         filter will apply on the name.
-        :param boolean negate_condition: (Optional) A boolean to negate the condition. By default, the condition is not
-        negated.
+        :param boolean negate_condition: (Optional) A boolean to negate the condition. By default, the condition is not negated.
         :param str case_sensitive: (Optional) Can be used to activate case-sensitive filtering. By default, filters will
         not be case-sensitive.
-        :returns The created filter that will be useful to perform the search.
         """
-        super().__init__(filter_type="field")
+        super(GovernFieldValueArtifactFilter, self).__init__(filter_type="field")
         self.condition_type = condition_type
         self.condition = condition
         self.field_id = field_id
@@ -355,6 +394,10 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
         self.case_sensitive = case_sensitive
 
     def build(self):
+        """
+        :returns: the artifact filter definition as a dict
+        :rtype: dict
+        """
         field_filter = {"type": self.filter_type, "conditionType": self.condition_type}
         if self.condition is not None:
             field_filter["condition"] = self.condition
@@ -377,30 +420,13 @@ class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
         :param boolean is_archived: the value for filtering. If is_archived is set to True, all artifacts including
         archived ones will be part of the search result
         """
-        super().__init__(filter_type="archived")
+        super(GovernArchivedStatusArtifactFilter, self).__init__(filter_type="archived")
         self.is_archived = is_archived
 
     def build(self):
+        """
+        :returns: the artifact filter definition as a dict
+        :rtype: dict
+        """
         return {"type": self.filter_type, "isArchived": self.is_archived}
 
-
-########################################################
-# Builders
-########################################################
-
-class GovernBlueprintVersionIdBuilder(object):
-    def __init__(self, blueprint_id, version_id):
-        self.blueprint_id = blueprint_id
-        self.version_id = version_id
-
-    def build(self):
-        return {"blueprintId": self.blueprint_id, "versionId": self.version_id}
-
-
-class GovernSearchSortFieldBuilder(object):
-    def __init__(self, blueprint_id, field_id):
-        self.blueprint_id = blueprint_id
-        self.field_id = field_id
-
-    def build(self):
-        return {"blueprintId": self.blueprint_id, "fieldId": self.field_id}

@@ -1,7 +1,7 @@
 class GovernAdminRolesAndPermissionsAudit(object):
     """
     Handle to get audit information on the computed roles and permissions
-    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_roles_and_permissions_audit()`
+    Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_roles_and_permissions_audit`
     """
 
     def __init__(self, client):
@@ -20,22 +20,21 @@ class GovernAdminRolesAndPermissionsAudit(object):
         return self.client._perform_json("POST", "/admin/roles-audit/level-blueprint",
                                          body={"authIdentifier": auth_identifier, "blueprintId": blueprint_id})
 
-    def audit_blueprint_version_roles(self, auth_identifier, blueprint_id, version_id):
+    def audit_blueprint_version_roles(self, auth_identifier, blueprint_version_id, version_id):
         """
         Get the assigned roles and permissions audit information for a specific authentication context at a specific
         blueprint version level.
 
         :param str auth_identifier: identifier of the authentication context (the login of the user)
-        :param str blueprint_id: id of the blueprint
+        :param dict blueprint_version_id: id of the blueprint version containing "blueprintId" and "versionId" keys.
+        Use :meth:`~dataikuapi.govern.blueprint.BlueprintVersionId.build` to build this blueprint verison ID definition.
         :param str version_id: id of the blueprint version
         :returns: audit information for this specific authentication context and blueprint version.
         :rtype: dict
         """
 
         return self.client._perform_json("POST", "/admin/roles-audit/level-blueprint-version",
-                                         body={"userLogin": auth_identifier,
-                                               "blueprintVersionId": {"blueprintId": blueprint_id,
-                                                                      "versionId": version_id}})
+                                         body={"authIdentifier": auth_identifier, "blueprintVersionId": blueprint_version_id})
 
     def audit_artifact_existing_roles(self, auth_identifier, artifact_id):
         """
@@ -49,21 +48,19 @@ class GovernAdminRolesAndPermissionsAudit(object):
         """
 
         return self.client._perform_json("POST", "/admin/roles-audit/level-existing-artifact",
-                                         body={"userLogin": auth_identifier, "artifactId": artifact_id})
+                                         body={"authIdentifier": auth_identifier, "artifactId": artifact_id})
 
-    def audit_artifact_deleted_roles(self, auth_identifier, blueprint_id, version_id):
+    def audit_artifact_deleted_roles(self, auth_identifier, blueprint_version_id):
         """
         Get the assigned roles and permissions audit information for a specific authentication context and the deleted
         artifact of a blueprint version.
 
         :param str auth_identifier: identifier of the authentication context (the login of the user)
-        :param str blueprint_id: id of the blueprint
-        :param str version_id: id of the blueprint version
+        :param dict blueprint_version_id: id of the blueprint version containing "blueprintId" and "versionId" keys.
+        Use :meth:`~dataikuapi.govern.blueprint.BlueprintVersionId.build` to build this blueprint verison ID definition.
         :returns: audit information for the deleted artifact of this blueprint_version.
         :rtype: dict
         """
 
         return self.client._perform_json("POST", "/admin/roles-audit/level-deleted-artifact",
-                                         body={"userLogin": auth_identifier,
-                                               "blueprintVersionId": {"blueprintId": blueprint_id,
-                                                                      "versionId": version_id}})
+                                         body={"authIdentifier": auth_identifier, "blueprintVersionId": blueprint_version_id})
