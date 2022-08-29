@@ -1,6 +1,6 @@
 class GovernAdminCustomPageEditor(object):
     """
-    Handle to edit the roles and permissions
+    Handle to edit the custom pages
     Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_admin_custom_page_editor`
     """
 
