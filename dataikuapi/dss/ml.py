@@ -92,13 +92,6 @@ class PredictionSplitParamsHandler(object):
         :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
         :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
         """
-        if self.mltask_settings["predictionType"] not in {
-            DSSPredictionMLTaskSettings.PredictionTypes.REGRESSION,
-            DSSPredictionMLTaskSettings.PredictionTypes.BINARY,
-            DSSPredictionMLTaskSettings.PredictionTypes.MULTICLASS,
-        }:
-            raise Exception("Explicit splitting is only available for regression, binary, and multiple classification")
-
         sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
             raise Exception("For explicit splitting a dataset_name is mandatory")
