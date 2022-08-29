@@ -564,9 +564,9 @@ class DSSProject(object):
         for a dataset.
 
         :param string input_dataset: the dataset to use for training/testing the model
-        :param string target_variable: the variable to predict
+        :param string target_variable: the variable to forecast
         :param string time_variable:  Column to be used as time variable
-        :param list timeseries_identifiers:  List of columns to be used as time series identifiers
+        :param list timeseries_identifiers:  List of columns to be used as time series identifiers (when the dataset has multiple series)
         :param string guess_policy: Policy to use for setting the default parameters.
                                     Valid values are: TIMESERIES_DEFAULT, TIMESERIES_STATISTICAL, and TIMESERIES_DEEP_LEARNING
         :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.

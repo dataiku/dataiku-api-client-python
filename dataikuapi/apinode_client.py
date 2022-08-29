@@ -95,7 +95,7 @@ class APINodeClient(DSSBaseClient):
 
     def forecast(self, endpoint_id, records, forced_generation=None, dispatch_key=None):
         """
-        Produce forecast using a time series forecasting model on a DSS API node endpoint
+        Forecast using a time series forecasting model on a DSS API node endpoint
 
         :param str endpoint_id: Identifier of the endpoint to query
         :param records: List of time series data records to be used as an input for the
