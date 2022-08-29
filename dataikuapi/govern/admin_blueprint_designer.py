@@ -19,8 +19,7 @@ class GovernAdminBlueprintDesigner(object):
         blueprints = self.client._perform_json("GET", "/admin/blueprints")
 
         if as_objects:
-            return [GovernAdminBlueprint(self.client, blueprint.get["blueprint"]["id"]) for blueprint in
-                    blueprints]
+            return [GovernAdminBlueprint(self.client, blueprint.get("blueprint")["id"]) for blueprint in blueprints]
         else:
             return blueprints
 
@@ -76,8 +75,7 @@ class GovernAdminBlueprint(object):
         :returns: The blueprint definition as an object.
         :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDefinition`
         """
-        definition = self.client._perform_json(
-            "GET", "/admin/blueprint/%s" % self.blueprint_id)["blueprint"]
+        definition = self.client._perform_json("GET", "/admin/blueprint/%s" % self.blueprint_id)["blueprint"]
         return GovernAdminBlueprintDefinition(self.client, self.blueprint_id, definition)
 
     def list_versions(self, as_objects=True):
@@ -128,6 +126,15 @@ class GovernAdminBlueprint(object):
         """
         return GovernAdminBlueprintVersion(self.client, self.blueprint_id, version_id)
 
+    def delete(self):
+        """
+        Delete the blueprint. To delete a blueprint, all related blueprint versions and artifacts must be deleted
+        beforehand.
+
+        :return: None
+        """
+        self.client._perform_empty("DELETE", "/admin/blueprint/%s" % self.blueprint_id)
+
 
 class GovernAdminBlueprintDefinition(object):
     """
@@ -158,15 +165,6 @@ class GovernAdminBlueprintDefinition(object):
         """
         self.definition = self.client._perform_json("PUT", "/admin/blueprint/%s" % self.blueprint_id,
                                                     body=self.definition)
-
-    def delete(self):
-        """
-        Delete the blueprint. To delete a blueprint, all related blueprint versions and artifacts must be deleted
-        beforehand.
-
-        :return: None
-        """
-        self.client._perform_empty("DELETE", "/admin/blueprint/%s" % self.blueprint_id)
 
 
 class GovernAdminBlueprintVersion(object):

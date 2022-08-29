@@ -35,18 +35,18 @@ class GovernArtifactSearchRequest(object):
         self.search_source, self.query = artifact_search_query.build()
         self.last_artifact_id = None
 
-    def perform_search(self, as_object=False, page_size=20, last_artifact_id=None):
+    def perform_search(self, as_objects=False, page_size=20, last_artifact_id=None):
         """
         Run the search request. Use page_size and last_artifact_id to get the paginated results.
 
-        :param boolean as_object: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`,
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`,
         else returns a list of dict. Each dict contains at least a field "id" indicating the identifier of the artifact.
         :param int page_size: (Optional) size of the result page, default value is set to 20.
         :param str last_artifact_id: (Optional) id of the last artifact. Useful to get the next page of result starting
         from a specific id. If the perform_search is played more than once and that last_artifact_id is not specified,
         the results will be browsed one page after another.
         :return The result of the search request. This dict contains a key "uiArtifacts" which is the list of the
-        results list. The dict contains a key "hasNextPage"  which value is boolean. If param as_objects is set to True,
+        results list. The dict contains a key "hasNextPage"  which value is boolean. If param as_objectss is set to True,
         then the return value will be a list of :class:`~dataikuapi.govern.artifact.GovernArtifact`
         :rtype: dict or list of :class:`~dataikuapi.govern.artifact.GovernArtifact`
         """
@@ -55,7 +55,7 @@ class GovernArtifactSearchRequest(object):
             self.last_artifact_id = last_artifact_id
 
         body = {
-            "searchSource": self.search_source,
+            "artifactSearchSource": self.search_source,
             "query": self.query,
             "artifactSearchPagination": {
                 "pageSize": page_size,
@@ -69,8 +69,8 @@ class GovernArtifactSearchRequest(object):
         if artifact_list:
             self.last_artifact_id = artifact_list[-1]
 
-        if as_object:
-            return [GovernArtifact(self.client, artifact.get("id")) for artifact in artifact_list]
+        if as_objects:
+            return [GovernArtifact(self.client, artifact.get("artifact")["id"]) for artifact in artifact_list]
         else:
             return result
 
@@ -182,7 +182,7 @@ class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
     """
 
     def __init__(self):
-        super().__init__(search_source_type="all")
+        super(GovernArtifactSearchSourceAll, self).__init__(search_source_type="all")
 
     def build(self):
         return {"type": "all"}
@@ -199,7 +199,7 @@ class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
         :param list of str blueprint_ids: (Optional) the list of blueprint ids of which the artifact search will be
         performed.
         """
-        super().__init__(search_source_type="blueprints")
+        super(GovernArtifactSearchSourceBlueprints, self).__init__(search_source_type="blueprints")
         self.blueprint_ids = blueprint_ids if blueprint_ids is not None else []
 
     def build(self):
@@ -218,7 +218,7 @@ class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
         search will be performed. Use :meth:`~dataikuapi.govern.artifact_search_handler.GovernBlueprintVersionIdBuilder.build()`
         to create blueprint version ids from blueprint ids and versions ids.
         """
-        super().__init__(search_source_type="blueprintVersions")
+        super(GovernArtifactSearchSourceBlueprintVersions, self).__init__(search_source_type="blueprintVersions")
         self.blueprint_version_ids = blueprint_version_ids if blueprint_version_ids is not None else []
 
     def build(self):
@@ -235,7 +235,7 @@ class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
         """
         :param list of str artifact_ids: (Optional) the list of artifacts ids on which the results will be restricted.
         """
-        super().__init__(search_source_type="artifacts")
+        super(GovernArtifactSearchSourceArtifacts, self).__init__(search_source_type="artifacts")
         self.artifact_ids = artifact_ids if artifact_ids is not None else []
 
     def build(self):
@@ -270,7 +270,7 @@ class GovernArtifactSearchSortName(GovernArtifactSearchSort):
         :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
         "DESC"
         """
-        super().__init__(artifact_search_sort_type="name", direction=direction)
+        super(GovernArtifactSearchSortName, self).__init__(artifact_search_sort_type="name", direction=direction)
 
     def build(self):
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
@@ -286,7 +286,7 @@ class GovernArtifactSearchSortWorkflow(GovernArtifactSearchSort):
         :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
         "DESC"
         """
-        super().__init__(artifact_search_sort_type="workflow", direction=direction)
+        super(GovernArtifactSearchSortWorkflow, self).__init__(artifact_search_sort_type="workflow", direction=direction)
 
     def build(self):
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
@@ -305,7 +305,7 @@ class GovernArtifactSearchSortField(GovernArtifactSearchSort):
         :param str direction: (Optional) The direction on which the artifacts will be sorted. Can be either "ASC" or
         "DESC"
         """
-        super().__init__(artifact_search_sort_type="field", direction=direction)
+        super(GovernArtifactSearchSortField, self).__init__(artifact_search_sort_type="field", direction=direction)
         self.fields = fields if fields is not None else []
 
     def build(self):
