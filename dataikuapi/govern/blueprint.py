@@ -9,7 +9,6 @@ class GovernBlueprint(object):
         self.client = client
         self.blueprint_id = blueprint_id
 
-
     def get_definition(self):
         """
         Return the definition of the blueprint as an object.

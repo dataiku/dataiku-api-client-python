@@ -147,15 +147,21 @@ class GovernClient(object):
     # Blueprints
     ########################################################
 
-    def list_blueprints(self):
+    def list_blueprints(self, as_objects=False):
         """
         List all the blueprints
 
-        :return: a list of blueprints, each as a dict. Each dict contains at least an 'id' field
-        :rtype: list of dicts
+        :param boolean as_objects: (Optional) If True, returns a list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint`,
+        else returns a list of dict. Each dict contains a field "blueprint.id" indicating the identifier the blueprint
+        :return: a list of blueprints, each as a dict or an object. Each dict contains at least an 'id' field
+        :rtype: or list of dict or list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint`
         """
-        blueprint_list = self._perform_json("GET", '/blueprints')
-        return blueprint_list
+        blueprints = self._perform_json("GET", '/blueprints')
+
+        if as_objects:
+            return [GovernBlueprint(self, blueprint.get["blueprint"]["id"]) for blueprint in blueprints]
+        else:
+            return blueprints
 
     def get_blueprint(self, blueprint_id):
         """
