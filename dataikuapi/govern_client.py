@@ -103,7 +103,7 @@ class GovernClient(object):
         Return a handle to interact with the blueprint designer
         Note: this call requires an API key with admin rights
 
-        :rtype: A :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
+        :rtype: A :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
         return GovernAdminBlueprintDesigner(self)
 
@@ -116,7 +116,7 @@ class GovernClient(object):
         Return a handle to edit the roles and permissions of the Govern instance
         Note: this call requires an API key with admin rights
 
-        :rtype: A :class:`dataikuapi.govern.admin_roles_permissions_editor.GovernRolesPermissionsEditor`
+        :rtype: A :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor`
         """
         return GovernAdminRolesPermissionsEditor(self)
 
@@ -125,9 +125,8 @@ class GovernClient(object):
         Return a handle to get audit information on roles and permissions for Govern objects.
         Note: this call requires an API key with admin rights
 
-        :rtype: A :class:`dataikuapi.govern.admin_roles_and_permissions_audit.GovernAdminRolesAndPermissionsAudit`
+        :rtype: A :class:`~dataikuapi.govern.admin_roles_and_permissions_audit.GovernAdminRolesAndPermissionsAudit`
         """
-
         return GovernAdminRolesAndPermissionsAudit(self)
 
     ########################################################
@@ -139,7 +138,7 @@ class GovernClient(object):
         Return a handle to edit custom pages
         Note: this call requires an API key with admin rights
 
-        :rtype: A :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
+        :rtype: A :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
         """
         return GovernAdminCustomPageEditor(self)
 
@@ -151,26 +150,25 @@ class GovernClient(object):
         """
         List all the blueprints
 
-        :param boolean as_objects: (Optional) If True, returns a list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint`,
-        else returns a list of dict. Each dict contains a field "blueprint.id" indicating the identifier the blueprint
-        :return: a list of blueprints, each as a dict or an object. Each dict contains at least an 'id' field
-        :rtype: or list of dict or list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint`
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint`,
+        else returns a list of dict. Each dict contains at least a field "blueprint.id" indicating the identifier the blueprint
+        :return: a list of blueprints, each as a dict or an object. Each dict contains at least an "blueprint.id" field
+        :rtype: list of :class:`~dataikuapi.govern.blueprint.GovernBlueprint` or list of dict, see param as_objects
         """
-        blueprints = self._perform_json("GET", '/blueprints')
-
+        blueprint_list = self._perform_json("GET", "/blueprints")
         if as_objects:
-            return [GovernBlueprint(self, blueprint.get["blueprint"]["id"]) for blueprint in blueprints]
+            return [GovernBlueprint(self, blueprint["blueprint"]["id"]) for blueprint in blueprint_list]
         else:
-            return blueprints
+            return blueprint_list
 
     def get_blueprint(self, blueprint_id):
         """
         Get a handle to interact with a blueprint. If you want to edit it or one of its versions, use instead:
-        :class:`dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
+        :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
 
         :param str blueprint_id: id of the blueprint to retrieve
         :returns: The handle of the blueprint
-        :rtype: :class:`dataikuapi.govern.models.blueprint.Blueprint`
+        :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprint`
         """
         return GovernBlueprint(self, blueprint_id)
 
@@ -183,7 +181,7 @@ class GovernClient(object):
         Return a handle to interact with an artifact.
 
         :param str artifact_id: id of the artifact to retrieve
-        :return: the corresponding :class:`dataikuapi.govern.artifact.GovernArtifact`
+        :return: the corresponding :class:`~dataikuapi.govern.artifact.GovernArtifact`
         """
         return GovernArtifact(self, artifact_id)
 
@@ -191,17 +189,17 @@ class GovernClient(object):
         """
         Create an artifact
 
-        :param artifact: the definition of the artifact as a dict
-        :return: the created :class:`dataikuapi.govern.artifact.GovernArtifact`
+        :param dict artifact: the definition of the artifact as a dict
+        :return: the created :class:`~dataikuapi.govern.artifact.GovernArtifact`
         """
-        result = self._perform_json('POST', '/artifacts', body=artifact)
-        return GovernArtifact(self, result.get("id"))
+        result = self._perform_json("POST", "/artifacts", body=artifact)
+        return GovernArtifact(self, result["artifact"]["id"])
 
     def get_artifact_search_handler(self):
         """
         Return a handle to build and perform artifact search requests.
 
-        :rtype: A :class:`dataikuapi.govern.artifact_search_handler.GovernArtifactSearchHandler`
+        :rtype: A :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchHandler`
         """
 
         return GovernArtifactSearchHandler(self)
@@ -212,11 +210,11 @@ class GovernClient(object):
 
     def get_custom_page(self, custom_page_id):
         """
-        Retrieve a custom page. To edit a custom page use instead the custom page editor :class:`dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
+        Retrieve a custom page. To edit a custom page use instead the custom page editor :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor`
 
         :param str custom_page_id: id of the custom page to retrieve
         :return: the corresponding custom page object
-        :rtype: a :class:`dataikuapi.govern.custom_page.GovernCustomPage`
+        :rtype: a :class:`~dataikuapi.govern.custom_page.GovernCustomPage`
         """
 
         return GovernCustomPage(self, custom_page_id)
@@ -225,15 +223,15 @@ class GovernClient(object):
         """
         Lists custom pages.
 
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`dataikuapi.govern.custom_page.GovernCustomPage`,
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.custom_page.GovernCustomPage`,
          else returns a list of dict. Each dict contains at least a field "id"
         :returns: a list of custom pages
-        :rtype: list of :class:`dataikuapi.govern.custom_page.GovernCustomPage` or list of dict, see param as_objects
+        :rtype: list of :class:`~dataikuapi.govern.custom_page.GovernCustomPage` or list of dict, see param as_objects
         """
-        pages = self._perform_json("GET", '/custom-pages')
+        pages = self._perform_json("GET", "/custom-pages")
 
         if as_objects:
-            return [GovernCustomPage(self, page['id']) for page in pages]
+            return [GovernCustomPage(self, page["id"]) for page in pages]
         else:
             return pages
 
@@ -246,9 +244,9 @@ class GovernClient(object):
         List all user setup on the Govern instance
         Note: this call requires an API key with admin rights
 
-        :return: A list of users, as a list of :class:`dataikuapi.govern.admin.GovernUser` if as_objects is True,
+        :return: A list of users, as a list of :class:`~dataikuapi.govern.admin.GovernUser` if as_objects is True,
          else as a list of dicts
-        :rtype: list of :class:`dataikuapi.govern.admin.GovernUser` or list of dicts
+        :rtype: list of :class:`~dataikuapi.govern.admin.GovernUser` or list of dicts
         """
         users = self._perform_json("GET", "/admin/users/")
 
@@ -262,8 +260,7 @@ class GovernClient(object):
         Get a handle to interact with a specific user
 
         :param str login: the login of the desired user
-
-        :return: A :class:`dataikuapi.govern.admin.GovernUser` user handle
+        :return: A :class:`~dataikuapi.govern.admin.GovernUser` user handle
         """
         return GovernUser(self, login)
 
@@ -272,8 +269,7 @@ class GovernClient(object):
         """
         Get a handle to interact with the current user
 
-
-        :return: A :class:`dataikuapi.govern.admin.GovernOwnUser` user handle
+        :return: A :class:`~dataikuapi.govern.admin.GovernOwnUser` user handle
         """
         return GovernOwnUser(self)
 
@@ -290,7 +286,7 @@ class GovernClient(object):
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user, can be one of READER, DATA_ANALYST or DATA_SCIENTIST
 
-        :return: A :class:`dataikuapi.govern.admin.GovernUser` user handle
+        :return: A :class:`~dataikuapi.govern.admin.GovernUser` user handle
         """
         if groups is None:
             groups = []
@@ -326,7 +322,7 @@ class GovernClient(object):
         Get a handle to interact with a specific group
 
         :param str name: the name of the desired group
-        :returns: A :class:`dataikuapi.govern.admin.GovernGroup` group handle
+        :returns: A :class:`~dataikuapi.govern.admin.GovernGroup` group handle
         """
         return GovernGroup(self, name)
 
@@ -338,9 +334,9 @@ class GovernClient(object):
 
         :param str name: the name of the new group
         :param str description: (optional) a description of the new group
-        :param source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
+        :param str source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
 
-        :returns: A :class:`dataikuapi.govern.admin.GovernGroup` group handle
+        :returns: A :class:`~dataikuapi.govern.admin.GovernGroup` group handle
         """
         self._perform_text(
             "POST", "/admin/groups/", body={
@@ -371,7 +367,7 @@ class GovernClient(object):
 
         :param str key: the secret key of the desired API key
 
-        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        :returns: A :class:`~dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
         """
         return GovernGlobalApiKey(self, key)
 
@@ -383,9 +379,9 @@ class GovernClient(object):
 
         :param str label: the label of the new API key
         :param str description: the description of the new API key
-        :param str admin: has the new API key admin rights (True or False)
+        :param boolean admin: has the new API key admin rights (True or False)
 
-        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        :returns: A :class:`~dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
         """
         resp = self._perform_json(
             "POST", "/admin/globalAPIKeys/", body={
@@ -452,7 +448,7 @@ class GovernClient(object):
 
         This call requires an API key with admin rights
 
-        :returns: a :class:`dataikuapi.govern.admin.GovernGeneralSettings` handle
+        :returns: a :class:`~dataikuapi.govern.admin.GovernGeneralSettings` handle
         """
         return GovernGeneralSettings(self)
 
@@ -484,8 +480,7 @@ class GovernClient(object):
         This method returns a dict that may contain the following keys (may also contain others):
 
         * authIdentifier: login for a user, id for an API key
-        * groups: list of group names (if  context is a user)
-        * secrets: list of dicts containing user secrets (if context is a user)
+        * groups: list of group names (if context is an user)
 
         :param: headers_dict dict: Dictionary of HTTP headers
         :returns: a dict
@@ -509,7 +504,7 @@ class GovernClient(object):
         """
         Sets a new licence for Govern
 
-        :param license: license (content of license file)
+        :param str license: license (content of license file)
         :return: None
         """
         self._perform_empty(

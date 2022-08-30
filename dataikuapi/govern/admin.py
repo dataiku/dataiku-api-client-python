@@ -1,3 +1,5 @@
+import datetime
+
 class GovernUser(object):
     """
     A handle for a user on the Govern instance.
@@ -93,6 +95,7 @@ class GovernUserSettings(GovernUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled
+
         :rtype: boolean
         """
         return self.settings["enabled"]
@@ -100,6 +103,16 @@ class GovernUserSettings(GovernUserSettingsBase):
     @enabled.setter
     def enabled(self, new_value):
         self.settings["enabled"] = new_value
+
+    @property
+    def creation_date(self):
+        """
+        Get the creation date of the user as a :class:`datetime.datetime`
+        :return: the creation date
+        :rtype: :class:`datetime.datetime` or None
+        """
+        timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
 
     def save(self):
         """Saves the settings"""
@@ -109,7 +122,7 @@ class GovernUserSettings(GovernUserSettingsBase):
 class GovernOwnUserSettings(GovernUserSettingsBase):
     """
     Settings for the current Govern user.
-    Do not create this object directly, use :meth:`~dataikuapi.GovernClient.get_own_user` instead.
+    Do not create this object directly, use :meth:`GovernOwnUser.get_settings` instead.
     """
 
     def __init__(self, client, settings):
