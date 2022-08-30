@@ -36,8 +36,8 @@ class GovernAdminRolesPermissionsEditor(object):
         """
         Creates a new role and returns the handle to interact with it.
 
-        :param str new_identifier: Identifier of the new role
-        :param dict role: The definition of the role
+        :param str new_identifier: Identifier of the new role. Allowed characters are letters, digits, hyphen, and underscore.
+        :param dict role: The definition of the role.
         :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole`
         """
         result = self.client._perform_json("POST", "/admin/roles/", params={"newIdentifier": new_identifier}, body=role)

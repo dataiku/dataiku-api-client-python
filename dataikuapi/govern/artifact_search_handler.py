@@ -150,7 +150,7 @@ class GovernArtifactSearchQuery(object):
 
     def build(self):
         """
-        :returns: the search query definition as a two dicts
+        :returns: the search query definition as a tuple of two dicts
         :rtype: (dict, dict)
         """
         query = {"artifactFilters": [artifact_filter.build() for artifact_filter in self.artifact_filters_list]}

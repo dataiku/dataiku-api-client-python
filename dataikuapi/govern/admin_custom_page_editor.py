@@ -37,8 +37,8 @@ class GovernAdminCustomPageEditor(object):
         """
         Creates a custom page
 
-        :param str new_identifier: the new identifier for this custom page
-        :param dict custom_page: the custom page definition
+        :param str new_identifier: the new identifier for this custom page. Allowed characters are letters, digits, hyphen, and underscore.
+        :param dict custom_page: the custom page definition.
         :returns: the handle of the created custom page
         :rtype: :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`
         """

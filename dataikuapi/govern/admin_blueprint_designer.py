@@ -37,7 +37,7 @@ class GovernAdminBlueprintDesigner(object):
         """
         Create a new blueprint and returns a handle to interact with it.
 
-        :param str new_identifier: the new identifier for the blueprint.
+        :param str new_identifier: the new identifier for the blueprint. Allowed characters are letters, digits, hyphen, and underscore.
         :param dict blueprint: the blueprint definition
         :returns: The handle for the newly created blueprint
         :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint`
@@ -86,7 +86,7 @@ class GovernAdminBlueprint(object):
         """
         Create a new blueprint version and returns a handle to interact with it.
 
-        :param str new_identifier: The new identifier of the blueprint version.
+        :param str new_identifier: The new identifier of the blueprint version. Allowed characters are letters, digits, hyphen, and underscore.
         :param dict blueprint_version_definition: The definition of the blueprint version.
         :param str origin_version_id: (Optional) The blueprint version id of the origin version id if there is one.
         :returns: The handle of the newly created blueprint
@@ -197,7 +197,7 @@ class GovernAdminBlueprintVersion(object):
         else:
             return configurations
 
-    def get_sign_off_configuration(self, step_id):
+    def get_signoff_configuration(self, step_id):
         """
         Gets the sign-off configurations for a specific step
 
@@ -207,7 +207,7 @@ class GovernAdminBlueprintVersion(object):
 
         return GovernAdminSignoffConfiguration(self.client, self.blueprint_id, self.version_id, step_id)
 
-    def create_sign_off_configuration(self, step_id, signoff_configuration):
+    def create_signoff_configuration(self, step_id, signoff_configuration):
         """
         Create a new sign-off for a specific step of the workflow and return a handle to interact with it.
 
@@ -301,7 +301,7 @@ class GovernAdminBlueprintVersionTrace(object):
 class GovernAdminSignoffConfiguration(object):
     """
     A handle to interact with the sign-off configuration of a specific step of a workflow.
-    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_sign_off_configuration`
+    Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_signoff_configuration`
     """
 
     def __init__(self, client, blueprint_id, version_id, step_id):

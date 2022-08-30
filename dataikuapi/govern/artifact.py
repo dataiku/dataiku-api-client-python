@@ -80,7 +80,7 @@ class GovernArtifactSignoffs(object):
         :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`,
         else returns a list of dict. Each dict contains at least a field "stepId" indicating the identifier the sign-off
         :return: the list of sign-offs, each as a dict or an object. Each dict contains at least an "stepId" field
-        :rtype: list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`` or list of dict, see param as_objects
+        :rtype: list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff` or list of dict, see param as_objects
         """
         signoffs = self.client._perform_json("GET", "/artifact/%s/signoffs" % self.artifact_id)
         if as_objects:
@@ -113,7 +113,7 @@ class GovernArtifactSignoff(object):
         """
         Get the signoff cycle detail for this current sign-off. This contains a list of the feedback groups and a list of the approval users.
 
-        :returns: sign off cycle details as python dict
+        :returns: sign-off cycle details as python dict
         :rtype: dict
         """
         return self.client._perform_json("GET", "/artifact/%s/workflow/step/%s/signoff/details" % (self.artifact_id, self.step_id))
