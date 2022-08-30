@@ -158,7 +158,7 @@ class DSSLibraryItem(object):
 
         :param: str new_name: the new name of the item
         """
-        self.client._perform_empty("POST", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, self.get_path()), body={"newName": new_name})
+        self.client._perform_empty("PUT", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, self.get_path()), body={"newName": new_name})
         self.name = new_name
 
     def move_to(self, destination_folder):
@@ -167,7 +167,7 @@ class DSSLibraryItem(object):
 
         :param: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder` destination_folder: the folder where we want to move the current item
         """
-        self.client._perform_empty("POST", "/projects/%s/libraries/contents/move/%s" % (self.project_key, self.get_path()),
+        self.client._perform_empty("PUT", "/projects/%s/libraries/contents/move/%s" % (self.project_key, self.get_path()),
                                    body={"newPath": destination_folder.get_path()})
         self.parent._remove_child_(self)
         destination_folder._add_child_(self)
