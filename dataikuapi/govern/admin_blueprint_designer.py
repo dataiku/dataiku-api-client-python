@@ -96,6 +96,8 @@ class GovernAdminBlueprint(object):
         if origin_version_id is not None:
             params["originVersionId"] = origin_version_id
 
+        blueprint_version_definition["id"] = {"blueprintId": self.blueprint_id}
+
         version = self.client._perform_json("POST", "/admin/blueprint/%s/versions" % self.blueprint_id, params=params, body=blueprint_version_definition)
 
         return GovernAdminBlueprintVersion(self.client, self.blueprint_id, version["blueprintVersion"]["id"]["versionId"])
