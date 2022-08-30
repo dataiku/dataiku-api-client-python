@@ -177,7 +177,7 @@ class GovernArtifactSearchSource(object):
 
 class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
     """
-    A generic search source définition.
+    A generic search source definition.
     """
 
     def __init__(self):
