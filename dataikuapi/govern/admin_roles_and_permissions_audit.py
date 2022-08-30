@@ -13,7 +13,7 @@ class GovernAdminRolesAndPermissionsAudit(object):
 
         :param str auth_identifier: identifier of the authentication context (the login of the user)
         :param str blueprint_id: id of the blueprint
-        :returns: audit information for this specific authentication context and blueprint.
+        :return: audit information for this specific authentication context and blueprint.
         :rtype: dict
         """
 
@@ -29,7 +29,7 @@ class GovernAdminRolesAndPermissionsAudit(object):
         :param dict blueprint_version_id: id of the blueprint version containing "blueprintId" and "versionId" keys.
         Use :meth:`~dataikuapi.govern.blueprint.BlueprintVersionId.build` to build this blueprint verison ID definition.
         :param str version_id: id of the blueprint version
-        :returns: audit information for this specific authentication context and blueprint version.
+        :return: audit information for this specific authentication context and blueprint version.
         :rtype: dict
         """
 
@@ -43,7 +43,7 @@ class GovernAdminRolesAndPermissionsAudit(object):
 
         :param str auth_identifier: identifier of the authentication context (the login of the user)
         :param str artifact_id: id of the artifact
-        :returns: audit information for this specific authentication context and artifact.
+        :return: audit information for this specific authentication context and artifact.
         :rtype: dict
         """
 
@@ -58,7 +58,7 @@ class GovernAdminRolesAndPermissionsAudit(object):
         :param str auth_identifier: identifier of the authentication context (the login of the user)
         :param dict blueprint_version_id: id of the blueprint version containing "blueprintId" and "versionId" keys.
         Use :meth:`~dataikuapi.govern.blueprint.BlueprintVersionId.build` to build this blueprint verison ID definition.
-        :returns: audit information for the deleted artifact of this blueprint_version.
+        :return: audit information for the deleted artifact of this blueprint_version.
         :rtype: dict
         """
 

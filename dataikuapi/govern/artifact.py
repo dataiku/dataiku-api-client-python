@@ -49,7 +49,7 @@ class GovernArtifactDefinition(object):
 
     def get_raw(self):
         """
-        Gets the raw content of the artifact. This returns a reference to the artifact so changes made to the returned
+        Get the raw content of the artifact. This returns a reference to the artifact so changes made to the returned
         object will be reflected when saving.
 
         :rtype: dict
@@ -113,7 +113,7 @@ class GovernArtifactSignoff(object):
         """
         Get the signoff cycle detail for this current sign-off. This contains a list of the feedback groups and a list of the approval users.
 
-        :returns: sign-off cycle details as python dict
+        :return: sign-off cycle details as python dict
         :rtype: dict
         """
         return self.client._perform_json("GET", "/artifact/%s/workflow/step/%s/signoff/details" % (self.artifact_id, self.step_id))
@@ -131,7 +131,7 @@ class GovernArtifactSignoff(object):
         The list should be a list of dict containing two keys "userLogin" and "groupId" for each user to notify.
         The "groupId" key is mandatory for feedbacks notification and forbidden for the final approval notification.
         All users that are not in the sign-off configuration will be ignored.
-        :returns: None
+        :return: None
         """
         if users_to_notify is None:
             users_to_notify = []
@@ -147,7 +147,7 @@ class GovernArtifactSignoff(object):
         :param str group_id: id of the feedback group
         :param str feedback_status: feedback status to be chosen from: APPROVED, MINOR_ISSUE, MAJOR_ISSUE
         :param str comment: (Optional) feedback comment
-        :returns: None
+        :return: None
         """
         body = {"status": feedback_status}
         if comment is not None:
@@ -164,7 +164,7 @@ class GovernArtifactSignoff(object):
         :param str group_id: id of the feedback group
         :param dict users_container: a dict representing the users to delegate to.
         Use :meth:`~dataikuapi.govern.users_container.GovernUserUsersContainer.build` to build a users container definition for a single user.
-        :returns: None
+        :return: None
         """
 
         return self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-feedback" % (self.artifact_id, self.step_id),
@@ -176,7 +176,7 @@ class GovernArtifactSignoff(object):
 
         :param str approval_status: approval status to be chosen from: APPROVED, REJECTED, ABANDONED
         :param str comment: (Optional) approval comment
-        :returns: None
+        :return: None
         """
 
         body = {"status": approval_status}
@@ -191,7 +191,7 @@ class GovernArtifactSignoff(object):
 
         :param str users_container: a dict representing the users to delegate to.
         Use :meth:`~dataikuapi.govern.users_container.GovernUserUsersContainer.build` to build a users container definition for a single user.
-        :returns: None
+        :return: None
         """
 
         self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-approval" % (self.artifact_id, self.step_id),

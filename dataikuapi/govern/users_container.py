@@ -24,7 +24,7 @@ class GovernUserUsersContainer(GovernUsersContainer):
 
     def build(self):
         """
-        :returns: the users container definition as a dict
+        :return: the users container definition as a dict
         :rtype: dict
         """
         return {"type": self.type, "login": self.user_login}

@@ -32,7 +32,7 @@ class GovernCustomPageDefinition(object):
 
     def get_raw(self):
         """
-        :returns: the raw content of the custom page as a dict
+        :return: the raw content of the custom page as a dict
         :rtype: dict
         """
         return self.definition

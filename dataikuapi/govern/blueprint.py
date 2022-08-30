@@ -13,7 +13,7 @@ class GovernBlueprint(object):
         """
         Return the definition of the blueprint as an object.
 
-        :returns: The blueprint definition as an object.
+        :return: The blueprint definition as an object.
         :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintDefinition`
         """
         blueprint = self.client._perform_json("GET", "/blueprint/%s" % self.blueprint_id)
@@ -21,7 +21,7 @@ class GovernBlueprint(object):
 
     def list_versions(self, as_objects=True):
         """
-        Lists versions of this blueprint.
+        List versions of this blueprint.
 
         :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersion`,
         else returns a list of dict. Each dict contains at least a field "blueprintVersion.id.versionId" indicating the identifier the version
@@ -36,7 +36,7 @@ class GovernBlueprint(object):
 
     def get_version(self, version_id):
         """
-        Returns a handle to interact with a blueprint version
+        Return a handle to interact with a blueprint version
 
         :param str version_id: id of the version
         :rtype: :class:`~dataikuapi.govern.models.GovernBlueprintVersion`
@@ -78,17 +78,16 @@ class GovernBlueprintVersion(object):
 
     def get_trace(self):
         """
-        Get the trace of this blueprint version (info about its status and origin blueprint version lineage).
+        Get a handle for the trace of this blueprint version (info about its status and origin blueprint version lineage).
 
         :return: The trace of this blueprint version.
         :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersionTrace`
         """
-        version = self.client._perform_json("GET", "/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
-        return GovernBlueprintVersionTrace(self.client, self.blueprint_id, self.version_id, version["blueprintVersionTrace"])
+        return GovernBlueprintVersionTrace(self.client, self.blueprint_id, self.version_id)
 
     def get_definition(self):
         """
-        Gets the definition of this blueprint version.
+        Get the definition of this blueprint version.
 
         :return: The definition of the blueprint version as an object.
         :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersionDefinition`
@@ -100,24 +99,32 @@ class GovernBlueprintVersion(object):
 
 class GovernBlueprintVersionTrace(object):
     """
-    The trace of a blueprint version containing information about its lineage and its status.
+    A handle to interact witht the blueprint version trace containing information about its lineage and its status.
     Do not create this directly, use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersion.get_trace`
     """
 
-    def __init__(self, client, blueprint_id, version_id, trace):
+    def __init__(self, client, blueprint_id, version_id):
         self.client = client
         self.blueprint_id = blueprint_id
         self.version_id = version_id
-        self.trace = trace
 
-    def get_raw(self):
+    def get_status(self):
         """
-        Get raw trace of the blueprint version.
+        Get the status of the blueprint version among (DRAFT, ACTIVE, or ARCHIVED)
 
-        :return: The raw trace of blueprint version, as a dict.
-        :rtype: dict
+        :rtype: str
         """
-        return self.trace
+        version = self.client._perform_json("GET", "/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
+        return version["blueprintVersionTrace"].get("status")
+
+    def get_origin_version_id(self):
+        """
+        Get the origin version ID of this blueprint version
+
+        :rtype: str
+        """
+        version = self.client._perform_json("GET", "/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
+        return version["blueprintVersionTrace"].get("originVersionId")
 
 
 class GovernBlueprintVersionDefinition(object):
@@ -157,7 +164,7 @@ class GovernBlueprintVersionId(object):
 
     def build(self):
         """
-        :returns: the built blueprint version ID definition
+        :return: the built blueprint version ID definition
         :rtype: dict
         """
         return {"blueprintId": self.blueprint_id, "versionId": self.version_id}

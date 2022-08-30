@@ -12,14 +12,14 @@ class GovernUser(object):
 
     def delete(self):
         """
-        Deletes the user
+        Delete the user
         """
         return self.client._perform_empty(
             "DELETE", "/admin/users/%s" % self.login)
 
     def get_settings(self):
         """
-        Gets the settings of the user
+        Get the settings of the user
 
         :rtype: :class:`GovernUserSettings`
         """
@@ -28,7 +28,7 @@ class GovernUser(object):
 
     def get_client_as(self):
         """
-        Gets a :class:`~dataikuapi.GovernClient` that has the permissions of this user.
+        Get a :class:`~dataikuapi.GovernClient` that has the permissions of this user.
 
         This allows administrators to impersonate actions on behalf of other users, in order to perform
         actions on their behalf
@@ -146,7 +146,7 @@ class GovernGroup(object):
 
     def delete(self):
         """
-        Deletes the group
+        Delete the group
         """
         return self.client._perform_empty(
             "DELETE", "/admin/groups/%s" % self.name)
@@ -167,7 +167,7 @@ class GovernGroup(object):
         You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`,
         not create a new dict.
         :param: dict definition: the definition for the group, as a dict
-        :returns: a dict - the definition of the group
+        :return: a dict - the definition of the group
         :rtype: dict
         """
         return self.client._perform_json(
@@ -207,7 +207,7 @@ class GovernGlobalApiKey(object):
 
         Note: this call requires an API key with admin rights
 
-        :returns: a dict - the definition of the API key
+        :return: a dict - the definition of the API key
         :rtype: dict
         """
         return self.client._perform_json(
@@ -220,7 +220,7 @@ class GovernGlobalApiKey(object):
         Note: this call requires an API key with admin rights
 
         :param: dict definition: the definition for the API key, as a dict
-        :returns: a dict - the definition of the API key
+        :return: a dict - the definition of the API key
         :rtype: dict
         """
         return self.client._perform_empty(

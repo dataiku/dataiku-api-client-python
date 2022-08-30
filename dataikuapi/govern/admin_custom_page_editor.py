@@ -13,7 +13,7 @@ class GovernAdminCustomPageEditor(object):
 
         :param boolean as_objects: (Optional) If True, this method returns a list of :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`,
         else returns a list of dict. Each dict contains at least a field "id"
-        :returns: A list of custom pages
+        :return: A list of custom pages
         :rtype: list of :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage` or list of dict, see parameter as_objects
         """
         pages = self.client._perform_json("GET", "/admin/custom-pages")
@@ -35,11 +35,11 @@ class GovernAdminCustomPageEditor(object):
 
     def create_custom_page(self, new_identifier, custom_page):
         """
-        Creates a custom page
+        Create a custom page
 
         :param str new_identifier: the new identifier for this custom page. Allowed characters are letters, digits, hyphen, and underscore.
         :param dict custom_page: the custom page definition.
-        :returns: the handle of the created custom page
+        :return: the handle of the created custom page
         :rtype: :class:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage`
         """
         result = self.client._perform_json("POST", "/admin/custom-pages", params={"newIdentifier": new_identifier}, body=custom_page)
@@ -89,7 +89,7 @@ class GovernAdminCustomPageDefinition(object):
 
     def get_raw(self):
         """
-        Gets the raw content of the custom page. This returns a reference to the custom page so changes made to the
+        Get the raw content of the custom page. This returns a reference to the custom page so changes made to the
         returned object will be reflected when saving.
 
         :rtype: dict

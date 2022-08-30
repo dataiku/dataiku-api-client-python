@@ -16,7 +16,7 @@ class GovernArtifactSearchHandler(object):
 
         :param :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchQuery` artifact_search_query:
         The query that will be addressed during the search.
-        :returns: The created artifact search request object
+        :return: The created artifact search request object
         :rtype: :class:`~dataikuapi.govern.artifact_search_handler.GovernArtifactSearchRequest`
         """
         return GovernArtifactSearchRequest(self.client, artifact_search_query)
@@ -150,7 +150,7 @@ class GovernArtifactSearchQuery(object):
 
     def build(self):
         """
-        :returns: the search query definition as a tuple of two dicts
+        :return: the search query definition as a tuple of two dicts
         :rtype: (dict, dict)
         """
         query = {"artifactFilters": [artifact_filter.build() for artifact_filter in self.artifact_filters_list]}
@@ -185,7 +185,7 @@ class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
 
     def build(self):
         """
-        :returns: the search source definition as a dict
+        :return: the search source definition as a dict
         :rtype: dict
         """
         return {"type": self.search_source_type}
@@ -206,7 +206,7 @@ class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
 
     def build(self):
         """
-        :returns: the search source definition as a dict
+        :return: the search source definition as a dict
         :rtype: dict
         """
         return {"type": self.search_source_type, "blueprintIds": self.blueprint_ids}
@@ -228,7 +228,7 @@ class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
 
     def build(self):
         """
-        :returns: the search source definition as a dict
+        :return: the search source definition as a dict
         :rtype: dict
         """
         return {"type": self.search_source_type, "blueprintVersionIds": self.blueprint_version_ids}
@@ -248,7 +248,7 @@ class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
 
     def build(self):
         """
-        :returns: the search source definition as a dict
+        :return: the search source definition as a dict
         :rtype: dict
         """
         return {"type": self.search_source_type, "artifactIds": self.artifact_ids}
@@ -284,7 +284,7 @@ class GovernArtifactSearchSortName(GovernArtifactSearchSort):
 
     def build(self):
         """
-        :returns: the search sort definition as a dict
+        :return: the search sort definition as a dict
         :rtype: dict
         """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
@@ -303,7 +303,7 @@ class GovernArtifactSearchSortWorkflow(GovernArtifactSearchSort):
 
     def build(self):
         """
-        :returns: the search sort definition as a dict
+        :return: the search sort definition as a dict
         :rtype: dict
         """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type}}
@@ -325,7 +325,7 @@ class GovernArtifactSearchSortField(GovernArtifactSearchSort):
 
     def build(self):
         """
-        :returns: the search sort definition as a dict
+        :return: the search sort definition as a dict
         :rtype: dict
         """
         return {"direction": self.direction, "column": {"type": self.artifact_search_sort_type, "fields": self.fields}}
@@ -346,7 +346,7 @@ class GovernArtifactSearchSortFieldDefinition(object):
 
     def build(self):
         """
-        :returns: the field search sort definition
+        :return: the field search sort definition
         :rtype: dict
         """
         return {"blueprintId": self.blueprint_id, "fieldId": self.field_id}
@@ -392,7 +392,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
 
     def build(self):
         """
-        :returns: the artifact filter definition as a dict
+        :return: the artifact filter definition as a dict
         :rtype: dict
         """
         field_filter = {"type": self.filter_type, "conditionType": self.condition_type}
@@ -422,7 +422,7 @@ class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
 
     def build(self):
         """
-        :returns: the artifact filter definition as a dict
+        :return: the artifact filter definition as a dict
         :rtype: dict
         """
         return {"type": self.filter_type, "isArchived": self.is_archived}
