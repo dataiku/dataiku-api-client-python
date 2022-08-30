@@ -15,7 +15,7 @@ class GovernArtifact(object):
         :return: the corresponding artifact definition object
         :rtype: :class:`~dataikuapi.govern.artifact.GovernArtifactDefinition`
         """
-        artifact = self._perform_json("GET", '/artifact/%s' % self.artifact_id)
+        artifact = self.client._perform_json("GET", '/artifact/%s' % self.artifact_id)
         return GovernArtifactDefinition(self.client, self.artifact_id, artifact["artifact"])
 
     def get_signoffs(self):
