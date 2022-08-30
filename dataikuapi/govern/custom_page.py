@@ -1,6 +1,6 @@
 class GovernCustomPage(object):
     """
-    A handle to interact with a custom page
+    A handle to interact with a custom page.
     Do not create this directly, use :meth:`~dataikuapi.GovernClient.get_custom_page`
     """
 
@@ -21,7 +21,7 @@ class GovernCustomPage(object):
 
 class GovernCustomPageDefinition(object):
     """
-    A non-admin handle to interact with a custom page definition
+    The definition of a custom page.
     Do not create this directly, use :meth:`~dataikuapi.govern.custom_page.GovernCustomPage.get_definition`
     """
 

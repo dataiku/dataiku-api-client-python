@@ -48,7 +48,7 @@ class GovernAdminCustomPageEditor(object):
 
 class GovernAdminCustomPage(object):
     """
-    A handle to interact with a custom page as an administrator
+    A handle to interact with a custom page as an administrator.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPageEditor.get_custom_page`
     """
 
@@ -78,7 +78,7 @@ class GovernAdminCustomPage(object):
 
 class GovernAdminCustomPageDefinition(object):
     """
-    A handle to interact with the definition of a custom page.
+    The definition of a custom page.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_custom_page_editor.GovernAdminCustomPage.get_definition`
     """
 

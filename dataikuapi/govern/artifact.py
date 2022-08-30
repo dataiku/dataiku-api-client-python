@@ -38,7 +38,7 @@ class GovernArtifact(object):
 
 class GovernArtifactDefinition(object):
     """
-    A handle to interact with the definition of an artifact
+    The definition of an artifact.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_definition`
     """
 
@@ -65,7 +65,7 @@ class GovernArtifactDefinition(object):
 
 class GovernArtifactSignoffs(object):
     """
-    Handle to interact with the sign-offs of a workflow
+    Handle to interact with the sign-offs of a workflow.
     Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoffs`
     """
 
@@ -100,7 +100,7 @@ class GovernArtifactSignoffs(object):
 
 class GovernArtifactSignoff(object):
     """
-    Handle to interact with the sign-offs of a workflow
+    Handle to interact with a single sign-off of a workflow.
     Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoffs.get_signoff`
     """
 

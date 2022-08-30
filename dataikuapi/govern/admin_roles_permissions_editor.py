@@ -80,15 +80,15 @@ class GovernAdminRolesPermissionsEditor(object):
         result = self.client._perform_json("POST", "/admin/blueprint-role-assignments", body=role_assignments)
         return GovernAdminBlueprintRoleAssignments(self.client, result["blueprintId"])
 
-    def get_default_permissions(self):
+    def get_default_permissions_definition(self):
         """
-        Get the default permissions. Returns a handle to interact with the permissions
+        Get the default permissions definition.
 
         :returns: A permissions object
-        :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminDefaultPermissions`
+        :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminDefaultPermissionsDefinition`
         """
-        permissions = self.client._perform_json("GET", "/admin/blueprint-permissions/default")
-        return GovernAdminDefaultPermissions(self.client, permissions)
+        definition = self.client._perform_json("GET", "/admin/blueprint-permissions/default")
+        return GovernAdminDefaultPermissionsDefinition(self.client, definition)
 
     def list_blueprint_permissions(self, as_objects=True):
         """
@@ -147,8 +147,8 @@ class GovernAdminRole(object):
         :returns: the information of the role.
         :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRoleDefinition`
         """
-        role_info = self.client._perform_json("GET", "/admin/role/%s" % self.role_id)
-        return GovernAdminRoleDefinition(self.client, self.role_id, role_info)
+        definition = self.client._perform_json("GET", "/admin/role/%s" % self.role_id)
+        return GovernAdminRoleDefinition(self.client, self.role_id, definition)
 
     def delete(self):
         """
@@ -161,14 +161,14 @@ class GovernAdminRole(object):
 
 class GovernAdminRoleDefinition(object):
     """
-    An object with all the information on a role.
+    The definition of a specific role.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRole.get_role_info`
     """
 
-    def __init__(self, client, role_id, role):
+    def __init__(self, client, role_id, definition):
         self.client = client
         self.role_id = role_id
-        self.role = role
+        self.definition = definition
 
     def get_raw(self):
         """
@@ -177,7 +177,7 @@ class GovernAdminRoleDefinition(object):
         :return: the raw definition of role, as a dict. Modifications made to the returned object are reflected when saving
         :rtype: dict
         """
-        return self.role
+        return self.definition
 
     def save(self):
         """
@@ -185,12 +185,12 @@ class GovernAdminRoleDefinition(object):
 
         :return: None
         """
-        self.role = self.client._perform_json("PUT", "/admin/role/%s" % self.role_id, body=self.role)
+        self.definition = self.client._perform_json("PUT", "/admin/role/%s" % self.role_id, body=self.definition)
 
 
 class GovernAdminBlueprintRoleAssignments(object):
     """
-    A handle to interact with the blueprint role assignments
+    A handle to interact with the blueprint role assignments for a specific blueprint
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_role_assignments`
     """
 
@@ -205,8 +205,8 @@ class GovernAdminBlueprintRoleAssignments(object):
         :returns: The role assignments for a specific blueprint.
         :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminBlueprintRoleAssignments`
         """
-        assignments = self.client._perform_json("GET", "/admin/blueprint-role-assignments/%s" % self.blueprint_id)
-        return GovernAdminBlueprintRoleAssignmentsDefinition(self.client, self.blueprint_id, assignments)
+        definition = self.client._perform_json("GET", "/admin/blueprint-role-assignments/%s" % self.blueprint_id)
+        return GovernAdminBlueprintRoleAssignmentsDefinition(self.client, self.blueprint_id, definition)
 
     def delete(self):
         """
@@ -219,7 +219,7 @@ class GovernAdminBlueprintRoleAssignments(object):
 
 class GovernAdminBlueprintRoleAssignmentsDefinition(object):
     """
-    A handle to interact with the definition of role assignments for a blueprint.
+    The role assignments for a specific blueprint.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminBlueprintRoleAssignments.get_definition`
     """
 
@@ -277,14 +277,14 @@ class GovernAdminBlueprintPermissions(object):
 
 class GovernAdminBlueprintPermissionsDefinition(object):
     """
-    A handle to interact with the definition of the permissions for a given blueprint.
+    The permissions for a specific blueprint.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminBlueprintPermissions.get_definition`
     """
 
     def __init__(self, client, blueprint_id, definition):
         self.client = client
-        self.definition = definition
         self.blueprint_id = blueprint_id
+        self.definition = definition
 
     def get_raw(self):
         """
@@ -304,15 +304,15 @@ class GovernAdminBlueprintPermissionsDefinition(object):
         self.definition = self.client._perform_json("PUT", "/admin/blueprint-permissions/%s" % self.blueprint_id, body=self.definition)
 
 
-class GovernAdminDefaultPermissions(object):
+class GovernAdminDefaultPermissionsDefinition(object):
     """
-    A handle to interact with the default permissions
+    The default permissions of the instance
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminRolesPermissionsEditor.get_default_permissions`
     """
 
-    def __init__(self, client, permissions):
+    def __init__(self, client, definition):
         self.client = client
-        self.permissions = permissions
+        self.definition = definition
 
     def get_raw(self):
         """
@@ -321,7 +321,7 @@ class GovernAdminDefaultPermissions(object):
 
         :rtype: dict
         """
-        return self.permissions
+        return self.definition
 
     def save(self):
         """
@@ -329,4 +329,4 @@ class GovernAdminDefaultPermissions(object):
 
         :return: None
         """
-        self.permissions = self.client._perform_json("PUT", "/admin/blueprint-permissions/default", body=self.permissions)
+        self.definition = self.client._perform_json("PUT", "/admin/blueprint-permissions/default", body=self.definition)

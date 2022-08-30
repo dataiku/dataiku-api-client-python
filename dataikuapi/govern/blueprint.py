@@ -46,7 +46,7 @@ class GovernBlueprint(object):
 
 class GovernBlueprintDefinition(object):
     """
-    A handle of the definition of a blueprint
+    The definition of a blueprint.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.blueprint.GovernBlueprint.get_definition`
     """
 
@@ -100,7 +100,7 @@ class GovernBlueprintVersion(object):
 
 class GovernBlueprintVersionTrace(object):
     """
-    A handle to interfact with a blueprint version trace on the Govern instance
+    The trace of a blueprint version containing information about its lineage and its status.
     Do not create this directly, use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersion.get_trace`
     """
 
@@ -122,7 +122,7 @@ class GovernBlueprintVersionTrace(object):
 
 class GovernBlueprintVersionDefinition(object):
     """
-    A handle to interact with a blueprint version definition on the Govern instance.
+    The definition of a blueprint version.
     Do not create this directly, use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersion.get_definition`
     """
 
@@ -144,7 +144,7 @@ class GovernBlueprintVersionDefinition(object):
 
 class GovernBlueprintVersionId(object):
     """
-    A Blueprint Version ID definition builder
+    A Blueprint Version ID builder
     """
 
     def __init__(self, blueprint_id, version_id):

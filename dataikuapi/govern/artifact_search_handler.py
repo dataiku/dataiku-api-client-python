@@ -77,7 +77,7 @@ class GovernArtifactSearchRequest(object):
 
 class GovernArtifactSearchQuery(object):
     """
-    A handle to interact with an artifact query. Instantiate and interact with this object to customize the query.
+    A definition of an artifact query. Instantiate and interact with this object to customize the query.
     """
 
     def __init__(self, artifact_search_source=None, artifact_filters_list=None, artifact_search_sort=None):
@@ -177,7 +177,7 @@ class GovernArtifactSearchSource(object):
 
 class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
     """
-    A handle which represent the generic search source.
+    A generic search source définition.
     """
 
     def __init__(self):
@@ -193,8 +193,7 @@ class GovernArtifactSearchSourceAll(GovernArtifactSearchSource):
 
 class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
     """
-    A handle which represent the blueprints search source. Use this search source to restrict the artifact search to
-    some specific blueprints.
+    A blueprints based search source. Use this search source to restrict the artifact search to some specific blueprints.
     """
 
     def __init__(self, blueprint_ids=None):
@@ -215,8 +214,7 @@ class GovernArtifactSearchSourceBlueprints(GovernArtifactSearchSource):
 
 class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
     """
-    A handle which represent the artifact search source. Use this search source to restrict the artifact search to
-    some specific blueprint versions.
+    An blueprint versions based search source. Use this search source to restrict the artifact search to some specific blueprint versions.
     """
 
     def __init__(self, blueprint_version_ids=None):
@@ -238,8 +236,7 @@ class GovernArtifactSearchSourceBlueprintVersions(GovernArtifactSearchSource):
 
 class GovernArtifactSearchSourceArtifacts(GovernArtifactSearchSource):
     """
-    A handle which represent the artifact search source. Use this search source restrict the artifact search to
-    some specific artifact.
+    An artifact search source. Use this search source restrict the artifact search to some specific artifact.
     """
 
     def __init__(self, artifact_ids=None):
@@ -276,7 +273,7 @@ class GovernArtifactSearchSort(object):
 
 class GovernArtifactSearchSortName(GovernArtifactSearchSort):
     """
-    A handle which to sort artifacts based on their names.
+    An artifact sort definition based on their names.
     """
 
     def __init__(self, direction="ASC"):
@@ -295,7 +292,7 @@ class GovernArtifactSearchSortName(GovernArtifactSearchSort):
 
 class GovernArtifactSearchSortWorkflow(GovernArtifactSearchSort):
     """
-    A handle which to sort artifacts based on their workflow.
+    An artifact sort defintion based on their workflow.
     """
 
     def __init__(self, direction="ASC"):
@@ -314,7 +311,7 @@ class GovernArtifactSearchSortWorkflow(GovernArtifactSearchSort):
 
 class GovernArtifactSearchSortField(GovernArtifactSearchSort):
     """
-    A handle which to sort artifacts based on a list of fields.
+    An artifact sort definition based on a list of fields.
     """
 
     def __init__(self, fields=None, direction="ASC"):
@@ -336,7 +333,7 @@ class GovernArtifactSearchSortField(GovernArtifactSearchSort):
 
 class GovernArtifactSearchSortFieldDefinition(object):
     """
-    A sort definition builder to use in a search query in order to sort on a field of a blueprint
+    A field sort definition builder to use in a search query in order to sort on a field of a blueprint.
     """
 
     def __init__(self, blueprint_id, field_id):
@@ -373,7 +370,7 @@ class GovernArtifactFilter(object):
 
 class GovernFieldValueArtifactFilter(GovernArtifactFilter):
     """
-    A handle to apply filters on specific fields on a search request.
+    An artifact filter definition based on specific fields value.
     """
 
     def __init__(self, condition_type, condition=None, field_id=None, negate_condition=None, case_sensitive=None):
@@ -412,7 +409,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
 
 class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
     """
-    A handle to apply filters on the archived status of artifacts.
+    An artifact filter definition based on the archived status.
     """
 
     def __init__(self, is_archived):

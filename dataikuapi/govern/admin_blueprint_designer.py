@@ -123,7 +123,7 @@ class GovernAdminBlueprint(object):
 
 class GovernAdminBlueprintDefinition(object):
     """
-    A handle to interact with the definition of a blueprint
+    The definition of a blueprint.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_definition`
     """
 
@@ -152,7 +152,7 @@ class GovernAdminBlueprintDefinition(object):
 
 class GovernAdminBlueprintVersion(object):
     """
-    A handle to interact with a blueprint version
+    A handle to interact with a blueprint version.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprint.get_version`
     """
 
@@ -175,13 +175,22 @@ class GovernAdminBlueprintVersion(object):
 
     def get_trace(self):
         """
-        Gets the trace of the blueprint version.
+        Gets the trace of the blueprint version containing information about its lineage and its status.
 
         :return: the trace of the blueprint versions.
         :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersionTrace`.
         """
         definition = self.client._perform_json("GET", "/admin/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id))
         return GovernAdminBlueprintVersionTrace(self.client, self.blueprint_id, self.version_id, definition["blueprintVersionTrace"])
+
+    def update_status(self, status):
+        """
+        Directly update the status of the blueprint version.
+
+        :param str status: DRAFT, ACTIVE, or ARCHIVED
+        :return: None
+        """
+        self.client._perform_json("PUT", "/admin/blueprint/%s/version/%s/status" % (self.blueprint_id, self.version_id), body=status)
 
     def list_signoff_configurations(self, as_objects=True):
         """
@@ -233,7 +242,7 @@ class GovernAdminBlueprintVersion(object):
 
 class GovernAdminBlueprintVersionDefinition(object):
     """
-    A handle to interact with a blueprint version definition
+    The blueprint version definition.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_definition`
     """
 
@@ -271,7 +280,7 @@ class GovernAdminBlueprintVersionDefinition(object):
 
 class GovernAdminBlueprintVersionTrace(object):
     """
-    A handle to interact with a blueprint version trace
+    The trace of a blueprint version containing information about its lineage and its status.
     Do not create this directly, use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion.get_trace`
     """
 
@@ -289,15 +298,6 @@ class GovernAdminBlueprintVersionTrace(object):
         :rtype: dict
         """
         return self.trace
-
-    def update_status(self, status):
-        """
-        Directly update the status of the blueprint version.
-
-        :param str status: DRAFT, ACTIVE, or ARCHIVED
-        :return: None
-        """
-        self.client._perform_json("PUT", "/admin/blueprint/%s/version/%s/status" % (self.blueprint_id, self.version_id), body=status)
 
 
 class GovernAdminSignoffConfiguration(object):
@@ -334,7 +334,7 @@ class GovernAdminSignoffConfiguration(object):
 
 class GovernAdminSignOffConfigurationDefinition(object):
     """
-    A handle to interact with the definition of signoff configuration.
+    The definition of signoff configuration.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration.get_configuration_definition`
     """
 
