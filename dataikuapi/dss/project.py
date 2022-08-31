@@ -1732,7 +1732,7 @@ class DSSProject(object):
         :param str path: the path of the file/folder, relative ot the root of the library
         :param str new_name: the parameters containing the new name of the file/folder
         """
-        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, path), body={"newName": new_name})
+        return self.client._perform_empty("PUT", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, path), body={"newName": new_name})
 
     def move_library_file(self, path, new_path):
         """
@@ -1741,7 +1741,7 @@ class DSSProject(object):
         :param str path: the path of the file/folder, relative ot the root of the library
         :param str new_path: the new path relative at the root of the library
         """
-        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
+        return self.client._perform_empty("PUT", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
 
 class TablesImportDefinition(object):
     """
