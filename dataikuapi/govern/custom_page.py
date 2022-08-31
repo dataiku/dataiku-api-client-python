@@ -15,7 +15,7 @@ class GovernCustomPage(object):
         :return: the corresponding custom page definition object
         :rtype: a :class:`~dataikuapi.govern.custom_page.GovernCustomPageDefinition`
         """
-        result = self._perform_json("GET", "/custom-page/%s" % self.custom_page_id)
+        result = self.client._perform_json("GET", "/custom-page/%s" % self.custom_page_id)
         return GovernCustomPageDefinition(self.client, self.custom_page_id, result)
 
 

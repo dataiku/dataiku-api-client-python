@@ -67,7 +67,7 @@ class GovernArtifactSearchRequest(object):
         artifact_list = result.get("uiArtifacts", [])
         # update local last_artifact_id for next requests
         if artifact_list:
-            self.last_artifact_id = artifact_list[-1]
+            self.last_artifact_id = artifact_list[-1]['artifact']['id']
 
         if as_objects:
             return [GovernArtifact(self.client, artifact["artifact"]["id"]) for artifact in artifact_list]
