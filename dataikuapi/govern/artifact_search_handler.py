@@ -368,7 +368,7 @@ class GovernArtifactFilter(object):
         raise NotImplementedError("Cannot build an abstract artifact filter")
 
 
-class GovernFieldValueArtifactFilter(GovernArtifactFilter):
+class GovernArtifactFilterFieldValue(GovernArtifactFilter):
     """
     An artifact filter definition based on specific fields value.
     """
@@ -383,7 +383,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
         :param str case_sensitive: (Optional) Can be used to activate case-sensitive filtering. By default, filters will
         not be case-sensitive.
         """
-        super(GovernFieldValueArtifactFilter, self).__init__(filter_type="field")
+        super(GovernArtifactFilterFieldValue, self).__init__(filter_type="field")
         self.condition_type = condition_type
         self.condition = condition
         self.field_id = field_id
@@ -407,7 +407,7 @@ class GovernFieldValueArtifactFilter(GovernArtifactFilter):
         return field_filter
 
 
-class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
+class GovernArtifactFilterArchivedStatus(GovernArtifactFilter):
     """
     An artifact filter definition based on the archived status.
     """
@@ -417,7 +417,7 @@ class GovernArchivedStatusArtifactFilter(GovernArtifactFilter):
         :param boolean is_archived: the value for filtering. If is_archived is set to True, all artifacts including
         archived ones will be part of the search result
         """
-        super(GovernArchivedStatusArtifactFilter, self).__init__(filter_type="archived")
+        super(GovernArtifactFilterArchivedStatus, self).__init__(filter_type="archived")
         self.is_archived = is_archived
 
     def build(self):
