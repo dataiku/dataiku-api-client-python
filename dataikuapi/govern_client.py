@@ -146,7 +146,7 @@ class GovernClient(object):
     # Blueprints
     ########################################################
 
-    def list_blueprints(self, as_objects=False):
+    def list_blueprints(self, as_objects=True):
         """
         List all the blueprints
 
@@ -219,7 +219,7 @@ class GovernClient(object):
 
         return GovernCustomPage(self, custom_page_id)
 
-    def list_custom_pages(self, as_objects=False):
+    def list_custom_pages(self, as_objects=True):
         """
         Lists custom pages.
 
@@ -239,7 +239,7 @@ class GovernClient(object):
     # Users
     ########################################################
 
-    def list_users(self, as_objects=False):
+    def list_users(self, as_objects=True):
         """
         List all user setup on the Govern instance
         Note: this call requires an API key with admin rights
