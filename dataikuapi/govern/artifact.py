@@ -124,7 +124,7 @@ class GovernArtifactSignoff(object):
         """
         Change the status of the last cycle of the sign-off, takes as input the target status and optionally a list of users to notify.
         Only the users included in the groups of feedback and approval are able to give feedback or approval and can be notified,
-        the complete list is available using: :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoff.get_last_cycle_details`.
+        the complete list is available using: :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoff.get_details`.
         For the feedback, the users will be notified as part of a chosen group of feedback and the group must be specified.
 
         :param str signoff_status: target feedback status to be chosen from: NOT_STARTED, WAITING_FOR_FEEDBACK, WAITING_FOR_APPROVAL, APPROVED, REJECTED, ABANDONED
