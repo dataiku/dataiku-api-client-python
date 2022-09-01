@@ -1,3 +1,5 @@
+from dataikuapi.govern.blueprint import GovernBlueprintVersion
+
 class GovernArtifact(object):
     """
     A handle to interact with an artifact on the Govern instance.
@@ -8,6 +10,16 @@ class GovernArtifact(object):
         self.client = client
         self.artifact_id = artifact_id
 
+    def get_blueprint_version(self):
+        """
+        Retrieve the blueprint version handle of this artifact
+
+        :return: the blueprint version handle
+        :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersion`
+        """
+        artifact = self.client._perform_json("GET", "/artifact/%s" % self.artifact_id)
+        return GovernBlueprintVersion(self.client, artifact["blueprintVersion"]["id"]["blueprintId"], artifact["blueprintVersion"]["id"]["versionId"])
+
     def get_definition(self):
         """
         Retrieve the artifact definition and return it as an object.
@@ -15,17 +27,32 @@ class GovernArtifact(object):
         :return: the corresponding artifact definition object
         :rtype: :class:`~dataikuapi.govern.artifact.GovernArtifactDefinition`
         """
-        artifact = self.client._perform_json("GET", '/artifact/%s' % self.artifact_id)
+        artifact = self.client._perform_json("GET", "/artifact/%s" % self.artifact_id)
         return GovernArtifactDefinition(self.client, self.artifact_id, artifact["artifact"])
 
-    def get_signoffs(self):
+    def list_signoffs(self, as_objects=True):
         """
-        Return a handle to interact with the sign-offs of this artifact
+        List all the signoffs from the different steps of the workflow for this current artifact.
 
-        :rtype: A :class:`~dataikuapi.govern.artifact.GovernArtifactSignoffs`
+        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`,
+        else returns a list of dict. Each dict contains at least a field "stepId" indicating the identifier the sign-off
+        :return: the list of sign-offs, each as a dict or an object. Each dict contains at least an "stepId" field
+        :rtype: list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff` or list of dict, see param as_objects
         """
+        signoffs = self.client._perform_json("GET", "/artifact/%s/signoffs" % self.artifact_id)
+        if as_objects:
+            return [GovernArtifactSignoff(self.client, self.artifact_id, signoff["stepId"]) for signoff in signoffs]
+        else:
+            return signoffs
 
-        return GovernArtifactSignoffs(self.client, self.artifact_id)
+    def get_signoff(self, step_id):
+        """
+        Get the sign-off for a specific step of the workflow for this current artifact.
+
+        :param str step_id: id of the step to retrieve the sign-off from
+        :return: the corresponding :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`
+        """
+        return GovernArtifactSignoff(self.client, self.artifact_id, step_id)
 
     def delete(self):
         """
@@ -63,45 +90,10 @@ class GovernArtifactDefinition(object):
         self.definition = self.client._perform_json("PUT", "/artifact/%s" % self.artifact_id, body=self.definition)["artifact"]
 
 
-class GovernArtifactSignoffs(object):
-    """
-    Handle to interact with the sign-offs of a workflow.
-    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoffs`
-    """
-
-    def __init__(self, client, artifact_id):
-        self.client = client
-        self.artifact_id = artifact_id
-
-    def list_signoffs(self, as_objects=True):
-        """
-        List all the signoffs from the different steps of the workflow for this current artifact.
-
-        :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`,
-        else returns a list of dict. Each dict contains at least a field "stepId" indicating the identifier the sign-off
-        :return: the list of sign-offs, each as a dict or an object. Each dict contains at least an "stepId" field
-        :rtype: list of :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff` or list of dict, see param as_objects
-        """
-        signoffs = self.client._perform_json("GET", "/artifact/%s/signoffs" % self.artifact_id)
-        if as_objects:
-            return [GovernArtifactSignoff(self.client, self.artifact_id, signoff["stepId"]) for signoff in signoffs]
-        else:
-            return signoffs
-
-    def get_signoff(self, step_id):
-        """
-        Get the sign-off for a specific step of the workflow for this current artifact.
-
-        :param str step_id: id of the step to retrieve the sign-off from
-        :return: the corresponding :class:`~dataikuapi.govern.artifact.GovernArtifactSignoff`
-        """
-        return GovernArtifactSignoff(self.client, self.artifact_id, step_id)
-
-
 class GovernArtifactSignoff(object):
     """
     Handle to interact with a single sign-off of a workflow.
-    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoffs.get_signoff`
+    Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoff`
     """
 
     def __init__(self, client, artifact_id, step_id):

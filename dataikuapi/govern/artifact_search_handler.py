@@ -34,7 +34,7 @@ class GovernArtifactSearchRequest(object):
         self.search_source, self.query = artifact_search_query.build()
         self.last_artifact_id = None
 
-    def perform_search(self, as_objects=False, page_size=20, last_artifact_id=None):
+    def perform_search(self, as_objects=True, page_size=20, last_artifact_id=None):
         """
         Run the search request. Use page_size and last_artifact_id to get the paginated results.
 

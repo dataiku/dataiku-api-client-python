@@ -76,6 +76,15 @@ class GovernBlueprintVersion(object):
         self.blueprint_id = blueprint_id
         self.version_id = version_id
 
+    def get_blueprint(self):
+        """
+        Retrieve the blueprint handle of this blueprint version.
+
+        :return: the corresponding blueprint handle
+        :rtype: :class:`~dataikuapi.govern.blueprint.GovernBlueprint`
+        """
+        return GovernBlueprint(self.client, self.blueprint_id)
+
     def get_trace(self):
         """
         Get a handle for the trace of this blueprint version (info about its status and origin blueprint version lineage).
