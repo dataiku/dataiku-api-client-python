@@ -169,7 +169,7 @@ class GovernArtifactSignoff(object):
         :return: None
         """
 
-        return self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-feedback" % (self.artifact_id, self.step_id),
+        self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/delegate-feedback" % (self.artifact_id, self.step_id),
             params={"groupId": group_id}, body=users_container)
 
     def add_approval(self, approval_status, comment=None):
