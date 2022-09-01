@@ -126,7 +126,7 @@ class GovernAdminRolesPermissionsEditor(object):
         :return: the newly created permissions object
         :rtype: :class:`~dataikuapi.govern.admin_roles_permissions_editor.GovernAdminBlueprintPermissions`
         """
-        result = self.client._perform_json("POST", "/admin/blueprints-permissions", body=blueprint_permission)
+        result = self.client._perform_json("POST", "/admin/blueprint-permissions", body=blueprint_permission)
         return GovernAdminBlueprintPermissions(self.client, result["blueprintId"])
 
 
