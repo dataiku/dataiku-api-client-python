@@ -28,7 +28,7 @@ class GovernBlueprint(object):
         :return: the list of blueprint versions, each as a dict or an object. Each dict contains at least an "blueprintversion.id.versionId" field
         :rtype: list of :class:`~dataikuapi.govern.blueprint.GovernBlueprintVersion` or list of dict, see param as_objects
         """
-        versions = self.client._perform_json("GET", "/blueprint/%s/versions" % self.id)
+        versions = self.client._perform_json("GET", "/blueprint/%s/versions" % self.blueprint_id)
         if as_objects:
             return [GovernBlueprintVersion(self.client, self.blueprint_id, version["blueprintVersion"]["id"]["versionId"]) for version in versions]
         else:
