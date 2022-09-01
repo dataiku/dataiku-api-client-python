@@ -92,7 +92,7 @@ class GovernArtifactDefinition(object):
 
 class GovernArtifactSignoff(object):
     """
-    Handle to interact with a single sign-off of a workflow.
+    Handle to interact with the sign-off of a specific workflow step.
     Do not create this directly, use :meth:`~dataikuapi.govern.artifact.GovernArtifact.get_signoff`
     """
 
@@ -101,9 +101,19 @@ class GovernArtifactSignoff(object):
         self.artifact_id = artifact_id
         self.step_id = step_id
 
+    def get_definition(self):
+        """
+        Get the last sign-off cycle definition or this specific workflow step.
+
+        :return: sign-off cycle as python dict
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/artifact/%s/workflow/step/%s/signoff" % (self.artifact_id, self.step_id))
+
     def get_details(self):
         """
-        Get the signoff cycle detail for this current sign-off. This contains a list of the feedback groups and a list of the approval users.
+        Get the last sign-off cycle details for this specific workflow step.
+        This contains a list of computed users included in feedback ground and in the approval.
 
         :return: sign-off cycle details as python dict
         :rtype: dict
@@ -112,16 +122,16 @@ class GovernArtifactSignoff(object):
 
     def update_status(self, signoff_status, users_to_notify=None):
         """
-        Change the status of the sign-off, takes as input the target status and optionally a list of users to notify.
+        Change the status of the last cycle of the sign-off, takes as input the target status and optionally a list of users to notify.
         Only the users included in the groups of feedback and approval are able to give feedback or approval and can be notified,
-        the complete list is available using: :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoff.get_details`.
+        the complete list is available using: :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoff.get_last_cycle_details`.
         For the feedback, the users will be notified as part of a chosen group of feedback and the group must be specified.
 
         :param str signoff_status: target feedback status to be chosen from: NOT_STARTED, WAITING_FOR_FEEDBACK, WAITING_FOR_APPROVAL, APPROVED, REJECTED, ABANDONED
         :param list of dict users_to_notify: (Optional) List of the user to notify as part of the status change
         (WAITING_FOR_FEEDBACK will involve the feedback groups, WAITING_FOR_APPROVAL will involve the final approval).
         The list should be a list of dict containing two keys "userLogin" and "groupId" for each user to notify.
-        The "groupId" key is mandatory for feedbacks notification and forbidden for the final approval notification.
+        The "groupId" key is mandatory for feedback notification and forbidden for the final approval notification.
         All users that are not in the sign-off configuration will be ignored.
         :return: None
         """
@@ -133,7 +143,7 @@ class GovernArtifactSignoff(object):
 
     def add_feedback(self, group_id, feedback_status, comment=None):
         """
-        Add a feedback for a specific feedback group. Takes as input a step_id, a group_id (the feedback group id), a
+        Add a feedback for a specific feedback group of the last cycle of the sign-off. Takes as input a step_id, a group_id (the feedback group id), a
         feedback status and an optional comment
 
         :param str group_id: id of the feedback group
@@ -150,7 +160,7 @@ class GovernArtifactSignoff(object):
 
     def delegate_feedback(self, group_id, users_container):
         """
-        Delegate a feedback to specific users. Takes as input a group_id (the feedback group that should
+        Delegate a feedback to specific users for the last cycle of the sign-off. Takes as input a group_id (the feedback group that should
         have done the feedback originally), and an users container definition to delegate to.
 
         :param str group_id: id of the feedback group
@@ -164,7 +174,7 @@ class GovernArtifactSignoff(object):
 
     def add_approval(self, approval_status, comment=None):
         """
-        Add the final approval of a sign-off. Takes as input a step_id, a feedback status and an optional comment
+        Add the final approval of the last cycle of the sign-off. Takes as input a step_id, a feedback status and an optional comment
 
         :param str approval_status: approval status to be chosen from: APPROVED, REJECTED, ABANDONED
         :param str comment: (Optional) approval comment
@@ -179,7 +189,7 @@ class GovernArtifactSignoff(object):
 
     def delegate_approval(self, users_container):
         """
-        Delegate the approval to specific users. Takes as input an users container definition to delegate to.
+        Delegate the approval to specific users for the last cycle of the sign-off. Takes as input an users container definition to delegate to.
 
         :param str users_container: a dict representing the users to delegate to.
         Use :meth:`~dataikuapi.govern.users_container.GovernUserUsersContainer.build` to build a users container definition for a single user.
