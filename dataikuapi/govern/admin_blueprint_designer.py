@@ -319,7 +319,7 @@ class GovernAdminSignoffConfiguration(object):
         self.version_id = version_id
         self.step_id = step_id
 
-    def get_configuration_definition(self):
+    def get_definition(self):
         """
         Get the definition of the configuration, to modify the configuration call :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfigurationDefinition.save`
         on the returned object.
@@ -342,7 +342,7 @@ class GovernAdminSignoffConfiguration(object):
 class GovernAdminSignOffConfigurationDefinition(object):
     """
     The definition of signoff configuration.
-    Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration.get_configuration_definition`
+    Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignOffConfiguration.get_definition`
     """
 
     def __init__(self, client, blueprint_id, version_id, step_id, definition):
