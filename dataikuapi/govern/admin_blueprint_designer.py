@@ -265,7 +265,7 @@ class GovernAdminBlueprintVersionDefinition(object):
         if danger_zone_accepted is not None:
             params["dangerZoneAccepted"] = danger_zone_accepted
         self.definition = self.client._perform_json("PUT", "/admin/blueprint/%s/version/%s" % (self.blueprint_id, self.version_id),
-            params=params, body=self.definition)
+            params=params, body=self.definition)["blueprintVersion"]
 
 
 class GovernAdminBlueprintVersionTrace(object):
