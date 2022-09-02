@@ -468,6 +468,19 @@ class DSSProject(object):
         return self.create_fslike_dataset(dataset_name, "S3", connection, path_in_connection, extra_params)
 
     def create_fslike_dataset(self, dataset_name, dataset_type, connection, path_in_connection, extra_params=None):
+        """
+        Create a new file-based dataset in the project, and return a handle to interact with it.
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str dataset_type: the type of the dataset
+        :param str connection: the name of the connection
+        :param str path_in_connection: the path of the dataset in the connection
+        :param dict extra_params: a python dict of extra parameters (defaults to **None**)
+
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
         body = {
             "name": dataset_name,
             "projectKey": self.project_key,
@@ -483,6 +496,19 @@ class DSSProject(object):
         return DSSDataset(self.client, self.project_key, dataset_name)
 
     def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
+        """
+        Create a new SQL table dataset in the project, and return a handle to interact with it.
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str type: the type of the dataset
+        :param str connection: the name of the connection
+        :param str table: the name of the table in the connection
+        :param str schema: the schema of the table
+
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
         obj = {
             "name": dataset_name,
             "projectKey": self.project_key,
@@ -595,6 +621,16 @@ class DSSProject(object):
         return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
 
     def create_kafka_streaming_endpoint(self, streaming_endpoint_name, connection=None, topic=None):
+        """
+        Create a new kafka streaming endpoint in the project, and return a handle to interact with it.
+
+        :param str streaming_endpoint_name: the name for the new streaming endpoint
+        :param str connection: the name of the kafka connection (defaults to **None**)
+        :param str topic: the name of the kafka topic (defaults to **None**)
+
+        :returns: A streaming endpoint handle
+        :rtype: :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint`
+        """
         obj = {
             "id": streaming_endpoint_name,
             "projectKey": self.project_key,
@@ -610,6 +646,15 @@ class DSSProject(object):
         return DSSStreamingEndpoint(self.client, self.project_key, streaming_endpoint_name)
 
     def create_httpsse_streaming_endpoint(self, streaming_endpoint_name, url=None):
+        """
+        Create a new https streaming endpoint in the project, and return a handle to interact with it.
+
+        :param str streaming_endpoint_name: the name for the new streaming endpoint
+        :param str url: the url of the endpoint (defaults to **None**)
+
+        :returns: A streaming endpoint handle
+        :rtype: :class:`dataikuapi.dss.streaming_endpoint.DSSStreamingEndpoint`
+        """
         obj = {
             "id": streaming_endpoint_name,
             "projectKey": self.project_key,
@@ -1778,6 +1823,12 @@ class DSSProject(object):
     # App designer
     ########################################################
     def get_app_manifest(self):
+        """
+        Gets the manifest of the application if the project is an app template or an app instance, fails otherwise.
+
+        :returns: the manifest of the application associated to the project
+        :rtype: :class:`dataikuapi.dss.app.DSSAppManifest`
+        """
         raw_data = self.client._perform_json("GET", "/projects/%s/app-manifest" % self.project_key)
         return DSSAppManifest(self.client, raw_data, self.project_key)
 
@@ -1869,14 +1920,23 @@ class TablesImportDefinition(object):
         self.keys = []
 
     def add_hive_table(self, hive_database, hive_table):
-        """Add a Hive table to the list of tables to import"""
+        """Add a Hive table to the list of tables to import
+
+        :param str hive_database: the name of the Hive database
+        :param str hive_table: the name of the Hive table
+        """
         self.keys.append({
             "connectionName": "@virtual(hive-jdbc):" + hive_database,
             "name": hive_table
         })
 
     def add_sql_table(self, connection, schema, table):
-        """Add a SQL table to the list of table to import"""
+        """Add a SQL table to the list of table to import
+
+        :param str connection: the name of the SQL connection
+        :param str schema: the schema of the table
+        :param str table: the name of the SQL table
+        """
         self.keys.append({
             "connectionName": connection,
             "schema": schema,
