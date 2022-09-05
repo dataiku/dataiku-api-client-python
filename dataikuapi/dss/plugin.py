@@ -184,7 +184,7 @@ class DSSPlugin(object):
         :param str path: the path of the file/folder, relative ot the root of the plugin
         :param str new_name: the new name of the file/folder
         """
-        return self.client._perform_empty("POST", "/plugins/%s/contents/rename/%s" % (self.plugin_id, path), body={"newName": new_name})
+        return self.client._perform_empty("PUT", "/plugins/%s/contents/rename/%s" % (self.plugin_id, path), body={"newName": new_name})
 
     def move_file(self, path, new_path):
         """
@@ -193,7 +193,7 @@ class DSSPlugin(object):
         :param str path: the path of the file/folder, relative ot the root of the plugin
         :param str new_path: the new path relative at the root of the plugin
         """
-        return self.client._perform_empty("POST", "/plugins/%s/contents/move/%s" % (self.plugin_id, path), body={"newPath": new_path})
+        return self.client._perform_empty("PUT", "/plugins/%s/contents/move/%s" % (self.plugin_id, path), body={"newPath": new_path})
 
 class DSSPluginUsage(object):
     """
