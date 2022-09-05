@@ -138,7 +138,7 @@ class DSSSavedModel(object):
                                   this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
-        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        :return a :class:ExternalModelVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         import shutil
@@ -151,7 +151,7 @@ class DSSSavedModel(object):
             with open(archive_filename, "rb") as fp:
                 self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s&containerExecConfigName=%s" % (self.project_key, self.sm_id, version_id, code_env_name, container_exec_config_name),
                                            files={"file": (archive_filename, fp)})
-            return self.get_mlflow_version_handler(version_id)
+            return self.get_external_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
 
@@ -171,7 +171,7 @@ class DSSSavedModel(object):
                                   this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
-        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        :return a :class:ExternalModelVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         folder_ref = None
@@ -190,16 +190,15 @@ class DSSSavedModel(object):
             params={"folderRef": folder_ref, "path": path},
             files={"file": (None, None)}  # required for backend-mandated multipart request
         )
-        return self.get_mlflow_version_handler(version_id)
+        return self.get_external_version_handler(version_id)
 
-    def get_mlflow_version_handler(self, version_id):
+    def get_external_version_handler(self, version_id):
         """
-        Returns a :class:MLFlowVersionHandler to interact with a MLFlow model version
+        Returns a :class:ExternalModelVersionHandler to interact with a MLFlow model version
         """
-        return MLFlowVersionHandler(self, version_id)
+        return ExternalModelVersionHandler(self, version_id)
 
-    def create_proxy_model_version(self, version_id, protocol, configuration, code_env_name="INHERIT",
-                                   container_exec_config_name="INHERIT"):
+    def create_proxy_model_version(self, version_id, protocol, configuration, credentials, container_exec_config_name="INHERIT"):
         """
         Create a new version for this saved model from a path containing a MLFlow model.
 
@@ -208,32 +207,23 @@ class DSSSavedModel(object):
         :param str version_id: Identifier of the version to create
         :param str protocol: one of ["KServe", "DSS_API_NODE"]
         :param str configuration: A dictionnary containing the required params for the selected protocol
-        :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
-                                  mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
-                                  If value is "INHERIT", the default active code env of the project will be used
+        :param str configuration: A dictionnary containing the required credentials for the selected protocol
         :param str container_exec_config_name: Name of the containerized execution configuration to use while creating
                                   this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
-        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        :return a :class:ExternalModelVersionHandler in order to interact with the new Proxy model version
         """
         import json
-        configuration["protocol"] = protocol  # TODO question this (but easier for now)
         self.client._perform_empty(
-            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}&containerExecConfigName={containerExecConfigName}".format(
-                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name, containerExecConfigName=container_exec_config_name
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?containerExecConfigName={containerExecConfigName}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, containerExecConfigName=container_exec_config_name
             ),
-            params={"protocol": protocol, "configuration": json.dumps(configuration)},
+            params={"protocol": protocol, "configuration": json.dumps(configuration), "credentials": json.dumps(credentials)},
             files={"file": (None, None)}  # required for backend-mandated multipart request
         )
-        return self.get_proxy_model_version_handler(version_id)
+        return self.get_external_version_handler(version_id)
 
-    def get_proxy_model_version_handler(self, version_id):
-        """
-        Returns a :class:MLFlowVersionHandler to interact with a MLFlow model version
-        """
-        ## TODO check if we need another
-        return MLFlowVersionHandler(self, version_id)
 
     ########################################################
     # Metrics
@@ -337,10 +327,10 @@ class MLFlowVersionSettings:
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.version_handler.saved_model.project_key, self.version_handler.saved_model.sm_id, self.version_handler.version_id),
             body=self.data)
 
-class MLFlowVersionHandler:
-    """Handler to interact with an imported MLFlow model version"""
+class ExternalModelVersionHandler:
+    """Handler to interact with an imported externel model version (MLflow or Proxy model)"""
     def __init__(self, saved_model, version_id):
-        """Do not call this, use :meth:`DSSSavedModel.get_mlflow_version_handler`"""
+        """Do not call this, use :meth:`DSSSavedModel.get_external_version_handler`"""
         self.saved_model = saved_model
         self.version_id = version_id
 
