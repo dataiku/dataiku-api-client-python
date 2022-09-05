@@ -158,6 +158,20 @@ class FMAzureInstanceCreator(FMInstanceCreator):
         return FMAzureInstance(self.client, instance)
 
 
+class FMGCPInstanceCreator(FMInstanceCreator):
+    def create(self):
+        """
+        Create the DSS instance
+
+        :return: Created DSS Instance
+        :rtype: :class:`dataikuapi.fm.instances.FMGCPInstance`
+        """
+        instance = self.client._perform_tenant_json(
+            "POST", "/instances", body=self.data
+        )
+        return FMGCPInstance(self.client, instance)
+
+
 class FMInstance(object):
     """
     A handle to interact with a DSS instance.
@@ -360,6 +374,19 @@ class FMAzureInstance(FMInstance):
         """
         self.instance_data["azureAssignElasticIP"] = enable
         self.instance_data["azurePublicIPId"] = public_ip_id
+        return self
+
+
+class FMGCPInstance(FMInstance):
+    def set_public_ip(self, enable, public_ip_id):
+        """
+        Set a public ip for this instance
+
+        :param boolan enable: Enable the public ip allocation
+        :param str public_ip_id: GCP Public IP ID
+        """
+        self.instance_data["gcpAssignPublicIP"] = enable
+        self.instance_data["gcpPublicIPId"] = public_ip_id
         return self
 
 

@@ -46,6 +46,8 @@ class MLflowHandle:
             from importlib import reload
         import mlflow
         reload(mlflow.store.artifact.artifact_repository_registry)
+        mlflow.set_tracking_uri(None)  # if user has changed tracking backend manually before
+        mlflow.end_run()  # if user already created a run with another tracking backend
 
         # Setup authentication
         if client._session.auth is not None:
@@ -83,7 +85,7 @@ class MLflowHandle:
         if not mf_full_id:
             raise TypeError('Type of managed_folder must be "str", "DSSManagedFolder" or "dataiku.Folder".')
 
-        if not "." in mf_full_id:
+        if "." not in mf_full_id:
             mf_full_id = self.project_key + "." + mf_full_id
 
         mf_project = mf_full_id.split(".")[0]
