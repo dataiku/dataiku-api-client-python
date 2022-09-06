@@ -1,7 +1,24 @@
 from ..utils import DataikuException
 
-
 class DSSLibrary(object):
+    """
+    A handle to manage the library of a project
+    """
+    def __init__(self, client, project_key):
+        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_library`"""
+        self.client = client
+        self.project_key = project_key
+
+    def get_settings(self):
+        """
+        Get library settings
+
+        :returns: a handle to manage the library settings (taxonomy)
+        :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibrarySettings`
+        """
+        return DSSLibrarySettings(self.client, self.project_key, self.client._perform_json("GET", "/projects/%s/libraries/contents" % (self.project_key)))
+
+class DSSLibrarySettings(object):
     """
     A handle to manage the library items of a project
     It saves locally a copy of taxonomy to help navigate in the library
@@ -10,17 +27,10 @@ class DSSLibrary(object):
     Note: Taxonomy modifications done outside this library are not reflected locally.
           You should reload the library in this case.
     """
-    def __init__(self, client, project_key):
-        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_library`"""
+    def __init__(self, client, project_key, taxonomy):
+        """Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_settings`"""
         self.client = client
         self.project_key = project_key
-        self.reload()
-
-    def reload(self):
-        """
-        Reload the library hierarchy.
-        """
-        taxonomy = self.client._perform_json("GET", "/projects/%s/libraries/contents" % (self.project_key))
         self.root = self.__build_node__("/", None, taxonomy)
 
     def __build_node__(self, name, parent, children):
@@ -64,7 +74,7 @@ class DSSLibrary(object):
             if item.children is None:
                 return item
             else:
-                raise DataikuException("The item %s is not a file : " % path)
+                raise DataikuException("The item %s is a folder, not a file " % path)
         return None
 
     def get_folder(self, path):
@@ -80,7 +90,7 @@ class DSSLibrary(object):
             if item.children is not None:
                 return item
             else:
-                raise DataikuException("The item %s is not a folder : " % path)
+                raise DataikuException("The item %s is a file, not a folder " % path)
         return None
 
     def get_item(self, path):
@@ -130,7 +140,8 @@ class DSSLibraryItem(object):
     A handle to manage a library item
     """
     def __init__(self, client, project_key, name, parent, children):
-        """Do not call directly, use :class:`dataikuapi.dss.projectlibrary.DSSLibrary`"""
+        """Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_file()`
+        or :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_folder()`"""
         self.client = client
         self.project_key = project_key
         self.name = name
@@ -142,6 +153,9 @@ class DSSLibraryItem(object):
             return self.name
         return self._clean_path_(self.parent.get_path() + "/" + self.name)
 
+    def is_root(self):
+        return self.parent is None and self.name == "/"
+
     def _clean_path_(self, path):
         return path.replace("//", "/")
 
@@ -149,8 +163,12 @@ class DSSLibraryItem(object):
         """
         Deletes this item from library
         """
+        if self.is_root():
+            raise Exception("Cannot delete root folder")
+
         self.client._perform_empty("DELETE", "/projects/%s/libraries/contents/%s" % (self.project_key, self.get_path()))
         self.parent._remove_child_(self)
+        self.parent = None
 
     def rename(self, new_name):
         """
@@ -158,6 +176,9 @@ class DSSLibraryItem(object):
 
         :param: str new_name: the new name of the item
         """
+        if self.is_root():
+            raise Exception("Cannot rename root folder")
+
         self.client._perform_empty("PUT", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, self.get_path()), body={"newName": new_name})
         self.name = new_name
 
@@ -167,6 +188,13 @@ class DSSLibraryItem(object):
 
         :param: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder` destination_folder: the folder where we want to move the current item
         """
+        if self.is_root():
+            raise DataikuException("Cannot move root folder")
+        if destination_folder is None:
+            raise DataikuException("Destination folder cannot be None")
+        if not isinstance(destination_folder, DSSLibraryFolder):
+            raise DataikuException("Destination should be a folder")
+
         self.client._perform_empty("PUT", "/projects/%s/libraries/contents/move/%s" % (self.project_key, self.get_path()),
                                    body={"newPath": destination_folder.get_path()})
         self.parent._remove_child_(self)
@@ -197,7 +225,9 @@ class DSSLibraryFolder(DSSLibraryItem):
 
     def add_file(self, file_name):
         """
-        Create a file in the library folder
+        Create a handle to a new file in the library folder
+
+        Note : It is still not saved in DSS.
 
         :param: str file_name: the file name
         :returns: the new file
@@ -205,8 +235,6 @@ class DSSLibraryFolder(DSSLibraryItem):
         """
         if "/" in file_name:
             raise DataikuException("File name %s contains invalid character '/'" % file_name)
-        new_path = self._clean_path_(self.get_path() + "/" + file_name)
-        self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, new_path))
         file = DSSLibraryFile(self.client, self.project_key, file_name, self)
         self.children.add(file)
         return file
@@ -257,19 +285,28 @@ class DSSLibraryFile(DSSLibraryItem):
     def __init__(self, client, project_key, name, parent):
         """Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_file`"""
         super(DSSLibraryFile, self).__init__(client, project_key, name, parent, None)
+        self._contents = ""
 
-    def get_data(self):
+    @property
+    def contents(self):
         """
-        Get the file contents
+        Get the file contents from DSS
 
         :returns: the contents of the file
         :rtype: str
         """
-        return self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, self.get_path()))["data"]
+        self._contents = self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, self.get_path()))["data"]
+        return self._contents
 
-    def save(self, file):
+    @contents.setter
+    def contents(self, file):
         """
-        Updates the library file with the contents of the given file
+        Updates locally the data with the contents of the given file
         """
-        data = file.read()
-        self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, self.get_path()), raw_body=data)
+        self._contents = file.read()
+
+    def save(self):
+        """
+        Saves the file remotely in DSS
+        """
+        self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, self.get_path()), raw_body=self._contents)
