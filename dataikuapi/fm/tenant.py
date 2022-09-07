@@ -106,7 +106,7 @@ class FMCloudAuthentication(dict):
         """
         AWS Only: Use an IAM Role
 
-        params: str role_arn: ARN of the IAM Role
+        :param str role_arn: ARN of the IAM Role
         """
         return FMCloudAuthentication(
             {"awsAuthenticationMode": "IAM_ROLE", "awsIAMRoleARN": role_arn}

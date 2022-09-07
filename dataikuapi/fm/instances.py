@@ -51,7 +51,7 @@ class FMInstanceCreator(object):
         """
         Set the machine type for the DSS Instance
 
-        :param str cloud_instance_type
+        :param str cloud_instance_type:
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         self.data["cloudInstanceType"] = cloud_instance_type
@@ -308,7 +308,7 @@ class FMInstance(object):
 
         Only needed when Virtual Network HTTPS Strategy is set to Custom Certificate
 
-        param: str pem_data: The SSL certificate
+        :param str pem_data: The SSL certificate
         """
         self.instance_data["sslCertificatePEM"] = pem_data
         return self

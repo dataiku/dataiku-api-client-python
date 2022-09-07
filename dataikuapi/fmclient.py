@@ -92,8 +92,6 @@ class FMClient(object):
         """
         Get Tenant's Cloud Tags
 
-        :param string tenant_id
-
         :return: tenant's cloud tags
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudTags`
         """
@@ -128,7 +126,7 @@ class FMClient(object):
         """
         Get a Virtual Network
 
-        :param str virtual_network_id
+        :param str virtual_network_id:
 
         :return: requested virtual network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
@@ -156,7 +154,7 @@ class FMClient(object):
         """
         Get an Instance Template
 
-        :param str template_id
+        :param str template_id:
 
         :return: requested instance settings template
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
@@ -194,7 +192,7 @@ class FMClient(object):
         """
         Get a DSS Instance
 
-        :param str instance_id
+        :param str instance_id:
 
         :return: Instance
         :rtype: :class:`dataikuapi.fm.instances.FMInstance`

@@ -128,7 +128,7 @@ class FMGCPVirtualNetworkCreator(FMVirtualNetworkCreator):
         """
         Use network tags on the instances created in the virtual network
 
-        :param str *network_tags: network tags to assign to the instances created in this virtual network.
+        :param str network_tags: network tags to assign to the instances created in this virtual network.
         """
         self.data["gcpNetworkTags"] = network_tags
         return self
@@ -199,7 +199,8 @@ class FMVirtualNetwork(object):
         """
         Set the HTTPS strategy for this virtual network
 
-        :param object: a :class:`dataikuapi.fm.virtualnetworks.FMHTTPSStrategy`
+        :param https_strategy: the strategy to set
+        :type https_strategy: :class:`dataikuapi.fm.virtualnetworks.FMHTTPSStrategy`
         """
         self.vn_data.update(https_strategy)
         return self

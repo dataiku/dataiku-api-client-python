@@ -40,8 +40,8 @@ class FMInstanceSettingsTemplateCreator(object):
         """
         Add setup actions
 
-        :param list setup_actions: List of :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction` to be played on an instance
-        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplateCreator`
+        :param list setup_actions: List of setup actions to be played on an instance
+        :type setup_actions: list of :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActions`
         """
         self.data["setupActions"] = setup_actions
         return self
@@ -270,7 +270,8 @@ class FMInstanceSettingsTemplate(object):
         """
         Add a setup_action
 
-        :param object setup_action: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
+        :param setup_action: the action to add
+        :type setup_action: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
         """
         self.ist_data["setupActions"].append(setup_action)
         return self
@@ -305,7 +306,8 @@ class FMSetupAction(dict):
         """
         Return a RUN_ANSIBLE_TASK FMSetupAction
 
-        :param object stage: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
+        :param stage: the action stage 
+        :type stage:  :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
         :param str yaml_string: a yaml encoded string defining the ansibles tasks to run
         """
         return FMSetupAction(
@@ -350,7 +352,8 @@ class FMSetupAction(dict):
         """
         Return a INSTALL_JDBC_DRIVER FMSetupAction
 
-        :param object database_type: a :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionAddJDBCDriverDatabaseType`
+        :param database_type: the database type
+        :type database_type: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionAddJDBCDriverDatabaseType`
         :param str url: The full address to the driver. Supports http(s)://, s3://, abs:// or file:// endpoints
         :param list paths_in_archive: Optional, must be used when the driver is shipped as a tarball or a ZIP file. Add here all the paths to find the JAR files in the driver archive. Paths are relative to the top of the archive. Wildcards are supported.
         :param dict http_headers: Optional, If you download the driver from a HTTP(S) endpoint, add here the headers you want to add to the query. This setting is ignored for any other type of download.
