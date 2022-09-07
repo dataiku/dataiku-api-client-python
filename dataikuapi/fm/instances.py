@@ -135,7 +135,7 @@ class FMAWSInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMAWSInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -149,7 +149,7 @@ class FMAzureInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMAzureInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -163,7 +163,7 @@ class FMGCPInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMGCPInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -175,7 +175,7 @@ class FMGCPInstanceCreator(FMInstanceCreator):
 class FMInstance(object):
     """
     A handle to interact with a DSS instance.
-    Do not create this directly, use :meth:`FMClient.get_instance` or :meth: `FMClient.new_instance_creator`
+    Do not create this directly, use :meth:`FMClient.get_instance` or :meth:`FMClient.new_instance_creator`
     """
 
     def __init__(self, client, instance_data):
@@ -221,7 +221,7 @@ class FMInstance(object):
 
     def save(self):
         """
-        Update the Instance.
+        Update the instance
         """
         self.client._perform_tenant_empty(
             "PUT", "/instances/%s" % self.id, body=self.instance_data
@@ -291,7 +291,7 @@ class FMInstance(object):
 
     def set_automated_snapshots(self, enable, period, keep=0):
         """
-        Set the automated snapshots policy for this instance
+        Set the automated snapshot policy for this instance
 
         :param boolean enable: Enable the automated snapshots
         :param int period: The time period between 2 snapshot in hours
@@ -320,7 +320,7 @@ class FMInstance(object):
 
     def list_snapshots(self):
         """
-        List all snapshots of this instance
+        List all the snapshots of this instance
 
         :return: list of snapshots
         :rtype: list of :class:`dataikuapi.fm.instances.FMSnapshot`
@@ -341,7 +341,7 @@ class FMInstance(object):
 
     def snapshot(self, reason_for_snapshot=None):
         """
-        Create a snapshot of the DSS instance
+        Create a snapshot of the instance
  
         :return: Snapshot
         :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`

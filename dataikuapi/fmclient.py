@@ -329,7 +329,7 @@ class FMClientAWS(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetworkCreator`
         """
         return FMAWSVirtualNetworkCreator(self, label)
@@ -387,7 +387,7 @@ class FMClientAzure(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetworkCreator`
         """
         return FMAzureVirtualNetworkCreator(self, label)
@@ -444,7 +444,7 @@ class FMClientGCP(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMGCPVirtualNetworkCreator`
         """
         return FMGCPVirtualNetworkCreator(self, label)

@@ -25,9 +25,9 @@ class FMInstanceSettingsTemplateCreator(object):
 
     def create(self):
         """
-        Create the Instance Settings Template
+        Create a new instance settings template.
 
-        :return: Created InstanceSettingsTemplate
+        :return: a newly created template
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
         """
 
@@ -79,7 +79,7 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
 
     def with_startup_instance_profile(self, startup_instance_profile_arn):
         """
-        Add a Instance Profile to be assign to the DSS instance on startup
+        Add an Instance Profile to be assigned to the DSS instance on startup
 
         :param str startup_instance_profile_arn: ARN of the Instance profile assigned to the DSS instance at startup time
         """
@@ -88,7 +88,7 @@ class FMAWSInstanceSettingsTemplateCreator(FMInstanceSettingsTemplateCreator):
 
     def with_runtime_instance_profile(self, runtime_instance_profile_arn):
         """
-        Add a Instance Profile to be assign to the DSS instance when running
+        Add an Instance Profile to be assigned to the DSS instance when running
 
         :param str runtime_instance_profile_arn: ARN of the Instance profile assigned to the DSS instance during runtime
         """
@@ -245,7 +245,7 @@ class FMInstanceSettingsTemplate(object):
 
     def save(self):
         """
-        Update the Instance Settings Template.
+        Update this template
         """
         self.client._perform_tenant_empty(
             "PUT", "/instance-settings-templates/%s" % self.id, body=self.ist_data
@@ -256,7 +256,7 @@ class FMInstanceSettingsTemplate(object):
 
     def delete(self):
         """
-        Delete the DSS Instance Settings Template.
+        Delete this template
 
         :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
         :rtype: :class:`~dataikuapi.fm.future.FMFuture`
@@ -268,7 +268,7 @@ class FMInstanceSettingsTemplate(object):
 
     def add_setup_action(self, setup_action):
         """
-        Add a setup_action
+        Add a setup action
 
         :param setup_action: the action to add
         :type setup_action: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
@@ -280,7 +280,7 @@ class FMInstanceSettingsTemplate(object):
 class FMSetupAction(dict):
     def __init__(self, setupActionType, params=None):
         """
-        A class representing a SetupAction
+        A class representing a setup action
 
         Do not create this directly, use:
             - :meth:`dataikuapi.fm.instancesettingstemplates.FMSetupAction.add_authorized_key`
@@ -297,14 +297,14 @@ class FMSetupAction(dict):
     @staticmethod
     def add_authorized_key(ssh_key):
         """
-        Return a ADD_AUTHORIZED_KEY FMSetupAction
+        Return a ADD_AUTHORIZED_KEY setup action
         """
         return FMSetupAction(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key})
 
     @staticmethod
     def run_ansible_task(stage, yaml_string):
         """
-        Return a RUN_ANSIBLE_TASK FMSetupAction
+        Return a RUN_ANSIBLE_TASK setup action
 
         :param stage: the action stage 
         :type stage:  :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
@@ -318,7 +318,7 @@ class FMSetupAction(dict):
     @staticmethod
     def install_system_packages(packages):
         """
-        Return an INSTALL_SYSTEM_PACKAGES FMSetupAction
+        Return an INSTALL_SYSTEM_PACKAGES setup action
 
         :param list packages: List of packages to install
         """
@@ -329,7 +329,7 @@ class FMSetupAction(dict):
     @staticmethod
     def setup_advanced_security(basic_headers=True, hsts=False):
         """
-        Return an SETUP_ADVANCED_SECURITY FMSetupAction
+        Return an SETUP_ADVANCED_SECURITY setup action
 
         :param boolean basic_headers: Optional, Prevent browsers to render Web content served by DSS to be embedded into a frame, iframe, embed or object tag. Defaults to True
         :param boolean hsts: Optional,  Enforce HTTP Strict Transport Security. Defaults to False
@@ -350,7 +350,7 @@ class FMSetupAction(dict):
         datadir_subdirectory=None,
     ):
         """
-        Return a INSTALL_JDBC_DRIVER FMSetupAction
+        Return a INSTALL_JDBC_DRIVER setup action
 
         :param database_type: the database type
         :type database_type: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionAddJDBCDriverDatabaseType`
@@ -377,7 +377,7 @@ class FMSetupAction(dict):
     @staticmethod
     def setup_k8s_and_spark():
         """
-        Return a SETUP_K8S_AND_SPARK FMSetupAction
+        Return a SETUP_K8S_AND_SPARK setup action
         """
         return FMSetupAction(FMSetupActionType.SETUP_K8S_AND_SPARK)
 
