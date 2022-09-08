@@ -50,7 +50,8 @@ class FMCloudCredentials(object):
         """
         Set the authentication for the tenant
 
-        :param object: a :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
+        :param authentication: the authentication to be used
+        :type authentication: :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
         """
         self.cloud_credentials.update(authentication)
         return self
@@ -77,7 +78,9 @@ class FMCloudTags(object):
         return self.cloud_tags
 
     def save(self):
-        """Saves the tags on FM"""
+        """
+        Saves the tags on FM
+        """
 
         self.client._perform_tenant_empty("PUT", "/cloud-tags", body=self.cloud_tags)
 

@@ -6,7 +6,7 @@ class FMVirtualNetworkCreator(object):
         """
         A builder class to create virtual networks
 
-        :param str label: The label of the Virtual Network
+        :param str label: The label of the virtual network
         """
         self.client = client
         self.data = {}

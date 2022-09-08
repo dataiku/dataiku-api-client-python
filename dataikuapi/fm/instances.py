@@ -17,7 +17,8 @@ class FMInstanceCreator(object):
         """
         Helper to create a DSS Instance
 
-        :param object client: :class:`dataikuapi.fm.fmclient`
+        :param client: the FM client
+        :type client: :class:`dataikuapi.fm.fmclient`
         :param str label: The label of the instance
         :param str instance_settings_template: The instance settings template id this instance should be based on
         :param str virtual_network: The virtual network where the instance should be spawned
@@ -37,7 +38,7 @@ class FMInstanceCreator(object):
         """
         Set the DSS Node type of the instance to create
 
-        :param str dss_node_type: Optional , the type of the dss node to create. Supports "design", "automation ordeployer". Defaults to "design"
+        :param str dss_node_type: Optional , the type of the dss node to create. Supports "design", "automation" or "deployer". Defaults to "design"
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         if dss_node_type not in ["design", "automation", "deployer"]:
@@ -69,11 +70,12 @@ class FMInstanceCreator(object):
         """
         Set the options of the data volume to use with the DSS Instance
 
-        :param str data_volume_type: Optional, Data volume type
-        :param int data_volume_size: Optional, Data volume initial size
-        :param int data_volume_size_max: Optional, Data volume maximum size
-        :param int data_volume_IOPS: Optional, Data volume IOPS
-        :param object data_volume_encryption: Optional, a :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode` setting the encryption mode of the data volume
+        :param str data_volume_type: Optional, data volume type
+        :param int data_volume_size: Optional, data volume initial size
+        :param int data_volume_size_max: Optional, data volume maximum size
+        :param int data_volume_IOPS: Optional, data volume IOPS
+        :param  data_volume_encryption: Optional, encryption mode of the data volume
+        :type data_volume_encryption: :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode`
         :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
@@ -233,6 +235,7 @@ class FMInstance(object):
     def get_status(self):
         """
         Get the physical DSS instance's status
+        :rtype: :class:`dataikuapi.fm.instances.FMInstanceStatus`
         """
         status = self.client._perform_tenant_json(
             "GET", "/instances/%s/status" % self.id

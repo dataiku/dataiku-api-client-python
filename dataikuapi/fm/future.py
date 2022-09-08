@@ -17,7 +17,11 @@ class FMFuture(object):
 
     @staticmethod
     def from_resp(client, resp, result_wrapper=lambda result: result):
-        """Creates a DSSFuture from a parsed JSON response"""
+        """
+        Creates a DSSFuture from a parsed JSON response
+
+        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        """
         return FMFuture(
             client, resp.get("jobId", None), state=resp, result_wrapper=result_wrapper
         )
