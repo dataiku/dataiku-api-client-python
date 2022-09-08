@@ -37,8 +37,8 @@ class FMInstanceCreator(object):
         """
         Set the DSS Node type of the instance to create
 
-        :param str dss_node_type: Optional , the type of the dss node to create. Defaults to `DESIGN`.
-        :type dss_nodetype: :class:`dataikuapi.fm.instances.FMNodeType`
+        :param dss_node_type: Optional , the type of the dss node to create. Defaults to `DESIGN`.
+        :type dss_node_type: :class:`dataikuapi.fm.instances.FMNodeType`
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
 
