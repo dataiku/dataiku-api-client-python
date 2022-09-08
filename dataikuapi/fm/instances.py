@@ -37,14 +37,12 @@ class FMInstanceCreator(object):
         """
         Set the DSS Node type of the instance to create
 
-        :param str dss_node_type: Optional , the type of the dss node to create. Supports "design", "automation ordeployer". Defaults to "design"
+        :param str dss_node_type: Optional , the type of the dss node to create. Defaults to `DESIGN`.
+        :type dss_nodetype: :class:`dataikuapi.fm.instances.FMNodeType`
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
-        if dss_node_type not in ["design", "automation", "deployer"]:
-            raise ValueError(
-                'Only "design", "automation" or "deployer" dss_node_type are supported'
-            )
-        self.data["dssNodeType"] = dss_node_type
+
+        self.data["dssNodeType"] = dss_node_type.value
         return self
 
     def with_cloud_instance_type(self, cloud_instance_type):
@@ -389,6 +387,11 @@ class FMGCPInstance(FMInstance):
         self.instance_data["gcpPublicIPId"] = public_ip_id
         return self
 
+class FMNodeType(Enum):
+    DESIGN = "design"
+    DEPLOYER = "deployer"
+    AUTOMATION = "automation"
+    GOVERN = "govern"
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
