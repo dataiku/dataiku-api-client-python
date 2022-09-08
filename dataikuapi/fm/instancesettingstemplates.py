@@ -258,8 +258,8 @@ class FMInstanceSettingsTemplate(object):
         """
         Delete this template
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return:  the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "DELETE", "/instance-settings-templates/%s" % self.id
@@ -297,7 +297,7 @@ class FMSetupAction(dict):
     @staticmethod
     def add_authorized_key(ssh_key):
         """
-        Return a ADD_AUTHORIZED_KEY setup action
+        Return an ADD_AUTHORIZED_KEY setup action
         """
         return FMSetupAction(FMSetupActionType.ADD_AUTHORIZED_KEY, {"sshKey": ssh_key})
 
@@ -329,7 +329,7 @@ class FMSetupAction(dict):
     @staticmethod
     def setup_advanced_security(basic_headers=True, hsts=False):
         """
-        Return an SETUP_ADVANCED_SECURITY setup action
+        Return a SETUP_ADVANCED_SECURITY setup action
 
         :param boolean basic_headers: Optional, Prevent browsers to render Web content served by DSS to be embedded into a frame, iframe, embed or object tag. Defaults to True
         :param boolean hsts: Optional,  Enforce HTTP Strict Transport Security. Defaults to False

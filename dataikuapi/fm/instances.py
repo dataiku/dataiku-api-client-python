@@ -189,8 +189,8 @@ class FMInstance(object):
         """
         Reprovision the physical DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the reprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/reprovision" % self.id
@@ -201,8 +201,8 @@ class FMInstance(object):
         """
         Deprovision the physical DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/deprovision" % self.id
@@ -213,8 +213,8 @@ class FMInstance(object):
         """
         Restart the DSS running on the physical instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the restart process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the restart process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/restart-dss" % self.id
@@ -235,6 +235,8 @@ class FMInstance(object):
     def get_status(self):
         """
         Get the physical DSS instance's status
+
+        :return: the instance status
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceStatus`
         """
         status = self.client._perform_tenant_json(
@@ -246,8 +248,8 @@ class FMInstance(object):
         """
         Delete the DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/delete" % self.id
@@ -272,8 +274,8 @@ class FMInstance(object):
 
         :param string username: login
         :param string password: new password
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the password reset process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the password reset process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future =  self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/reset-user-password" % self.id, params={ 'userName':username, 'password':password }
@@ -284,8 +286,8 @@ class FMInstance(object):
         """
         Replay the setup actions on the DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the replay process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the replay process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future =  self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/replay-setup-actions" % self.id
@@ -438,8 +440,8 @@ class FMSnapshot(object):
         """
         Reprovision the physical DSS instance from this snapshot
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the reprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "POST", "/instances/%s/snapshots/%s/reprovision" % (self.instance_id, self.snapshot_id)
@@ -450,8 +452,8 @@ class FMSnapshot(object):
         """
         Delete the snapshot
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "DELETE", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)

@@ -16,7 +16,12 @@ class FMVirtualNetworkCreator(object):
 
     def with_internet_access_mode(self, internet_access_mode):
         """
-        :param str internet_access_mode: The internet access mode of the instances created in this virtual network. Accepts "YES", "NO", "EGRESS_ONLY". Defaults to "YES"
+        Set the Internet access mode
+
+        :param str internet_access_mode: The internet access mode of the instances created in this virtual network.
+            Accepts "YES", "NO", "EGRESS_ONLY".
+            Defaults to "YES"
+
         """
         if internet_access_mode not in ["YES", "NO", "EGRESS_ONLY"]:
             raise ValueError(
@@ -28,7 +33,7 @@ class FMVirtualNetworkCreator(object):
 
     def with_default_values(self):
         """
-        Setup the VPC and Subnet to with the default values: the vpc and subnet of the FM instance
+        Set the VPC and Subnet to their default values: the vpc and subnet of the FM instance
         """
         self.use_default_values = True
         return self
@@ -167,8 +172,8 @@ class FMVirtualNetwork(object):
         """
         Delete this virtual network.
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "DELETE", "/virtual-networks/%s" % self.id
@@ -185,9 +190,10 @@ class FMVirtualNetwork(object):
 
         :param str event_server: Optional,  Node name of the node that should act as the centralized event server for logs concentration. Audit logs of all design, deployer and automation nodes will automatically be sent there.
         :param str deployer_management: Optional, Accepts:
-            - "NO_MANAGED_DEPLOYER": Do not manage the the deployer. This is the default mode.
-            - "CENTRAL_DEPLOYER": Central deployer. Recommanded if you have more than one design node or may have more than one design node in the future.
-            - "EACH_DESIGN_NODE": Deployer from design. Recommanded if you have a single design node and want a simpler setup.
+            - "NO_MANAGED_DEPLOYER": Do not manage the deployer. This is the default mode.
+            - "CENTRAL_DEPLOYER": Central deployer. Recommended if you have more than one design node or may have more than one design node in the future.
+            - "EACH_DESIGN_NODE": Deployer from design. Recommended if you have a single design node and want a simpler setup.
+
         """
 
         self.vn_data["managedNodesDirectory"] = enable

@@ -57,7 +57,9 @@ class FMCloudCredentials(object):
         return self
 
     def save(self):
-        """Saves back the settings to the project"""
+        """
+        Saves back the settings to the project
+        """
 
         self.client._perform_tenant_empty(
             "PUT", "/cloud-credentials", body=self.cloud_credentials
@@ -100,14 +102,14 @@ class FMCloudAuthentication(dict):
     @staticmethod
     def aws_same_as_fm():
         """
-        AWS Only: Use the same authentication as Fleet Manager
+        AWS Only: use the same authentication as Fleet Manager
         """
         return FMCloudAuthentication({"awsAuthenticationMode": "SAME_AS_FM"})
 
     @staticmethod
     def aws_iam_role(role_arn):
         """
-        AWS Only: Use an IAM Role
+        AWS Only: use an IAM Role
 
         :param str role_arn: ARN of the IAM Role
         """
@@ -118,7 +120,7 @@ class FMCloudAuthentication(dict):
     @staticmethod
     def aws_keypair(access_key_id, secret_access_key):
         """
-        AWS Only: Use an AWS Access Key
+        AWS Only: use an AWS Access Key
 
         :param str access_key_id: AWS Access Key ID
         :param str secret_access_key: AWS Secret Access Key
