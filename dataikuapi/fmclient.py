@@ -80,7 +80,7 @@ class FMClient(object):
 
     def get_cloud_credentials(self):
         """
-        Get cloud credentials
+        Get the cloud credentials
 
         :return: Cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
