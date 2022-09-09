@@ -362,7 +362,7 @@ class FMAWSInstance(FMInstance):
         Set a public elastic ip for this instance
 
         :param boolan enable: Enable the elastic ip allocation
-        :param str elaticip_allocation_id: AWS ElasticIP allocation ID
+        :param str elasticip_allocation_id: AWS ElasticIP allocation ID
         """
         self.instance_data["awsAssignElasticIP"] = enable
         self.instance_data["awsElasticIPAllocationId"] = elasticip_allocation_id
