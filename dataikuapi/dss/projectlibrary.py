@@ -227,7 +227,7 @@ class DSSLibraryFolder(DSSLibraryItem):
         """
         Create a handle to a new file in the library folder
 
-        Note : It is still not saved in DSS.
+        Note : It is not saved in DSS until :meth:`dataikuapi.dss.projectlibrary.DSSLibraryFile.save()` is called
 
         :param: str file_name: the file name
         :returns: the new file
