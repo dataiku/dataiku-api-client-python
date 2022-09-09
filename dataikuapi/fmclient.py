@@ -154,7 +154,7 @@ class FMClient(object):
         """
         Get an instance setting template template by its id
 
-        :param str template_id: the id to retrieve
+        :param str template_id: the id of the template to retrieve
 
         :return: the requested instance settings template
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
