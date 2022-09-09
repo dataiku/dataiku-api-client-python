@@ -104,7 +104,7 @@ class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
 
     def create(self):
         """
-         Create a new virtual network
+        Create a new virtual network
 
         :return: a newly created network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetwork`
