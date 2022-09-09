@@ -15,7 +15,7 @@ class FMInstanceCreator(object):
         self, client, label, instance_settings_template_id, virtual_network_id, image_id
     ):
         """
-        Helper to create a DSS Instance
+        Helper to create a DSS instance.
 
         :param object client: :class:`dataikuapi.fm.fmclient`
         :param str label: The label of the instance
@@ -35,14 +35,17 @@ class FMInstanceCreator(object):
 
     def with_dss_node_type(self, dss_node_type):
         """
-        Set the DSS Node type of the instance to create
+        Set the DSS node type of the instance to create. The default node type is `DESIGN`.
 
-        :param dss_node_type: Optional , the type of the dss node to create. Defaults to `DESIGN`.
+        :param dss_node_type: the type of the dss node to create.
         :type dss_node_type: :class:`dataikuapi.fm.instances.FMNodeType`
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
-
-        self.data["dssNodeType"] = dss_node_type.value
+        # backward compatibility, was a string before . be sure the value falls into the enum
+        value = dss_node_type;
+        if isinstance(dss_node_type, str):
+            value = FMNodeType[dss_node_type.upper()]
+        self.data["dssNodeType"] = value.value
         return self
 
     def with_cloud_instance_type(self, cloud_instance_type):
