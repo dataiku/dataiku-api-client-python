@@ -192,7 +192,7 @@ class FMClient(object):
         """
         Get a DSS instance by its id
 
-        :param str instance_id: the id to retrieve
+        :param str instance_id: the id of the instance to retrieve
 
         :return: the requested instance if any
         :rtype: :class:`dataikuapi.fm.instances.FMInstance`
