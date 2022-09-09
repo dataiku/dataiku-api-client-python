@@ -90,7 +90,7 @@ class FMClient(object):
 
     def get_cloud_tags(self):
         """
-        Get tenant's cloud tags
+        Get the tenant's cloud tags
 
         :return: tenant's cloud tags
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudTags`
