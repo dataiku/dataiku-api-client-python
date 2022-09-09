@@ -53,7 +53,7 @@ class FMInstanceSettingsTemplateCreator(object):
 
         :param str license_file_path: Optional, load the license from a json file
         :param str license_string: Optional, load the license from a json string
-        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplateCreator`
         """
         if license_file_path is not None:
             with open(license_file_path) as json_file:
