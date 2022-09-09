@@ -42,7 +42,7 @@ class FMInstanceSettingsTemplateCreator(object):
 
         :param list setup_actions: List of setup actions to be played on an instance
         :type setup_actions: list of :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActions`
-        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplateCreator`
         """
         self.data["setupActions"] = setup_actions
         return self
