@@ -404,7 +404,7 @@ class FMInstanceEncryptionMode(Enum):
 
 class FMInstanceStatus(dict):
     """A class holding read-only information about an Instance.
-    This class should not be created directly. Instead, use :meth:`FMInstance.get_info`
+    This class should not be created directly. Instead, use :meth:`FMInstance.get_status`
     """
 
     def __init__(self, data):
