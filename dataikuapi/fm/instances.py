@@ -177,7 +177,12 @@ class FMGCPInstanceCreator(FMInstanceCreator):
 class FMInstance(object):
     """
     A handle to interact with a DSS instance.
-    Do not create this directly, use :meth:`FMClient.get_instance` or :meth:`FMClient.new_instance_creator`
+    Do not create this directly, use :meth:`dataikuapi.fmclient.FMClient.get_instance` or
+
+    * :meth:`dataikuapi.fmclient.FMClientAWS.new_instance_creator`
+    * :meth:`dataikuapi.fmclient.FMClientAzure.new_instance_creator`
+    * :meth:`dataikuapi.fmclient.FMClientGCP.new_instance_creator`
+
     """
 
     def __init__(self, client, instance_data):
