@@ -17,7 +17,7 @@ class FMInstanceCreator(object):
         """
         Helper to create a DSS Instance
 
-        :param client: the FM client
+        :param client: The FM client
         :type client: :class:`dataikuapi.fm.fmclient`
         :param str label: The label of the instance
         :param str instance_settings_template: The instance settings template id this instance should be based on
