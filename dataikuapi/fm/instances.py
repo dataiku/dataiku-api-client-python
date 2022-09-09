@@ -52,7 +52,7 @@ class FMInstanceCreator(object):
         """
         Set the machine type for the DSS Instance
 
-        :param str cloud_instance_type:
+        :param str cloud_instance_type: the machine type to be used for the instance
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         self.data["cloudInstanceType"] = cloud_instance_type

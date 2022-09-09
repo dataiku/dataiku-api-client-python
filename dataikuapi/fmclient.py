@@ -82,7 +82,7 @@ class FMClient(object):
         """
         Get the cloud credentials
 
-        :return: Cloud credentials
+        :return: cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
@@ -126,7 +126,7 @@ class FMClient(object):
         """
         Get a virtual network by its id
 
-        :param str virtual_network_id: the id of the nertwork to retrieve
+        :param str virtual_network_id: the id of the network to retrieve
 
         :return: the requested virtual network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
