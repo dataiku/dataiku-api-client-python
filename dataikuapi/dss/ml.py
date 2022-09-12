@@ -580,17 +580,17 @@ class HyperparameterSearchSettings(object):
         self._raw_settings["mode"] = mode
 
     @property
-    def folds_offset(self):
+    def fold_offset(self):
         """
         :return: Whether there is an offset between validation sets, to avoid overlap between
                  cross-test sets (model evaluation) and cross-validation sets (hyperparameter
                  search), if both are using k-fold. Only relevant for time series forecasting
         :rtype: bool
         """
-        return self._raw_settings["foldsOffset"]
+        return self._raw_settings["foldOffset"]
 
-    @folds_offset.setter
-    def folds_offset(self, value):
+    @fold_offset.setter
+    def fold_offset(self, value):
         """
         :param value: Whether there is an offset between validation sets, to avoid overlap between
                  cross-test sets (model evaluation) and cross-validation sets (hyperparameter
@@ -598,7 +598,7 @@ class HyperparameterSearchSettings(object):
         :type value: bool
         """
         assert isinstance(value, bool)
-        self._raw_settings["foldsOffset"] = value
+        self._raw_settings["foldOffset"] = value
 
     @property
     def cv_seed(self):
@@ -2039,7 +2039,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
             assert timeunit in self.TIMEUNITS, "Invalid timeunit, should be in {}".format(self.TIMEUNITS)
             timestep_params["timeunit"] = timeunit
         if n_timeunits is not None:
-            assert isinstance(n_timeunits, int)
+            assert isinstance(n_timeunits, int), "n_timeunits should be an int"
             timestep_params["numberOfTimeunits"] = n_timeunits
         if end_of_week_day is not None:
             assert end_of_week_day in {1, 2, 3, 4, 5, 6, 7}, "Invalid end_of_week_day, should be in [1, 2, 3, 4, 5, 6, 7]"
@@ -2207,7 +2207,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         :type values: list
         """
         assert isinstance(values, list)
-        self.mltask_settings["quantilesToForecast"] = set(sorted(values))
+        self.mltask_settings["quantilesToForecast"] = sorted(set(values))
 
 
 class DSSTrainedModelDetails(object):
@@ -3820,7 +3820,10 @@ class DSSMLTask(object):
                 "GET", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id))
 
         if settings["taskType"] == "PREDICTION":
-            return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            if settings["predictionType"] == "TIMESERIES_FORECAST":
+                return DSSTimeseriesForecastingMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            else:
+                return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
         else:
             return DSSClusteringMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
 
