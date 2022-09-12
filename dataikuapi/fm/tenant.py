@@ -50,13 +50,16 @@ class FMCloudCredentials(object):
         """
         Set the authentication for the tenant
 
-        :param object: a :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
+        :param authentication: the authentication to be used
+        :type authentication: :class:`dataikuapi.fm.tenant.FMCloudAuthentication`
         """
         self.cloud_credentials.update(authentication)
         return self
 
     def save(self):
-        """Saves back the settings to the project"""
+        """
+        Saves back the settings to the project
+        """
 
         self.client._perform_tenant_empty(
             "PUT", "/cloud-credentials", body=self.cloud_credentials
@@ -77,7 +80,9 @@ class FMCloudTags(object):
         return self.cloud_tags
 
     def save(self):
-        """Saves the tags on FM"""
+        """
+        Saves the tags on FM
+        """
 
         self.client._perform_tenant_empty("PUT", "/cloud-tags", body=self.cloud_tags)
 
@@ -97,16 +102,16 @@ class FMCloudAuthentication(dict):
     @staticmethod
     def aws_same_as_fm():
         """
-        AWS Only: Use the same authentication as Fleet Manager
+        AWS Only: use the same authentication as Fleet Manager
         """
         return FMCloudAuthentication({"awsAuthenticationMode": "SAME_AS_FM"})
 
     @staticmethod
     def aws_iam_role(role_arn):
         """
-        AWS Only: Use an IAM Role
+        AWS Only: use an IAM Role
 
-        params: str role_arn: ARN of the IAM Role
+        :param str role_arn: ARN of the IAM Role
         """
         return FMCloudAuthentication(
             {"awsAuthenticationMode": "IAM_ROLE", "awsIAMRoleARN": role_arn}
@@ -115,7 +120,7 @@ class FMCloudAuthentication(dict):
     @staticmethod
     def aws_keypair(access_key_id, secret_access_key):
         """
-        AWS Only: Use an AWS Access Key
+        AWS Only: use an AWS Access Key
 
         :param str access_key_id: AWS Access Key ID
         :param str secret_access_key: AWS Secret Access Key
