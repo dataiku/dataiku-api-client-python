@@ -181,7 +181,7 @@ class FMVirtualNetwork(object):
         return FMFuture.from_resp(self.client, future)
 
     def set_fleet_management(
-        self, enable, event_server=None, deployer_management="NO_MANAGED_DEPLOYER"
+        self, enable, event_server=None, deployer_management="NO_MANAGED_DEPLOYER", govern_server=None
     ):
         """
         When enabled, all instances in this virtual network know each other and can centrally manage deployer and logs centralization
@@ -193,12 +193,14 @@ class FMVirtualNetwork(object):
             - "NO_MANAGED_DEPLOYER": Do not manage the deployer. This is the default mode.
             - "CENTRAL_DEPLOYER": Central deployer. Recommended if you have more than one design node or may have more than one design node in the future.
             - "EACH_DESIGN_NODE": Deployer from design. Recommended if you have a single design node and want a simpler setup.
+        :param str govern_server: Optional, node name of the node that should act as the centralized Govern server.
 
         """
 
         self.vn_data["managedNodesDirectory"] = enable
         self.vn_data["eventServerNodeLabel"] = event_server
         self.vn_data["nodesDirectoryDeployerMode"] = deployer_management
+        self.vn_data["governServerNodeLabel"] = govern_server
         return self
 
     def set_https_strategy(self, https_strategy):
