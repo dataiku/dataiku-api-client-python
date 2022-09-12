@@ -274,7 +274,7 @@ class FMInstanceSettingsTemplate(object):
         """
         Delete this template
 
-        :return:  the `Future` object representing the deletion process
+        :return: the `Future` object representing the deletion process
         :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
