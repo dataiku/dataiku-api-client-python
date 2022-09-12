@@ -326,7 +326,7 @@ class FMSetupAction(dict):
         Return a RUN_ANSIBLE_TASK setup action
 
         :param stage: the action stage 
-        :type stage:  :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
+        :type stage: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupActionStage`
         :param str yaml_string: a yaml encoded string defining the ansibles tasks to run
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
         """
