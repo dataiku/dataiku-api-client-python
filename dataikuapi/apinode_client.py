@@ -104,7 +104,8 @@ class APINodeClient(DSSBaseClient):
         :param forced_generation: See documentation about multi-version prediction
         :param dispatch_key: See documentation about multi-version prediction
 
-        :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
+        :return: a Python dict of the API answer. The answer contains a "results" key
+                 (which is an array of result objects, corresponding to the forecasted records)
         """
 
         obj = {"items": records}

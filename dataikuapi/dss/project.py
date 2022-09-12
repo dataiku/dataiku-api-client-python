@@ -629,6 +629,7 @@ class DSSProject(object):
         if wait_guess_complete:
             mltask.wait_guess_complete()
         return mltask
+
     def create_timeseries_forecasting_ml_task(self, input_dataset, target_variable,
                                               time_variable=None,
                                               timeseries_identifiers=None,

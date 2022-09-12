@@ -585,7 +585,7 @@ class HyperparameterSearchSettings(object):
         :return: Whether there is an offset between validation sets, to avoid overlap between
                  cross-test sets (model evaluation) and cross-validation sets (hyperparameter
                  search), if both are using k-fold. Only relevant for time series forecasting
-        :rtype: boolean
+        :rtype: bool
         """
         return self._raw_settings["foldsOffset"]
 
@@ -595,7 +595,7 @@ class HyperparameterSearchSettings(object):
         :param value: Whether there is an offset between validation sets, to avoid overlap between
                  cross-test sets (model evaluation) and cross-validation sets (hyperparameter
                  search), if both are using k-fold. Only relevant for time series forecasting
-        :type: boolean
+        :type value: bool
         """
         assert isinstance(value, bool)
         self._raw_settings["foldsOffset"] = value
@@ -1541,7 +1541,7 @@ class AutoArimaSettings(PredictionAlgorithmSettings):
         self.start_Q = self._register_single_value_hyperparameter("start_Q", accepted_types=[int])
         self.max_Q = self._register_single_value_hyperparameter("max_Q", accepted_types=[int])
         self.max_order = self._register_single_value_hyperparameter("max_order", accepted_types=[int])
-        self.stationary = self._register_single_value_hyperparameter("max_order", accepted_types=[bool])
+        self.stationary = self._register_single_value_hyperparameter("stationary", accepted_types=[bool])
 
 
 class SeasonalLoessSettings(PredictionAlgorithmSettings):
@@ -1739,243 +1739,6 @@ class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
         return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
 
 
-class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
-    __doc__ = []
-    algorithm_remap = {
-        "TRIVIAL_IDENTITY_TIMESERIES": PredictionAlgorithmMeta("trivial_identity_timeseries"),
-        "SEASONAL_NAIVE": PredictionAlgorithmMeta("seasonal_naive_timeseries", SeasonalNaiveSettings),
-        "AUTO_ARIMA": PredictionAlgorithmMeta("autoarima_timeseries", AutoArimaSettings),
-        "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
-        "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
-        "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
-        "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
-        "GLUONTS_TRANSFORMER": PredictionAlgorithmMeta("gluonts_transformer_timeseries", GluonTSTransformerSettings),
-        "GLUONTS_MQCNN": PredictionAlgorithmMeta("gluonts_mqcnn_timeseries", GluonTSMQCNNSettings),
-    }
-
-    TIMEUNITS = {"MILLISECOND", "SECOND", "MINUTE", "HOUR", "DAY", "BUSINESS_DAY", "WEEK", "MONTH", "QUARTER", "HALF_YEAR", "YEAR"}
-    INTERPOLATION_METHODS = {"NEAREST", "PREVIOUS", "NEXT", "LINEAR", "QUADRATIC", "CUBIC", "CONSTANT"}
-    EXTRAPOLATION_METHODS = {"PREVIOUS_NEXT", "NO_EXTRAPOLATION", "CONSTANT", "LINEAR", "QUADRATIC", "CUBIC"}
-    CATEGORICAL_IMPUTATION_METHODS = {"MOST_COMMON", "NULL", "CONSTANT", "PREVIOUS_NEXT", "PREVIOUS", "NEXT"}
-    DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
-
-    class PredictionTypes:
-        TIMESERIES_FORECAST = "TIMESERIES_FORECAST"
-
-    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
-        AbstractTabularPredictionMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
-
-        prediction_type = self.get_prediction_type()
-        if prediction_type != self.PredictionTypes.TIMESERIES_FORECAST:
-            raise ValueError("Unknown prediction type: {}".format(prediction_type))
-
-    def get_external_feature(self, feature_name):
-        """
-        Gets the feature preprocessing params for a particular external feature. This returns a reference to the
-        feature's settings, not a copy, so changes made to the returned object will be reflected when saving
-
-        :return: A dict of the preprocessing settings for an external feature
-        :rtype: dict
-        """
-        return self.get_feature_preprocessing(feature_name)
-
-    def get_timestep_params(self):
-        """
-        Gets the time step parameters for the time series forecasting task. This returns a reference to the
-        time step parameters, not a copy, so changes made to the returned object will be reflected when saving
-
-        :return: A dict of the time step parameters
-        :rtype: dict
-        """
-        return self.mltask_settings["timestepParams"]
-
-    def set_timestep_params(self, timeunit=None, n_timeunits=None, end_of_week_day=None):
-        """
-        Sets the time step parameters for the time series forecasting task.
-
-        :param timeunit: time unit for forecasting. Valid values are: MILLISECOND, SECOND, MINUTE, HOUR, DAY,
-                         BUSINESS_DAY, WEEK, MONTH, QUARTER, HALF_YEAR, YEAR
-        :type timeunit: str
-        :param n_timeunits: number of time units within a time step
-        :type n_timeunits: int
-        :param end_of_week_day: only useful for the week time unit. Valid values are: 1 (Sunday), 2 (Monday), ..., 7 (Saturday)
-        :type end_of_week_day: int
-        :return:
-        """
-        timestep_params = self.get_timestep_params()
-        if timeunit is not None:
-            assert timeunit in self.TIMEUNITS, "Invalid timeunit, should be in {}".format(self.TIMEUNITS)
-            timestep_params["timeunit"] = timeunit
-        if n_timeunits is not None:
-            assert isinstance(n_timeunits, int)
-            timestep_params["numberOfTimeunits"] = n_timeunits
-        if end_of_week_day is not None:
-            assert end_of_week_day in {1, 2, 3, 4, 5, 6, 7}, "Invalid end_of_week_day, should be in [1, 2, 3, 4, 5, 6, 7]"
-            timestep_params["endOfWeekDay"] = end_of_week_day
-
-    def get_resampling_params(self):
-        """
-        Gets the time series resampling parameters for the time series forecasting task. This returns a reference to the
-        time series resampling parameters, not a copy, so changes made to the returned object will be reflected when saving
-
-        :return: A dict of the resampling parameters
-        :rtype: dict
-        """
-        return self.mltask_settings["preprocessing"]["timeseriesSampling"]
-
-    def set_numerical_interpolation_params(self, method=None, constant=None):
-        """
-        Sets the time series resampling numerical interpolation parameters
-
-        :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC, CUBIC, CONSTANT
-        :type method: str
-        :param constant: number of time units within a time step
-        :type constant: object
-        :return:
-        """
-        resampling_params = self.get_resampling_params()
-        if method is not None:
-            assert method in self.INTERPOLATION_METHODS, "Invalid interpolation method, should be in {}".format(self.INTERPOLATION_METHODS)
-            resampling_params["numericalInterpolateMethod"] = method
-        if constant is not None:
-            resampling_params["numericalInterpolateConstantValue"] = constant
-
-    def set_numerical_extrapolation_params(self, method=None, constant=None):
-        """
-        Sets the time series resampling numerical extrapolation parameters
-
-        :param method: Extrapolation method. Valid values are: PREVIOUS_NEXT, NO_EXTRAPOLATION, CONSTANT, LINEAR, QUADRATIC, CUBIC
-        :type method: str
-        :param constant: number of time units within a time step
-        :type constant: object
-        :return:
-        """
-        resampling_params = self.get_resampling_params()
-        if method is not None:
-            assert method in self.EXTRAPOLATION_METHODS, "Invalid extrapolation method, should be in {}".format(self.EXTRAPOLATION_METHODS)
-            resampling_params["numericalExtrapolateMethod"] = method
-        if constant is not None:
-            resampling_params["numericalExtrapolateConstantValue"] = constant
-
-    def set_categorical_imputation_params(self, method=None, constant=None):
-        """
-        Sets the time series resampling categorical imputation parameters
-
-        :param method: Imputation method. Valid values are: MOST_COMMON, NULL, CONSTANT, PREVIOUS_NEXT, PREVIOUS, NEXT
-        :type method: str
-        :param constant: number of time units within a time step
-        :type constant: object
-        :return:
-        """
-        resampling_params = self.get_resampling_params()
-        if method is not None:
-            assert method in self.CATEGORICAL_IMPUTATION_METHODS, "Invalid imputation method, should be in {}".format(self.CATEGORICAL_IMPUTATION_METHODS)
-            resampling_params["categoricalImputeMethod"] = method
-        if constant is not None:
-            resampling_params["categoricalConstantValue"] = constant
-
-    def set_duplicate_timestamp_handling_method(self, method):
-        """
-        Sets the time series resampling categorical imputation parameters
-
-        :param method: Imputation method. Valid values are: FAIL_IF_CONFLICTING, DROP_IF_CONFLICTING, MEAN_MODE
-        :type method: str
-        """
-        resampling_params = self.get_resampling_params()
-        assert method in self.DUPLICATE_TIMESTAMPS_HANDLING_METHODS, "Invalid duplicate timestamp handling method, should be in {}".format(self.DUPLICATE_TIMESTAMPS_HANDLING_METHODS)
-
-    @property
-    def forecast_horizon(self):
-        """
-        :return: Number of time steps to be forecast
-        :rtype: int
-        """
-        return self.mltask_settings["predictionLength"]
-
-    @forecast_horizon.setter
-    def forecast_horizon(self, value):
-        """
-        :param value: Number of time steps to be forecast
-        :type value: int
-        """
-        assert isinstance(value, int)
-        self.mltask_settings["predictionLength"] = value
-
-    @property
-    def evaluation_gap(self):
-        """
-        :return: Number of skipped time steps for evaluation
-        :rtype: int
-        """
-        return self.mltask_settings["evaluationParams"]["gapSize"]
-
-    @evaluation_gap.setter
-    def evaluation_gap(self, value):
-        """
-        :param value: Number of skipped time steps for evaluation
-        :type value: int
-        """
-        assert isinstance(value, int)
-        assert value <= self.forecast_horizon, "Gap must be smaller than the forecast horizon"
-        self.mltask_settings["evaluationParams"]["gapSize"] = value
-        self.mltask_settings["evaluationParams"]["testSize"] = self.forecast_horizon - value
-
-    @property
-    def time_variable(self):
-        """
-        :return: Feature used as time variable
-        :rtype: str
-        """
-        return self.mltask_settings["timeVariable"]
-
-    @time_variable.setter
-    def time_variable(self, value):
-        """
-        :param value: Feature used as time variable
-        :type value: str
-        """
-        assert isinstance(value, str)
-        self.mltask_settings["timeVariable"] = value
-
-    @property
-    def timeseries_identifiers(self):
-        """
-        :return: List of features used as time series identifiers
-        :rtype: list
-        """
-        return self.mltask_settings["timeseriesIdentifiers"]
-
-    @timeseries_identifiers.setter
-    def timeseries_identifiers(self, value):
-        """
-        :param value: List of features used as time series identifiers.
-        :type value: list
-        """
-        assert isinstance(value, list)
-        self.mltask_settings["timeseriesIdentifiers"] = value
-
-    @property
-    def quantiles(self):
-        """
-        :return: List of quantiles to forecast
-        :rtype: list
-        """
-        return self.mltask_settings["quantilesToForecast"]
-
-    @quantiles.setter
-    def quantiles(self, values):
-        """
-        :param values: List of quantiles to forecast
-        :type values: list
-        """
-        assert isinstance(values, list)
-        assert 0.5 in values, "Quantile 0.5 should always be included"
-        for quantile in values:
-            assert 0.0001 <= quantile <= 0.9999, "Quantile should be between 0.0001 and 0.9999, got {}".format(quantile)
-            assert abs(quantile - math.floor(quantile * 1e4) / 1e4) > 1e-8, "Quantiles should be defined up to 4 digits after decimal point, got {}".format(quantile)
-        self.mltask_settings["quantilesToForecast"] = set(sorted(values))
-
-
 class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
     __doc__ = []
     algorithm_remap = {
@@ -2090,7 +1853,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         if algorithm_name in self._get_plugin_algorithm_names():
             return self._get_plugin_algorithm_settings(algorithm_name)
         else:
-            return AbstractTabularPredictionMLTaskSettings.get_algorithm_settings(algorithm_name)
+            return super(DSSPredictionMLTaskSettings, self).get_algorithm_settings(algorithm_name)
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
@@ -2216,6 +1979,235 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
             return self._get_custom_algorithm_settings(algorithm_name)
         else:
             raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
+
+class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
+    __doc__ = []
+    algorithm_remap = {
+        "TRIVIAL_IDENTITY_TIMESERIES": PredictionAlgorithmMeta("trivial_identity_timeseries"),
+        "SEASONAL_NAIVE": PredictionAlgorithmMeta("seasonal_naive_timeseries", SeasonalNaiveSettings),
+        "AUTO_ARIMA": PredictionAlgorithmMeta("autoarima_timeseries", AutoArimaSettings),
+        "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
+        "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
+        "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
+        "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
+        "GLUONTS_TRANSFORMER": PredictionAlgorithmMeta("gluonts_transformer_timeseries", GluonTSTransformerSettings),
+        "GLUONTS_MQCNN": PredictionAlgorithmMeta("gluonts_mqcnn_timeseries", GluonTSMQCNNSettings),
+    }
+
+    TIMEUNITS = {"MILLISECOND", "SECOND", "MINUTE", "HOUR", "DAY", "BUSINESS_DAY", "WEEK", "MONTH", "QUARTER", "HALF_YEAR", "YEAR"}
+    INTERPOLATION_METHODS = {"NEAREST", "PREVIOUS", "NEXT", "LINEAR", "QUADRATIC", "CUBIC", "CONSTANT"}
+    EXTRAPOLATION_METHODS = {"PREVIOUS_NEXT", "NO_EXTRAPOLATION", "CONSTANT", "LINEAR", "QUADRATIC", "CUBIC"}
+    CATEGORICAL_IMPUTATION_METHODS = {"MOST_COMMON", "NULL", "CONSTANT", "PREVIOUS_NEXT", "PREVIOUS", "NEXT"}
+    DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
+
+    class PredictionTypes:
+        TIMESERIES_FORECAST = "TIMESERIES_FORECAST"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        AbstractTabularPredictionMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        prediction_type = self.get_prediction_type()
+        if prediction_type != self.PredictionTypes.TIMESERIES_FORECAST:
+            raise ValueError("Unknown prediction type: {}".format(prediction_type))
+
+    def get_timestep_params(self):
+        """
+        Gets the time step parameters for the time series forecasting task. This returns a reference to the
+        time step parameters, not a copy, so changes made to the returned object will be reflected when saving
+
+        :return: A dict of the time step parameters
+        :rtype: dict
+        """
+        return self.mltask_settings["timestepParams"]
+
+    def set_timestep(self, timeunit=None, n_timeunits=None, end_of_week_day=None):
+        """
+        Sets the time step parameters for the time series forecasting task.
+
+        :param timeunit: time unit for forecasting. Valid values are: MILLISECOND, SECOND, MINUTE, HOUR, DAY,
+                         BUSINESS_DAY, WEEK, MONTH, QUARTER, HALF_YEAR, YEAR
+        :type timeunit: str
+        :param n_timeunits: number of time units within a time step
+        :type n_timeunits: int
+        :param end_of_week_day: only useful for the WEEK time unit. Valid values are: 1 (Sunday), 2 (Monday), ..., 7 (Saturday)
+        :type end_of_week_day: int
+        :return:
+        """
+        timestep_params = self.get_timestep_params()
+        if timeunit is not None:
+            assert timeunit in self.TIMEUNITS, "Invalid timeunit, should be in {}".format(self.TIMEUNITS)
+            timestep_params["timeunit"] = timeunit
+        if n_timeunits is not None:
+            assert isinstance(n_timeunits, int)
+            timestep_params["numberOfTimeunits"] = n_timeunits
+        if end_of_week_day is not None:
+            assert end_of_week_day in {1, 2, 3, 4, 5, 6, 7}, "Invalid end_of_week_day, should be in [1, 2, 3, 4, 5, 6, 7]"
+            timestep_params["endOfWeekDay"] = end_of_week_day
+
+    def get_resampling_params(self):
+        """
+        Gets the time series resampling parameters for the time series forecasting task. This returns a reference to the
+        time series resampling parameters, not a copy, so changes made to the returned object will be reflected when saving
+
+        :return: A dict of the resampling parameters
+        :rtype: dict
+        """
+        return self.mltask_settings["preprocessing"]["timeseriesSampling"]
+
+    def set_numerical_interpolation(self, method=None, constant=None):
+        """
+        Sets the time series resampling numerical interpolation parameters
+
+        :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC, CUBIC, CONSTANT
+        :type method: str
+        :param constant: Value for the CONSTANT interpolation method
+        :type constant: float
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self.INTERPOLATION_METHODS, "Invalid interpolation method, should be in {}".format(self.INTERPOLATION_METHODS)
+            resampling_params["numericalInterpolateMethod"] = method
+        if constant is not None:
+            resampling_params["numericalInterpolateConstantValue"] = constant
+
+    def set_numerical_extrapolation(self, method=None, constant=None):
+        """
+        Sets the time series resampling numerical extrapolation parameters
+
+        :param method: Extrapolation method. Valid values are: PREVIOUS_NEXT, NO_EXTRAPOLATION, CONSTANT, LINEAR, QUADRATIC, CUBIC
+        :type method: str
+        :param constant: Value for the CONSTANT extrapolation method
+        :type constant: float
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self.EXTRAPOLATION_METHODS, "Invalid extrapolation method, should be in {}".format(self.EXTRAPOLATION_METHODS)
+            resampling_params["numericalExtrapolateMethod"] = method
+        if constant is not None:
+            resampling_params["numericalExtrapolateConstantValue"] = constant
+
+    def set_categorical_imputation(self, method=None, constant=None):
+        """
+        Sets the time series resampling categorical imputation parameters
+
+        :param method: Imputation method. Valid values are: MOST_COMMON, NULL, CONSTANT, PREVIOUS_NEXT, PREVIOUS, NEXT
+        :type method: str
+        :param constant: Value for the CONSTANT imputation method
+        :type constant: str
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self.CATEGORICAL_IMPUTATION_METHODS, "Invalid imputation method, should be in {}".format(self.CATEGORICAL_IMPUTATION_METHODS)
+            resampling_params["categoricalImputeMethod"] = method
+        if constant is not None:
+            resampling_params["categoricalConstantValue"] = constant
+
+    def set_duplicate_timestamp_handling_method(self, method):
+        """
+        Sets the time series resampling categorical imputation parameters
+
+        :param method: Imputation method. Valid values are: FAIL_IF_CONFLICTING, DROP_IF_CONFLICTING, MEAN_MODE
+        :type method: str
+        """
+        resampling_params = self.get_resampling_params()
+        assert method in self.DUPLICATE_TIMESTAMPS_HANDLING_METHODS, "Invalid duplicate timestamp handling method, should be in {}".format(
+            self.DUPLICATE_TIMESTAMPS_HANDLING_METHODS
+        )
+        resampling_params["duplicateTimestampsHandlingMethod"] = method
+
+    @property
+    def forecast_horizon(self):
+        """
+        :return: Number of time steps to be forecast
+        :rtype: int
+        """
+        return self.mltask_settings["predictionLength"]
+
+    @forecast_horizon.setter
+    def forecast_horizon(self, value):
+        """
+        :param value: Number of time steps to be forecast
+        :type value: int
+        """
+        assert isinstance(value, int)
+        self.mltask_settings["predictionLength"] = value
+
+    @property
+    def evaluation_gap(self):
+        """
+        :return: Number of skipped time steps for evaluation
+        :rtype: int
+        """
+        return self.mltask_settings["evaluationParams"]["gapSize"]
+
+    @evaluation_gap.setter
+    def evaluation_gap(self, value):
+        """
+        :param value: Number of skipped time steps for evaluation
+        :type value: int
+        """
+        assert isinstance(value, int)
+        assert value <= self.forecast_horizon, "Gap must be smaller than the forecast horizon"
+        self.mltask_settings["evaluationParams"]["gapSize"] = value
+        self.mltask_settings["evaluationParams"]["testSize"] = self.forecast_horizon - value
+
+    @property
+    def time_variable(self):
+        """
+        :return: Feature used as time variable
+        :rtype: str
+        """
+        return self.mltask_settings["timeVariable"]
+
+    @time_variable.setter
+    def time_variable(self, value):
+        """
+        :param value: Feature used as time variable
+        :type value: str
+        """
+        assert isinstance(value, str)
+        self.mltask_settings["timeVariable"] = value
+
+    @property
+    def timeseries_identifiers(self):
+        """
+        :return: List of features used as time series identifiers
+        :rtype: list
+        """
+        return self.mltask_settings["timeseriesIdentifiers"]
+
+    @timeseries_identifiers.setter
+    def timeseries_identifiers(self, value):
+        """
+        :param value: List of features used as time series identifiers.
+        :type value: list
+        """
+        assert isinstance(value, list)
+        self.mltask_settings["timeseriesIdentifiers"] = value
+
+    @property
+    def quantiles_to_forecast(self):
+        """
+        :return: List of quantiles to forecast
+        :rtype: list
+        """
+        return self.mltask_settings["quantilesToForecast"]
+
+    @quantiles_to_forecast.setter
+    def quantiles_to_forecast(self, values):
+        """
+        :param values: List of quantiles to forecast:
+                       - 0.5 should always be included
+                       - Values should be between 0.0001 and 0.9999
+                       - Values should be defined up to 4 digits after decimal point
+        :type values: list
+        """
+        assert isinstance(values, list)
+        self.mltask_settings["quantilesToForecast"] = set(sorted(values))
 
 
 class DSSTrainedModelDetails(object):
@@ -4083,23 +4075,23 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
-    def guess(self, prediction_type=None, timeseries_identifiers=None, time_variable=None, reguess_level=None):
+    def guess(self, prediction_type=None, reguess_level=None, timeseries_identifiers=None, time_variable=None):
         """
         Guess the feature handling and the algorithms.
 
         :param string prediction_type: In case of a prediction problem the prediction type can be specify.
                                        Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, TIMESERIES_FORECAST.
-        :param list timeseries_identifiers: [Time series forecasting] List of columns to be used as time series identifiers.
-                                            Cannot be specified if time_variable is also set.
-        :param string time_variable: [Time series forecasting] Column to be used as time variable.
-                                     Cannot be specified if timeseries_identifiers is also set.
-        :param bool reguess_level: One of the following values:
+        :param string reguess_level: One of the following values:
                                    - TARGET_CHANGE
                                    - TARGET_REGUESS
                                    - FULL_REGUESS
                                    - TIMESERIES_IDENTIFIERS_CHANGE
                                    - TIME_VARIABLE_CHANGE
                                    Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
+        :param list timeseries_identifiers: [Time series forecasting] List of columns to be used as time series identifiers.
+                                            Cannot be specified if time_variable is also set.
+        :param string time_variable: [Time series forecasting] Column to be used as time variable.
+                                     Cannot be specified if timeseries_identifiers is also set.
         """
         obj = {}
         if prediction_type is not None:
