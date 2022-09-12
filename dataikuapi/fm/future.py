@@ -20,7 +20,7 @@ class FMFuture(object):
         """
         Creates a DSSFuture from a parsed JSON response
 
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         return FMFuture(
             client, resp.get("jobId", None), state=resp, result_wrapper=result_wrapper
