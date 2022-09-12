@@ -82,23 +82,23 @@ class GovernAdminBlueprint(object):
         else:
             return versions
 
-    def create_version(self, new_identifier, blueprint_version_definition, origin_version_id=None):
+    def create_version(self, new_identifier, name=None, origin_version_id=None):
         """
         Create a new blueprint version and returns a handle to interact with it.
 
         :param str new_identifier: The new identifier of the blueprint version. Allowed characters are letters, digits, hyphen, and underscore.
-        :param dict blueprint_version_definition: The definition of the blueprint version.
+        :param str name: (Optional) The name of the blueprint version.
         :param str origin_version_id: (Optional) The blueprint version id of the origin version id if there is one.
         :return: The handle of the newly created blueprint
         :rtype: :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintVersion`
         """
         params = {"newIdentifier": new_identifier}
+        if name is not None:
+            params["name"] = name
         if origin_version_id is not None:
             params["originVersionId"] = origin_version_id
 
-        blueprint_version_definition["id"] = {"blueprintId": self.blueprint_id}
-
-        version = self.client._perform_json("POST", "/admin/blueprint/%s/versions" % self.blueprint_id, params=params, body=blueprint_version_definition)
+        version = self.client._perform_json("POST", "/admin/blueprint/%s/versions" % self.blueprint_id, params=params)
 
         return GovernAdminBlueprintVersion(self.client, self.blueprint_id, version["blueprintVersion"]["id"]["versionId"])
 
