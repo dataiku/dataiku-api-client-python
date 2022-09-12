@@ -17,7 +17,8 @@ class FMInstanceCreator(object):
         """
         Helper to create a DSS instance.
 
-        :param object client: :class:`dataikuapi.fm.fmclient`
+        :param client: The FM client
+        :type client: :class:`dataikuapi.fm.fmclient`
         :param str label: The label of the instance
         :param str instance_settings_template: The instance settings template id this instance should be based on
         :param str virtual_network: The virtual network where the instance should be spawned
@@ -52,7 +53,7 @@ class FMInstanceCreator(object):
         """
         Set the machine type for the DSS Instance
 
-        :param str cloud_instance_type
+        :param str cloud_instance_type: the machine type to be used for the instance
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         self.data["cloudInstanceType"] = cloud_instance_type
@@ -70,11 +71,12 @@ class FMInstanceCreator(object):
         """
         Set the options of the data volume to use with the DSS Instance
 
-        :param str data_volume_type: Optional, Data volume type
-        :param int data_volume_size: Optional, Data volume initial size
-        :param int data_volume_size_max: Optional, Data volume maximum size
-        :param int data_volume_IOPS: Optional, Data volume IOPS
-        :param object data_volume_encryption: Optional, a :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode` setting the encryption mode of the data volume
+        :param str data_volume_type: Optional, data volume type
+        :param int data_volume_size: Optional, data volume initial size
+        :param int data_volume_size_max: Optional, data volume maximum size
+        :param int data_volume_IOPS: Optional, data volume IOPS
+        :param  data_volume_encryption: Optional, encryption mode of the data volume
+        :type data_volume_encryption: :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode`
         :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
@@ -136,7 +138,7 @@ class FMAWSInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMAWSInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -150,7 +152,7 @@ class FMAzureInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMAzureInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -164,7 +166,7 @@ class FMGCPInstanceCreator(FMInstanceCreator):
         """
         Create the DSS instance
 
-        :return: Created DSS Instance
+        :return: a newly created DSS instance
         :rtype: :class:`dataikuapi.fm.instances.FMGCPInstance`
         """
         instance = self.client._perform_tenant_json(
@@ -176,7 +178,12 @@ class FMGCPInstanceCreator(FMInstanceCreator):
 class FMInstance(object):
     """
     A handle to interact with a DSS instance.
-    Do not create this directly, use :meth:`FMClient.get_instance` or :meth: `FMClient.new_instance_creator`
+    Do not create this directly, use :meth:`dataikuapi.fmclient.FMClient.get_instance` or
+
+    * :meth:`dataikuapi.fmclient.FMClientAWS.new_instance_creator`
+    * :meth:`dataikuapi.fmclient.FMClientAzure.new_instance_creator`
+    * :meth:`dataikuapi.fmclient.FMClientGCP.new_instance_creator`
+
     """
 
     def __init__(self, client, instance_data):
@@ -188,8 +195,8 @@ class FMInstance(object):
         """
         Reprovision the physical DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the reprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/reprovision" % self.id
@@ -200,8 +207,8 @@ class FMInstance(object):
         """
         Deprovision the physical DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/deprovision" % self.id
@@ -212,8 +219,8 @@ class FMInstance(object):
         """
         Restart the DSS running on the physical instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the restart process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the restart process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/restart-dss" % self.id
@@ -222,7 +229,7 @@ class FMInstance(object):
 
     def save(self):
         """
-        Update the Instance.
+        Update the instance
         """
         self.client._perform_tenant_empty(
             "PUT", "/instances/%s" % self.id, body=self.instance_data
@@ -234,6 +241,9 @@ class FMInstance(object):
     def get_status(self):
         """
         Get the physical DSS instance's status
+
+        :return: the instance status
+        :rtype: :class:`dataikuapi.fm.instances.FMInstanceStatus`
         """
         status = self.client._perform_tenant_json(
             "GET", "/instances/%s/status" % self.id
@@ -244,8 +254,8 @@ class FMInstance(object):
         """
         Delete the DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/delete" % self.id
@@ -270,8 +280,8 @@ class FMInstance(object):
 
         :param string username: login
         :param string password: new password
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the password reset process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the password reset process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future =  self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/reset-user-password" % self.id, params={ 'userName':username, 'password':password }
@@ -282,8 +292,8 @@ class FMInstance(object):
         """
         Replay the setup actions on the DSS instance
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the replay process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the replay process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future =  self.client._perform_tenant_json(
             "GET", "/instances/%s/actions/replay-setup-actions" % self.id
@@ -292,7 +302,7 @@ class FMInstance(object):
 
     def set_automated_snapshots(self, enable, period, keep=0):
         """
-        Set the automated snapshots policy for this instance
+        Set the automated snapshot policy for this instance
 
         :param boolean enable: Enable the automated snapshots
         :param int period: The time period between 2 snapshot in hours
@@ -309,7 +319,7 @@ class FMInstance(object):
 
         Only needed when Virtual Network HTTPS Strategy is set to Custom Certificate
 
-        param: str pem_data: The SSL certificate
+        :param str pem_data: The SSL certificate
         """
         self.instance_data["sslCertificatePEM"] = pem_data
         return self
@@ -321,7 +331,7 @@ class FMInstance(object):
 
     def list_snapshots(self):
         """
-        List all snapshots of this instance
+        List all the snapshots of this instance
 
         :return: list of snapshots
         :rtype: list of :class:`dataikuapi.fm.instances.FMSnapshot`
@@ -342,7 +352,7 @@ class FMInstance(object):
 
     def snapshot(self, reason_for_snapshot=None):
         """
-        Create a snapshot of the DSS instance
+        Create a snapshot of the instance
  
         :return: Snapshot
         :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`
@@ -358,7 +368,7 @@ class FMAWSInstance(FMInstance):
         Set a public elastic ip for this instance
 
         :param boolan enable: Enable the elastic ip allocation
-        :param str elaticip_allocation_id: AWS ElasticIP allocation ID
+        :param str elasticip_allocation_id: AWS ElasticIP allocation ID
         """
         self.instance_data["awsAssignElasticIP"] = enable
         self.instance_data["awsElasticIPAllocationId"] = elasticip_allocation_id
@@ -405,7 +415,7 @@ class FMInstanceEncryptionMode(Enum):
 
 class FMInstanceStatus(dict):
     """A class holding read-only information about an Instance.
-    This class should not be created directly. Instead, use :meth:`FMInstance.get_info`
+    This class should not be created directly. Instead, use :meth:`FMInstance.get_status`
     """
 
     def __init__(self, data):
@@ -441,8 +451,8 @@ class FMSnapshot(object):
         """
         Reprovision the physical DSS instance from this snapshot
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the reprovision process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the reprovision process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "POST", "/instances/%s/snapshots/%s/reprovision" % (self.instance_id, self.snapshot_id)
@@ -453,8 +463,8 @@ class FMSnapshot(object):
         """
         Delete the snapshot
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "DELETE", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)

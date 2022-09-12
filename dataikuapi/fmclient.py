@@ -80,9 +80,9 @@ class FMClient(object):
 
     def get_cloud_credentials(self):
         """
-        Get Cloud Credentials
+        Get the cloud credentials
 
-        :return: Cloud credentials
+        :return: cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
@@ -90,9 +90,7 @@ class FMClient(object):
 
     def get_cloud_tags(self):
         """
-        Get Tenant's Cloud Tags
-
-        :param string tenant_id
+        Get the tenant's cloud tags
 
         :return: tenant's cloud tags
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudTags`
@@ -116,7 +114,7 @@ class FMClient(object):
 
     def list_virtual_networks(self):
         """
-        List all Virtual Networks
+        List all virtual networks
 
         :return: list of virtual networks
         :rtype: list of :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
@@ -126,11 +124,11 @@ class FMClient(object):
 
     def get_virtual_network(self, virtual_network_id):
         """
-        Get a Virtual Network
+        Get a virtual network by its id
 
-        :param str virtual_network_id
+        :param str virtual_network_id: the id of the network to retrieve
 
-        :return: requested virtual network
+        :return: the requested virtual network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMVirtualNetwork`
         """
         vn = self._perform_tenant_json(
@@ -144,7 +142,7 @@ class FMClient(object):
 
     def list_instance_templates(self):
         """
-        List all Instance Settings Templates
+        List all instance settings templates
 
         :return: list of instance settings template
         :rtype: list of :class:`dataikuapi.fm.tenant.FMInstanceSettingsTemplate`
@@ -154,11 +152,11 @@ class FMClient(object):
 
     def get_instance_template(self, template_id):
         """
-        Get an Instance Template
+        Get an instance setting template template by its id
 
-        :param str template_id
+        :param str template_id: the id of the template to retrieve
 
-        :return: requested instance settings template
+        :return: the requested instance settings template
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
         """
         template = self._perform_tenant_json(
@@ -182,7 +180,7 @@ class FMClient(object):
 
     def list_instances(self):
         """
-        List all DSS Instances
+        List all DSS instances
 
         :return: list of instances
         :rtype: list of :class:`dataikuapi.fm.instances.FMInstance`
@@ -192,11 +190,11 @@ class FMClient(object):
 
     def get_instance(self, instance_id):
         """
-        Get a DSS Instance
+        Get a DSS instance by its id
 
-        :param str instance_id
+        :param str instance_id: the id of the instance to retrieve
 
-        :return: Instance
+        :return: the requested instance if any
         :rtype: :class:`dataikuapi.fm.instances.FMInstance`
         """
         instance = self._perform_tenant_json("GET", "/instances/%s" % instance_id)
@@ -315,8 +313,6 @@ class FMClientAWS(FMClient):
         """
         AWS Only - Instantiate a new FM API client on the given host with the given API key.
 
-        API keys can be managed in FM on the project page or in the global settings.
-
         The API key will define which operations are allowed for the client.
 
         :param str host: Full url of the FM
@@ -331,7 +327,7 @@ class FMClientAWS(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetworkCreator`
         """
         return FMAWSVirtualNetworkCreator(self, label)
@@ -374,8 +370,6 @@ class FMClientAzure(FMClient):
         """
         Azure Only - Instantiate a new FM API client on the given host with the given API key.
 
-        API keys can be managed in FM on the project page or in the global settings.
-
         The API key will define which operations are allowed for the client.
 
         :param str host: Full url of the FM
@@ -389,7 +383,7 @@ class FMClientAzure(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetworkCreator`
         """
         return FMAzureVirtualNetworkCreator(self, label)
@@ -431,8 +425,6 @@ class FMClientGCP(FMClient):
         """
         GCP Only - Instantiate a new FM API client on the given host with the given API key.
 
-        API keys can be managed in FM on the project page or in the global settings.
-
         The API key will define which operations are allowed for the client.
 
         :param str host: Full url of the FM
@@ -446,7 +438,7 @@ class FMClientGCP(FMClient):
         """
         Instantiate a new virtual network creator
 
-        :param str label: The label of the
+        :param str label: The label of the network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMGCPVirtualNetworkCreator`
         """
         return FMGCPVirtualNetworkCreator(self, label)
