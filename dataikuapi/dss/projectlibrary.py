@@ -225,9 +225,7 @@ class DSSLibraryFolder(DSSLibraryItem):
 
     def add_file(self, file_name):
         """
-        Create a handle to a new file in the library folder
-
-        Note : It is not saved in DSS until :meth:`dataikuapi.dss.projectlibrary.DSSLibraryFile.save()` is called
+        Create a new file in the library folder
 
         :param: str file_name: the file name
         :returns: the new file
@@ -236,6 +234,8 @@ class DSSLibraryFolder(DSSLibraryItem):
         if "/" in file_name:
             raise DataikuException("File name %s contains invalid character '/'" % file_name)
         file = DSSLibraryFile(self.client, self.project_key, file_name, self)
+        new_path = self._clean_path_(self.get_path() + "/" + file_name)
+        self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, new_path))
         self.children.add(file)
         return file
 
