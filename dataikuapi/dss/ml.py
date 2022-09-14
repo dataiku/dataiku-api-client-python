@@ -1786,7 +1786,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         MULTICLASS = "MULTICLASS"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
-        AbstractTabularPredictionMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+        super(DSSPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
 
         prediction_type = self.get_prediction_type()
         if prediction_type not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
@@ -2005,7 +2005,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         TIMESERIES_FORECAST = "TIMESERIES_FORECAST"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
-        AbstractTabularPredictionMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+        super(DSSTimeseriesForecastingMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
 
         prediction_type = self.get_prediction_type()
         if prediction_type != self.PredictionTypes.TIMESERIES_FORECAST:
@@ -2903,6 +2903,7 @@ class DSSScatterPlots(object):
         ret = {'cluster':self.scatters['cluster'], 'x':self.scatters['features'].get(feature_x, None), 'y':self.scatters['features'].get(feature_x, None)}
         return ret
 
+
 class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained prediction model
@@ -2911,7 +2912,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
+        super(DSSTrainedPredictionModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
     def get_roc_curve_data(self):
         roc = self.details.get("perf", {}).get("rocVizData",{})
@@ -3680,7 +3681,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
+        super(DSSTrainedClusteringModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
 
     def get_raw(self):
