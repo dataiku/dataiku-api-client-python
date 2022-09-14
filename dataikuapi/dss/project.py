@@ -728,6 +728,8 @@ class DSSProject(object):
 
         :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        :returns: the created saved model
+        :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
         """
         model = {
             "savedModelType": "MLFLOW_PYFUNC",
