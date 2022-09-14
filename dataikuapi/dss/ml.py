@@ -2106,7 +2106,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         if constant is not None:
             resampling_params["categoricalConstantValue"] = constant
 
-    def set_duplicate_timestamp_handling_method(self, method):
+    def set_duplicate_timestamp_handling(self, method):
         """
         Sets the time series resampling categorical imputation parameters
 

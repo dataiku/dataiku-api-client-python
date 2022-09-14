@@ -416,9 +416,7 @@ class DSSDataset(object):
                                               timeseries_identifiers=None,
                                               guess_policy="TIMESERIES_DEFAULT",
                                               wait_guess_complete=True):
-
-        """Creates a new prediction task in a new visual analysis lab
-        for a dataset.
+        """Creates a new time series forecasting task in a new visual analysis lab for a dataset.
 
         :param string target_variable: the variable to predict
         :param string time_variable:  Column to be used as time variable. Should be a Date (parsed) column.

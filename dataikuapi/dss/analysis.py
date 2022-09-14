@@ -191,11 +191,7 @@ class DSSAnalysis(object):
                                   ml_backend_type="PY_MEMORY",
                                   guess_policy="KMEANS",
                                   wait_guess_complete=True):
-
-
-        """Creates a new clustering task in a new visual analysis lab
-        for a dataset.
-
+        """Creates a new clustering task in this visual analysis lab for a dataset.
 
         The returned ML task will be in 'guessing' state, i.e. analyzing
         the input dataset to determine feature handling and algorithms.
@@ -230,8 +226,7 @@ class DSSAnalysis(object):
                                               timeseries_identifiers=None,
                                               guess_policy="TIMESERIES_DEFAULT",
                                               wait_guess_complete=True):
-
-        """Creates a new prediction task in a new visual analysis lab for a dataset.
+        """Creates a new time series forecasting task in this visual analysis lab for a dataset.
 
         :param string input_dataset: the dataset to use for training/testing the model
         :param string target_variable: the variable to predict
