@@ -12,6 +12,8 @@ from dataikuapi.govern.artifact import GovernArtifact
 from dataikuapi.govern.artifact_search_handler import GovernArtifactSearchHandler
 from dataikuapi.govern.blueprint import GovernBlueprint
 from dataikuapi.govern.custom_page import GovernCustomPage
+from dataikuapi.govern.time_series import GovernTimeSeries
+from dataikuapi.govern.uploaded_file import GovernUploadedFile
 from dataikuapi.utils import DataikuException
 
 
@@ -221,7 +223,7 @@ class GovernClient(object):
 
     def list_custom_pages(self, as_objects=True):
         """
-        Lists custom pages.
+        List custom pages.
 
         :param boolean as_objects: (Optional) if True, returns a list of :class:`~dataikuapi.govern.custom_page.GovernCustomPage`,
          else returns a list of dict. Each dict contains at least a field "id"
@@ -234,6 +236,50 @@ class GovernClient(object):
             return [GovernCustomPage(self, page["id"]) for page in pages]
         else:
             return pages
+
+    ########################################################
+    # Time Series
+    ########################################################
+
+    def get_time_series(self, time_series_id):
+        """
+        Return a handle to interact with the time series
+
+        :param str time_series_id: ID of the time series
+        :return: the corresponding time series object
+        :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
+        """
+
+        return GovernTimeSeries(self, time_series_id)
+
+    ########################################################
+    # Uploaded files
+    ########################################################
+
+    def get_file(self, uploaded_file_id):
+        """
+        Return a handle to interact with an uploaded file
+
+        :param str uploaded_file_id: ID of the uploaded file
+        :return: the corresponding uploaded file object
+        :rtype: a :class:`~dataikuapi.govern.uploaded_file.GovernUploadedFile`
+        """
+
+        return GovernUploadedFile(self, uploaded_file_id)
+
+    def upload_file(self, file_name, file):
+        """
+        Upload a multipart encoded file. Return a handle to interact with an uploaded file
+
+        :param str file_name: Name of the file
+        :param stream file: file contents, as a stream - file-like object
+        :return: the newly uploaded file object
+        :rtype: a :class:`~dataikuapi.govern.uploaded_file.GovernUploadedFile`
+        """
+
+        description = self._perform_json_upload("POST", "/uploaded-files", file_name, file).json()
+
+        return GovernUploadedFile(self, description.get("id"))
 
     ########################################################
     # Users
