@@ -46,7 +46,7 @@ class GovernClient(object):
     # Internal Request handling
     ########################################################
 
-    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None):
+    def _perform_http(self, method, path, params=None, body=None, stream=False, files=None, raw_body=None, headers=None):
         if body is not None:
             body = json.dumps(body)
         if raw_body is not None:
@@ -54,11 +54,11 @@ class GovernClient(object):
 
         try:
             http_res = self._session.request(
-                method, "%s/dip/publicapi%s" % (self.host, path),
-                params=params,
-                data=body,
-                files=files,
-                stream=stream)
+                    method, "%s/dip/publicapi%s" % (self.host, path),
+                    params=params, data=body,
+                    files=files,
+                    stream=stream,
+                    headers=headers)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -66,35 +66,30 @@ class GovernClient(object):
                 ex = http_res.json()
             except ValueError:
                 ex = {"message": http_res.text}
-            raise DataikuException("%s: %s" % (
-                ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
-    def _perform_empty(self, method, path, params=None, body=None, files=None, raw_body=None):
-        self._perform_http(method, path, params=params, body=body,
-                           files=files, stream=False, raw_body=raw_body)
+    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
+        self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
 
-    def _perform_text(self, method, path, params=None, body=None, files=None, raw_body=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=False,
-                                  raw_body=raw_body).text
+    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body).text
 
-    def _perform_json(self, method, path, params=None, body=None, files=None, raw_body=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=False,
-                                  raw_body=raw_body).json()
+    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
+        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
 
-    def _perform_raw(self, method, path, params=None, body=None, files=None, raw_body=None):
+    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
 
     def _perform_json_upload(self, method, path, name, f):
         try:
             http_res = self._session.request(
-                method, "%s/publicapi%s" % (self.host, path),
-                files={'file': (name, f, {'Expires': '0'})})
+                    method, "%s/dip/publicapi%s" % (self.host, path),
+                    files = {'file': (name, f, {'Expires': '0'})} )
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
             ex = http_res.json()
-            raise DataikuException("%s: %s" % (
-                ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
     ########################################################
     # Blueprint Designer
@@ -256,7 +251,7 @@ class GovernClient(object):
     # Uploaded files
     ########################################################
 
-    def get_file(self, uploaded_file_id):
+    def get_uploaded_file(self, uploaded_file_id):
         """
         Return a handle to interact with an uploaded file
 
@@ -269,7 +264,7 @@ class GovernClient(object):
 
     def upload_file(self, file_name, file):
         """
-        Upload a multipart encoded file. Return a handle to interact with an uploaded file
+        Upload a file on Govern. Return a handle to interact with this new uploaded file.
 
         :param str file_name: Name of the file
         :param stream file: file contents, as a stream - file-like object
@@ -279,7 +274,7 @@ class GovernClient(object):
 
         description = self._perform_json_upload("POST", "/uploaded-files", file_name, file).json()
 
-        return GovernUploadedFile(self, description.get("id"))
+        return GovernUploadedFile(self, description["id"])
 
     ########################################################
     # Users

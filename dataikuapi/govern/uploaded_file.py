@@ -18,6 +18,16 @@ class GovernUploadedFile(object):
 
         return self.client._perform_json("GET", "/uploaded-file/%s" % self.uploaded_file_id)
 
+    def download(self):
+        """
+        Download the uploaded file
+
+        :return: the uploaded file contents, as a stream - file-like object
+        :rtype: a stream - file-like object
+        """
+
+        return self.client._perform_raw("GET", "/uploaded-file/%s/download" % self.uploaded_file_id).raw
+
     def delete(self):
         """
         Delete the file
@@ -25,4 +35,4 @@ class GovernUploadedFile(object):
         :return: None
         """
 
-        return self.client._perform_empty("DELETE", "/uploaded-files/%s" % self.uploaded_file_id)
+        return self.client._perform_empty("DELETE", "/uploaded-file/%s" % self.uploaded_file_id)
