@@ -179,7 +179,7 @@ class DSSLibraryItem(object):
         if self.is_root():
             raise Exception("Cannot rename root folder")
 
-        self.client._perform_empty("PUT", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, self.get_path()), body={"newName": new_name})
+        self.client._perform_empty("POST", "/projects/%s/libraries/contents-actions/rename/" % self.project_key, body={"oldPath": self.get_path(), "newName": new_name})
         self.name = new_name
 
     def move_to(self, destination_folder):
@@ -195,8 +195,8 @@ class DSSLibraryItem(object):
         if not isinstance(destination_folder, DSSLibraryFolder):
             raise DataikuException("Destination should be a folder")
 
-        self.client._perform_empty("PUT", "/projects/%s/libraries/contents/move/%s" % (self.project_key, self.get_path()),
-                                   body={"newPath": destination_folder.get_path()})
+        self.client._perform_empty("POST", "/projects/%s/libraries/contents-actions/move" % self.project_key,
+                                   body={"oldPath": self.get_path(), "newPath": destination_folder.get_path()})
         self.parent._remove_child_(self)
         destination_folder._add_child_(self)
         self.parent = destination_folder
