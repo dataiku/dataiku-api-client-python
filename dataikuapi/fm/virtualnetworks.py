@@ -4,9 +4,9 @@ from .future import FMFuture
 class FMVirtualNetworkCreator(object):
     def __init__(self, client, label):
         """
-        A builder class to create a Virtual Network
+        A builder class to create virtual networks
 
-        :param str label: The label of the Virtual Network
+        :param str label: The label of the virtual network
         """
         self.client = client
         self.data = {}
@@ -16,7 +16,12 @@ class FMVirtualNetworkCreator(object):
 
     def with_internet_access_mode(self, internet_access_mode):
         """
-        :param str internet_access_mode: The internet access mode of the instances created in this virtual network. Accepts "YES", "NO", "EGRESS_ONLY". Defaults to "YES"
+        Set the Internet access mode
+
+        :param str internet_access_mode: The internet access mode of the instances created in this virtual network.
+            Accepts "YES", "NO", "EGRESS_ONLY".
+            Defaults to "YES"
+
         """
         if internet_access_mode not in ["YES", "NO", "EGRESS_ONLY"]:
             raise ValueError(
@@ -28,7 +33,7 @@ class FMVirtualNetworkCreator(object):
 
     def with_default_values(self):
         """
-        Setup the VPC and Subnet to with the default values: the vpc and subnet of the FM instance
+        Set the VPC and Subnet to their default values: the vpc and subnet of the FM instance
         """
         self.use_default_values = True
         return self
@@ -37,7 +42,7 @@ class FMVirtualNetworkCreator(object):
 class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
     def with_vpc(self, aws_vpc_id, aws_subnet_id):
         """
-        Setup the VPC and Subnet to with the VirtualNetwork
+        Setup the VPC and Subnet to be used by the virtual network
 
         :param str aws_vpc_id: ID of the VPC to use
         :param str aws_subnet_id: ID of the subnet to use
@@ -48,7 +53,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
 
     def with_auto_create_security_groups(self):
         """
-        Automatically create the AWS Security Groups when creating this VirtualNetwork
+        Automatically create the AWS Security Groups when creating this virtual network
         """
         self.data["awsAutoCreateSecurityGroups"] = True
         return self
@@ -57,7 +62,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
         """
         Use pre-created AWS Security Groups
 
-        :param str *aws_security_groups: Up to 5 security group ids to assign to the instances created in this virtual network.
+        :param str aws_security_groups: Up to 5 security group ids to assign to the instances created in this virtual network
         """
         self.data["awsAutoCreateSecurityGroups"] = False
         self.data["awsSecurityGroups"] = aws_security_groups
@@ -65,9 +70,9 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
 
     def create(self):
         """
-        Create the VirtualNetwork
+        Create a new virtual network
 
-        :return: Created VirtualNetwork
+        :return: a newly created network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetwork`
         """
         vn = self.client._perform_tenant_json(
@@ -79,7 +84,7 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
 class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
     def with_azure_virtual_network(self, azure_vn_id, azure_subnet_id):
         """
-        Setup the Azure Virtual Network and Subnet to with the VirtualNetwork
+        Setup the Azure Virtual Network and Subnet to be used by the virtual network
 
         :param str azure_vn_id: Resource ID of the Azure Virtual Network to use
         :param str azure_subnet_id: Resource ID of the subnet to use
@@ -99,9 +104,9 @@ class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
 
     def create(self):
         """
-        Create the VirtualNetwork
+        Create a new virtual network
 
-        :return: Created VirtualNetwork
+        :return: a newly created network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetwork`
         """
         vn = self.client._perform_tenant_json(
@@ -128,7 +133,7 @@ class FMGCPVirtualNetworkCreator(FMVirtualNetworkCreator):
         """
         Use network tags on the instances created in the virtual network
 
-        :param str *network_tags: network tags to assign to the instances created in this virtual network.
+        :param str network_tags: network tags to assign to the instances created in this virtual network.
         """
         self.data["gcpNetworkTags"] = network_tags
         return self
@@ -137,7 +142,7 @@ class FMGCPVirtualNetworkCreator(FMVirtualNetworkCreator):
         """
         Create the virtual network
 
-        :return: Created virtual network
+        :return: a newly created network
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMGCPVirtualNetwork`
         """
         vn = self.client._perform_tenant_json(
@@ -154,7 +159,7 @@ class FMVirtualNetwork(object):
 
     def save(self):
         """
-        Update the Virtual Network.
+        Update this virtual network.
         """
         self.client._perform_tenant_empty(
             "PUT", "/virtual-networks/%s" % self.id, body=self.vn_data
@@ -165,10 +170,10 @@ class FMVirtualNetwork(object):
 
     def delete(self):
         """
-        Delete the DSS Instance Settings Template.
+        Delete this virtual network.
 
-        :return: A :class:`~dataikuapi.fm.future.FMFuture` representing the deletion process
-        :rtype: :class:`~dataikuapi.fm.future.FMFuture`
+        :return: the `Future` object representing the deletion process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
         future = self.client._perform_tenant_json(
             "DELETE", "/virtual-networks/%s" % self.id
@@ -176,7 +181,7 @@ class FMVirtualNetwork(object):
         return FMFuture.from_resp(self.client, future)
 
     def set_fleet_management(
-        self, enable, event_server=None, deployer_management="NO_MANAGED_DEPLOYER"
+        self, enable, event_server=None, deployer_management="NO_MANAGED_DEPLOYER", govern_server=None
     ):
         """
         When enabled, all instances in this virtual network know each other and can centrally manage deployer and logs centralization
@@ -185,21 +190,25 @@ class FMVirtualNetwork(object):
 
         :param str event_server: Optional,  Node name of the node that should act as the centralized event server for logs concentration. Audit logs of all design, deployer and automation nodes will automatically be sent there.
         :param str deployer_management: Optional, Accepts:
-            - "NO_MANAGED_DEPLOYER": Do not manage the the deployer. This is the default mode.
-            - "CENTRAL_DEPLOYER": Central deployer. Recommanded if you have more than one design node or may have more than one design node in the future.
-            - "EACH_DESIGN_NODE": Deployer from design. Recommanded if you have a single design node and want a simpler setup.
+            - "NO_MANAGED_DEPLOYER": Do not manage the deployer. This is the default mode.
+            - "CENTRAL_DEPLOYER": Central deployer. Recommended if you have more than one design node or may have more than one design node in the future.
+            - "EACH_DESIGN_NODE": Deployer from design. Recommended if you have a single design node and want a simpler setup.
+        :param str govern_server: Optional, node name of the node that should act as the centralized Govern server.
+
         """
 
         self.vn_data["managedNodesDirectory"] = enable
         self.vn_data["eventServerNodeLabel"] = event_server
         self.vn_data["nodesDirectoryDeployerMode"] = deployer_management
+        self.vn_data["governServerNodeLabel"] = govern_server
         return self
 
     def set_https_strategy(self, https_strategy):
         """
         Set the HTTPS strategy for this virtual network
 
-        :param object: a :class:`dataikuapi.fm.virtualnetworks.FMHTTPSStrategy`
+        :param https_strategy: the strategy to set
+        :type https_strategy: :class:`dataikuapi.fm.virtualnetworks.FMHTTPSStrategy`
         """
         self.vn_data.update(https_strategy)
         return self
@@ -303,7 +312,7 @@ class FMGCPVirtualNetwork(FMVirtualNetwork):
 class FMHTTPSStrategy(dict):
     def __init__(self, data, https_strategy, http_redirect=False):
         """
-        A class holding HTTPS Strategy for Virtual Network
+        A class holding HTTPS Strategy for virtual networks
 
         Do not create this directly, use:
             - :meth:`dataikuapi.fm.virtualnetwork.FMHTTPSStrategy.disable` to use HTTP only
