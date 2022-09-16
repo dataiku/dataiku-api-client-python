@@ -604,7 +604,7 @@ class DSSDataset(object):
 
     _SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
-                "BigQuery", "Athena", "hiveserver2"]
+                "BigQuery", "Athena", "hiveserver2", "Synapse"]
 
     def test_and_detect(self, infer_storage_types=False):
         """Used internally by autodetect_settings. It is not usually required to call this method"""
