@@ -43,10 +43,15 @@ class FMInstanceCreator(object):
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         # backward compatibility, was a string before . be sure the value falls into the enum
-        value = dss_node_type;
-        if isinstance(dss_node_type, str):
-            value = FMNodeType[dss_node_type.upper()]
-        self.data["dssNodeType"] = value.value
+        value = dss_node_type
+        # python2 does not support enum, keep string
+        if sys.version_info > (3, 4):
+            if isinstance(dss_node_type, str):
+                value = FMNodeType[dss_node_type.upper()]
+            self.data["dssNodeType"] = value.value
+        else:
+            value = get_from_string(dss_node_type.upper())
+            self.data["dssNodeType"] = value;
         return self
 
     def with_cloud_instance_type(self, cloud_instance_type):
@@ -405,6 +410,14 @@ class FMNodeType(Enum):
     DEPLOYER = "deployer"
     AUTOMATION = "automation"
     GOVERN = "govern"
+
+# Python2 emulated enum. to be removed on Python2 support removal
+def get_from_string(s):
+    if s == "DESIGN": return FMNodeType.DESIGN
+    if s == "DEPLOYER": return FMNodeType.DEPLOYER
+    if s == "AUTOMATION": return FMNodeType.AUTOMATION
+    if s == "GOVERN": return FMNodeType.GOVERN
+    raise Exception("Invalid Node Type " + s)
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
