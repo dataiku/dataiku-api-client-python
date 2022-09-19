@@ -1,5 +1,5 @@
 from .dssclient import DSSClient
-from .fmclient import FMClientAWS, FMClientAzure
+from .fmclient import FMClientAWS, FMClientAzure, FMClientGCP
 
 from .apinode_client import APINodeClient
 from .apinode_admin_client import APINodeAdminClient

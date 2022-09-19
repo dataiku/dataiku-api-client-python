@@ -1,5 +1,6 @@
 import tempfile
 
+from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 from .metrics import ComputedMetrics
 from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
@@ -354,7 +355,7 @@ class MLFlowVersionHandler:
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
             body=metadata)
 
-    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT"):
+    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", override_selection=None):
         """
         Evaluates the performance of this model version on a particular dataset.
         After calling this, the "result screens" of the MLFlow model version will be available
@@ -366,12 +367,18 @@ class MLFlowVersionHandler:
         :param str container_exec_config_name: Name of the containerized execution configuration to use for running the evaluation process.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
+        :param str override_selection: will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
+        :type override_selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation
         """
+        sampling_param = override_selection.build() if isinstance(
+            override_selection, DSSDatasetSelectionBuilder) else override_selection
+
         if hasattr(dataset_ref, 'name'):
             dataset_ref = dataset_ref.name
         req = {
             "datasetRef": dataset_ref,
-            "containerExecConfigName": container_exec_config_name
+            "containerExecConfigName": container_exec_config_name,
+            "samplingParam": sampling_param
         }
         self.saved_model.client._perform_empty("POST",
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/actions/evaluate" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),

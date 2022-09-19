@@ -729,6 +729,8 @@ class DSSProject(object):
 
         :param string name: Human readable name for the new saved model in the flow
         :param string prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        :returns: the created saved model
+        :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
         """
         model = {
             "savedModelType" : "MLFLOW_PYFUNC",
@@ -1600,6 +1602,10 @@ class DSSProject(object):
             return {"schema":x.get("databaseName", None), "table":x["table"]}
         return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
+    def list_elasticsearch_indices_or_aliases(self, connection_name):
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-indices" % self.project_key, params={"connectionName": connection_name})
+        return DSSFuture.get_result_wait_if_needed(self.client, ret)
+
     ########################################################
     # App designer
     ########################################################
@@ -1708,12 +1714,16 @@ class TablesImportDefinition(object):
         })
 
     def add_sql_table(self, connection, schema, table):
-        """Add a SQL table to the list of table to import"""
+        """Add a SQL table to the list of tables to import"""
         self.keys.append({
             "connectionName" : connection,
             "schema": schema,
             "name" : table
         })
+
+    def add_elasticsearch_index_or_alias(self, connection, index_or_alias):
+        """Add an Elastic Search index or alias to the list of tables to import"""
+        self.keys.append({"connectionName": connection, "name": index_or_alias})
 
     def prepare(self):
         """
@@ -1750,7 +1760,7 @@ class TablesPreparedImport(object):
         """
         ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (self.project_key),
                 body = self.candidates)
-        return self.client.get_future(ret["jobId"])
+        return DSSFuture.from_resp(self.client, ret)
 
 class DSSProjectSettings(object):
     """Settings of a DSS project"""
