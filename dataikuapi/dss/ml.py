@@ -3656,16 +3656,20 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
-    def guess(self, prediction_type=None, reguess_level=None):
+    def guess(self, prediction_type=None, reguess_level=None, target_variable=None):
         """
         Guess the feature handling and the algorithms.
 
-        :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
+        :param string prediction_type: In case of a prediction problem the prediction type can be specified. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
         :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
+        :param string target_variable: In case of a prediction problem the target variable can be specified.
         """
         obj = {}
         if prediction_type is not None:
             obj["predictionType"] = prediction_type
+
+        if target_variable is not None:
+            obj["targetVariable"] = target_variable
 
         if reguess_level is not None:
             obj["reguessLevel"] = reguess_level
