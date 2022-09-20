@@ -50,7 +50,7 @@ class FMInstanceCreator(object):
                 value = FMNodeType[dss_node_type.upper()]
             self.data["dssNodeType"] = value.value
         else:
-            value = get_from_string(dss_node_type.upper())
+            value = FMNodeType.get_from_string(dss_node_type.upper())
             self.data["dssNodeType"] = value;
         return self
 
@@ -405,19 +405,22 @@ class FMGCPInstance(FMInstance):
         self.instance_data["gcpPublicIPId"] = public_ip_id
         return self
 
+
 class FMNodeType(Enum):
     DESIGN = "design"
     DEPLOYER = "deployer"
     AUTOMATION = "automation"
     GOVERN = "govern"
 
-# Python2 emulated enum. to be removed on Python2 support removal
-def get_from_string(s):
-    if s == "DESIGN": return FMNodeType.DESIGN
-    if s == "DEPLOYER": return FMNodeType.DEPLOYER
-    if s == "AUTOMATION": return FMNodeType.AUTOMATION
-    if s == "GOVERN": return FMNodeType.GOVERN
-    raise Exception("Invalid Node Type " + s)
+    # Python2 emulated enum. to be removed on Python2 support removal
+    @staticmethod
+    def get_from_string(s):
+        if s == "DESIGN": return FMNodeType.DESIGN
+        if s == "DEPLOYER": return FMNodeType.DEPLOYER
+        if s == "AUTOMATION": return FMNodeType.AUTOMATION
+        if s == "GOVERN": return FMNodeType.GOVERN
+        raise Exception("Invalid Node Type " + s)
+
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
