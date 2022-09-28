@@ -870,7 +870,7 @@ class DSSProject(object):
         :param str prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS
             or REGRESSION
 
-       :returns: A saved model handle
+       :returns: The created saved model handle
        :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
         """
         model = {
@@ -1819,6 +1819,10 @@ class DSSProject(object):
 
         return [to_schema_table_pair(x) for x in DSSFuture.get_result_wait_if_needed(self.client, ret)['tables']]
 
+    def list_elasticsearch_indices_or_aliases(self, connection_name):
+        ret = self.client._perform_json("GET", "/projects/%s/datasets/tables-import/actions/list-indices" % self.project_key, params={"connectionName": connection_name})
+        return DSSFuture.get_result_wait_if_needed(self.client, ret)
+
     ########################################################
     # App designer
     ########################################################
@@ -1907,6 +1911,69 @@ class DSSProject(object):
         code_studio_id = res['codeStudio']['id']
         return DSSCodeStudioObject(self.client, self.project_key, code_studio_id)
 
+    ########################################################
+    # Project libraries
+    ########################################################
+    def list_library_files(self):
+        """
+        Get the hierarchy of files in the library
+        """
+        return self.client._perform_json("GET", "/projects/%s/libraries/contents" % (self.project_key))
+
+    def get_library_file(self, path):
+        """
+        Get a file from the libraries folder
+
+        :param str path: the path of the file, relative to the root of the library
+
+        :return: a file-like object containing the file's content
+        """
+        return self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, path))
+
+    def put_library_file(self, path, f):
+        """
+        Update a file in the library folder
+
+        :param file-like f: the file contents, as a file-like object
+        :param str path: the path of the file, relative ot the root of the library
+        """
+        data = f.read()
+        return self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, path), raw_body=data)
+
+    def delete_library_file(self, path):
+        """
+        Delete a file in the library folder
+
+        :param str path: the path of the file, relative ot the root of the library
+        """
+        return self.client._perform_empty("DELETE", "/projects/%s/libraries/contents/%s" % (self.project_key, path))
+
+    def add_library_folder(self, path):
+        """
+        Create a folder in the library
+
+        :param str path: the path of the folder, relative ot the root of the library
+        """
+        return self.client._perform_empty("POST", "/projects/%s/libraries/folders/%s" % (self.project_key, path))
+
+    def rename_library_file(self, path, new_name):
+        """
+        Rename a file/folder in the library
+
+        :param str path: the path of the file/folder, relative ot the root of the library
+        :param str new_name: the parameters containing the new name of the file/folder
+        """
+        return self.client._perform_empty("PUT", "/projects/%s/libraries/contents/rename/%s" % (self.project_key, path), body={"newName": new_name})
+
+    def move_library_file(self, path, new_path):
+        """
+        Move a file/folder in the library
+
+        :param str path: the path of the file/folder, relative ot the root of the library
+        :param str new_path: the new path relative at the root of the library
+        """
+        return self.client._perform_empty("PUT", "/projects/%s/libraries/contents/move/%s" % (self.project_key, path), body={"newPath": new_path})
+
 
 class TablesImportDefinition(object):
     """
@@ -1931,7 +1998,7 @@ class TablesImportDefinition(object):
         })
 
     def add_sql_table(self, connection, schema, table):
-        """Add a SQL table to the list of table to import
+        """Add a SQL table to the list of tables to import
 
         :param str connection: the name of the SQL connection
         :param str schema: the schema of the table
@@ -1942,6 +2009,10 @@ class TablesImportDefinition(object):
             "schema": schema,
             "name": table
         })
+
+    def add_elasticsearch_index_or_alias(self, connection, index_or_alias):
+        """Add an Elastic Search index or alias to the list of tables to import"""
+        self.keys.append({"connectionName": connection, "name": index_or_alias})
 
     def prepare(self):
         """
@@ -1979,11 +2050,9 @@ class TablesPreparedImport(object):
         :returns: a future to wait on the result
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
-        ret = self.client._perform_json("POST",
-                                        "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (
-                                            self.project_key),
-                                        body=self.candidates)
-        return self.client.get_future(ret["jobId"])
+        ret = self.client._perform_json("POST", "/projects/%s/datasets/tables-import/actions/execute-from-candidates" % (self.project_key),
+                body = self.candidates)
+        return DSSFuture.from_resp(self.client, ret)
 
 
 class DSSProjectSettings(object):

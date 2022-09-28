@@ -177,6 +177,23 @@ class DSSPlugin(object):
         data = f.read() # eat it all, because making it work with a path variable and a MultifilePart in swing looks complicated
         return self.client._perform_empty("POST", "/plugins/%s/contents/%s" % (self.plugin_id, path), raw_body=data)
 
+    def rename_file(self, path, new_name):
+        """
+        Rename a file/folder in the plugin
+
+        :param str path: the path of the file/folder, relative ot the root of the plugin
+        :param str new_name: the new name of the file/folder
+        """
+        return self.client._perform_empty("PUT", "/plugins/%s/contents/rename/%s" % (self.plugin_id, path), body={"newName": new_name})
+
+    def move_file(self, path, new_path):
+        """
+        Move a file/folder in the plugin
+
+        :param str path: the path of the file/folder, relative ot the root of the plugin
+        :param str new_path: the new path relative at the root of the plugin
+        """
+        return self.client._perform_empty("PUT", "/plugins/%s/contents/move/%s" % (self.plugin_id, path), body={"newPath": new_path})
 
 class DSSPluginUsage(object):
     """

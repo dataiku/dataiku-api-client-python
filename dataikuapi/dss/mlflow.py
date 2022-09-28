@@ -4,7 +4,7 @@ class DSSMLflowExtension(object):
     """
     A handle to interact with specific endpoints of the DSS MLflow integration.
 
-    Do not create this directly, use :meth:`dataikuapi.dss.DSSProject.get_mlflow_extension`
+    Do not create this directly, use :meth:`dataikuapi.dss.project.DSSProject.get_mlflow_extension`
     """
 
     def __init__(self, client, project_key):
