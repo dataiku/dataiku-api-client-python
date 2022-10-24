@@ -1,5 +1,3 @@
-import datetime
-
 from .future import DSSFuture
 import json, warnings
 from datetime import datetime
@@ -424,7 +422,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
     @property
     def last_failed_login(self):
@@ -437,7 +435,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
     @property
     def last_session_activity(self):
@@ -451,7 +449,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSessionActivity"]
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
 
 
 class DSSGroup(object):
@@ -1219,7 +1217,7 @@ class DSSPersonalApiKeyListItem(dict):
     @property
     def created_on(self):
         timestamp = self["createdOn"]
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
    
     @property
     def created_by(self):

@@ -123,7 +123,7 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT", container_exec_config_name="INHERIT"):
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT", container_exec_config_name="NONE", set_active=True):
         """
         Create a new version for this saved model from a path containing a MLFlow model.
 
@@ -138,6 +138,7 @@ class DSSSavedModel(object):
                                   this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
+        :param bool set_active: sets this new version as the active version of the saved model
         :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
@@ -149,13 +150,18 @@ class DSSSavedModel(object):
             archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
 
             with open(archive_filename, "rb") as fp:
-                self.client._perform_empty("POST", "/projects/%s/savedmodels/%s/versions/%s?codeEnvName=%s&containerExecConfigName=%s" % (self.project_key, self.sm_id, version_id, code_env_name, container_exec_config_name),
-                                           files={"file": (archive_filename, fp)})
+                self.client._perform_empty(
+                    "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
+                        project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id
+                    ),
+                    params={"codeEnvName": code_env_name, "containerExecConfigName": container_exec_config_name, "setActive": set_active},
+                    files={"file": (archive_filename, fp)})
             return self.get_mlflow_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
 
-    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT", container_exec_config_name="INHERIT"):
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT", container_exec_config_name="INHERIT",
+                                                  set_active=True):
         """
         Create a new version for this saved model from a path containing a MLFlow model in a managed folder.
 
@@ -171,7 +177,8 @@ class DSSSavedModel(object):
                                   this model version.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
-        :return a :class:MLFlowVersionHandler in order to interact with the new MLFlow model version
+        :param bool set_active: sets this new version as the active version of the saved model
+        :return a :class:`MLFlowVersionHandler` in order to interact with the new MLFlow model version
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         folder_ref = None
@@ -184,10 +191,16 @@ class DSSSavedModel(object):
                             " or an instance of dataikuapi.dss.managedfolder.DSSManagedFolder")
 
         self.client._perform_empty(
-            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?codeEnvName={codeEnvName}&containerExecConfigName={containerExecConfigName}".format(
-                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, codeEnvName=code_env_name, containerExecConfigName=container_exec_config_name
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id
             ),
-            params={"folderRef": folder_ref, "path": path},
+            params={
+                "folderRef": folder_ref,
+                "path": path,
+                "codeEnvName": code_env_name,
+                "containerExecConfigName": container_exec_config_name,
+                "setActive": set_active
+            },
             files={"file": (None, None)}  # required for backend-mandated multipart request
         )
         return self.get_mlflow_version_handler(version_id)
@@ -355,7 +368,7 @@ class MLFlowVersionHandler:
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id),
             body=metadata)
 
-    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", override_selection=None):
+    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None):
         """
         Evaluates the performance of this model version on a particular dataset.
         After calling this, the "result screens" of the MLFlow model version will be available
@@ -367,11 +380,14 @@ class MLFlowVersionHandler:
         :param str container_exec_config_name: Name of the containerized execution configuration to use for running the evaluation process.
                                   If value is "INHERIT", the container execution configuration of the project will be used.
                                   If value is "NONE", local execution will be used (no container)
-        :param str override_selection: will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
-        :type override_selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation
+        :param str selection: will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
+        :type selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation or dict
+                                e.g.
+                                    DSSDatasetSelectionBuilder().with_head_sampling(100)
+                                    {"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}
         """
-        sampling_param = override_selection.build() if isinstance(
-            override_selection, DSSDatasetSelectionBuilder) else override_selection
+        sampling_param = selection.build() if isinstance(
+            selection, DSSDatasetSelectionBuilder) else selection
 
         if hasattr(dataset_ref, 'name'):
             dataset_ref = dataset_ref.name

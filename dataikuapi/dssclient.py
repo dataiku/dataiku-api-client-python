@@ -275,7 +275,7 @@ class DSSClient(object):
         f = self._perform_json("POST", "/plugins/actions/installFromStore", body={
             "pluginId": plugin_id
         })
-        return DSSFuture(self, f["jobId"])
+        return DSSFuture.from_resp(self, f)
 
     def install_plugin_from_git(self, repository_url, checkout = "master", subpath=None):
         """
@@ -291,7 +291,7 @@ class DSSClient(object):
             "gitCheckout" : checkout,
             "gitSubpath": subpath
         })
-        return DSSFuture(self, f["jobId"])
+        return DSSFuture.from_resp(self, f)
 
     def get_plugin(self, plugin_id):
         """
