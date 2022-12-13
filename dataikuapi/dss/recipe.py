@@ -658,7 +658,7 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self.create_output_folder = None
         self.output_folder_settings = None
 
-    def with_existing_output(self, dataset_name, append=False):
+    def with_existing_output(self, dataset_name, append=False, role="main"):
         """
         Add an existing object as output to the recipe-to-be-created
 
@@ -669,7 +669,7 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         """
         assert self.create_output_dataset is None
         self.create_output_dataset = False
-        self._with_output(dataset_name, append)
+        self._with_output(dataset_name, append, role=role)
         return self
 
     def with_new_output(self, name, connection_id, typeOptionId=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET', overwrite=False):
@@ -709,9 +709,9 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
             self._with_output(name, append)
         return self
 
-    def with_output(self, dataset_name, append=False):
+    def with_output(self, dataset_name, append=False, role="main"):
         """Alias of with_existing_output"""
-        return self.with_existing_output(dataset_name, append)
+        return self.with_existing_output(dataset_name, append, role=role)
 
     def _finish_creation_settings(self):
         self.creation_settings['createOutputDataset'] = self.create_output_dataset
