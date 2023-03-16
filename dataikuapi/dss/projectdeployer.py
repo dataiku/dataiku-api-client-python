@@ -5,19 +5,30 @@ class DSSProjectDeployer(object):
     """
     Handle to interact with the Project Deployer.
 
-    Do not create this directly, use :meth:`dataikuapi.dss.DSSClient.get_projectdeployer`
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.DSSClient.get_projectdeployer()`
     """
     def __init__(self, client):
         self.client = client
 
     def list_deployments(self, as_objects=True):
         """
-        Lists deployments on the Project Deployer
+        List deployments on the Project Deployer.
+
+        Usage example:
+
+        .. code-block:: python
+
+            # list all deployments with their current state
+            for deployment in deployer.list_deployments():
+                status = deployment.get_status()
+                print("Deployment %s is %s" % (deployment.id, status.get_health()))            
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerDeployment`, else returns a list of dict.
-                Each dict contains at least a field "id" indicating the identifier of this deployment
 
-        :returns: a list - see as_objects for more information
+        :returns: list of deployments, either as :class:`DSSProjectDeployerDeployment` or as dict (with fields 
+                  as in :meth:`DSSProjectDeployerDeploymentStatus.get_light()`)
         :rtype: list
         """
         l = self.client._perform_json("GET", "/project-deployer/deployments")
@@ -28,9 +39,10 @@ class DSSProjectDeployer(object):
 
     def get_deployment(self, deployment_id):
         """
-        Returns a handle to interact with a single deployment, as a :class:`DSSProjectDeployerDeployment`
+        Get a handle to interact with a deployment.
 
-        :param str deployment_id: Identifier of the deployment to get
+        :param string deployment_id: identifier of a deployment
+
         :rtype: :class:`DSSProjectDeployerDeployment`
         """
         return DSSProjectDeployerDeployment(self.client, deployment_id)
@@ -38,19 +50,34 @@ class DSSProjectDeployer(object):
     def create_deployment(self, deployment_id, project_key, infra_id, bundle_id,
                           deployed_project_key=None, project_folder_id=None, ignore_warnings=False):
         """
-        Creates a deployment and returns the handle to interact with it. The returned deployment
-        is not yet started and you need to call :meth:`~DSSProjectDeployerDeployment.start_update`
+        Create a deployment and return the handle to interact with it. 
 
-        :param str deployment_id: Identifier of the deployment to create
-        :param str project_key: The source published project key
-        :param str infra_id: Identifier of the deployment infrastructure to use
-        :param str bundle_id: Identifier of the bundle to deploy
-        :param str deployed_project_key: The project key to use when deploying this project to the automation node. If
-                                         not set, the project will be created with the same project key as the source
-                                         published project
-        :param str project_folder_id: The automation node project folder id to deploy this project into. If not set,
-                                      the project will be created in the root folder
+        The returned deployment is not yet started and you need to call :meth:`~DSSProjectDeployerDeployment.start_update`
+
+        Usage example:
+
+        .. code-block:: python
+
+            # create and deploy a bundle
+            project = 'my-project'
+            infra = 'my-infra'
+            bundle = 'my-bundle'
+            deployment_id = '%s-%s-on-%s' % (project, bundle, infra)
+            deployment = deployer.create_deployment(deployment_id, project, infra, bundle)
+            update = deployment.start_update()
+            update.wait_for_result()
+
+        :param string deployment_id: identifier of the deployment to create
+        :param string project_key: key of the published project
+        :param string bundle_id: identifier of the bundle to deploy
+        :param string infra_id: identifier of the infrastructure to use
+        :param string deployed_project_key: The project key to use when deploying this project to the automation node. If
+                                            not set, the project will be created with the same project key as the published project
+        :param string project_folder_id: The automation node project folder id to deploy this project into. If not set,
+                                         the project will be created in the root folder
         :param boolean ignore_warnings: ignore warnings concerning the governance status of the bundle to deploy
+
+        :return: a new deployment
         :rtype: :class:`DSSProjectDeployerDeployment`
         """
         settings = {
@@ -68,21 +95,34 @@ class DSSProjectDeployer(object):
 
     def list_stages(self):
         """
-        Lists infrastructure stages of the Project Deployer
+        List the possible stages for infrastructures.
 
-        :rtype: list of dict. Each dict contains a field "id" for the stage identifier and "desc" for its description.
-        :rtype: list
+        :return: list of stages. Each stage is returned as a dict with fields:
+
+                    * **id** : identifier of the stage
+                    * **desc** : description of the stage
+
+        :rtype: list[dict]
         """
         return self.client._perform_json("GET", "/project-deployer/stages")
 
     def list_infras(self, as_objects=True):
         """
-        Lists deployment infrastructures on the Project Deployer
+        List the infrastructures on the Project Deployer.
+
+        Usage example:
+
+        .. code-block:: python
+
+            # list infrastructures that the user can deploy to
+            for infrastructure in deployer.list_infras(as_objects=False):
+                if infrastructure.get("canDeploy", False):
+                    print("User can deploy to %s" % infrastructure["infraBasicInfo"]["id"])            
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerInfra`, else returns a list of dict.
-                Each dict contains at least a field "id" indicating the identifier of this infra
 
-        :returns: a list - see as_objects for more information
+        :return: list of infrastructures, either as :class:`DSSProjectDeployerInfra` or as dict (with fields 
+                 as in :meth:`DSSProjectDeployerInfraStatus.get_raw()`)
         :rtype: list
         """
         l = self.client._perform_json("GET", "/project-deployer/infras")
@@ -93,11 +133,13 @@ class DSSProjectDeployer(object):
 
     def create_infra(self, infra_id, stage, govern_check_policy="NO_CHECK"):
         """
-        Creates a new infrastructure on the Project Deployer and returns the handle to interact with it.
+        Create a new infrastructure and returns the handle to interact with it.
 
-        :param str infra_id: Unique Identifier of the infra to create
-        :param str stage: Infrastructure stage
-        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the bundle deployed on this infrastructure has to be managed and approved in Dataiku Govern
+        :param string infra_id: unique identifier of the infrastructure to create
+        :param string stage: stage of the infrastructure to create
+        :param string govern_check_policy: what actions with Govern the the deployer will take whe bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+
+        :return: a new infrastructure
         :rtype: :class:`DSSProjectDeployerInfra`
         """
         settings = {
@@ -110,21 +152,32 @@ class DSSProjectDeployer(object):
 
     def get_infra(self, infra_id):
         """
-        Returns a handle to interact with a single deployment infra, as a :class:`DSSProjectDeployerInfra`
+        Get a handle to interact with an infrastructure.
 
-        :param str infra_id: Identifier of the infra to get
+        :param string infra_id: identifier of the infrastructure to get
+
         :rtype: :class:`DSSProjectDeployerInfra`
         """
         return DSSProjectDeployerInfra(self.client, infra_id)
 
     def list_projects(self, as_objects=True):
         """
-        Lists published projects on the Project Deployer
+        List published projects on the Project Deployer.
+
+        Usage example:
+
+        .. code-block:: python
+
+            # list project that the user can deploy bundles from
+            for project in deployer.list_projects(as_objects=False):
+                if project.get("canDeploy", False):
+                    print("User can deploy to %s" % project["projectBasicInfo"]["id"])            
+
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerProject`, else returns a list of dict.
-                Each dict contains at least a field "id" indicating the identifier of this project
 
-        :returns: a list - see as_objects for more information
+        :return: list of published projects, either as :class:`DSSProjectDeployerProject` or as dict (with fields 
+                 as in :meth:`DSSProjectDeployerProjectStatus.get_raw()`)
         :rtype: list
         """
         l = self.client._perform_json("GET", "/project-deployer/projects")
@@ -135,9 +188,10 @@ class DSSProjectDeployer(object):
 
     def create_project(self, project_key):
         """
-        Creates a new project on the Project Deployer and returns the handle to interact with it.
+        Create a new published project on the Project Deployer and return the handle to interact with it.
 
-        :param str project_key: Identifier of the project to create
+        :param string project_key: key of the project to create
+
         :rtype: :class:`DSSProjectDeployerProject`
         """
         settings = {
@@ -148,22 +202,21 @@ class DSSProjectDeployer(object):
 
     def get_project(self, project_key):
         """
-        Returns a handle to interact with a single project, as a :class:`DSSProjectDeployerProject`
+        Get a handle to interact with a published project.
 
-        :param str project_key: Identifier of the project to get
+        :param string project_key: key of the project to get
+
         :rtype: :class:`DSSProjectDeployerProject`
         """
         return DSSProjectDeployerProject(self.client, project_key)
 
     def upload_bundle(self, fp, project_key=None):
         """
-        Uploads a new version for a project from a file-like object pointing
-        to a bundle Zip file.
+        Upload a bundle archive for a project.
 
-        :param string fp: A file-like object pointing to a bundle Zip file
-        :param string project_key: The key of the published project where the bundle will be uploaded. If the project does not exist, it is created.
-        If not set, the key of the bundle's source project is used.
-
+        :param file-like fp: a bundle archive (should be a zip)
+        :param string project_key: key of the published project where the bundle will be uploaded. If the project does not 
+                                   exist, it is created. If not set, the key of the bundle's source project is used.
         """
         if project_key is None:
             params = None
@@ -171,19 +224,21 @@ class DSSProjectDeployer(object):
             params = {
                 "projectKey": project_key,
             }
-        return self.client._perform_empty("POST",
+        self.client._perform_empty("POST",
                 "/project-deployer/projects/bundles", params=params, files={"file":fp})
+
 
 ###############################################
 # Infrastructures
 ###############################################
 
-
 class DSSProjectDeployerInfra(object):
     """
-    An Automation infrastructure on the Project Deployer
+    An Automation infrastructure on the Project Deployer.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployer.get_infra`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployer.get_infra`.
     """
     def __init__(self, client, infra_id):
         self.client = client
@@ -191,13 +246,19 @@ class DSSProjectDeployerInfra(object):
 
     @property
     def id(self):
+        """
+        Get the unique identifier of the infrastructure.
+
+        :rtype: string
+        """
         return self.infra_id
 
     def get_status(self):
         """
-        Returns status information about this infrastructure
+        Get status information about this infrastructure.
 
-        :rtype: :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraStatus`
+        :return: the current status
+        :rtype: :class:`DSSProjectDeployerInfraStatus`
         """
         light = self.client._perform_json("GET", "/project-deployer/infras/%s" % (self.infra_id))
 
@@ -205,11 +266,9 @@ class DSSProjectDeployerInfra(object):
 
     def get_settings(self):
         """
-        Gets the settings of this infra. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraSettings.save` on the returned
-        object
+        Get the settings of this infrastructure. 
 
-        :returns: a :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfraSettings`
+        :rtype: :class:`DSSProjectDeployerInfraSettings`
         """
         settings = self.client._perform_json(
             "GET", "/project-deployer/infras/%s/settings" % (self.infra_id))
@@ -218,8 +277,11 @@ class DSSProjectDeployerInfra(object):
 
     def delete(self):
         """
-        Deletes this infra
-        You may only delete an infra if it has no deployments on it anymore.
+        Delete this infra.
+        
+        .. note::
+
+            You may only delete an infra if there are no deployments using it.
         """
         self.client._perform_empty(
             "DELETE", "/project-deployer/infras/%s" % (self.infra_id))
@@ -229,7 +291,11 @@ class DSSProjectDeployerInfraSettings(object):
     """
     The settings of an Automation infrastructure.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerInfra.get_settings`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployerInfra.get_settings`
+
+    To modify the settings, modify them in the dict returned by :meth:`get_raw()` then call :meth:`save()`.
     """
     def __init__(self, client, infra_id, settings):
         self.client = client
@@ -238,8 +304,28 @@ class DSSProjectDeployerInfraSettings(object):
 
     def get_raw(self):
         """
-        Gets the raw settings of this infra. This returns a reference to the raw settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        Get the raw settings of this infrastracture. 
+
+        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        object will be reflected when saving.
+
+        :return: the settings, as a dict with fields:
+
+                    * **id** : unique identifier of the infrastructure
+                    * **stage** : name of the stage of the infrastructure
+                    * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+                    * **autoconfigureFromNodesDirectory** : whether this infrastructure is automatically setup according to what's in the fleet
+                    * **nodeId** : when configured from a fleet, the name of the automation node in the fleet
+                    * **automationNodeUrl** : URL of the automation node that this infrastructure points to
+                    * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
+                    * **adminApiKey** : API key used to communicate with the automation node
+                    * **trustAllSSLCertificates** : whether to verify SSL certificates when communicating with the automation node
+                    * **permissions** : list of permissions per group, each as a dict of:
+
+                        * **group** : name of the group being granted the permissions
+                        * **admin** : whether the group can administer the infrastructure
+                        * **read** : whether the group can see the deployments running on the infrastructure                        
+                        * **deploy** : whether the group can create deployments on the infrastructure
 
         :rtype: dict
         """
@@ -247,7 +333,7 @@ class DSSProjectDeployerInfraSettings(object):
 
     def save(self):
         """
-        Saves back these settings to the infra
+        Save back these settings to the infrastracture.
         """
         self.client._perform_empty(
                 "PUT", "/project-deployer/infras/%s/settings" % (self.infra_id),
@@ -258,7 +344,9 @@ class DSSProjectDeployerInfraStatus(object):
     """
     The status of an Automation infrastructure.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerInfra.get_status`
+    .. important::
+
+        Do not instantiage directly, use :meth:`DSSProjectDeployerInfra.get_status`
     """
     def __init__(self, client, infra_id, light_status):
         self.client = client
@@ -267,16 +355,39 @@ class DSSProjectDeployerInfraStatus(object):
 
     def get_deployments(self):
         """
-        Returns the deployments that are deployed on this infrastructure
+        Get the deployments that are deployed on this infrastructure.
 
-        :returns: a list of deployments
-        :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
+        :return: a list of deployments
+        :rtype: list of :class:`DSSProjectDeployerDeployment`
         """
         return [DSSProjectDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
 
     def get_raw(self):
         """
-        Gets the raw status information. This returns a dictionary with various information about the infrastructure
+        Get the raw status information. 
+
+        :return: the status, as a dict with fields:
+
+                    * **isAdmin** : whether the user can administer the infrastructure
+                    * **canDeploy** : whether the user can deploy bundles on the infrastructure
+                    * **infraBasicInfo** : summary of the infrastructure, as a dict with fields:
+
+                        * **id** : unique identifier of the infrastructure
+                        * **stage** : name of the stage of the infrastructure
+                        * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+                        * **automationNodeUrl** : URL of the automation node that this infrastructure points to
+                        * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
+
+                    * **deployments** : list of summaries of the deployments on the infrastructure, as a list of dict with fields:
+
+                        * **id** : identifier of the deployment
+                        * **infraId** : identifier of the infrastructure
+                        * **tags** : list of tags, each a string
+                        * **createdByDisplayName** : login of the user who created the deployment
+                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
+                        * **publishedProjectKey** : key of the published project of the deployment
+                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
+                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
 
         :rtype: dict
         """
@@ -289,9 +400,11 @@ class DSSProjectDeployerInfraStatus(object):
 
 class DSSProjectDeployerDeployment(object):
     """
-    A Deployment on the Project Deployer
+    A deployment on the Project Deployer.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployer.get_deployment`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployer.get_deployment`
     """
     def __init__(self, client, deployment_id):
         self.client = client
@@ -299,11 +412,16 @@ class DSSProjectDeployerDeployment(object):
 
     @property
     def id(self):
+        """
+        Get the identifier of the deployment.
+
+        :rtype: string
+        """
         return self.deployment_id
 
     def get_status(self):
         """
-        Returns status information about this deployment
+        Get status information about this deployment.
 
         :rtype: dataikuapi.dss.apideployer.DSSProjectDeployerDeploymentStatus
         """
@@ -314,20 +432,32 @@ class DSSProjectDeployerDeployment(object):
 
     def get_governance_status(self, bundle_id=""):
         """
-        Returns the governance status about this deployment if applicable
+        Get the governance status about this deployment.
 
-        :param str bundle_id: (Optional) The ID of a specific bundle of the published project to get status from. If empty, consider the bundle currently used in the deployment.
-        :rtype: dict InforMessages containing the governance status
+        The infrastructure on which this deployment is running needs to have a Govern check policy of
+        PREVENT or WARN.
+
+        :param string bundle_id: (Optional) The ID of a specific bundle of the published project to get status from. If empty, the bundle currently used in the deployment.
+
+        :return: messages about the governance status, as a dict with a **messages** field, itself a list of meassage 
+                 information, each one a dict of:
+
+                    * **severity** : severity of the error in the message. Possible values are SUCCESS, INFO, WARNING, ERROR
+                    * **isFatal** : for ERROR **severity**, whether the error is considered fatal to the operation
+                    * **code** : a string with a well-known code documented in `DSS doc <https://doc.dataiku.com/dss/latest/troubleshooting/errors/index.html>`_
+                    * **title** : short message
+                    * **message** : the error message
+                    * **details** : a more detailed error description
+
+        :rtype: dict 
         """
         return self.client._perform_json("GET", "/project-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "bundleId": bundle_id })
 
     def get_settings(self):
         """
-        Gets the settings of this deployment. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentSettings.save` on the returned
-        object
+        Get the settings of this deployment. 
 
-        :returns: a :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentSettings`
+        :rtype: :class:`DSSProjectDeployerDeploymentSettings`
         """
         settings = self.client._perform_json(
             "GET", "/project-deployer/deployments/%s/settings" % (self.deployment_id))
@@ -336,11 +466,12 @@ class DSSProjectDeployerDeployment(object):
 
     def start_update(self):
         """
-        Starts an asynchronous update of this deployment to try to match the actual state to the current settings
+        Start an asynchronous update of this deployment.
 
-        :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call
-                   :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
-                   to wait for completion (or failure)
+        After the update, the deployment should be matching the actual state to the current settings.
+
+        :returns: a handle on the update operation
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         future_response = self.client._perform_json(
             "POST", "/project-deployer/deployments/%s/actions/update" % (self.deployment_id))
@@ -351,16 +482,24 @@ class DSSProjectDeployerDeployment(object):
         """
         Deletes this deployment
 
-        You may only delete a deployment if it is disabled and has been updated after disabling it.
+        .. note::
+
+            You may only delete a deployment if it is disabled and has been updated after disabling it.
         """
         return self.client._perform_empty(
             "DELETE", "/project-deployer/deployments/%s" % (self.deployment_id))
 
 
 class DSSProjectDeployerDeploymentSettings(object):
-    """The settings of a Project Deployer deployment.
+    """
+    The settings of a Project Deployer deployment.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment.get_settings`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployerDeployment.get_settings`
+
+    To modify the settings, modify them in the dict returned by :meth:`get_raw()`, or change the value of
+    :meth:`bundle_id()`, then call :meth:`save()`.
     """
     def __init__(self, client, deployment_id, settings):
         self.client = client
@@ -369,8 +508,35 @@ class DSSProjectDeployerDeploymentSettings(object):
 
     def get_raw(self):
         """
-        Gets the raw settings of this deployment. This returns a reference to the raw settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        Get the raw settings of this deployment. 
+
+        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        object will be reflected when saving.
+
+        :return: the settings, as a dict of: 
+
+                    * **id** : identifier of the deployment
+                    * **infraId** : identifier of the infrastructure on which the deployment is done
+                    * **tags** : list of tags, each one a string
+                    * **publishedProjectKey** : key of the published project on the Project Deployer
+                    * **bundleId** : identifier of the bundle of the published project being deployed 
+                    * **deployedProjectKey** : key of the project the deployment is deployed to on the automation node
+                    * **projectFolderId** : identifier of the project folder on the automation node
+                    * **bundleContainerSettings** : bundle settings on the automation node, as a dict of:
+
+                        * **remapping** : remapping settings for connections and code envs for the bundle on the automation node, as a dict with fields:
+
+                            * **connections** : list of remappings, each a dict of **source** and **target** fields holding connection names
+                            * **codeEnvs** : list of remappings, each a dict of **source** and **target** fields holding code env names
+
+                        * **codeEnvsBehavior** : defines the behavior w.r.t. code envs used by the bundle, as a dict of:
+
+                            * **importTimeMode** : one of INSTALL_IF_MISS, FAIL_IF_MISS or DO_NOTHING
+                            * **envImportSpecificationMode** : one of SPECIFIED or ACTUAL
+
+                    * **localVariables** : override to the project local variables on the automation node, as a dict
+                    * **scenariosToActivate** : dict of scenario name to boolean, controlling which scenarios of the bundle are (de)activated upon deployment
+                    * **disableAutomaticTriggers** : whether the automatic triggers in the scenario should be all deactivated after the deployment
 
         :rtype: dict
         """
@@ -379,9 +545,9 @@ class DSSProjectDeployerDeploymentSettings(object):
     @property
     def bundle_id(self):
         """
-        Gets or sets the bundle id currently used by this deployment. When setting, you need to call
-        :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentSettings.save` afterward for the change to be
-        effective.
+        Get or set the identifier of the bundle currently used by this deployment. 
+
+        If setting the value, you need to call :meth:`save()` afterward for the change to be effective.
         """
         return self.settings["bundleId"]
 
@@ -391,9 +557,9 @@ class DSSProjectDeployerDeploymentSettings(object):
 
     def save(self, ignore_warnings=False):
         """
-        Saves back these settings to the deployment
+        Save back these settings to the deployment.
 
-        :param boolean ignore_warnings: ignore warnings concerning the governance status of the bundle to deploy
+        :param boolean ignore_warnings: whether to ignore warnings concerning the governance status of the bundle to deploy
         """
         self.client._perform_empty(
                 "PUT", "/project-deployer/deployments/%s/settings" % (self.deployment_id),
@@ -402,9 +568,12 @@ class DSSProjectDeployerDeploymentSettings(object):
 
 
 class DSSProjectDeployerDeploymentStatus(object):
-    """The status of a Project Deployer deployment.
+    """
+    The status of a deployment on the Project Deployer.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment.get_status`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployerDeployment.get_status`
     """
     def __init__(self, client, deployment_id, light_status, heavy_status):
         self.client = client
@@ -414,8 +583,38 @@ class DSSProjectDeployerDeploymentStatus(object):
 
     def get_light(self):
         """
-        Gets the 'light' (summary) status. This returns a dictionary with various information about the deployment,
-        but not the actual health of the deployment
+        Get the 'light' (summary) status. 
+
+        This returns a dictionary with various information about the deployment, but not the actual health of the deployment
+
+        :returns: a summary, as a dict with fields:
+
+                    * **deploymentBasicInfo** : summary of the definition of the deployment, as a dict of:
+
+                        * **id** : identifier of the deployment
+                        * **infraId** : identifier of the infrastructure
+                        * **tags** : list of tags, each a string
+                        * **createdByDisplayName** : login of the user who created the deployment
+                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
+                        * **publishedProjectKey** : key of the published project of the deployment
+                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
+                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
+
+                    * **infraBasicInfo** : summary of the infrastructure on which the deployment is made, as a dict of:
+
+                        * **id** : unique identifier of the infrastructure
+                        * **stage** : name of the stage of the infrastructure
+                        * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+                        * **automationNodeUrl** : URL of the automation node that this infrastructure points to
+                        * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
+
+                    * **projectBasicInfo** : summary of the published project from where the bundle of this deployment originates, as a dict of:
+
+                        * **id** : key of the project
+                        * **name** : name of the project
+
+                    * **packages** : list of bundles in the published project of this deployment (see :meth:`DSSProjectDeployerProjectStatus.get_bundles()`)
+                    * **neverEverDeployed** : True if the deployment hasn't yet been deployed
 
         :rtype: dict
         """
@@ -423,7 +622,24 @@ class DSSProjectDeployerDeploymentStatus(object):
 
     def get_heavy(self):
         """
-        Gets the 'heavy' (full) status. This returns a dictionary with various information about the deployment
+        Get the 'heavy' (full) status. 
+
+        This returns various information about the deployment, notably its health.
+
+        :return: a status, as a dict with fields:
+
+                    * **deploymentId** : identifier of the deployment
+                    * **health** : the current health of the deployment. Possible values: UNKNOWN, ERROR, WARNING, HEALTHY, UNHEALTHY, OUT_OF_SYNC
+                    * **healthMessages** : detailed messages of errors or warnings that occurred while checking the health
+                    * **monitoring** : information about the scenarios in the project on the automation node, as a dict of:
+
+                        * **hasScenarios** : whether there are scenarios in the project
+                        * **hasActiveScenarios** : whether there are active scenarios in the project
+                        * **failed** : list of names of the scenarios whose last run ended in failed state
+                        * **warning** : list of names of the scenarios whose last run ended in warning state
+                        * **successful** : list of names of the scenarios whose last run ended in success state
+                        * **aborted** : list of names of the scenarios whose last run was aborted
+                        * **running** : list of names of the scenarios currently running
 
         :rtype: dict
         """
@@ -431,16 +647,27 @@ class DSSProjectDeployerDeploymentStatus(object):
 
     def get_health(self):
         """
-        Returns the health of this deployment as a string
+        Get the health of this deployment.
 
-        :returns: HEALTHY if the deployment is working properly, various other status otherwise
+        :returns: possible values are UNKNOWN, ERROR, WARNING, HEALTHY, UNHEALTHY, OUT_OF_SYNC
         :rtype: string
         """
         return self.heavy_status["health"]
 
     def get_health_messages(self):
         """
-        Returns messages about the health of this deployment
+        Get messages about the health of this deployment
+
+        :return: a dict with a **messages** field, which is a list of meassage information, each one a dict of:
+
+                    * **severity** : severity of the error in the message. Possible values are SUCCESS, INFO, WARNING, ERROR
+                    * **isFatal** : for ERROR **severity**, whether the error is considered fatal to the operation
+                    * **code** : a string with a well-known code documented in `DSS doc <https://doc.dataiku.com/dss/latest/troubleshooting/errors/index.html>`_
+                    * **title** : short message
+                    * **message** : the error message
+                    * **details** : a more detailed error description
+
+        :rtype: dict
         """
         return self.heavy_status["healthMessages"]
 
@@ -450,9 +677,11 @@ class DSSProjectDeployerDeploymentStatus(object):
 
 class DSSProjectDeployerProject(object):
     """
-    A project on the Project Deployer
+    A published project on the Project Deployer.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployer.get_project`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployer.get_project`
     """
     def __init__(self, client, project_key):
         self.client = client
@@ -460,27 +689,32 @@ class DSSProjectDeployerProject(object):
 
     @property
     def id(self):
+        """
+        Get the key of the published project.
+
+        :rtype: string
+        """
         return self.project_key
 
     def get_status(self):
         """
-        Returns status information about this project. This is used mostly to get information about
-        which versions are available and which deployments are exposing this project
+        Get status information about this published project. 
 
-        :rtype: dataikuapi.dss.projectdeployer.DSSProjectDeployerProjectStatus
+        This is used mostly to get information about which versions are available and which 
+        deployments are exposing this project
+
+        :rtype: :class:`DSSProjectDeployerProjectStatus`
         """
         light = self.client._perform_json("GET", "/project-deployer/projects/%s" % (self.project_key))
         return DSSProjectDeployerProjectStatus(self.client, self.project_key, light)
 
     def get_settings(self):
         """
-        Gets the settings of this project. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerProjectSettings.save` on the returned
-        object.
+        Get the settings of this published project. 
 
         The main things that can be modified in a project settings are permissions
 
-        :returns: a :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerProjectSettings`
+        :rtype: :class:`DSSProjectDeployerProjectSettings`
         """
         settings = self.client._perform_json(
             "GET", "/project-deployer/projects/%s/settings" % (self.project_key))
@@ -489,27 +723,34 @@ class DSSProjectDeployerProject(object):
 
     def delete_bundle(self, bundle_id):
         """
-        Deletes a bundle from this project
+        Delete a bundle from this published project.
 
-        :param string bundle_id: The identifier of the bundle to delete
+        :param string bundle_id: identifier of the bundle to delete
         """
         self.client._perform_empty(
             "DELETE", "/project-deployer/projects/%s/bundles/%s" % (self.project_key, bundle_id))
 
     def delete(self):
         """
-        Deletes this project
+        Delete this published project.
 
-        You may only delete a project if it has no deployments on it anymore.
+        .. note::
+
+            You may only delete a published project if there are no deployments using it.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/project-deployer/projects/%s" % (self.project_key))
 
 
 class DSSProjectDeployerProjectSettings(object):
-    """The settings of a published project.
+    """
+    The settings of a published project.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerProject.get_settings`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployerProject.get_settings`
+
+    To modify the settings, modify them in the dict returned by :meth:`get_raw()` then call :meth:`save()`.
     """
     def __init__(self, client, project_key, settings):
         self.client = client
@@ -518,8 +759,25 @@ class DSSProjectDeployerProjectSettings(object):
 
     def get_raw(self):
         """
-        Gets the raw settings of this deployment. This returns a reference to the raw settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        Get the raw settings of this published project. 
+
+        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        object will be reflected when saving.
+
+        :return: the settings, as a dict with fields:
+
+                        * **id** : key of the project
+                        * **name** : name of the project
+                        * **owner** : owner of the published project (independent of the owner of the project on the design node)
+                        * **permissions** : list of permissions per group, each as a dict of:
+
+                            * **group** : name of the group being granted the permissions
+                            * **admin** : whether the group can administer the project
+                            * **read** : whether the group can see the published project and deployments of bundles of this project                        
+                            * **write** : whether the group can upload new bundles in this published project      
+                            * **deploy** : whether the group can create deployments from bundles of this project
+
+                        * **basicImageInfo** : information about the image associated to the project (in project lists, on the project's home, etc...)
 
         :rtype: dict
         """
@@ -527,7 +785,7 @@ class DSSProjectDeployerProjectSettings(object):
 
     def save(self):
         """
-        Saves back these settings to the project
+        Save back these settings to the published project.
         """
         self.client._perform_empty(
                 "PUT", "/project-deployer/projects/%s/settings" % (self.project_key),
@@ -538,7 +796,9 @@ class DSSProjectDeployerProjectStatus(object):
     """
     The status of a published project.
 
-    Do not create this directly, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerProject.get_status`
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSProjectDeployerProject.get_status`
     """
     def __init__(self, client, project_key, light_status):
         self.client = client
@@ -547,13 +807,14 @@ class DSSProjectDeployerProjectStatus(object):
 
     def get_deployments(self, infra_id=None):
         """
-        Returns the deployments that have been created from this published project
+        Get the deployments that have been created from this published project.
 
-        :param str infra_id: Identifier of an infra, allows to only keep in the returned list the deployments on this infra.
-        If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
+        :param string infra_id: (optional) identifier of an infrastructure. When set, only get the deployments deployed on 
+                                this infrastructure. When not set, the list contains all the deployments using this published project, 
+                                across every infrastructure of the Project Deployer.
 
-        :returns: a list of deployments
-        :rtype: list of :class:`dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment`
+        :returns: a list of deployments, each a :class:`DSSProjectDeployerDeployment`
+        :rtype: list
         """
         if infra_id is None:
             return [DSSProjectDeployerDeployment(self.client, deployment["id"]) for deployment in self.light_status["deployments"]]
@@ -561,18 +822,68 @@ class DSSProjectDeployerProjectStatus(object):
 
     def get_bundles(self):
         """
-        Returns the bundles that have been published on this project
+        Get the bundles that have been published on this project.
 
         Each bundle is a dict that contains at least a "id" field, which is the version identifier
 
-        :returns: a list of bundles, each as a dict containing a "id" field
-        :rtype: list of dicts
+        :returns: a list of bundles, each one a dict of:
+
+                    * **id** : the bundle id
+                    * **publishedOn** : timestamp of when the bundle was added to the published project
+                    * **publishedBy** : login of the user who added the bundle to the published project
+                    * **designNodeInfo** : extra information on the node from which the bundle came, as a dict of
+
+                        * **projectKey** : the key of the project on the source node
+                        * **nodeId** : node name in the fleet (if the design node is part of a fleet)
+                        * **url** : node url in the fleet (if the design node is part of a fleet)
+
+        :rtype: list[dict]
         """
         return self.light_status["packages"]
 
+    def get_infras(self):
+        """
+        Get the infrastructures that deployments of this project use.
+
+        :returns: list of summaries of infrastructures, each a dict of:
+
+                    * **id** : unique identifier of the infrastructure
+                    * **stage** : name of the stage of the infrastructure
+                    * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+                    * **automationNodeUrl** : URL of the automation node that this infrastructure points to
+                    * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
+
+        :rtype: list[dict]
+        """
+        return self.light_status["infras"]
+
     def get_raw(self):
         """
-        Gets the raw status information. This returns a dictionary with various information about the project
+        Gets the raw status information. 
+
+        :return: the status, as a dict with fields:
+
+                    * **projectBasicInfo** : summary of the published project, as a dict of:
+
+                        * **id** : key of the project
+                        * **name** : name of the project
+
+                    * **isAdmin** : whether the user can administer the published project
+                    * **canDeploy** : whether the user can deploy the published project
+                    * **canWrite** : whether the user can upload bundles to the published project
+                    * **packages** : list of bundles in the published project (see :meth:`get_bundles()`)
+                    * **deployments** : list of summaries of the deployments of bundles of the published project, as a list of dict with fields:
+
+                        * **id** : identifier of the deployment
+                        * **infraId** : identifier of the infrastructure
+                        * **tags** : list of tags, each a string
+                        * **createdByDisplayName** : login of the user who created the deployment
+                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
+                        * **publishedProjectKey** : key of the published project of the deployment
+                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
+                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
+
+                    * **infras** : list of summaries of infrastructures, for infrastructures appearing in **deployments** (see :meth:`get_infras()`)
 
         :rtype: dict
         """

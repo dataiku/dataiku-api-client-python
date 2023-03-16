@@ -9,15 +9,17 @@ from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
-from .dss.app import DSSApp
+from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey
+from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix
 
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
+from .dss.utils import DSSInfoMessages
+from .dss.workspace import DSSWorkspace
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
 
@@ -201,18 +203,31 @@ class DSSClient(object):
     # Apps
     ########################################################
 
-    def list_apps(self):
+    def list_apps(self, as_type="listitems"):
         """
-        List the apps
+        List the apps.
 
-        :returns: a list of apps, each as a dict. Each dict contains at least a 'appId' field
-        :rtype: list of dicts
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+
+        :returns: The list of the apps. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.app.DSSAppListItem`. 
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.app.DSSApp`
+        :rtype: list
         """
-        return self._perform_json("GET", "/apps/")
+        items = self._perform_json("GET", "/apps/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSAppListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSApp(self, item["appId"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_app(self, app_id):
         """
         Get a handle to interact with a specific app.
+
+        .. note::
+
+            If a project XXXX is an app template, the identifier of the associated app is PROJECT_XXXX
 
         :param str app_id: the id of the desired app
         :returns: A :class:`dataikuapi.dss.app.DSSApp` to interact with this project
@@ -309,6 +324,7 @@ class DSSClient(object):
     def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, project_key=None):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
+
         Internally, the query is run by DSS. The  database to run the query on is specified either by 
         passing a connection name, or by passing a database name, or by passing a dataset full name
         (whose connection is then used to retrieve the database)
@@ -319,10 +335,11 @@ class DSSClient(object):
         :param str dataset_full_name: the dataset on the connection of which the query should be run (exclusive of connection and database)
         :param list pre_queries: (optional) array of queries to run before the query
         :param list post_queries: (optional) array of queries to run after the query
-        :param str type: the type of query : either 'sql', 'hive' or 'impala'
+        :param str type: the type of query : either 'sql', 'hive' or 'impala' (default: sql)
         :param str project_key: The project_key on which the query should be run (especially useful for user isolation/impersonation scenario)
 
-        :returns: A :class:`dataikuapi.dss.sqlquery.DSSSQLQuery` query handle
+        :return: a handle on the SQL query
+        :rtype: :class:`dataikuapi.dss.sqlquery.DSSSQLQuery`
         """
         if extra_conf is None:
             extra_conf = {}
@@ -405,6 +422,17 @@ class DSSClient(object):
 
         return [DSSUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
 
+    def get_authorization_matrix(self):
+        """
+        Get the authorization matrix for all enabled users and groups
+
+        Note: this call requires an API key with admin rights
+
+        :return: The authorization matrix
+        :rtype: A :class:`dataikuapi.dss.admin.DSSAuthorizationMatrix` authorization matrix handle
+        """
+        resp = self._perform_json("GET", "/admin/authorization-matrix")
+        return DSSAuthorizationMatrix(resp)
 
     ########################################################
     # Groups
@@ -455,17 +483,33 @@ class DSSClient(object):
     # Connections
     ########################################################
 
-    def list_connections(self):
+    def list_connections(self, as_type="dictitems"):
         """
-        List all connections setup on the DSS instance
+        List all connections setup on the DSS instance.
 
-        Note: this call requires an API key with admin rights
+        .. note::
+
+            This call requires an API key with admin rights
         
-        :returns: All connections, as a dict of connection name to connection definition
-        :rtype: :dict
+        :param string as_type: how to return the connection. Possible values are "dictitems", "listitems" and "objects"
+        
+        :return: if **as_type** is dictitems, a dict of connection name to :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
+                 if **as_type** is listitems, a list of :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
+                 if **as_type** is objects, a list of :class:`dataikuapi.dss.admin.DSSConnection`.
+
+        :rtype: dict or list
         """
-        return self._perform_json(
+        items_dict = self._perform_json(
             "GET", "/admin/connections/")
+
+        if as_type == "dictitems" or as_type == "dictitem":
+            return {name:DSSConnectionListItem(self, items_dict[name]) for name in items_dict.keys()}
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSConnectionListItem(self, items_dict[name]) for name in items_dict.keys()]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSConnection(self, name) for name in items_dict.keys()]
+        else:
+            raise ValueError("Unknown as_type") 
 
     def get_connection(self, name):
         """
@@ -652,16 +696,28 @@ class DSSClient(object):
     # Global API Keys
     ########################################################
 
-    def list_global_api_keys(self):
+    def list_global_api_keys(self, as_type='listitems'):
         """
         List all global API keys set up on the DSS instance
 
-        Note: this call requires an API key with admin rights
+        .. note::
 
-        :returns: All global API keys, as a list of dicts
+            This call requires an API key with admin rights
+
+        :param str as_type: How to return the global API keys. Possible values are "listitems" and "objects"
+        
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSGlobalApiKeyListItem`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSGlobalApiKey`.
         """
-        return self._perform_json(
+        resp = self._perform_json(
             "GET", "/admin/globalAPIKeys/")
+
+        if as_type == "listitems":
+            return [DSSGlobalApiKeyListItem(self, item) for item in resp]
+        elif as_type == 'objects':
+            return [DSSGlobalApiKey(self, item["key"]) for item in resp]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_global_api_key(self, key):
         """
@@ -677,7 +733,9 @@ class DSSClient(object):
         """
         Create a Global API key, and return a handle to interact with it
 
-        Note: this call requires an API key with admin rights
+        .. note::
+
+            This call requires an API key with admin rights
 
         :param str label: the label of the new API key
         :param str description: the description of the new API key
@@ -1192,6 +1250,37 @@ class DSSClient(object):
         return DSSInstanceInfo(resp)
 
     ########################################################
+    # Instance Sanity Check
+    ########################################################
+
+    def perform_instance_sanity_check(self, exclusion_list=[], wait=True):
+        """
+        Run an Instance Sanity Check.
+
+        This call requires an API key with admin rights.
+
+        :param exclusion_list: a string list of codes to exclude in the sanity check, as returned by :meth:`get_sanity_check_codes`
+        :return: a :class:`dataikuapi.dss.utils.DSSInfoMessages` if `wait` is `True`, or a :class:`dataikuapi.dss.future.DSSFuture` handle otherwise
+        :rtype: :class:`dataikuapi.dss.utils.DSSInfoMessages` or :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        resp = self._perform_json("POST", "/admin/sanity-check/run", body=exclusion_list)
+        future = DSSFuture.from_resp(self, resp, result_wrapper=DSSInfoMessages)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+
+    def get_sanity_check_codes(self):
+        """
+        Return the list of codes that can be generated by the sanity check.
+
+        This call requires an API key with admin rights.
+
+        :rtype: list[str]
+        """
+        return self._perform_json("GET", "/admin/sanity-check/codes")
+
+    ########################################################
     # Licensing
     ########################################################
 
@@ -1289,6 +1378,52 @@ class DSSClient(object):
         :rtype: :class:`dataikuapi.feature_store.DSSFeatureStore`
         """
         return DSSFeatureStore(self)
+
+    ########################################################
+    # Workspaces
+    ########################################################
+
+    def list_workspaces(self, as_objects=False):
+        """
+        List the workspaces
+
+        :returns: The list of workspaces.
+        """
+        items = self._perform_json("GET", "/workspaces/")
+        if as_objects:
+            return [DSSWorkspace(self, item["workspaceKey"]) for item in items]
+        else:
+            return items
+
+    def get_workspace(self, workspace_key):
+        """
+        Get a handle to interact with a specific workspace
+
+        :param str workspace_key: the workspace key of the desired workspace
+        :returns: A :class:`dataikuapi.dss.workspace.DSSWorkspace` to interact with this workspace
+        """
+        return DSSWorkspace(self, workspace_key)
+
+    def create_workspace(self, workspace_key, name, permissions=None, description=None, color=None):
+        """
+        Create a new workspace and return a workspace handle to interact with it
+
+        :param str workspace_key: the identifier to use for the workspace. Must be globally unique
+        :param str name: the display name for the workspace.
+        :param [`dataikuapi.dss.workspace.DSSWorkspacePermissionItem`] permissions: Initial permissions for the workspace (can be modified later).
+        :param str description: a description for the workspace.
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+
+        :returns: A :class:`dataikuapi.dss.workspace.DSSWorkspace` workspace handle to interact with this workspace
+        """
+        resp = self._perform_text("POST", "/workspaces/", body={
+            "workspaceKey": workspace_key,
+            "displayName": name,
+            "color": color,
+            "description": description,
+            "permissions": permissions
+        })
+        return DSSWorkspace(self, workspace_key)
 
 
 class TemporaryImportHandle(object):

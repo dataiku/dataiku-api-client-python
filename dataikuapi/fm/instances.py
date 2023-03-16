@@ -1,5 +1,8 @@
 from .future import FMFuture
 
+from ..dssclient import DSSClient
+from ..govern_client import GovernClient
+
 import sys
 
 if sys.version_info > (3, 4):
@@ -196,6 +199,28 @@ class FMInstance(object):
         self.instance_data = instance_data
         self.id = instance_data["id"]
 
+    def get_client(self):
+        """
+        Get a Python client to communicate with a DSS instance
+        :return: a Python client to communicate with the target instance
+        :rtype: :class:`dataikuapi.dssclient.DSSClient`
+        """
+        instance_status = self.get_status()
+        external_url = instance_status.get("publicURL")
+
+        admin_api_key_resp = self.client._perform_tenant_json(
+            "GET", "/instances/%s/admin-api-key" % self.id
+        )
+        api_key = admin_api_key_resp["adminAPIKey"]
+
+        if not external_url:
+            raise ValueError("No external URL available for node %s. This node may not be provisioned yet" % self.id)
+
+        if self.instance_data.get("dssNodeType") == "govern":
+            return GovernClient(external_url, api_key)
+        else:
+            return DSSClient(external_url, api_key)
+
     def reprovision(self):
         """
         Reprovision the physical DSS instance
@@ -358,7 +383,7 @@ class FMInstance(object):
     def snapshot(self, reason_for_snapshot=None):
         """
         Create a snapshot of the instance
- 
+
         :return: Snapshot
         :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`
         """
@@ -486,4 +511,3 @@ class FMSnapshot(object):
             "DELETE", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)
         )
         return FMFuture.from_resp(self.client, future)
-

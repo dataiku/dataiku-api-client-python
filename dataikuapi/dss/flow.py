@@ -16,25 +16,38 @@ class DSSProjectFlow(object):
         self.project = project
 
     def get_graph(self):
+        """
+        Get the flow graph.
+
+        :return: A handle to use the flow graph
+        :rtype: :class:`.DSSProjectFlowGraph`
+        """
         data = self.client._perform_json("GET", "/projects/%s/flow/graph/" % (self.project.project_key))
         return DSSProjectFlowGraph(self, data)
 
     def create_zone(self, name, color="#2ab1ac"):
         """
-        Creates a new flow zone
+        Creates a new flow zone.
 
-        :returns the newly created zone
+        :param str name: new flow zone name
+        :param str color: new flow zone color, in hexadecimal format #RRGGBB (defaults to **#2ab1ac**)
+
+        :returns: the newly created zone
         :rtype: :class:`DSSFlowZone`
         """
         data = self.client._perform_json("POST", "/projects/%s/flow/zones" % (self.project.project_key), body={
             "name": name,
-            "color":color
+            "color": color
         })
         return DSSFlowZone(self, data)
 
     def get_zone(self, id):
         """
-        Gets a single Flow zone by id
+        Gets a single Flow zone by id.
+
+        :param str id: flow zone id
+
+        :returns: A flow zone
         :rtype: :class:`DSSFlowZone`
         """
         data = self.client._perform_json("GET", "/projects/%s/flow/zones/%s" % (self.project.project_key, id))
@@ -42,14 +55,18 @@ class DSSProjectFlow(object):
 
     def get_default_zone(self):
         """
-        Returns the default zone of the Flow
+        Returns the default zone of the Flow.
+
+        :returns: A flow zone
         :rtype: :class:`DSSFlowZone`
         """
         return self.get_zone("default")
 
     def list_zones(self):
         """
-        Lists all zones in the Flow
+        Lists all zones in the Flow.
+
+        :returns: A list of flow zones
         :rtype: list of :class:`DSSFlowZone`
         """
         data = self.client._perform_json("GET", "/projects/%s/flow/zones" % (self.project.project_key))
@@ -60,11 +77,17 @@ class DSSProjectFlow(object):
         Finds the zone to which this object belongs.
 
         If the object is not found in any specific zone, it belongs to the default zone, and the default
-        zone is returned
+        zone is returned.
 
-        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to search
+        :param obj: An object to search
+        :type obj: :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSRecipe`
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
 
+        :returns: The flow zone containing the object
         :rtype: :class:`DSSFlowZone`
         """
         sr = self._to_smart_ref(obj)
@@ -84,13 +107,13 @@ class DSSProjectFlow(object):
         of the new dataset will be compatible with the previous one (in the case of datasets).
 
         If `new_ref` references an object in a foreign project, this method will automatically
-        ensure that `new_ref` is exposed to the current project
+        ensure that `new_ref` is exposed to the current project.
 
-        :param current_ref str: Either a "simple" object name (dataset name, model id, managed folder id)
-                    or a foreign object reference in the form "FOREIGN_PROJECT_KEY.local_id")
-        :param new_ref str: Either a "simple" object name (dataset name, model id, managed folder id)
-                    or a foreign object reference in the form "FOREIGN_PROJECT_KEY.local_id")
-        :param type str: The type of object being replaced (DATASET, SAVED_MODEL or MANAGED_FOLDER)
+        :param str current_ref: Either a "simple" object id (dataset name or model/folder/model evaluation store/streaming endpoint id)
+                    or a foreign object reference in the form "FOREIGN_PROJECT_KEY.local_id"
+        :param str new_ref: Either a "simple" object id (dataset name or model/folder/model evaluation store/streaming endpoint id)
+                    or a foreign object reference in the form "FOREIGN_PROJECT_KEY.local_id"
+        :param str type: The type of object being replaced (DATASET, SAVED_MODEL, MANAGED_FOLDER, MODEL_EVALUATION_STORE, STREAMING_ENDPOINT) (defaults to **DATASET**)
         """
 
         new_loc = AnyLoc.from_ref(self.project.project_key, new_ref)
@@ -104,10 +127,10 @@ class DSSProjectFlow(object):
 
         for recipe in self.project.list_recipes():
             recipe_handle = self.project.get_recipe(recipe["name"])
-            fake_rap = DSSRecipeDefinitionAndPayload(recipe_handle, {"recipe" : recipe})
+            fake_rap = DSSRecipeDefinitionAndPayload(recipe_handle, {"recipe": recipe})
             if fake_rap.has_input(current_ref):
-                logging.info("Recipe %s has %s as input, performing the replacement by %s"% \
-                    (recipe["name"], current_ref, new_ref))
+                logging.info("Recipe %s has %s as input, performing the replacement by %s" % \
+                             (recipe["name"], current_ref, new_ref))
                 recipe_obj = self.project.get_recipe(recipe["name"])
                 dap = recipe_obj.get_definition_and_payload()
                 dap.replace_input(current_ref, new_ref)
@@ -118,9 +141,11 @@ class DSSProjectFlow(object):
         Start the flow document generation from a template docx file in a managed folder,
         or from the default template if no folder id and path are specified.
 
-        :param folder_id: (optional) the id of the managed folder
-        :param path: (optional) the path to the file from the root of the folder
-        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+        :param str folder_id: the id of the managed folder (defaults to **None**)
+        :param str path: the path to the file from the root of the folder (defaults to **None**)
+
+        :return: The flow document generation future
+        :rtype: :class:`.DSSFuture`
         """
         if bool(folder_id) != bool(path):
             raise ValueError("Both folder id and path arguments are required to use a template from folder. " +
@@ -137,7 +162,9 @@ class DSSProjectFlow(object):
         Start the flow document generation from a docx template (as a file object).
 
         :param object fp: A file-like object pointing to a template docx file
-        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+
+        :return: The flow document generation future
+        :rtype: :class:`.DSSFuture`
         """
         files = {'file': fp}
         f = self.client._perform_json("POST", "/projects/%s/flow/documentation/generate-with-template" % self.project.project_key, files=files)
@@ -147,10 +174,13 @@ class DSSProjectFlow(object):
         """
         Download a flow documentation, as a binary stream.
 
-        Warning: this stream will monopolize the DSSClient until closed.
+        .. warning ::
+            You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
-        :param export_id: the id of the generated flow documentation returned as the result of the future
-        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the flow document generation process
+        :param str export_id: the id of the generated flow documentation returned as the result of the future
+
+        :returns: the generated flow documentation file as a stream
+        :rtype: :class:`requests.Response`
         """
         return self.client._perform_raw("GET", "/projects/%s/flow/documentation/generated/%s" % (self.project.project_key, export_id))
 
@@ -158,9 +188,8 @@ class DSSProjectFlow(object):
         """
         Download a flow documentation into the given output file.
 
-        :param export_id: the id of the generated flow documentation returned as the result of the future
-        :param path: the path where to download the flow documentation
-        :return: None
+        :param str export_id: the id of the generated flow documentation returned as the result of the future
+        :param str path: the path where to download the flow documentation
         """
         stream = self.download_documentation_stream(export_id)
         _write_response_content_to_file(stream, path)
@@ -171,26 +200,27 @@ class DSSProjectFlow(object):
 
     def start_tool(self, type, data={}):
         """
-        Start a tool or open a view in the flow
+        Start a tool or open a view in the flow.
 
-        :param type str: one of {COPY, CHECK_CONSISTENCY, PROPAGATE_SCHEMA} (tools) or {TAGS, CUSTOM_FIELDS, CONNECTIONS, COUNT_OF_RECORDS, FILESIZE, FILEFORMATS, RECIPES_ENGINES, RECIPES_CODE_ENVS, IMPALA_WRITE_MODE, HIVE_MODE, SPARK_ENGINE, SPARK_CONFIG, SPARK_PIPELINES, SQL_PIPELINES, PARTITIONING, PARTITIONS, SCENARIOS, CREATION, LAST_MODIFICATION, LAST_BUILD, RECENT_ACTIVITY, WATCH}  (views)
-        :param data dict: initial data for the tool (optional)
+        :param str type: one of {COPY, CHECK_CONSISTENCY, PROPAGATE_SCHEMA} (tools) or {TAGS, CUSTOM_FIELDS, CONNECTIONS, COUNT_OF_RECORDS, FILESIZE, FILEFORMATS, RECIPES_ENGINES, RECIPES_CODE_ENVS, IMPALA_WRITE_MODE, HIVE_MODE, SPARK_ENGINE, SPARK_CONFIG, SPARK_PIPELINES, SQL_PIPELINES, PARTITIONING, PARTITIONS, SCENARIOS, CREATION, LAST_MODIFICATION, LAST_BUILD, RECENT_ACTIVITY, WATCH}  (views)
+        :param dict data: initial data for the tool (defaults to **{}**)
 
-        :returns: a :class:`.flow.DSSFlowTool` handle to interact with the newly-created tool or view
+        :returns: A handle to interact with the newly-created tool or view
+        :rtype: :class:`.DSSFlowTool`
         """
-        tool_id = self.client._perform_text("POST", "/projects/%s/flow/tools/" % self.project.project_key, params={'type':type}, body=data)
+        tool_id = self.client._perform_text("POST", "/projects/%s/flow/tools/" % self.project.project_key, params={'type': type}, body=data)
         return DSSFlowTool(self.client, self.project.project_key, tool_id)
 
     def new_schema_propagation(self, dataset_name):
         """
-        Start an automatic schema propagation from a dataset
+        Start an automatic schema propagation from a dataset.
 
-        :param dataset_name str: name of a dataset to start propagating from
+        :param str dataset_name: name of a dataset to start propagating from
 
-        :returns a :class:`DSSSchemaPropagationRunBuilder` to set options and start the propagation
+        :returns: A handle to set options and start the propagation
+        :rtype: :class:`.DSSSchemaPropagationRunBuilder`
         """
         return DSSSchemaPropagationRunBuilder(self.project, self.client, dataset_name)
-
 
     def _to_smart_ref(self, obj):
         if isinstance(obj, DSSDataset):
@@ -210,18 +240,22 @@ class DSSProjectFlow(object):
 
         if obj.project_key == self.project.project_key:
             return {
-                "objectId" : obj.id,
+                "objectId": obj.id,
                 "objectType": ot
             }
         else:
             return {
-                "projectKey" : obj.project_key,
-                "objectId" : obj.id,
+                "projectKey": obj.project_key,
+                "objectId": obj.id,
                 "objectType": ot
             }
 
+
 class DSSSchemaPropagationRunBuilder(object):
-    """Do not create this directly, use :meth:`DSSProjectFlow.new_schema_propagation`"""
+    """
+    .. important ::
+        Do not create this directly, use :meth:`DSSProjectFlow.new_schema_propagation`.
+    """
     def __init__(self, project, client, dataset_name):
         self.project = project
         self.client = client
@@ -229,24 +263,26 @@ class DSSSchemaPropagationRunBuilder(object):
         self.settings = {
             'recipeUpdateOptions': {
                 "byType": {},
-                "byName":  {}
+                "byName": {}
             },
             'defaultPartitionValuesByDimension': {},
-            'partitionsByComputable':{},
+            'partitionsByComputable': {},
             'excludedRecipes': [],
             'markAsOkRecipes': [],
-            'autoRebuild' : True
+            'autoRebuild': True
         }
 
     def set_auto_rebuild(self, auto_rebuild):
         """
-        Sets whether to automatically rebuild datasets if needed while propagating (default true)
+        Sets whether to automatically rebuild datasets if needed while propagating.
+
+        :param bool auto_rebuild: whether to automatically rebuild datasets if needed (defaults to **True**)
         """
         self.settings["autoRebuild"] = auto_rebuild
 
     def set_default_partitioning_value(self, dimension, value):
         """
-        In the case of partitioned flows, sets the default partition value to use when rebuilding, for a specific dimension name
+        In the case of partitioned flows, sets the default partition value to use when rebuilding, for a specific dimension name.
 
         :param str dimension: a partitioning dimension name
         :param str value: a partitioning dimension value
@@ -255,8 +291,8 @@ class DSSSchemaPropagationRunBuilder(object):
 
     def set_partition_for_computable(self, full_id, partition):
         """
-        In the case of partitioned flows, sets the partition id to use when building a particular computable. Overrides
-        the default partitioning value per dimension
+        In the case of partitioned flows, sets the partition id to use when building a particular computable.
+        Overrides the default partitioning value per dimension.
 
         :param str full_id: Full name of the computable, in the form PROJECTKEY.id
         :param str partition: a full partition id (all dimensions)
@@ -264,22 +300,34 @@ class DSSSchemaPropagationRunBuilder(object):
         self.settings["partitionsByComputable"][full_id] = partition
 
     def stop_at(self, recipe_name):
-        """Marks a recipe as a recipe where propagation stops"""
+        """
+        Sets the given recipe as a schema propagation stop mark.
+
+        :param str recipe_name: the name of the recipe
+        """
         self.settings["excludedRecipes"].append(recipe_name)
 
     def mark_recipe_as_ok(self, name):
-        """Marks a recipe as always considered as OK during propagation"""
+        """
+        Marks a recipe as always considered as OK during propagation.
+
+        :param str name: recipe to mark as ok
+        """
         self.settings["markAsOkRecipes"].append(name)
 
     def set_grouping_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_keys=True,
                                     new_aggregates={}):
         """
-        Sets update options for grouping recipes
-        :param str recipe: if None, applies to all grouping recipes. Else, applies only to this name
+        Sets update options for grouping recipes.
+
+        :param str recipe: if None, applies to all grouping recipes. Else, applies only to this name (defaults to **None**)
+        :param bool remove_missing_aggregates: whether to remove missing aggregates (defaults to **True**)
+        :param bool remove_missing_keys: whether to remove missing keys (defaults to **True**)
+        :param dict new_aggregates: new aggregates (defaults to **{}**)
         """
         data = {
             "removeMissingAggregates": remove_missing_aggregates,
-            "removeMissingKeys" : remove_missing_keys,
+            "removeMissingKeys": remove_missing_keys,
             "newAggregates": new_aggregates
         }
         if recipe is None:
@@ -288,14 +336,18 @@ class DSSSchemaPropagationRunBuilder(object):
             self.settings["recipeUpdateOptions"]["byName"][recipe] = data
 
     def set_window_update_options(self, recipe=None, remove_missing_aggregates=True, remove_missing_in_window=True,
-                                    new_aggregates={}):
+                                  new_aggregates={}):
         """
-        Sets update options for window recipes
-        :param str recipe: if None, applies to all window recipes. Else, applies only to this name
+        Sets update options for window recipes.
+
+        :param str recipe: if None, applies to all window recipes. Else, applies only to this name (defaults to **None**)
+        :param bool remove_missing_aggregates: whether to remove missing aggregates (defaults to **True**)
+        :param bool remove_missing_in_window: whether to remove missing keys in windows (defaults to **True**)
+        :param dict new_aggregates: new aggregates (defaults to **{}**)
         """
         data = {
             "removeMissingAggregates": remove_missing_aggregates,
-            "removeMissingInWindow" : remove_missing_in_window,
+            "removeMissingInWindow": remove_missing_in_window,
             "newAggregates": new_aggregates
         }
         if recipe is None:
@@ -306,12 +358,16 @@ class DSSSchemaPropagationRunBuilder(object):
     def set_join_update_options(self, recipe=None, remove_missing_join_conditions=True, remove_missing_join_values=True,
                                 new_selected_columns={}):
         """
-        Sets update options for join recipes
-        :param str recipe: if None, applies to all join recipes. Else, applies only to this name
+        Sets update options for join recipes.
+
+        :param str recipe: if None, applies to all join recipes. Else, applies only to this name (defaults to **None**)
+        :param bool remove_missing_join_conditions: whether to remove missing join conditions (defaults to **True**)
+        :param bool remove_missing_join_values: whether to remove missing join values (defaults to **True**)
+        :param dict new_selected_columns: new selected columns (defaults to **{}**)
         """
         data = {
             "removeMissingJoinConditions": remove_missing_join_conditions,
-            "removeMissingJoinValues" : remove_missing_join_values,
+            "removeMissingJoinValues": remove_missing_join_values,
             "newSelectedColumns": new_selected_columns
         }
         if recipe is None:
@@ -321,18 +377,24 @@ class DSSSchemaPropagationRunBuilder(object):
 
     def start(self):
         """
-        Starts the actual propagation. Returns a future to wait for completion
+        Starts the actual propagation. Returns a future to wait for completion.
 
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :returns: A future representing the schema propagation job
+        :rtype: :class:`.DSSFuture`
         """
-        future_resp = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, self.dataset_name), body=self.settings)
+        future_resp = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, self.dataset_name),
+                                                body=self.settings)
         return DSSFuture.from_resp(self.client, future_resp)
+
 
 class DSSFlowZone(object):
     """
-    A zone in the Flow. Do not create this object manually, use :meth:`DSSProjectFlow.get_zone`
-    or :meth:`DSSProjectFlow.list_zones`
+    A zone in the Flow.
+
+    .. important ::
+        Do not create this object manually, use :meth:`DSSProjectFlow.get_zone` or :meth:`DSSProjectFlow.list_zones`
     """
+
     def __init__(self, flow, data):
         self.flow = flow
         self.client = flow.client
@@ -354,8 +416,9 @@ class DSSFlowZone(object):
         return "<dataikuapi.dss.flow.DSSFlowZone (id=%s, name=%s)>" % (self.id, self.name)
 
     def get_settings(self):
-        """Gets the settings of this zone in order to modify them
+        """Gets the settings of this zone in order to modify them.
 
+        :returns: The settings of the flow zone
         :rtype: :class:`DSSFlowZoneSettings`
         """
         return DSSFlowZoneSettings(self)
@@ -367,11 +430,11 @@ class DSSFlowZone(object):
             p = self.client.get_project(zone_item["projectKey"])
 
         if zone_item["objectType"] == "DATASET":
-           return p.get_dataset(zone_item["objectId"])
+            return p.get_dataset(zone_item["objectId"])
         elif zone_item["objectType"] == "MANAGED_FOLDER":
-           return p.get_managed_folder(zone_item["objectId"])
+            return p.get_managed_folder(zone_item["objectId"])
         elif zone_item["objectType"] == "SAVED_MODEL":
-           return p.get_saved_model(zone_item["objectId"])
+            return p.get_saved_model(zone_item["objectId"])
         elif zone_item["objectType"] == "RECIPE":
             return p.get_recipe(zone_item["objectId"])
         elif zone_item["objectType"] == "STREAMING_ENDPOINT":
@@ -386,11 +449,16 @@ class DSSFlowZone(object):
         The item will automatically be moved from its existing zone. Additional items may be moved to this zone
         as a result of the operation (notably the recipe generating `obj`).
 
-        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
+        :param obj: object to add to the zone
+        :type obj: :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSRecipe`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/items" % (self.flow.project.project_key, self.id),
-                                  body=self.flow._to_smart_ref(obj))
+                                              body=self.flow._to_smart_ref(obj))
 
     def add_items(self, items):
         """
@@ -399,14 +467,19 @@ class DSSFlowZone(object):
         The items will automatically be moved from their existing zones. Additional items may be moved to this zone
         as a result of the operations (notably the recipe generating the `items`).
 
-        :param list items: A list of objects, either :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to add to the zone
+        :param items: A list of objects to add to the zone
+        :type items: list of :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSRecipe`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         smart_refs = []
         for item in items:
             smart_refs.append(self.flow._to_smart_ref(item))
         self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/add-items" % (self.flow.project.project_key, self.id),
-                                  body=smart_refs)
+                                              body=smart_refs)
 
     @property
     def items(self):
@@ -419,9 +492,13 @@ class DSSFlowZone(object):
         explicitly in a zone. To get the full list of items in a zone, including in the "default" zone, use
         the :meth:`get_graph` method.
 
-        @rtype list of zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`,
-            :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
+        :returns: the items in the zone
+        :rtype: list of :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSRecipe`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         return [self._to_native_obj(i) for i in self._raw["items"]]
 
@@ -431,21 +508,31 @@ class DSSFlowZone(object):
 
         The item will not be automatically unshared from its existing zone.
 
-        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        :param obj: object to share to the zone
+        :type obj: :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSRecipe`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         self._raw = self.client._perform_json("POST", "/projects/%s/flow/zones/%s/shared" % (self.flow.project.project_key, self.id),
-                                          body=self.flow._to_smart_ref(obj))
+                                              body=self.flow._to_smart_ref(obj))
 
     def remove_shared(self, obj):
         """
         Remove a shared item from this zone.
 
-        :param object obj: A :class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                           or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` to share to the zone
+        :param obj: object to remove from the zone
+        :type obj: :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         smartRef = self.flow._to_smart_ref(obj)
-        self._raw = self.client._perform_json("DELETE", "/projects/%s/flow/zones/%s/shared/%s/%s" % (self.flow.project.project_key, self.id, smartRef['objectType'], smartRef['objectId']))
+        self._raw = self.client._perform_json("DELETE", "/projects/%s/flow/zones/%s/shared/%s/%s" % (
+        self.flow.project.project_key, self.id, smartRef['objectType'], smartRef['objectId']))
 
     @property
     def shared(self):
@@ -454,25 +541,39 @@ class DSSFlowZone(object):
 
         This list is read-only, to modify it, use :meth:`add_shared` and :meth:`remove_shared`
 
-        @rtype list of shared zone items, either :class:`dataikuapi.dss.dataset.DSSDataset`,
-            :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-            or :class:`dataikuapi.dss.savedmodel.DSSSavedModel` or :class:`dataiuapi.dss.recipe.DSSRecipe`
+        :returns: the items shared to this zone
+        :rtype: list of :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         return [self._to_native_obj(i) for i in self._raw["shared"]]
 
     def get_graph(self):
+        """
+        Get the flow graph.
+
+        :return: A handle to use the flow graph
+        :rtype: :class:`DSSProjectFlowGraph`
+        """
         data = self.client._perform_json("GET", "/projects/%s/flow/zones/%s/graph" % (self.flow.project.project_key, self.id))
         return DSSProjectFlowGraph(self.flow, data)
 
     def delete(self):
         """
-        Delete the zone, all items will be moved to the default zone
+        Delete the zone, all items will be moved to the default zone.
         """
         return self.client._perform_empty("DELETE", "/projects/%s/flow/zones/%s" % (self.flow.project.project_key, self.id))
 
 
 class DSSFlowZoneSettings(object):
-    """The settings of a flow zone. Do not create this directly, use :meth:`DSSFlowZone.get_settings`"""
+    """
+    The settings of a flow zone.
+
+    .. important ::
+        Do not create this directly, use :meth:`DSSFlowZone.get_settings`.
+    """
     def __init__(self, zone):
         self._zone = zone
         self._raw = zone._raw
@@ -481,8 +582,9 @@ class DSSFlowZoneSettings(object):
         """
         Gets the raw settings of the zone.
 
-        You cannot modify the `items` and `shared` elements through this class. Instead, use :meth:`DSSFlowZone.add_item` and
-        others
+        .. note ::
+            You cannot modify the `items` and `shared` elements through this class.
+            Instead, use :meth:`DSSFlowZone.add_item` and others
         """
         return self._raw
 
@@ -505,7 +607,8 @@ class DSSFlowZoneSettings(object):
     def save(self):
         """Saves the settings of the zone"""
         self._zone.client._perform_empty("PUT", "/projects/%s/flow/zones/%s" % (self._zone.flow.project.project_key, self._zone.id),
-                                        body=self._raw)
+                                         body=self._raw)
+
 
 class DSSProjectFlowGraph(object):
 
@@ -516,13 +619,15 @@ class DSSProjectFlowGraph(object):
 
     def get_source_computables(self, as_type="dict"):
         """
-        Returns the list of source computables.
-        :param as_type: How to return the source computables. Possible values are "dict" and "object"
+        :param str as_type: How to return the source computables. Possible values are "dict" and "object" (defaults to **dict**)
 
-        :return: if as_type=dict, each computable is returned as a dict containing at least "ref" and "type".
-                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.dataset.DSSDataset`,
-                    :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`,
-                    :class:`dataikuapi.dss.savedmodel.DSSSavedModel`, or streaming endpoint
+        :returns: The list of source computables
+        :rtype: If as_type=dict, each computable is returned as a dict containing at least "ref" and "type".
+                If as_type=object, each computable is returned as a :class:`.DSSDataset`,
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         ret = []
         for node in self.nodes.values():
@@ -532,11 +637,11 @@ class DSSProjectFlowGraph(object):
 
     def get_source_recipes(self, as_type="dict"):
         """
-        Returns the list of source recipes.
-        :param as_type: How to return the source recipes. Possible values are "dict" and "object"
+        :param str as_type: How to return the source recipes. Possible values are "dict" and "object" (defaults to **dict**)
 
-        :return: if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
-                 if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        :returns: The list of source recipes
+        :rtype: If as_type=dict, each recipe is returned as a dict containing at least "ref" and "type".
+                If as_type=object, each recipe is returned as a  :class:`.DSSRecipe`.
         """
         ret = []
         for node in self.nodes.values():
@@ -546,19 +651,20 @@ class DSSProjectFlowGraph(object):
 
     def get_source_datasets(self):
         """
-        Returns the list of source datasets for this project.
-        :rtype list of :class:`dataikuapi.dss.dataset.DSSDataset`
+        :returns: The list of source datasets for this project
+        :rtype: List of :class:`.DSSDataset`
         """
         return [self._get_object_from_graph_node(x) for x in self.get_source_computables() if x["type"] == "COMPUTABLE_DATASET"]
 
     def get_successor_recipes(self, node, as_type="dict"):
         """
-        Returns a list of recipes that are a successor of a graph node
+        :param node: Either a name or a dataset object
+        :type node: str or :class:`.DSSDataset`
+        :param str as_type: How to return the successor recipes. Possible values are "dict" and "object" (defaults to **dict**)
 
-        :param node: Either a name or :class:`dataikuapi.dss.dataset.DSSDataset` object
-        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
-        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
-                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        :returns: A list of recipes that are a successor of the given graph node
+        :rtype: If as_type=dict, each recipe is returned as a dict containing at least "ref" and "type".
+                If as_type=object, each recipe is returned as a  :class:`.DSSRecipe`.
         """
         if isinstance(node, DSSDataset):
             node = node.dataset_name
@@ -572,11 +678,17 @@ class DSSProjectFlowGraph(object):
 
     def get_successor_computables(self, node, as_type="dict"):
         """
-        Returns a list of computables that are a successor of a given graph node
+        :param node: Either a name or a recipe object
+        :type node: str or :class:`.DSSRecipe`
+        :param str as_type: How to return the successor computables. Possible values are "dict" and "object" (defaults to **dict**).
 
-        :param as_type: How to return the successor recipes. Possible values are "dict" and "object"
-        :return if as_type=dict, each recipes is returned as a dict containing at least "ref" and "type".
-                if as_type=object, each computable is returned as a  :class:`dataikuapi.dss.recipe.DSSRecipe`,
+        :returns: A list of computables that are a successor of a given graph node
+        :rtype: If as_type=dict, each computable is returned as a dict containing at least "ref" and "type".
+                If as_type=object, each computable is returned as a :class:`.DSSDataset`.
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSModelEvaluationStore` or
+                :class:`.DSSStreamingEndpoint`
         """
         if isinstance(node, DSSRecipe):
             node = node.recipe_name
@@ -610,10 +722,25 @@ class DSSProjectFlowGraph(object):
             raise Exception("unsupported node type: %s" % node["type"])
 
     def get_items_in_traversal_order(self, as_type="dict"):
+        """
+        Get the list of nodes in left to right order.
+
+        :param str as_type: How to return the nodes. Possible values are "dict" and "object" (defaults to **dict**).
+
+        :returns: A list of nodes
+        :rtype: If as_type=dict, each item is returned as a dict containing at least "ref" and "type".
+                If as_type=object, each item is returned as a :class:`.DSSDataset`.
+                :class:`.DSSManagedFolder`,
+                :class:`.DSSSavedModel`,
+                :class:`.DSSModelEvaluationStore`,
+                :class:`.DSSStreamingEndpoint` or
+                :class:`.DSSRecipe`
+        """
         ret = []
+
         def add_to_set(node):
-            #print("*** Adding: %s" % node["ref"])
             ret.append(node)
+
         def in_set(obj):
             for candidate in ret:
                 if candidate["type"] == obj["type"] and candidate["ref"] == obj["ref"]:
@@ -621,10 +748,8 @@ class DSSProjectFlowGraph(object):
             return False
 
         def add_from(graph_node):
-            #print("Add from %s" % graph_node["ref"])
             # To keep traversal order, we recurse to predecessors first
             for predecessor_ref in graph_node["predecessors"]:
-                #print("  Pred = %s " % predecessor_ref)
                 predecessor_node = self.nodes[predecessor_ref]
                 if not in_set(predecessor_node):
                     add_from(predecessor_node)
@@ -635,7 +760,6 @@ class DSSProjectFlowGraph(object):
 
             # Then recurse to successors
             for successor_ref in graph_node["successors"]:
-                #print("  Succ = %s " % successor_ref)
                 successor_node = self.nodes[successor_ref]
                 if not in_set(successor_node):
                     add_from(successor_node)
@@ -648,10 +772,12 @@ class DSSProjectFlowGraph(object):
 
         return self._convert_nodes_list(ret, as_type)
 
+
 class DSSFlowTool(object):
     """
-    Handle to interact with a flow tool
+    Handle to interact with a flow tool.
     """
+
     def __init__(self, client, project_key, tool_id):
         self.client = client
         self.project_key = project_key
@@ -659,34 +785,44 @@ class DSSFlowTool(object):
 
     def stop(self):
         """
-        Stops the tool and releases the resources held by it
+        Stops the tool and releases the resources held by it.
         """
         return self.client._perform_json("POST", "/projects/%s/flow/tools/%s/stop" % (self.project_key, self.tool_id))
 
     def get_state(self, options={}):
         """
-        Get the current state of the tool or view
+        Get the current state of the tool or view.
 
-        :returns: the state, as a dict
+        :param dict options: options (defaults to **{}**)
+
+        :returns: the state
+        :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/flow/tools/%s/state" % (self.project_key, self.tool_id), body=options)
 
     def do(self, action):
         """
-        Perform a manual user action on the tool
+        Perform a manual user action on the tool.
 
-        :returns: the current state, as a dict
+        :param dict action: the action to do. It must contain:
+            * a string `name` (the object id)
+            * a string `type` (`"MARK_DATASET_AS_REBUILT"` or `"MARK_RECIPE_AS_OK"`)
+
+            If `type` is `"MARK_RECIPE_AS_OK"`, a boolean `updated` can be added to the dict, if `True`, marks the recipe as OK after the update.
+
+        :returns: the current state
+        :rtype: dict
         """
         return self.client._perform_json("PUT", "/projects/%s/flow/tools/%s/action" % (self.project_key, self.tool_id), body=action)
 
     def update(self, options={}):
         """
-        (for tools only) Start updating the tool state
+        (for tools only) Start updating the tool state.
 
-        :params options dict: options for the update (optional)
+        :params options dict: options for the update (defaults to **{}**)
 
-        :returns: a :class:`.future.DSSFuture` handle to interact with task of performing the update
+        :returns: A handle to interact with task of performing the update
+        :rtype: :class:`.DSSFuture`
         """
         update_future = self.client._perform_json("POST", "/projects/%s/flow/tools/%s/update" % (self.project_key, self.tool_id), body=options)
-        return DSSFuture(self.client,update_future.get('jobId', None), update_future)
-
+        return DSSFuture(self.client, update_future.get('jobId', None), update_future)

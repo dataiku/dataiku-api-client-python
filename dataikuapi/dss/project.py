@@ -1,34 +1,34 @@
-import warnings, os.path as osp
+import os.path as osp
+import warnings
 
-from ..dss_plugin_mlflow import MLflowHandle
-
-from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
-from .modelcomparison import DSSModelComparison
-from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
-from .notebook import DSSNotebook
-from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, \
-    DSSManagedStreamingEndpointCreationHelper
-from .recipe import DSSRecipeListItem, DSSRecipe
 from . import recipe
-from .managedfolder import DSSManagedFolder
-from .savedmodel import DSSSavedModel
-from .modelevaluationstore import DSSModelEvaluationStore
-from .mlflow import DSSMLflowExtension
-from .job import DSSJob, DSSJobWaiter
-from .scenario import DSSScenario, DSSScenarioListItem
-from .continuousactivity import DSSContinuousActivity
-from .apiservice import DSSAPIService
-from .future import DSSFuture
-from .macro import DSSMacro
-from .wiki import DSSWiki
-from .discussion import DSSObjectDiscussions
-from .ml import DSSMLTask, DSSMLTaskQueues
 from .analysis import DSSAnalysis
-from .flow import DSSProjectFlow
+from .apiservice import DSSAPIService, DSSAPIServiceListItem
 from .app import DSSAppManifest
 from .codestudio import DSSCodeStudioObject, DSSCodeStudioObjectListItem
+from .continuousactivity import DSSContinuousActivity
+from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
+from .discussion import DSSObjectDiscussions
+from .flow import DSSProjectFlow
+from .future import DSSFuture
+from .job import DSSJob, DSSJobWaiter
+from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
+from .macro import DSSMacro
+from .managedfolder import DSSManagedFolder
+from .ml import DSSMLTask, DSSMLTaskQueues
+from .mlflow import DSSMLflowExtension
+from .modelcomparison import DSSModelComparison
+from .modelevaluationstore import DSSModelEvaluationStore
+from .notebook import DSSNotebook
 from .projectlibrary import DSSLibrary
-
+from .recipe import DSSRecipeListItem, DSSRecipe
+from .savedmodel import DSSSavedModel
+from .scenario import DSSScenario, DSSScenarioListItem
+from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, \
+    DSSManagedStreamingEndpointCreationHelper
+from .webapp import DSSWebApp, DSSWebAppListItem
+from .wiki import DSSWiki
+from ..dss_plugin_mlflow import MLflowHandle
 
 class DSSProject(object):
     """
@@ -769,6 +769,47 @@ class DSSProject(object):
             mltask.wait_guess_complete()
         return mltask
 
+    def create_timeseries_forecasting_ml_task(self, input_dataset, target_variable,
+                                              time_variable,
+                                              timeseries_identifiers=None,
+                                              guess_policy="TIMESERIES_DEFAULT",
+                                              wait_guess_complete=True):
+        """Creates a new time series forecasting task in a new visual analysis lab for a dataset.
+
+        :param string input_dataset: The dataset to use for training/testing the model
+        :param string target_variable: The variable to forecast
+        :param string time_variable:  Column to be used as time variable. Should be a Date (parsed) column.
+        :param list timeseries_identifiers:  List of columns to be used as time series identifiers (when the dataset has multiple series)
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: TIMESERIES_DEFAULT, TIMESERIES_STATISTICAL, and TIMESERIES_DEEP_LEARNING
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return :class dataiku.dss.ml.DSSMLTask
+        """
+        obj = {
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariable": target_variable,
+            "timeVariable": time_variable,
+            "timeseriesIdentifiers": timeseries_identifiers,
+            "backendType": "PY_MEMORY",
+            "guessPolicy":  guess_policy,
+            "predictionType": "TIMESERIES_FORECAST"
+        }
+
+        ref = self.client._perform_json(
+            "POST",
+            "/projects/{project_key}/models/lab/".format(project_key=self.project_key),
+            body=obj
+        )
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
+
     def list_ml_tasks(self):
         """
         List the ML tasks in this project
@@ -867,8 +908,10 @@ class DSSProject(object):
         Creates a new external saved model for storing and managing MLFlow models
 
         :param str name: Human readable name for the new saved model in the flow
-        :param str prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS
-            or REGRESSION
+        :param str prediction_type: Optional (but needed for most operations). One of BINARY_CLASSIFICATION, MULTICLASS,
+            REGRESSION or None. Defaults to None, standing for other prediction types.
+            If the Saved Model has a None prediction type, scoring, inclusion in a bundle or in an API service will be possible,
+            but features related to performance analysis and explainability will not be available.
 
         :returns: The created saved model handle
         :rtype: :class:`dataikuapi.dss.savedmodel.DSSSavedModel`
@@ -881,6 +924,23 @@ class DSSProject(object):
 
         id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
         return self.get_saved_model(id)
+
+    def create_proxy_model(self, name, prediction_type):
+        """
+        EXPERIMENTAL. Creates a new external saved model that can contain proxy model as versions.
+
+        This is an experimental API, subject to change.
+        :param string name: Human readable name for the new saved model in the flow
+        :param string prediction_type: One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        """
+        model = {
+            "savedModelType": "PROXY_MODEL",
+            "predictionType": prediction_type,
+            "name": name
+        }
+
+        saved_model_id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
+        return self.get_saved_model(saved_model_id)
 
     ########################################################
     # Managed folders
@@ -1005,7 +1065,7 @@ class DSSProject(object):
         Create a new model comparison in the project, and return a handle to interact with it.
 
         :param str name: the name for the new model comparison
-        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION and MULTICLASS
+        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, and TIMESERIES_FORECAST
 
         :returns: A new model comparison handle
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
@@ -1254,15 +1314,24 @@ class DSSProject(object):
     # API Services
     ########################################################
 
-    def list_api_services(self):
+    def list_api_services(self, as_type="listitems"):
         """
         List the API services in this project
 
-        :returns: the list of API services, each one as a python dict
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+
+        :returns: The list of the datasets. If "as_type" is "listitems",
+            each one as a :class:`dataikuapi.dss.apiservice.DSSAPIServiceListItem`. If "as_type" is "objects",
+            each one as a :class:`dataikuapi.dss.apiservice.DSSAPIService`
         :rtype: list
         """
-        return self.client._perform_json(
-            "GET", "/projects/%s/apiservices/" % self.project_key)
+        items = self.client._perform_json("GET", "/projects/%s/apiservices/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSAPIServiceListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSAPIService(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def create_api_service(self, service_id):
         """
@@ -1585,6 +1654,10 @@ class DSSProject(object):
             return recipe.WindowRecipeCreator(name, self)
         elif type == "sync":
             return recipe.SyncRecipeCreator(name, self)
+        elif type == "csync":
+            return recipe.ContinuousSyncRecipeCreator(name, self)
+        elif type == "pivot":
+            return recipe.PivotRecipeCreator(name, self)
         elif type == "sort":
             return recipe.SortRecipeCreator(name, self)
         elif type == "topn":
@@ -1614,6 +1687,8 @@ class DSSProject(object):
         elif type == "sql_query":
             return recipe.SQLQueryRecipeCreator(name, self)
         elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+            return recipe.CodeRecipeCreator(name, type, self)
+        elif type in ["cpython", "ksql", "streaming_spark_scala"]:
             return recipe.CodeRecipeCreator(name, type, self)
 
     ########################################################
@@ -1923,6 +1998,35 @@ class DSSProject(object):
         """
         return DSSLibrary(self.client, self.project_key)
 
+    ########################################################
+    # Webapps
+    ########################################################
+
+    def list_webapps(self, as_type="listitems"):
+        """
+        List the webapp heads of this project
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`scenario.DSSWebAppListItem`.
+                  If "as_type" is "objects", each one as a :class:`scenario.DSSWebApp`
+        :rtype: list
+        """
+        webapps = self.client._perform_json("GET", "/projects/%s/webapps/" % self.project_key)
+        if as_type == "listitems":
+            return [DSSWebAppListItem(self.client, item) for item in webapps]
+        elif as_type == "objects":
+            return [DSSWebApp(self.client, self.project_key, item["id"]) for item in webapps]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_webapp(self, webapp_id):
+        """
+        Get a handle to interact with a specific webapp
+        :param webapp_id: the identifier of a webapp
+        :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
+        """
+        return DSSWebApp(self.client, self.project_key, webapp_id)
+
 
 class TablesImportDefinition(object):
     """
@@ -1946,17 +2050,19 @@ class TablesImportDefinition(object):
             "name": hive_table
         })
 
-    def add_sql_table(self, connection, schema, table):
+    def add_sql_table(self, connection, schema, table, catalog=None):
         """Add a SQL table to the list of tables to import
 
         :param str connection: the name of the SQL connection
         :param str schema: the schema of the table
         :param str table: the name of the SQL table
+        :param str catalog: the database of the SQL table. Leave to None to use the default database associated with the connection
         """
         self.keys.append({
             "connectionName": connection,
             "schema": schema,
-            "name": table
+            "name": table,
+            "catalog": catalog
         })
 
     def add_elasticsearch_index_or_alias(self, connection, index_or_alias):

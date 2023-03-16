@@ -1,12 +1,17 @@
 from .project import DSSProject
 import warnings
 
+
 class DSSProjectFolder(object):
     """
-    A handle to interact with a project folder on the DSS instance.
+    A handle for a project folder on the DSS instance.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.get_project_folder` or :meth:`dataikuapi.DSSClient.get_root_project_folder`
+    .. important::
+        Do not instantiate this class directly,
+        instead use :meth:`dataikuapi.DSSClient.get_project_folder`
+        or :meth:`dataikuapi.DSSClient.get_root_project_folder`.
     """
+
     def __init__(self, client, data):
         self.client = client
         self._data = data
@@ -18,15 +23,16 @@ class DSSProjectFolder(object):
     @property
     def id(self):
         """
-        Get this project folder's id
-        :returns str: the id of this project folder
+        :returns: The project folder id.
+        :rtype: string
         """
         return self._data["id"]
 
     @property
     def project_folder_id(self):
         """
-        deprecated, use id instead
+        .. caution::
+            Deprecated. Please use :attr:`dataikuapi.dss.projectfolder.DSSProjectFolder.id`.
         """
         warnings.warn("DSSProjectFolder.project_folder_id is deprecated, please use id", DeprecationWarning)
         return self.id
@@ -34,21 +40,24 @@ class DSSProjectFolder(object):
     @property
     def name(self):
         """
-        Get this project folder's name or None if it is the root project folder
-        :returns str: the name of this project folders or None for the root project folder
+        :returns: The project folder name or :const:`None` for the root project folder.
+        :rtype: string
         """
         return self._data.get("name", None)
 
     def get_name(self):
         """
-        See name
+        See :attr:`dataikuapi.dss.projectfolder.DSSProjectFolder.name`.
+
+        :returns: The project folder name or :const:`None` for the root project folder.
+        :rtype: string
         """
         return self.name
 
     def get_path(self):
         """
-        Get this project folder's path from the orot, in the form of /name/name/name
-        :return str: the path of this project folder
+        :returns: The project folder path from the root project folder (e.g. :const:`'/'` or :const:`'/foo/bar'`).
+        :rtype: string
         """
         parent = self.get_parent()
         if parent is not None:
@@ -59,9 +68,8 @@ class DSSProjectFolder(object):
 
     def get_parent(self):
         """
-        Get this project folder's parent or None if it is the root project folder
-
-        :returns: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its parent or None for the root project folder
+        :returns: A handle for the parent folder or :const:`None` for the root project folder.
+        :rtype: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         parent_id = self._data.get("parentId", None)
         if parent_id is None:
@@ -71,22 +79,22 @@ class DSSProjectFolder(object):
 
     def list_child_folders(self):
         """
-        List the child project folders inside this project folder
-        :returns list: A list of :class:`dataikuapi.dss.projectfolders.DSSProjectFolder` to interact with its sub-folders
+        :returns: Handles for every child project folder.
+        :rtype: list of :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         return [self.client.get_project_folder(child_id) for child_id in self._data["childrenIds"]]
 
     def list_project_keys(self):
         """
-        List the project keys of the projects that are stored in this project folder
-        :returns list: A list of project keys
+        :returns: The project keys of all projects stored in this project folder.
+        :rtype: list of string
         """
         return self._data["projectKeys"]
 
     def list_projects(self):
         """
-        List the projects that are stored in this project folder
-        :returns list:  A list of :class:`dataikuapi.dss.project.DSSProject` to interact with its projects
+        :returns: Handles for every project stored in this project folder.
+        :rtype: list of :class:`dataikuapi.dss.project.DSSProject`
         """
         return [self.client.get_project(pkey) for pkey in self.list_project_keys()]
 
@@ -95,10 +103,13 @@ class DSSProjectFolder(object):
     ########################################################
     def delete(self):
         """
-        Delete the project folder
-        Note: it must be empty (cannot contain any sub-project folders or projects), you must move or remove all its content before deleting it
+        Delete this project folder.
 
-        This call requires an API key with admin rights
+        .. important::
+            This project folder must be empty, i.e. contain no project or subfolder.
+            You must move or remove all this project folder content prior to deleting it.
+        .. attention::
+            This call requires an API key with admin rights.
         """
         return self.client._perform_empty("DELETE", "/project-folders/%s" % self.id)
 
@@ -107,20 +118,22 @@ class DSSProjectFolder(object):
     ########################################################
     def get_settings(self):
         """
-        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolderSettings` to interact with this project folder settings
+        :returns: A handle for this project folder settings.
+        :rtype: :class:`dataikuapi.dss.projectfolder.DSSProjectFolderSettings`
         """
         settings = self.client._perform_json("GET", "/project-folders/%s/settings" % self.id)
         return DSSProjectFolderSettings(self.client, self.id, settings)
 
     ########################################################
-    # Project folder sub-folder creation
+    # Project folder subfolder creation
     ########################################################
     def create_sub_folder(self, name):
         """
-        Create a sub-folder into the current project folder
+        Create a project subfolder inside this project folder.
 
-        :param str name: the name of the project folder to create
-        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with the newly created project folder
+        :param str name: The name of the project subfolder to create.
+        :returns: A handle for the created project subfolder.
+        :rtype: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         params = {
             "name": name
@@ -133,17 +146,22 @@ class DSSProjectFolder(object):
     ########################################################
     def create_project(self, project_key, name, owner, description=None, settings=None):
         """
-        Creates a new project within this project folder, and return a project handle to interact with it.
+        Create a new project within this project folder.
+        Return a handle for the created project.
 
-        Note: this call requires an API key with admin rights or the rights to create a project
+        .. important::
+            The provided identifier for the new project must be globally unique.
+        .. attention::
+            This call requires an API key with admin rights or the right to create a project.
 
-        :param str project_key: the identifier to use for the project. Must be globally unique
-        :param str name: the display name for the project.
-        :param str owner: the login of the owner of the project.
-        :param str description: a description for the project.
-        :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
-        
-        :returns: A class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
+        :param str project_key: The identifier for the new project. Must be globally unique.
+        :param str name: The displayed name for the new project.
+        :param str owner: The login of the new project owner.
+        :param str description: The description for the new project.
+        :param dict settings: The initial settings for the new project. The settings can be modified later. The exact possible settings are not documented.
+
+        :returns: A handle for the created project.
+        :rtype: :class:`dataikuapi.dss.project.DSSProject`
         """
         return self.client.create_project(project_key, name, owner, description=description, settings=settings, project_folder_id=self.id)
 
@@ -152,10 +170,10 @@ class DSSProjectFolder(object):
     ########################################################
     def move_to(self, destination):
         """
-        Move this project folder into another project folder (aka. destination)
+        Move this project folder into another project folder.
 
-        :param destination: the project folder to put this project folder into
-        :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
+        :param destination: The new parent project folder of this project folder.
+        :type destination: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         params = {
             "destination": destination.id
@@ -167,11 +185,11 @@ class DSSProjectFolder(object):
     ########################################################
     def move_project_to(self, project_key, destination):
         """
-        Move a project within this project folder into another project folder (aka. destination)
+        Move a project from this project folder into another project folder.
 
-        :param str project_key: the project key associated with the project to move
-        :param destination: the project folder to put this project into
-        :type destination: A :class:`dataikuapi.dss.projectfolders.DSSProjectFolder`
+        :param str project_key: The identifier of the project to move.
+        :param destination: The new parent project folder of the project.
+        :type destination: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
         # Be nice with what people pass
         if isinstance(project_key, DSSProject):
@@ -181,62 +199,83 @@ class DSSProjectFolder(object):
         }
         self.client._perform_empty("POST", "/project-folders/%s/projects/%s/move" % (self.id, project_key), params=params)
 
+
 class DSSProjectFolderSettings(object):
     """
-    A handle to interact with project folder settings
+    A handle for a project folder settings.
 
-    Do not create this class directly, instead use :meth:`dataikuapi.dss.projectfolder.DSSProjectFolder.get_settings`
+    .. important::
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.projectfolder.DSSProjectFolder.get_settings`.
     """
+
     def __init__(self, client, project_folder_id, settings):
         self.client = client
         self.id = project_folder_id
         self.settings = settings
 
     def get_raw(self):
-        """Gets all settings as a raw dictionary. This returns a reference to the raw retrieved settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        """
+        Get the settings of the project folder as a python dict.
 
-        :rtype: dict
+        .. important::
+            Returns a reference to the raw settings in opposition to a copy.
+            Changes through the reference will be effective upon saving.
+
+        :returns: The settings of the project folder as a python dict containing the keys:
+
+            * **name**: the name of the project folder,
+            * **owner**: the login of the project folder owner,
+            * **permissions**: the list of the project folder permissions.
+
+        :rtype: python dict
         """
         return self.settings
 
     def get_name(self):
-        """Get the name of the project folder
-
-        :returns str: the current name of the project folder
+        """
+        :returns: The name of the project folder.
+        :rtype: string
         """
         return self.settings.get("name", None)
 
     def set_name(self, name):
-        """Set the name of the project folder
+        """
+        Set the name of the project folder.
 
-        :param str name: the new name of the project folder
+        :param str name: The new name of the project folder.
         """
         self.settings["name"] = name
 
     def get_owner(self):
-        """Get the login of the owner of the project folder
-
-        :returns str: the current login owner of the project folder
+        """
+        :returns: The login of the project folder owner.
+        :rtype: string
         """
         return self.settings.get("owner", None)
 
     def set_owner(self, owner):
-        """Set the owner of the project folder
+        """
+        Set the owner of the project folder.
 
-        :param str owner: the new owner login of the project folder
+        :param str owner: The login of the new project folder owner.
         """
         self.settings["owner"] = owner
 
     def get_permissions(self):
-        """Get the permissions of the project folder. This returns a reference to the retrieved permissions, not a copy,
-        so changes made to the returned list will be reflected when saving.
+        """
+        Get the permissions of the project folder.
 
-        :return list: the current permissions of the project folder
+        .. important::
+            Returns a reference to the permissions in opposition to a copy.
+            Changes through the reference will be effective upon saving.
+
+        :returns: The permissions of the project folder.
+        :rtype: list of string
         """
         return self.settings["permissions"]
 
     def save(self):
-        """Saves back the settings to the project folder"""
+        """
+        Save back the settings to the project folder.
+        """
         self.client._perform_empty("PUT", "/project-folders/%s/settings" % (self.id), body = self.settings)
-

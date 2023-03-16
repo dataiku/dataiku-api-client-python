@@ -1,17 +1,19 @@
+import json
+import logging
 import re
-import os
-import zipfile
-from six import string_types
-import tempfile
-
-from ..utils import _write_response_content_to_file
-from ..utils import DataikuException
-
-import json, warnings
 import time
+import warnings
 
-from .utils import DSSDatasetSelectionBuilder, DSSFilterBuilder
+from six import string_types
+
 from .future import DSSFuture
+from .utils import DSSDatasetSelectionBuilder
+from .utils import DSSFilterBuilder
+from ..utils import DataikuException
+from ..utils import _write_response_content_to_file
+
+logger = logging.getLogger("ML")
+logger.setLevel(logging.INFO)
 
 
 class PredictionSplitParamsHandler(object):
@@ -333,8 +335,8 @@ class DSSMLTaskSettings(object):
 
     def disable_all_algorithms(self):
         """Disables all algorithms"""
-        for algorithm_key in self.__class__.algorithm_remap.keys():
-            algorithm_meta = self.__class__.algorithm_remap[algorithm_key]
+        for algorithm_key in self.__class__._algorithm_remap.keys():
+            algorithm_meta = self.__class__._algorithm_remap[algorithm_key]
             if isinstance(algorithm_meta, PredictionAlgorithmMeta):
                 key = algorithm_meta.algorithm_name
             else:
@@ -360,7 +362,7 @@ class DSSMLTaskSettings(object):
         :returns: the list of algorithm names as a list of strings
         :rtype: list of string
         """
-        return list(self.__class__.algorithm_remap.keys()) + self._get_custom_algorithm_names()
+        return list(self.__class__._algorithm_remap.keys()) + self._get_custom_algorithm_names()
 
     def _get_custom_algorithm_names(self):
         """
@@ -577,6 +579,27 @@ class HyperparameterSearchSettings(object):
         """
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
         self._raw_settings["mode"] = mode
+
+    @property
+    def fold_offset(self):
+        """
+        :return: Whether there is an offset between validation sets, to avoid overlap between
+                 cross-test sets (model evaluation) and cross-validation sets (hyperparameter
+                 search), if both are using k-fold. Only relevant for time series forecasting
+        :rtype: bool
+        """
+        return self._raw_settings["foldOffset"]
+
+    @fold_offset.setter
+    def fold_offset(self, value):
+        """
+        :param value: Whether there is an offset between validation sets, to avoid overlap between
+                 cross-test sets (model evaluation) and cross-validation sets (hyperparameter
+                 search), if both are using k-fold. Only relevant for time series forecasting
+        :type value: bool
+        """
+        assert isinstance(value, bool)
+        self._raw_settings["foldOffset"] = value
 
     @property
     def cv_seed(self):
@@ -1030,16 +1053,17 @@ class SingleValueHyperparameterSettings(HyperparameterSettings):
     def set_value(self, value):
         """
         :param value:
-        :type value: bool | int | float
+        :type value: bool | int | float | NoneType
         """
         if self.accepted_types is not None:
-            assert any(isinstance(value, accepted_type) for accepted_type in self.accepted_types), "Invalid type for hyperparameter {}. Type must be one of: {}".format(self.name, self.accepted_types)
+            assert isinstance(value, tuple(self.accepted_types)), "Invalid type for hyperparameter {}. Must be one of: {}".format(self.name, self.accepted_types)
+
         self._algo_settings[self.name] = value
 
     def get_value(self):
         """
         :return: current value
-        :rtype: bool | int | float
+        :rtype: bool | int | float | NoneType
         """
         return self._algo_settings[self.name]
 
@@ -1393,10 +1417,10 @@ class SVMSettings(PredictionAlgorithmSettings):
         self.max_iter = self._register_single_value_hyperparameter("max_iter", accepted_types=[int])
 
 
-class MLPSettings(PredictionAlgorithmSettings):
+class SingleLayerPerceptronSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(MLPSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        super(SingleLayerPerceptronSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.layer_sizes = self._register_numerical_hyperparameter("layer_sizes")
         self.activation = self._register_single_category_hyperparameter("activation", accepted_values=["relu", "identity", "logistic", "tanh"])
         self.solver = self._register_single_category_hyperparameter("solver", accepted_values=["adam", "sgd"])
@@ -1417,6 +1441,20 @@ class MLPSettings(PredictionAlgorithmSettings):
         self.nesterovs_momentum = self._register_single_value_hyperparameter("nesterovs_momentum", accepted_types=[bool])
         self.shuffle = self._register_single_value_hyperparameter("shuffle", accepted_types=[bool])
         self.learning_rate_init = self._register_single_value_hyperparameter("learning_rate_init", accepted_types=[int, float])
+
+
+class DeepNeuralNetworkSettings(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(DeepNeuralNetworkSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.hidden_layers = self._register_numerical_hyperparameter("hidden_layers")
+        self.units = self._register_numerical_hyperparameter("units")
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.max_epochs = self._register_single_value_hyperparameter("max_epochs", accepted_types=[int])
+        self.device = self._register_single_category_hyperparameter("device", accepted_values=["cpu", "cuda"])
+        self.early_stopping_enabled = self._register_single_value_hyperparameter("early_stopping_enabled", accepted_types=[bool])
+        self.early_stopping_patience = self._register_single_value_hyperparameter("early_stopping_patience", accepted_types=[int])
+        self.early_stopping_threshold = self._register_single_value_hyperparameter("early_stopping_threshold", accepted_types=[float])
 
 
 class MLLibLogitSettings(PredictionAlgorithmSettings):
@@ -1490,15 +1528,241 @@ class MLLibGBTSettings(_MLLibTreeEnsembleSettings):
         self.step_size = self._register_numerical_hyperparameter("step_size")
 
 
+class SeasonalNaiveSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SeasonalNaiveSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.season_length = self._register_numerical_hyperparameter("season_length")
+
+
+class AutoArimaSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(AutoArimaSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.m = self._register_numerical_hyperparameter("m")
+        self.information_criterion = self._register_categorical_hyperparameter("information_criterion")
+        self.test = self._register_categorical_hyperparameter("test")
+        self.seasonal_test = self._register_categorical_hyperparameter("seasonal_test")
+        self.method = self._register_categorical_hyperparameter("method")
+        self.start_p = self._register_single_value_hyperparameter("start_p", accepted_types=[int])
+        self.max_p = self._register_single_value_hyperparameter("max_p", accepted_types=[int])
+        self.d = self._register_single_value_hyperparameter("d", accepted_types=[int, type(None)])
+        self.max_d = self._register_single_value_hyperparameter("max_d", accepted_types=[int])
+        self.start_q = self._register_single_value_hyperparameter("start_q", accepted_types=[int])
+        self.max_q = self._register_single_value_hyperparameter("max_q", accepted_types=[int])
+        self.start_P = self._register_single_value_hyperparameter("start_P", accepted_types=[int])
+        self.max_P = self._register_single_value_hyperparameter("max_P", accepted_types=[int])
+        self.D = self._register_single_value_hyperparameter("D", accepted_types=[int, type(None)])
+        self.max_D = self._register_single_value_hyperparameter("max_D", accepted_types=[int])
+        self.start_Q = self._register_single_value_hyperparameter("start_Q", accepted_types=[int])
+        self.max_Q = self._register_single_value_hyperparameter("max_Q", accepted_types=[int])
+        self.max_order = self._register_single_value_hyperparameter("max_order", accepted_types=[int])
+        self.stationary = self._register_single_value_hyperparameter("stationary", accepted_types=[bool])
+        self.maxiter = self._register_single_value_hyperparameter("maxiter", accepted_types=[int])
+
+
+class SeasonalLoessSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(SeasonalLoessSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.period = self._register_numerical_hyperparameter("period")
+        self.seasonal = self._register_numerical_hyperparameter("seasonal")
+        self.trend = self._register_numerical_hyperparameter("trend")
+        self.low_pass = self._register_numerical_hyperparameter("low_pass")
+        self.seasonal_deg = self._register_categorical_hyperparameter("seasonal_deg")
+        self.trend_deg = self._register_categorical_hyperparameter("trend_deg")
+        self.low_pass_deg = self._register_categorical_hyperparameter("low_pass_deg")
+        self.seasonal_jump = self._register_numerical_hyperparameter("seasonal_jump")
+        self.trend_jump = self._register_numerical_hyperparameter("trend_jump")
+        self.low_pass_jump = self._register_numerical_hyperparameter("low_pass_jump")
+        self.auto_trend = self._register_single_value_hyperparameter("auto_trend", accepted_types=[bool])
+        self.auto_low_pass = self._register_single_value_hyperparameter("auto_low_pass", accepted_types=[bool])
+
+
+class GluonTSNPTSForecasterSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSNPTSForecasterSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.kernel_type = self._register_categorical_hyperparameter("kernel_type")
+        self.exp_kernel_weights = self._register_numerical_hyperparameter("exp_kernel_weights")
+        self.feature_scale = self._register_numerical_hyperparameter("feature_scale")
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.use_seasonal_model = self._register_single_value_hyperparameter("use_seasonal_model", accepted_types=[bool])
+        self.use_default_time_features = self._register_single_value_hyperparameter("use_default_time_features", accepted_types=[bool])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class GluonTSSimpleFeedForwardSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSSimpleFeedForwardSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.distr_output = self._register_categorical_hyperparameter("distr_output")
+        self.batch_normalization = self._register_categorical_hyperparameter("batch_normalization")
+        self.mean_scaling = self._register_categorical_hyperparameter("mean_scaling")
+        self.num_hidden_dimensions = self._register_single_value_hyperparameter("num_hidden_dimensions", accepted_types=[list])
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.num_parallel_samples = self._register_single_value_hyperparameter("num_parallel_samples", accepted_types=[int])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class GluonTSDeepARSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSDeepARSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.num_layers = self._register_numerical_hyperparameter("num_layers")
+        self.num_cells = self._register_numerical_hyperparameter("num_cells")
+        self.cell_type = self._register_categorical_hyperparameter("cell_type")
+        self.dropoutcell_type = self._register_categorical_hyperparameter("dropoutcell_type")
+        self.dropout_rate = self._register_numerical_hyperparameter("dropout_rate")
+        self.alpha = self._register_numerical_hyperparameter("alpha")
+        self.beta = self._register_numerical_hyperparameter("beta")
+        self.distr_output = self._register_categorical_hyperparameter("distr_output")
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.scaling = self._register_single_value_hyperparameter("scaling", accepted_types=[bool])
+        self.num_parallel_samples = self._register_single_value_hyperparameter("num_parallel_samples", accepted_types=[int])
+        self.minimum_scale = self._register_single_value_hyperparameter("minimum_scale", accepted_types=[float])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class GluonTSTransformerSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSTransformerSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.model_dim = self._register_numerical_hyperparameter("model_dim")
+        self.inner_ff_dim_scale = self._register_numerical_hyperparameter("inner_ff_dim_scale")
+        self.num_heads = self._register_numerical_hyperparameter("num_heads")
+        self.dropout_rate = self._register_numerical_hyperparameter("dropout_rate")
+        self.distr_output = self._register_categorical_hyperparameter("distr_output")
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.num_parallel_samples = self._register_single_value_hyperparameter("num_parallel_samples", accepted_types=[int])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class GluonTSMQCNNSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSMQCNNSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.decoder_mlp_dim_seq = self._register_single_value_hyperparameter("decoder_mlp_dim_seq", accepted_types=[list])
+        self.channels_seq = self._register_single_value_hyperparameter("channels_seq", accepted_types=[list])
+        self.dilation_seq = self._register_single_value_hyperparameter("dilation_seq", accepted_types=[list])
+        self.kernel_size_seq = self._register_single_value_hyperparameter("kernel_size_seq", accepted_types=[list])
+        self.scaling = self._register_single_value_hyperparameter("scaling", accepted_types=[bool])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+
+
 class PredictionAlgorithmMeta:
     def __init__(self, algorithm_name, algorithm_settings_class=PredictionAlgorithmSettings):
         self.algorithm_name = algorithm_name
         self.algorithm_settings_class = algorithm_settings_class
 
 
-class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
+class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
+
+    def get_prediction_type(self):
+        return self.mltask_settings['predictionType']
+
+    def get_algorithm_settings(self, algorithm_name):
+        """
+        Gets the training settings for a particular algorithm. This returns a reference to the
+        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+
+        This method returns the settings for this algorithm as an PredictionAlgorithmSettings (extended dict).
+        All algorithm dicts have at least an "enabled" property/key in the settings.
+        The "enabled" property/key indicates whether this algorithm will be trained.
+
+        Other settings are algorithm-dependent and are the various hyperparameters of the
+        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
+        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
+
+        Please refer to the documentation for details on available algorithms.
+
+        :param algorithm_name: Name (in capitals) of the algorithm.
+        :type algorithm_name: str
+        :return: A PredictionAlgorithmSettings (extended dict) for one of the built-in prediction algorithms
+        :rtype: PredictionAlgorithmSettings
+        """
+        if algorithm_name in self.__class__._algorithm_remap:
+            algorithm_meta = self.__class__._algorithm_remap[algorithm_name]
+            algorithm_name = algorithm_meta.algorithm_name
+            algorithm_settings_class = algorithm_meta.algorithm_settings_class
+
+            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
+            if not isinstance(algorithm_settings, PredictionAlgorithmSettings):
+                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
+                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
+                # Subsequent calls get the same object
+                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
+            return self.mltask_settings["modeling"][algorithm_name.lower()]
+        elif algorithm_name in self._get_custom_algorithm_names():
+            return self._get_custom_algorithm_settings(algorithm_name)
+        else:
+            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
+    def get_hyperparameter_search_settings(self):
+        """
+        Gets the hyperparameter search parameters of the current DSSPredictionMLTaskSettings instance as a
+        HyperparameterSearchSettings object. This object can be used to both get and set properties relevant to
+        hyperparameter search, such as search strategy, cross-validation method, execution limits and parallelism.
+
+        :return: A HyperparameterSearchSettings
+        :rtype: :class:`HyperparameterSearchSettings`
+        """
+        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
+
+    @property
+    def split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return self.get_split_params()
+
+    def get_split_params(self):
+        """
+        Gets a handle to modify train/test splitting params.
+
+        :rtype: :class:`PredictionSplitParamsHandler`
+        """
+        return PredictionSplitParamsHandler(self.mltask_settings)
+
+    def get_assertions_params(self):
+        """
+        Retrieves the assertions parameters for this ml task
+
+        :rtype: :class:`DSSMLAssertionsParams`
+        """
+        raise NotImplementedError("ML assertions are not available for {}".format(self.__class__.__name__))
+
+
+class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
+    """
+    For classical prediction ML tasks
+    """
     __doc__ = []
-    algorithm_remap = {
+    _algorithm_remap = {
             "RANDOM_FOREST_CLASSIFICATION": PredictionAlgorithmMeta("random_forest_classification", RandomForestSettings),
             "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
             "EXTRA_TREES": PredictionAlgorithmMeta("extra_trees", RandomForestSettings),
@@ -1512,7 +1776,9 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
             "SGD_REGRESSION": PredictionAlgorithmMeta("sgd_regression", SGDSettings),
             "KNN": PredictionAlgorithmMeta("knn", KNNSettings),
             "LOGISTIC_REGRESSION": PredictionAlgorithmMeta("logistic_regression", LogitSettings),
-            "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", MLPSettings),
+            "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", SingleLayerPerceptronSettings),
+            "DEEP_NEURAL_NETWORK_REGRESSION": PredictionAlgorithmMeta("deep_neural_network_regression", DeepNeuralNetworkSettings),
+            "DEEP_NEURAL_NETWORK_CLASSIFICATION": PredictionAlgorithmMeta("deep_neural_network_classification", DeepNeuralNetworkSettings),
             "SVC_CLASSIFICATION": PredictionAlgorithmMeta("svc_classifier", SVMSettings),
             "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
             "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
@@ -1543,16 +1809,13 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         MULTICLASS = "MULTICLASS"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
-        DSSMLTaskSettings.__init__(self, client, project_key, analysis_id, mltask_id, mltask_settings)
+        super(DSSPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
 
         prediction_type = self.get_prediction_type()
         if prediction_type not in [self.PredictionTypes.BINARY, self.PredictionTypes.REGRESSION, self.PredictionTypes.MULTICLASS]:
             raise ValueError("Unknown prediction type: {}".format(prediction_type))
 
         self.classification_prediction_types = [self.PredictionTypes.BINARY, self.PredictionTypes.MULTICLASS]
-
-    def get_prediction_type(self):
-        return self.mltask_settings['predictionType']
 
     def get_all_possible_algorithm_names(self):
         """
@@ -1591,79 +1854,10 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         return [algo_name for algo_name in algo_names if algo_name not in excluded_names]
 
     def get_algorithm_settings(self, algorithm_name):
-        """
-        Gets the training settings for a particular algorithm. This returns a reference to the
-        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
-
-        This method returns the settings for this algorithm as an PredictionAlgorithmSettings (extended dict).
-        All algorithm dicts have at least an "enabled" property/key in the settings.
-        The "enabled" property/key indicates whether this algorithm will be trained.
-
-        Other settings are algorithm-dependent and are the various hyperparameters of the
-        algorithm. The precise properties/keys for each algorithm are not all documented. You can print
-        the returned AlgorithmSettings to learn more about the settings of each particular algorithm.
-
-        Please refer to the documentation for details on available algorithms.
-
-        :param algorithm_name: Name (in capitals) of the algorithm.
-        :type algorithm_name: str
-        :return: A PredictionAlgorithmSettings (extended dict) for one of the built-in prediction algorithms
-        :rtype: PredictionAlgorithmSettings
-        """
-        if algorithm_name in self.__class__.algorithm_remap:
-            algorithm_meta = self.__class__.algorithm_remap[algorithm_name]
-            algorithm_name = algorithm_meta.algorithm_name
-            algorithm_settings_class = algorithm_meta.algorithm_settings_class
-
-            algorithm_settings = self.mltask_settings["modeling"][algorithm_name.lower()]
-            if not isinstance(algorithm_settings, PredictionAlgorithmSettings):
-                raw_hyperparameter_search_params = self.mltask_settings["modeling"]["gridSearchParams"]
-                algorithm_settings = algorithm_settings_class(algorithm_settings, raw_hyperparameter_search_params)
-                # Subsequent calls get the same object
-                self.mltask_settings["modeling"][algorithm_name.lower()] = algorithm_settings
-            return self.mltask_settings["modeling"][algorithm_name.lower()]
-        elif algorithm_name in self._get_custom_algorithm_names():
-            return self._get_custom_algorithm_settings(algorithm_name)
-        elif algorithm_name in self._get_plugin_algorithm_names():
+        if algorithm_name in self._get_plugin_algorithm_names():
             return self._get_plugin_algorithm_settings(algorithm_name)
         else:
-            raise ValueError("Unknown algorithm: {}".format(algorithm_name))
-
-    def get_hyperparameter_search_settings(self):
-        """
-        Gets the hyperparameter search parameters of the current DSSPredictionMLTaskSettings instance as a
-        HyperparameterSearchSettings object. This object can be used to both get and set properties relevant to
-        hyperparameter search, such as search strategy, cross-validation method, execution limits and parallelism.
-
-        :return: A HyperparameterSearchSettings
-        :rtype: :class:`HyperparameterSearchSettings`
-        """
-        return HyperparameterSearchSettings(self.mltask_settings["modeling"]["gridSearchParams"])
-
-    @property
-    def split_params(self):
-        """
-        Gets a handle to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        return self.get_split_params()
-
-    def get_split_params(self):
-        """
-        Gets a handle to modify train/test splitting params.
-        
-        :rtype: :class:`PredictionSplitParamsHandler`
-        """
-        return PredictionSplitParamsHandler(self.mltask_settings)
-
-    def get_assertions_params(self):
-        """
-        Retrieves the assertions parameters for this ml task
-
-        :rtype: :class:`DSSMLAssertionsParams`
-        """
-        return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
+            return super(DSSPredictionMLTaskSettings, self).get_algorithm_settings(algorithm_name)
 
     def split_ordered_by(self, feature_name, ascending=True):
         """
@@ -1745,10 +1939,18 @@ class DSSPredictionMLTaskSettings(DSSMLTaskSettings):
         warnings.warn("remove_sample_weighting() is deprecated, please use set_weighting(method=\"NO_WEIGHTING\") instead", DeprecationWarning)
         return self.set_weighting(method="NO_WEIGHTING")
 
+    def get_assertions_params(self):
+        """
+        Retrieves the assertions parameters for this ml task
+
+        :rtype: :class:`DSSMLAssertionsParams`
+        """
+        return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
+
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
-    algorithm_remap = {
+    _algorithm_remap = {
         "DBSCAN": "db_scan_clustering",
         "SPECTRAL": "spectral_clustering",
         "WARD": "ward_clustering",
@@ -1782,13 +1984,262 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
         :return: A dict of the settings for an algorithm
         :rtype: dict
         """
-        if algorithm_name in self.__class__.algorithm_remap:
-            algorithm_name = self.__class__.algorithm_remap[algorithm_name]
+        if algorithm_name in self.__class__._algorithm_remap:
+            algorithm_name = self.__class__._algorithm_remap[algorithm_name]
             return self.mltask_settings["modeling"][algorithm_name.lower()]
         elif algorithm_name in self._get_custom_algorithm_names():
             return self._get_custom_algorithm_settings(algorithm_name)
         else:
             raise ValueError("Unknown algorithm: {}".format(algorithm_name))
+
+
+class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
+    __doc__ = []
+    _algorithm_remap = {
+        "TRIVIAL_IDENTITY_TIMESERIES": PredictionAlgorithmMeta("trivial_identity_timeseries"),
+        "SEASONAL_NAIVE": PredictionAlgorithmMeta("seasonal_naive_timeseries", SeasonalNaiveSettings),
+        "AUTO_ARIMA": PredictionAlgorithmMeta("autoarima_timeseries", AutoArimaSettings),
+        "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
+        "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
+        "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
+        "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
+        "GLUONTS_TRANSFORMER": PredictionAlgorithmMeta("gluonts_transformer_timeseries", GluonTSTransformerSettings),
+        "GLUONTS_MQCNN": PredictionAlgorithmMeta("gluonts_mqcnn_timeseries", GluonTSMQCNNSettings),
+    }
+
+    _TIME_UNITS = {"MILLISECOND", "SECOND", "MINUTE", "HOUR", "DAY", "BUSINESS_DAY", "WEEK", "MONTH", "QUARTER", "HALF_YEAR", "YEAR"}
+    _INTERPOLATION_METHODS = {"NEAREST", "PREVIOUS", "NEXT", "LINEAR", "QUADRATIC", "CUBIC", "CONSTANT"}
+    _EXTRAPOLATION_METHODS = {"PREVIOUS_NEXT", "NO_EXTRAPOLATION", "CONSTANT", "LINEAR", "QUADRATIC", "CUBIC"}
+    _CATEGORICAL_IMPUTATION_METHODS = {"MOST_COMMON", "NULL", "CONSTANT", "PREVIOUS_NEXT", "PREVIOUS", "NEXT"}
+    _DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
+
+    class PredictionTypes:
+        TIMESERIES_FORECAST = "TIMESERIES_FORECAST"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        super(DSSTimeseriesForecastingMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        prediction_type = self.get_prediction_type()
+        if prediction_type != self.PredictionTypes.TIMESERIES_FORECAST:
+            raise ValueError("Unknown prediction type: {}".format(prediction_type))
+
+    def get_time_step_params(self):
+        """
+        Gets the time step parameters for the time series forecasting task. This returns a reference to the
+        time step parameters, not a copy, so changes made to the returned object will be reflected when saving
+
+        :return: A dict of the time step parameters
+        :rtype: dict
+        """
+        return self.mltask_settings["timestepParams"]
+
+    def set_time_step(self, time_unit=None, n_time_units=None, end_of_week_day=None, reguess=True, update_algorithm_settings=True):
+        """
+        Sets the time step parameters for the time series forecasting task.
+
+        :param time_unit: time unit for forecasting step. Valid values are: MILLISECOND, SECOND, MINUTE, HOUR, DAY,
+                         BUSINESS_DAY, WEEK, MONTH, QUARTER, HALF_YEAR, YEAR
+        :type time_unit: str
+        :param n_time_units: number of time units within a time step
+        :type n_time_units: int
+        :param end_of_week_day: only useful for the WEEK time unit. Valid values are: 1 (Sunday), 2 (Monday), ..., 7 (Saturday)
+        :type end_of_week_day: int
+        :param reguess: Defaults to true. Whether to reguess the ML task settings after changing the time step params
+        :type reguess: bool
+        :param update_algorithm_settings: Defaults to true. Whether the algorithm settings should be reguessed after changing time step parameters.
+        :type update_algorithm_settings: bool
+        :return:
+        """
+        time_step_params = self.get_time_step_params()
+        if time_unit is not None:
+            assert time_unit in self._TIME_UNITS, "Invalid time unit, should be in {}".format(self._TIME_UNITS)
+            time_step_params["timeunit"] = time_unit
+        if n_time_units is not None:
+            assert isinstance(n_time_units, int), "n_time_units should be an int"
+            assert n_time_units > 0, "n_time_units should be positive"
+            time_step_params["numberOfTimeunits"] = n_time_units
+        if end_of_week_day is not None:
+            assert end_of_week_day in {1, 2, 3, 4, 5, 6, 7}, "Invalid end_of_week_day, should be in [1, 2, 3, 4, 5, 6, 7]"
+            if time_step_params["timeunit"] != "WEEK":
+                logger.warning("Changing end of week day, but time unit is not WEEK")
+            time_step_params["endOfWeekDay"] = end_of_week_day
+            if reguess:
+                logger.info("Reguessing ML task settings after changing time step params")
+                self.client._perform_empty(
+                    "POST",
+                    "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/reguess-with-forecasting-params".format(
+                        project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
+                    ),
+                    body={"timestepParams": time_step_params, "updateAlgorithmSettings": update_algorithm_settings},
+                )
+
+    def get_resampling_params(self):
+        """
+        Gets the time series resampling parameters for the time series forecasting task. This returns a reference to the
+        time series resampling parameters, not a copy, so changes made to the returned object will be reflected when saving
+
+        :return: A dict of the resampling parameters
+        :rtype: dict
+        """
+        return self.mltask_settings["preprocessing"]["timeseriesSampling"]
+
+    def set_numerical_interpolation(self, method=None, constant=None):
+        """
+        Sets the time series resampling numerical interpolation parameters
+
+        :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC, CUBIC, CONSTANT
+        :type method: str
+        :param constant: Value for the CONSTANT interpolation method
+        :type constant: float
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self._INTERPOLATION_METHODS, "Invalid interpolation method, should be in {}".format(self._INTERPOLATION_METHODS)
+            resampling_params["numericalInterpolateMethod"] = method
+        if constant is not None:
+            assert isinstance(constant, float) or isinstance(constant, int), "Constant value should be a number"
+            if resampling_params["numericalInterpolateMethod"] != "CONSTANT":
+                logger.warning("Changing numerical interpolation constant value, but interpolation method is not CONSTANT")
+            resampling_params["numericalInterpolateConstantValue"] = constant
+
+    def set_numerical_extrapolation(self, method=None, constant=None):
+        """
+        Sets the time series resampling numerical extrapolation parameters
+
+        :param method: Extrapolation method. Valid values are: PREVIOUS_NEXT, NO_EXTRAPOLATION, CONSTANT, LINEAR, QUADRATIC, CUBIC
+        :type method: str
+        :param constant: Value for the CONSTANT extrapolation method
+        :type constant: float
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self._EXTRAPOLATION_METHODS, "Invalid extrapolation method, should be in {}".format(self._EXTRAPOLATION_METHODS)
+            resampling_params["numericalExtrapolateMethod"] = method
+        if constant is not None:
+            assert isinstance(constant, float) or isinstance(constant, int), "Constant value should be a number"
+            if resampling_params["numericalExtrapolateMethod"] != "CONSTANT":
+                logger.warning("Changing numerical extrapolation constant value, but extrapolation method is not CONSTANT")
+            resampling_params["numericalExtrapolateConstantValue"] = constant
+
+    def set_categorical_imputation(self, method=None, constant=None):
+        """
+        Sets the time series resampling categorical imputation parameters
+
+        :param method: Imputation method. Valid values are: MOST_COMMON, NULL, CONSTANT, PREVIOUS_NEXT, PREVIOUS, NEXT
+        :type method: str
+        :param constant: Value for the CONSTANT imputation method
+        :type constant: str
+        :return:
+        """
+        resampling_params = self.get_resampling_params()
+        if method is not None:
+            assert method in self._CATEGORICAL_IMPUTATION_METHODS, "Invalid imputation method, should be in {}".format(self._CATEGORICAL_IMPUTATION_METHODS)
+            resampling_params["categoricalImputeMethod"] = method
+        if constant is not None:
+            assert isinstance(constant, str), "Constant value should be a string"
+            if resampling_params["categoricalImputeMethod"] != "CONSTANT":
+                logger.warning("Changing categorical imputation constant value, but imputation method is not CONSTANT")
+            resampling_params["categoricalConstantValue"] = constant
+
+    def set_duplicate_timestamp_handling(self, method):
+        """
+        Sets the time series duplicate timestamp handling
+
+        :param method: Duplicate timestamp handling method. Valid values are: FAIL_IF_CONFLICTING, DROP_IF_CONFLICTING, MEAN_MODE
+        :type method: str
+        """
+        resampling_params = self.get_resampling_params()
+        assert method in self._DUPLICATE_TIMESTAMPS_HANDLING_METHODS, "Invalid duplicate timestamp handling method, should be in {}".format(
+            self._DUPLICATE_TIMESTAMPS_HANDLING_METHODS
+        )
+        resampling_params["duplicateTimestampsHandlingMethod"] = method
+
+    @property
+    def forecast_horizon(self):
+        """
+        :return: Number of time steps to be forecast
+        :rtype: int
+        """
+        return self.mltask_settings["predictionLength"]
+
+    def set_forecast_horizon(self, forecast_horizon, reguess=True, update_algorithm_settings=True):
+        """
+        :param forecast_horizon: Number of time steps to be forecast
+        :type forecast_horizon: int
+        :param reguess: Defaults to true. Whether to reguess the ML task settings after changing the forecast horizon
+        :type reguess: bool
+        :param update_algorithm_settings: Defaults to true. Whether the algorithm settings should be reguessed after the forecast horizon.
+        :type update_algorithm_settings: bool
+        """
+        assert isinstance(forecast_horizon, int)
+        self.mltask_settings["predictionLength"] = forecast_horizon
+        if reguess:
+            logger.info("Reguessing ML task settings after changing forecast horizon")
+            self.client._perform_empty(
+                "POST",
+                "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/reguess-with-forecasting-params".format(
+                    project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
+                ),
+                body={"forecastHorizon": forecast_horizon, "updateAlgorithmSettings": update_algorithm_settings},
+            )
+
+
+    @property
+    def evaluation_gap(self):
+        """
+        :return: Number of skipped time steps for evaluation
+        :rtype: int
+        """
+        return self.mltask_settings["evaluationParams"]["gapSize"]
+
+    @evaluation_gap.setter
+    def evaluation_gap(self, value):
+        """
+        :param value: Number of skipped time steps for evaluation
+        :type value: int
+        """
+        assert isinstance(value, int)
+        assert value < self.forecast_horizon, "Gap must be smaller than the forecast horizon"
+        self.mltask_settings["evaluationParams"]["gapSize"] = value
+        self.mltask_settings["evaluationParams"]["testSize"] = self.forecast_horizon - value
+
+    @property
+    def time_variable(self):
+        """
+        :return: Feature used as time variable (read-only)
+        :rtype: str
+        """
+        return self.mltask_settings["timeVariable"]
+
+    @property
+    def timeseries_identifiers(self):
+        """
+        :return: Features used as time series identifiers (read-only copy)
+        :rtype: list
+        """
+        return list(self.mltask_settings["timeseriesIdentifiers"])
+
+    @property
+    def quantiles_to_forecast(self):
+        """
+        :return: List of quantiles to forecast
+        :rtype: list
+        """
+        return self.mltask_settings["quantilesToForecast"]
+
+    @quantiles_to_forecast.setter
+    def quantiles_to_forecast(self, values):
+        """
+        :param values: List of quantiles to forecast:
+                       - 0.5 should always be included
+                       - Values should be between 0.0001 and 0.9999
+                       - Values should be defined up to 4 digits after decimal point
+        :type values: list
+        """
+        assert isinstance(values, list)
+        self.mltask_settings["quantilesToForecast"] = sorted(set(values))
 
 
 class DSSTrainedModelDetails(object):
@@ -2484,6 +2935,7 @@ class DSSScatterPlots(object):
         ret = {'cluster':self.scatters['cluster'], 'x':self.scatters['features'].get(feature_x, None), 'y':self.scatters['features'].get(feature_x, None)}
         return ret
 
+
 class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained prediction model
@@ -2492,7 +2944,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
+        super(DSSTrainedPredictionModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
     def get_roc_curve_data(self):
         roc = self.details.get("perf", {}).get("rocVizData",{})
@@ -3261,7 +3713,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
-        DSSTrainedModelDetails.__init__(self, details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
+        super(DSSTrainedClusteringModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
 
     def get_raw(self):
@@ -3401,7 +3853,10 @@ class DSSMLTask(object):
                 "GET", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id))
 
         if settings["taskType"] == "PREDICTION":
-            return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            if settings["predictionType"] == DSSTimeseriesForecastingMLTaskSettings.PredictionTypes.TIMESERIES_FORECAST:
+                return DSSTimeseriesForecastingMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            else:
+                return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
         else:
             return DSSClusteringMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
 
@@ -3656,24 +4111,69 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
-    def guess(self, prediction_type=None, reguess_level=None):
+    def guess(self, prediction_type=None, reguess_level=None, target_variable=None, timeseries_identifiers=None, time_variable=None, full_reguess=None):
         """
-        Guess the feature handling and the algorithms.
+        Reguess all the settings of the ML task when no optional parameter are given.
+        For prediction ML tasks only, set a new value for a core parameter of the task (target variable or prediction
+        type) and subsequently reguess the impacted settings.
 
-        :param string prediction_type: In case of a prediction problem the prediction type can be specify. Valid values are BINARY_CLASSIFICATION, REGRESSION, MULTICLASS.
-        :param bool reguess_level: One of the following values: TARGET_CHANGE, TARGET_REGUESS and FULL_REGUESS. Only valid for prediction ML Tasks, cannot be specified if prediction_type is also set.
+        :param string prediction_type: Only valid for prediction tasks of either `BINARY_CLASSIFICATION`, `MULTICLASS`
+               or `REGRESSION` type, ignored otherwise. The prediction type to set.
+               Cannot be set if target_variable, time_variable, or timeseries_identifiers is also specified.
+        :param string target_variable: Only valid for prediction tasks, ignored for clustering. The target variable to
+               set. Cannot be set if prediction_type, time_variable, or timeseries_identifiers is also specified.
+        :param list timeseries_identifiers: Only valid for time series forecasting tasks. List of columns to be used as
+               time series identifiers.
+               Cannot be set if prediction_type, target_variable, or time_variable is also specified.
+        :param string time_variable: Only valid for time series forecasting tasks. Column to be used as time variable.
+               Cannot be set if prediction_type, target_variable, or timeseries_identifiers is also specified.
+        :param bool full_reguess: Only valid for prediction tasks, ignored for clustering. Scope of the reguess process:
+               whether it should reguess all the settings after changing a core parameter, or only reguess impacted
+               settings (e.g. target remapping when changing the target, metrics when changing the prediction type...).
+               Ignored if no core parameter is given. Defaults to true.
+        :param string reguess_level: Deprecated, use `full_reguess` instead. Only valid for prediction tasks. Can be
+               one of the following values:
+               - TARGET_CHANGE: Change the target if target_variable is specified, reguess the target remapping, and
+                                clear the model's assertions if any.
+                                Equivalent to `full_reguess`=False (recommended usage)
+               - FULL_REGUESS:  All the settings of the ML task are reguessed.
+                                Equivalent to `full_reguess`=True (recommended usage)
         """
         obj = {}
         if prediction_type is not None:
             obj["predictionType"] = prediction_type
 
-        if reguess_level is not None:
-            obj["reguessLevel"] = reguess_level
+        if timeseries_identifiers is not None:
+            obj["timeseriesIdentifiers"] = timeseries_identifiers
+
+        if time_variable is not None:
+            obj["timeVariable"] = time_variable
+
+        if target_variable is not None:
+            obj["targetVariable"] = target_variable
+
+        if full_reguess is not None:
+            obj["fullReguess"] = full_reguess
+            if reguess_level is not None:
+                logger.info("'reguess_level' parameter ignored, superseded by 'full_reguess'")
+
+        if reguess_level is not None and full_reguess is None:
+            logger.info("'reguess_level' is deprecated, use 'full_reguess' instead")
+            if reguess_level == "TARGET_CHANGE":
+                obj["fullReguess"] = False
+            elif reguess_level == "FULL_REGUESS":
+                obj["fullReguess"] = True
+            else:
+                raise ValueError("Unsupported value for 'reguess_level': " + reguess_level)
+
+        if set(obj.keys()) == {"fullReguess"}:
+            logger.info("No core params given, reguessing all settings")
 
         self.client._perform_empty(
-            "PUT",
-            "/projects/%s/models/lab/%s/%s/guess" % (self.project_key, self.analysis_id, self.mltask_id),
-            params = obj)
+            "PUT", "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/guess".format(
+                project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
+            ), params=obj
+        )
 
 
 class DSSMLTaskQueues(object):
