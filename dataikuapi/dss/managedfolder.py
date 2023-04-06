@@ -249,7 +249,8 @@ class DSSManagedFolder(object):
 
         .. code-block:: python
 
-            future = folder.compute_metrics()
+            future_resp = folder.compute_metrics()
+            future = DSSFuture(client, future_resp.get("jobId", None), future_resp)
             metrics = future.wait_for_result()
             print("Computed in %s ms" % (metrics["endTime"] - metrics["startTime"]))
             for computed in metrics["computed"]:
@@ -264,23 +265,21 @@ class DSSManagedFolder(object):
                        in the dict returned by :meth:`get_definition`
         :type probes: dict
 
-        :returns: a DSSFuture representing the task of computing the probes
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
-
+        :returns: a future as dict representing the task of computing the probes
+        :rtype: dict
         """
         url = "/projects/%s/managedfolders/%s/actions" % (self.project_key, self.odb_id)
         if metric_ids is not None:
-            future_resp = self.client._perform_json(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetricsFromIds" % url,
                      body={"metricIds" : metric_ids})
         elif probes is not None:
-            future_resp = self.client._perform_json(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetrics" % url,
                      body=probes)
         else:
-            future_resp = self.client._perform_json(
+            return self.client._perform_json(
                     "POST" , "%s/computeMetrics" % url)
-        return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
 
 	                
     ########################################################

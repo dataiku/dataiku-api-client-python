@@ -486,7 +486,7 @@ class DSSProjectDeployerDeployment(object):
 
             You may only delete a deployment if it is disabled and has been updated after disabling it.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/project-deployer/deployments/%s" % (self.deployment_id))
 
 
