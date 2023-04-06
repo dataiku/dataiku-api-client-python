@@ -11,7 +11,7 @@ setup(
     name='dataiku-api-client',
     version=VERSION,
     license="Apache Software License",
-    packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin", "dataikuapi.fm",
+    packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin", "dataikuapi.fm", "dataikuapi.govern",
               "dataikuapi.dss_plugin_mlflow"],
     description="Python API client for Dataiku APIs",
     long_description=long_description,
