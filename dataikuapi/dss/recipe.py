@@ -949,32 +949,32 @@ class DSSRecipeCreator(object):
                 ret.append(item["ref"])
         return ret
 
-    def with_input(self, object_id, project_key=None, role="main"):
+    def with_input(self, input_id, project_key=None, role="main"):
         """
         Add an existing object as input to the recipe-to-be-created.
 
-        :param string dataset_name: name of the dataset, or identifier of the managed folder
-                                    or identifier of the saved model
+        :param string input_id: name of the dataset, or identifier of the managed folder
+                                or identifier of the saved model
         :param string project_key: project containing the object, if different from the one where the recipe is created
         :param string role: the role of the recipe in which the input should be added. Most recipes only have one
                             role named "main".
         """
-        return self._with_input(object_id, project_key, role)
+        return self._with_input(input_id, project_key, role)
 
-    def with_output(self, object_id, append=False, role="main"):
+    def with_output(self, output_id, append=False, role="main"):
         """
         Add an existing object as output to the recipe-to-be-created.
 
         The output dataset must already exist. 
 
-        :param string object_id: name of the dataset, or identifier of the managed folder
+        :param string output_id: name of the dataset, or identifier of the managed folder
                                  or identifier of the saved model
         :param boolean append: whether the recipe should append or overwrite the output when running
                                (note: not available for all dataset types)
         :param string role: the role of the recipe in which the input should be added. Most recipes only have one
                             role named "main".
         """
-        return self._with_output(object_id, append, role)
+        return self._with_output(output_id, append, role)
 
     def build(self):
         """
@@ -1029,23 +1029,25 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         self.create_output_folder = None
         self.output_folder_settings = None
 
-    def with_existing_output(self, object_id, append=False):
+    def with_existing_output(self, output_id, append=False):
         """
         Add an existing object as output to the recipe-to-be-created.
 
         The output dataset must already exist.
 
-        :param string object_id: name of the dataset, or identifier of the managed folder
+        :param string output_id: name of the dataset, or identifier of the managed folder
                                  or identifier of the saved model
         :param boolean append: whether the recipe should append or overwrite the output when running
                                (note: not available for all dataset types)
         """
         assert self.create_output_dataset is None
         self.create_output_dataset = False
-        self._with_output(object_id, append)
+        self._with_output(output_id, append)
         return self
 
-    def with_new_output(self, name, connection_id, type_option_id=None, format_option_id=None, override_sql_schema=None, partitioning_option_id=None, append=False, object_type='DATASET', overwrite=False):
+    def with_new_output(self, name, connection, type=None, format=None, 
+                        override_sql_schema=None, partitioning_option_id=None, 
+                        append=False, object_type='DATASET', overwrite=False, **kwargs):
         """
         Create a new dataset or managed folder as output to the recipe-to-be-created. 
 
@@ -1054,13 +1056,13 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         folder is created, depends on the recipe type.
 
         :param string name: name of the dataset or identifier of the managed folder
-        :param string connection_id: name of the connection to create the dataset or managed folder on
-        :param string type_option_id: sub-type of dataset or managed folder, for connections where the type 
-                                    could be ambiguous. Typically applies to SSH connections, where sub-types
-                                    can be SCP or SFTP
-        :param string format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
-                                        CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
-                                        AVRO, ORC
+        :param string connection: name of the connection to create the dataset or managed folder on
+        :param string type: sub-type of dataset or managed folder, for connections where the type 
+                            could be ambiguous. Typically applies to SSH connections, where sub-types
+                            can be SCP or SFTP
+        :param string format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                              CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
+                              AVRO, ORC
         :param boolean override_sql_schema: schema to force dataset, for SQL dataset. If left empty, will be autodetected
         :param string partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
                                               value of 'copy:dataset:foo'. If unset, then the output will be non-partitioned
@@ -1069,6 +1071,18 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
         :param string object_type: DATASET or MANAGED_FOLDER
         :param boolean overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
+        for k in kwargs: #for retrop comp
+            if k == "connection_id":
+                connection = kwargs.get("connection_id")
+            elif k == "format_option_id":
+                format = kwargs.get("format_option_id")
+            elif k == "typeOptionId":
+                type = kwargs.get("typeOptionId")
+            elif k == "type_option_id":
+                type = kwargs.get("type_option_id")
+            else:
+                raise Exception("Unknown argument '{}'".format(k))
+        
         if object_type == 'DATASET':
             assert self.create_output_dataset is None
 
@@ -1077,16 +1091,16 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
                 dataset.delete(drop_data=True)
 
             self.create_output_dataset = True
-            self.output_dataset_settings = {'connectionId':connection_id,'typeOptionId':type_option_id,'specificSettings':{'formatOptionId':format_option_id, 'overrideSQLSchema':override_sql_schema},'partitioningOptionId':partitioning_option_id}
+            self.output_dataset_settings = {'connectionId':connection,'typeOptionId':type,'specificSettings':{'formatOptionId':format, 'overrideSQLSchema':override_sql_schema},'partitioningOptionId':partitioning_option_id}
             self._with_output(name, append)
         elif object_type == 'MANAGED_FOLDER':
             assert self.create_output_folder is None
             self.create_output_folder = True
-            self.output_folder_settings = {'connectionId':connection_id,'typeOptionId':type_option_id,'partitioningOptionId':partitioning_option_id}
+            self.output_folder_settings = {'connectionId':connection,'typeOptionId':type,'partitioningOptionId':partitioning_option_id}
             self._with_output(name, append)
         return self
 
-    def with_output(self, dataset_name, append=False):
+    def with_output(self, output_id, append=False):
         """
         Add an existing object as output to the recipe-to-be-created.
 
@@ -1094,7 +1108,7 @@ class SingleOutputRecipeCreator(DSSRecipeCreator):
 
             Alias of :meth:`with_existing_output()`
         """
-        return self.with_existing_output(dataset_name, append)
+        return self.with_existing_output(output_id, append)
 
     def _finish_creation_settings(self):
         self.creation_settings['createOutputDataset'] = self.create_output_dataset
@@ -1111,14 +1125,14 @@ class VirtualInputsSingleOutputRecipeCreator(SingleOutputRecipeCreator):
         SingleOutputRecipeCreator.__init__(self, type, name, project)
         self.virtual_inputs = []
 
-    def with_input(self, dataset_name, project_key=None):
+    def with_input(self, input_id, project_key=None):
         """
         Add an existing object as input to the recipe-to-be-created.
 
-        :param string dataset_name: name of the dataset
+        :param string input_id: name of the dataset
         :param string project_key: project containing the object, if different from the one where the recipe is created
         """
-        self.virtual_inputs.append(self._build_ref(dataset_name, project_key))
+        self.virtual_inputs.append(self._build_ref(input_id, project_key))
         return self
 
     def _finish_creation_settings(self):
@@ -1917,7 +1931,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
 
     .. important::
 
-        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProhect.new_recipe()`
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()`
      """
     def __init__(self, name, type, project):
         DSSRecipeCreator.__init__(self, type, name, project)
@@ -1933,9 +1947,10 @@ class CodeRecipeCreator(DSSRecipeCreator):
         return self
 
     def with_new_output_dataset(self, name, connection,
-                                type_option_id=None, format_option_id=None,
+                                type=None, format=None,
                                 copy_partitioning_from="FIRST_INPUT",
-                                append=False, overwrite=False):
+                                append=False, overwrite=False,
+                                **kwargs):
         """
         Create a new managed dataset as output to the recipe-to-be-created. 
 
@@ -1943,20 +1958,30 @@ class CodeRecipeCreator(DSSRecipeCreator):
 
         :param string name: name of the dataset
         :param string connection: name of the connection to create the dataset on
-        :param string type_option_id: sub-type of dataset or managed folder, for connections where the type 
-                                    could be ambiguous. Typically applies to SSH connections, where sub-types
-                                    can be SCP or SFTP
-        :param string format_option_id: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
-                                        CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
-                                        AVRO, ORC
+        :param string type: sub-type of dataset or managed folder, for connections where the type 
+                            could be ambiguous. Typically applies to SSH connections, where sub-types
+                            can be SCP or SFTP
+        :param string format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                              CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
+                              AVRO, ORC
         :param string partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
                                               value of 'copy:dataset:foo'. If unset, then the output will be non-partitioned
         :param boolean append: whether the recipe should append or overwrite the output when running
                                (note: not available for all dataset types)
         :param boolean overwrite: If the dataset being created already exists, overwrite it (and delete data)
         """
+        for k in kwargs:  # for backward compat
+            if k == "format_option_id":
+                format = kwargs.get("format_option_id")
+            elif k == "typeOptionId":
+                type = kwargs.get("typeOptionId")
+            elif k == "type_option_id":
+                type = kwargs.get("type_option_id")
+            else:
+                raise Exception("Unknown argument '{}'".format(k))
+
         ch = self.project.new_managed_dataset_creation_helper(name)
-        ch.with_store_into(connection, type_option_id=type_option_id, format_option_id=format_option_id)
+        ch.with_store_into(connection, type_option_id=type, format_option_id=format)
 
         # FIXME: can't manage input folder
         if copy_partitioning_from == "FIRST_INPUT":
@@ -1973,7 +1998,7 @@ class CodeRecipeCreator(DSSRecipeCreator):
         self.with_output(name, append=append)
         return self
 
-    def with_new_output_streaming_endpoint(self, name, connection, format_option_id=None, overwrite=False):
+    def with_new_output_streaming_endpoint(self, name, connection, format=None, overwrite=False, **kwargs):
         """
         Create a new managed streaming endpoint as output to the recipe-to-be-created. 
 
@@ -1981,14 +2006,19 @@ class CodeRecipeCreator(DSSRecipeCreator):
 
         :param str name: name of the streaming endpoint to create
         :param str connection: name of the connection to create the streaming endpoint on
-        :param str format_option_id: name of a format preset relevant for the streaming endpoint type. Possible values are: 
+        :param str format: name of a format preset relevant for the streaming endpoint type. Possible values are: 
                            json, avro, single (kafka endpoints) or json, string (SQS endpoints). If None, uses the 
                            default
         :param overwrite: If the streaming endpoint being created already exists, overwrite it
         """
+        for k in kwargs:  # for backward compat
+            if k == "format_option_id":
+                format = kwargs.get("format_option_id")
+            else:
+                raise Exception("Unknown argument '{}'".format(k))     
 
         ch = self.project.new_managed_streaming_endpoint(name)
-        ch.with_store_into(connection, format_option_id=format_option_id)
+        ch.with_store_into(connection, format_option_id=format)
         ch.create(overwrite=overwrite)
 
         self.with_output(name, append=False)
@@ -2132,7 +2162,7 @@ class PredictionScoringRecipeCreator(SingleOutputRecipeCreator):
         builder.with_new_output("my_output_dataset", "myconnection")
 
         # Or for a filesystem output connection
-        # builder.with_new_output("my_output_dataset, "filesystem_managed", format_option_id="CSV_EXCEL_GZIP")
+        # builder.with_new_output("my_output_dataset, "filesystem_managed", format="CSV_EXCEL_GZIP")
 
         new_recipe = builder.build()
     """
@@ -2221,13 +2251,14 @@ class EvaluationRecipeCreator(DSSRecipeCreator):
         """
         return self._with_input(model_id, self.project.project_key, "model")
 
-    def with_output(self, name):
+    def with_output(self, output_id):
         """
         Set the output dataset containing the scored input.
 
-        :param string name: name of an existing dataset
+        :param string output_id: name of the dataset, or identifier of the managed folder
+                                 or identifier of the saved model
         """
-        return self._with_output(name, role="main")
+        return self._with_output(output_id, role="main")
 
     def with_output_metrics(self, name):
         """
@@ -2359,7 +2390,7 @@ class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
         builder.with_new_output("my_output_dataset", "myconnection")
 
         # Or for a filesystem output connection
-        # builder.with_new_output("my_output_dataset, "filesystem_managed", format_option_id="CSV_EXCEL_GZIP")
+        # builder.with_new_output("my_output_dataset, "filesystem_managed", format="CSV_EXCEL_GZIP")
 
         new_recipe = builder.build()
 
