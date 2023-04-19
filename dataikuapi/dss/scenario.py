@@ -626,7 +626,7 @@ class DSSTriggerFire(object):
 
     def wait_for_scenario_run(self, no_fail=False):
         """
-        Polls, waiting for the run of the sceanrio that this trigger activation launched to be available, or 
+        Polls, waiting for the run of the scenario that this trigger activation launched to be available, or
         for the trigger fire to be cancelled (possibly cancelled by another firing)
 
         :param no_fail: If no_fail=True, will return None if the trigger fire is cancelled, else will raise
