@@ -2,10 +2,16 @@ import time
 import sys
 from ..utils import DataikuException
 
+
 class DSSJob(object):
     """
-    A job on the DSS instance
+    A job on the DSS instance.
+
+    .. important::
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.project.DSSProject.get_job`
+        or :meth:`dataikuapi.dss.project.DSSProject.start_job`.
     """
+
     def __init__(self, client, project_key, id):
         self.client = client
         self.id = id
@@ -13,30 +19,33 @@ class DSSJob(object):
 
     def abort(self):
         """
-        Aborts the job
+        Aborts the job.
+
+        :returns: a confirmation message for the request
+        :rtype: dict
         """
         return self.client._perform_json(
             "POST", "/projects/%s/jobs/%s/abort" % (self.project_key, self.id))
 
     def get_status(self):
         """
-        Get the current status of the job
-        
-        Returns:
-            the state of the job, as a JSON object
+        Gets the current status of the job.
+
+        :returns: the state of the job
+        :rtype: dict
         """
         return self.client._perform_json(
             "GET", "/projects/%s/jobs/%s/" % (self.project_key, self.id))
 
     def get_log(self, activity=None):
         """
-        Get the logs of the job
-        
-        Args:
-            activity: (optional) the name of the activity in the job whose log is requested
-            
-           Returns:
-               the log, as a string
+        Gets the logs of the job. If an activity is passed in the parameters
+        the logs will be scoped to that activity.
+
+        :param string activity: (optional) the name of the activity in the job whose log is requested (defaults to **None**)
+
+        :returns: the job logs
+        :rtype: string
         """
         return self.client._perform_text(
             "GET", "/projects/%s/jobs/%s/log" % (self.project_key, self.id),
@@ -44,14 +53,31 @@ class DSSJob(object):
                 "activity" : activity
             })
 
+
 class DSSJobWaiter(object):
     """
-    Helper to wait for a job's completion
-    """    
+    Creates a helper to wait for the completion of a job.
+    
+    :param job: The job to wait for
+    :type job: :class:`dataikuapi.dss.job.DSSJob`
+    """
     def __init__(self, job):
         self.job = job
 
     def wait(self, no_fail=False):
+        """
+        Waits for the job. While waiting, if the job was aborted or if it failed
+        an exception is raised depending on the `no_fail` parameter.
+        If the job already stopped before entering this function
+        its state will be returned regardless and no error will be raised.
+        
+        :param boolean no_fail: (optional) should an error be raised if the job finished with another status than `DONE` (defaults to **False**)
+
+        :raises DataikuException: when the job does not complete successfully
+
+        :returns: the job state
+        :rtype: dict
+        """
         job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
         sleep_time = 2
         while job_state not in ["DONE", "ABORTED", "FAILED"]:

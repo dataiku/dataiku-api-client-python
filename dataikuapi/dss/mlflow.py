@@ -1,4 +1,8 @@
 import json
+import time
+from datetime import datetime
+from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
+from dataikuapi.dss.savedmodel import ExternalModelVersionHandler
 
 class DSSMLflowExtension(object):
     """
@@ -147,14 +151,16 @@ class DSSMLflowExtension(object):
         Classes must be specified if and only if the model is a BINARY_CLASSIFICATION or MULTICLASS model.
 
         This information is leveraged to filter saved models on their prediction type and prefill the classes
-        when deploying using the GUI an MLflow model as a version of a DSS Saved Model.
+        when deploying (using the GUI or :meth:`deploy_run_model`) an MLflow model as a version of a DSS Saved Model.
 
         :param prediction_type: prediction type (see doc)
         :type prediction_type: str
         :param run_id: run_id for which to set the classes
         :type run_id: str
-        :param classes: ordered list of classes (not for all prediction types, see doc)
-        :type classes: list(str)
+        :param classes: ordered list of classes (not for all prediction types, see doc). Every class will be converted by calling str().
+            The classes must be specified in the same order as learned by the model.
+            Some flavors such as scikit-learn may allow you to build this list from the model itself.
+        :type classes: list
         :param code_env_name: name of an adequate DSS python code environment
         :type code_env_name: str
         :param target: name of the target
@@ -172,9 +178,8 @@ class DSSMLflowExtension(object):
                 raise ValueError('Wrong type for classes: {}'.format(type(classes)))
             for cur_class in classes:
                 if cur_class is None:
-                    raise ValueError('class can not be None')
-                if not isinstance(cur_class, str):
-                    raise ValueError('Wrong type for class {}: {}'.format(cur_class, type(cur_class)))
+                    raise ValueError('class cannot be None')
+            classes = [str(cur_class) for cur_class in classes]
 
         if code_env_name and not isinstance(code_env_name, str):
             raise ValueError('code_env_name must be a string')
@@ -198,3 +203,97 @@ class DSSMLflowExtension(object):
             headers={"x-dku-mlflow-project-key": self.project_key},
             body=params
         )
+
+    def deploy_run_model(self, run_id, sm_id, version_id=None, use_inference_info=True, code_env_name=None, evaluation_dataset=None,
+                         target_column_name=None, class_labels=None, model_sub_folder=None, selection=None, activate=True,
+                         binary_classification_threshold=0.5, use_optimal_threshold=True):
+        """
+        Deploys a model from an experiment run, with lineage.
+
+        Simple usage:
+
+        .. code-block:: python
+
+            mlflow_ext.set_run_inference_info(run_id, "BINARY_CLASSIFICATION", list_of_classes, code_env_name, target_column_name)
+            sm_id = project.create_mlflow_pyfunc_model("model_name", "BINARY_CLASSIFICATION").id
+            mlflow_extension.deploy_run_model(run_id, sm_id, evaluation_dataset)
+
+        If the optional `evaluation_dataset` is not set, the model will be deployed but not evaluated: this makes `target_column_name` optional as well in :meth:`set_run_inference_info`
+
+        :param run_id: The id of the run to deploy
+        :type run_id: str
+        :param sm_id: The id of the saved model to deploy the run to
+        :type sm_id: str
+        :param version_id: [optional] Unique identifier of a Saved Model Version. If id already exists, existing version is overwritten.
+            Whitespaces or dashes are not allowed. If not set, a timestamp will be used as version_id.
+        :type version_id: str
+        :param use_inference_info: [optional] default to True. if set, uses the :meth:`set_inference_info` previously done
+            on the run to retrieve the prediction type of the model, its code environment, classes and target.
+        :type use_inference_info: bool
+        :param evaluation_dataset: [optional] The evaluation dataset, if the deployment of the models can imply an evaluation.
+        :type evaluation_dataset: str
+        :param target_column_name: [optional] The target column of the evaluation dataset. Can be set by :meth:`set_inference_info`.
+        :type target_column_name: str
+        :param class_labels: [optional] The class labels of the target. Can be set by :meth:`set_inference_info`.
+        :type class_labels: list(str)
+        :param code_env_name: [optional] The code environment to be used. Must contain a supported version of the mlflow package and the ML libs used to train the model.
+            Can be set by :meth:`set_inference_info`.
+        :type code_env_name: str
+        :param model_sub_folder: [optional] The name of the subfolder containing the model. Optional if it is unique.
+            Existing values can be retrieved with `project.get_mlflow_extension().list_models(run_id)`
+        :type model_sub_folder: str
+        :param str selection: [optional] will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
+        :type selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation or dict
+                                e.g.
+                                    DSSDatasetSelectionBuilder().with_head_sampling(100)
+                                    {"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}
+        :param activate: [optional] True by default. Activate or not the version after deployment
+        :type activate: bool
+        :param binary_classification_threshold: [optional] Threshold (or cut-off) value to override if the model is a binary classification
+        :type binary_classification_threshold: float
+        :param use_optimal_threshold: [optional] Use or not the optimal threshold for the saved model metric computed at evaluation
+        :type use_optimal_threshold: bool
+        :return: a handler in order to interact with the new MLFlow model version
+        :rtype: :class:`dataikuapi.dss.savedmodel.ExternalModelVersionHandler`
+        """
+        sampling_param = selection.build() if isinstance(
+            selection, DSSDatasetSelectionBuilder) else selection
+
+        if version_id is None:
+            dt = datetime.fromtimestamp(time.time())
+            version_id = dt.strftime("%Y_%m_%dT%H_%M_%S")
+
+        prediction_type = self.project.get_saved_model(sm_id).get_settings().settings["miniTask"].get("predictionType")
+        output_labels = []
+        if class_labels:
+            for label in class_labels:
+                output_labels.append({'label': label})
+
+        model_version_info_obj = {}
+        if evaluation_dataset is not None:
+            model_version_info_obj["gatherFeaturesFromDataset"] = evaluation_dataset
+        if target_column_name is not None:
+            model_version_info_obj["targetColumnName"] = target_column_name
+        if output_labels is not None:
+            model_version_info_obj["classLabels"] = output_labels
+        if code_env_name is not None:
+            model_version_info_obj["pythonCodeEnvName"] = code_env_name
+        if prediction_type is not None:
+            model_version_info_obj["predictionType"] = prediction_type
+
+        self.client._perform_http("POST", "/api/2.0/mlflow/extension/deploy-run",
+                                  headers={"x-dku-mlflow-project-key": self.project_key},
+                                  params={"projectKey": self.project_key,
+                                          "runId": run_id,
+                                          "smId": sm_id,
+                                          "modelSubfolder": model_sub_folder,
+                                          "versionId": version_id,
+                                          "modelVersionInfo": json.dumps(model_version_info_obj),
+                                          "samplingParam": sampling_param,
+                                          "activate": activate,
+                                          "binaryClassificationThreshold": binary_classification_threshold,
+                                          "useOptimalThreshold": use_optimal_threshold,
+                                          "useInferenceInfo": use_inference_info
+                                          }
+                                      )
+        return ExternalModelVersionHandler(sm_id, version_id)

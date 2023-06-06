@@ -1,5 +1,8 @@
 from .future import FMFuture
 
+from ..dssclient import DSSClient
+from ..govern_client import GovernClient
+
 import sys
 
 if sys.version_info > (3, 4):
@@ -43,10 +46,15 @@ class FMInstanceCreator(object):
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         # backward compatibility, was a string before . be sure the value falls into the enum
-        value = dss_node_type;
-        if isinstance(dss_node_type, str):
-            value = FMNodeType[dss_node_type.upper()]
-        self.data["dssNodeType"] = value.value
+        value = dss_node_type
+        # python2 does not support enum, keep string
+        if sys.version_info > (3, 4):
+            if isinstance(dss_node_type, str):
+                value = FMNodeType[dss_node_type.upper()]
+            self.data["dssNodeType"] = value.value
+        else:
+            value = FMNodeType.get_from_string(dss_node_type.upper())
+            self.data["dssNodeType"] = value;
         return self
 
     def with_cloud_instance_type(self, cloud_instance_type):
@@ -190,6 +198,28 @@ class FMInstance(object):
         self.client = client
         self.instance_data = instance_data
         self.id = instance_data["id"]
+
+    def get_client(self):
+        """
+        Get a Python client to communicate with a DSS instance
+        :return: a Python client to communicate with the target instance
+        :rtype: :class:`dataikuapi.dssclient.DSSClient`
+        """
+        instance_status = self.get_status()
+        external_url = instance_status.get("publicURL")
+
+        admin_api_key_resp = self.client._perform_tenant_json(
+            "GET", "/instances/%s/admin-api-key" % self.id
+        )
+        api_key = admin_api_key_resp["adminAPIKey"]
+
+        if not external_url:
+            raise ValueError("No external URL available for node %s. This node may not be provisioned yet" % self.id)
+
+        if self.instance_data.get("dssNodeType") == "govern":
+            return GovernClient(external_url, api_key)
+        else:
+            return DSSClient(external_url, api_key)
 
     def reprovision(self):
         """
@@ -353,7 +383,7 @@ class FMInstance(object):
     def snapshot(self, reason_for_snapshot=None):
         """
         Create a snapshot of the instance
- 
+
         :return: Snapshot
         :rtype: :class:`dataikuapi.fm.instances.FMSnapshot`
         """
@@ -400,11 +430,22 @@ class FMGCPInstance(FMInstance):
         self.instance_data["gcpPublicIPId"] = public_ip_id
         return self
 
+
 class FMNodeType(Enum):
     DESIGN = "design"
     DEPLOYER = "deployer"
     AUTOMATION = "automation"
     GOVERN = "govern"
+
+    # Python2 emulated enum. to be removed on Python2 support removal
+    @staticmethod
+    def get_from_string(s):
+        if s == "DESIGN": return FMNodeType.DESIGN
+        if s == "DEPLOYER": return FMNodeType.DEPLOYER
+        if s == "AUTOMATION": return FMNodeType.AUTOMATION
+        if s == "GOVERN": return FMNodeType.GOVERN
+        raise Exception("Invalid Node Type " + s)
+
 
 class FMInstanceEncryptionMode(Enum):
     NONE = "NONE"
@@ -470,4 +511,3 @@ class FMSnapshot(object):
             "DELETE", "/instances/%s/snapshots/%s" % (self.instance_id, self.snapshot_id)
         )
         return FMFuture.from_resp(self.client, future)
-

@@ -1,6 +1,9 @@
-import json, copy, re
-from ..recipe import *
-from ..dataset import *
+import logging
+import re
+
+from ..dataset import DSSDataset
+from ..recipe import CodeRecipeSettings
+
 
 class _IndentContext(object):
     def __init__(self, flow_code_generator):
@@ -15,6 +18,7 @@ class _IndentContext(object):
 
 def slugify(name):
     return re.sub(r"[^A-Za-z0-9_]", "_", name)
+
 
 class FlowCodeGenerator(object):
     def __init__(self):
