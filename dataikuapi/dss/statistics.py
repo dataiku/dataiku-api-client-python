@@ -1,14 +1,13 @@
-from ..utils import DataikuException
 from .utils import DSSDatasetSelectionBuilder
 from .future import DSSFuture
-import json
-from .metrics import ComputedMetrics
-from .discussion import DSSObjectDiscussions
 
 
 class DSSStatisticsWorksheet(object):
     """
     A handle to interact with a worksheet.
+
+    .. important::
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.dataset.DSSDataset.get_statistics_worksheet`
     """
 
     def __init__(self, client, project_key, dataset_name, worksheet_id):
@@ -19,16 +18,16 @@ class DSSStatisticsWorksheet(object):
 
     def delete(self):
         """
-        Deletes the worksheet
+        Deletes the worksheet.
         """
-        return self.client._perform_empty(
+        self.client._perform_empty(
             "DELETE", "/projects/%s/datasets/%s/statistics/worksheets/%s" % (self.project_key, self.dataset_name, self.worksheet_id))
 
     def get_settings(self):
         """
-        Fetches the settings of this worksheet.
+        Gets the worksheet settings.
 
-        :return: an object to interact with the settings
+        :returns: a handle for the worksheet settings
         :rtype: :class:`DSSStatisticsWorksheetSettings`
         """
         worksheet_json = self.client._perform_json(
@@ -40,25 +39,37 @@ class DSSStatisticsWorksheet(object):
 
     def run_worksheet(self, wait=True):
         """
-        Computes the results of the whole worksheet.
+        Computes the result of the whole worksheet.
 
-        :returns: a :class:`DSSStatisticsCardResult` if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
+        When `wait` is `True`, the method waits for the computation to complete and returns the corresponding result,
+        otherwise it returns immediately a handle for a :class:`~dataikuapi.dss.future.DSSFuture` result.
+
+        :param bool wait: a flag to wait for the computation to complete (defaults to **True**)
+
+        :returns: the corresponding card result or a handle for the future result
+        :rtype: :class:`~DSSStatisticsCardResult` or :class:`~dataikuapi.dss.future.DSSFuture`
         """
-
         root_card = self.get_settings().get_raw()['rootCard']
         return self.run_card(root_card, wait=wait)
 
     def run_card(self, card, wait=True):
         """
-        Runs a card in the context of the worksheet.
+        Computes the result of a card in the context of the worksheet.
 
-        Note: the card does not need to belong to the worksheet.
+        When `wait` is `True`, the method waits for the computation to complete and returns the corresponding result,
+        otherwise it returns immediately a handle for a :class:`~dataikuapi.dss.future.DSSFuture` result.
 
-        :param card: a card to compute
-        :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
-        :returns: a :class:`DSSStatisticsCardResult` if `wait` is `True`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
+        .. note::
+            The card does not need to belong to the worksheet.
+
+        :param card: the card to compute
+        :type card: :class:`~DSSStatisticsCardSettings` or dict obtained from :meth:`DSSStatisticsCardSettings.get_raw`
+
+        :param bool wait: a flag to wait for the computations to complete (defaults to **True**)
+
+        :returns: the corresponding card result or a handle for the future result
+        :rtype: :class:`DSSStatisticsCardResult` or :class:`~dataikuapi.dss.future.DSSFuture`
         """
-
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
         future_response = self.client._perform_json(
             "POST",
@@ -76,11 +87,18 @@ class DSSStatisticsWorksheet(object):
         """
         Runs a computation in the context of the worksheet.
 
-        :param computation: a card to compute
-        :type computation: :class:`DSSStatisticsComputationSettings` or dict (obtained from ``DSSStatisticsComputationSettings.get_raw()``)
-        :returns: a :class:`DSSStatisticsComputationResult`, or a :class:`~dataikuapi.dss.future.DSSFuture` handle otherwise
-        """
+        When `wait` is `True`, the method waits for the computation to complete and returns the corresponding result,
+        otherwise it returns immediately a handle for a :class:`~dataikuapi.dss.future.DSSFuture` result.
 
+        :param computation: the computation to perform
+        :type computation: :class:`DSSStatisticsComputationSettings` or dict obtained from
+            :meth:`DSSStatisticsComputationSettings.get_raw`
+
+        :param bool wait: a flag to wait for the computations to complete (defaults to **True**)
+
+        :returns: the corresponding computation result or a handle for the future result
+        :returns: :class:`DSSStatisticsComputationResult` or :class:`~dataikuapi.dss.future.DSSFuture`
+        """
         computation = DSSStatisticsComputationSettings._from_computation_or_dict(
             computation)
         future_response = self.client._perform_json(
@@ -97,6 +115,13 @@ class DSSStatisticsWorksheet(object):
 
 
 class DSSStatisticsWorksheetSettings(object):
+    """
+    A handle to interact with the worksheet settings.
+
+    .. important::
+        Do not create this class directly, instead use :meth:`DSSStatisticsWorksheet.get_settings`
+    """
+
     def __init__(self, client, project_key, dataset_name, worksheet_id, worksheet_definition):
         self._worksheet_definition = worksheet_definition
         self.client = client
@@ -108,16 +133,17 @@ class DSSStatisticsWorksheetSettings(object):
         """
         Adds a new card to the worksheet.
 
-        :param card: card to be added
-        :type card: :class:`DSSStatisticsCardSettings` or dict (obtained from ``DSSStatisticsCardSettings.get_raw()``)
+        :param card: the card to add
+        :type card: :class:`DSSStatisticsCardSettings` or dict obtained from :meth:`DSSStatisticsCardSettings.get_raw`
         """
         card = DSSStatisticsCardSettings._from_card_or_dict(self.client, card)
         self._worksheet_definition['rootCard']['cards'].append(card.get_raw())
 
     def list_cards(self):
         """
-        Lists the cards of this worksheet.
+        Lists the cards for the worksheet.
 
+        :returns: a list of card handles
         :rtype: list of :class:`DSSStatisticsCardSettings`
         """
         return [DSSStatisticsCardSettings(self.client, card_definition)
@@ -125,17 +151,20 @@ class DSSStatisticsWorksheetSettings(object):
 
     def get_raw(self):
         """
-        Gets a reference to the raw settings of the worksheet.
+        Gets a reference to the raw representation of the worksheet settings.
 
+        :returns: the worksheet settings
         :rtype: dict
         """
         return self._worksheet_definition
 
     def set_sampling_settings(self, selection):
         """
-        Sets the sampling settings of the worksheet
+        Sets the worksheet sampling settings.
 
-        :type card: :class:`DSSDatasetSelectionBuilder` or dict (obtained from ``get_raw_sampling_selection()``)
+        :param selection: the sampling settings
+        :type selection: :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` or dict obtained from
+            :meth:`get_raw_sampling_settings`
         """
         raw_selection = selection.build() if isinstance(
             selection, DSSDatasetSelectionBuilder) else selection
@@ -143,15 +172,16 @@ class DSSStatisticsWorksheetSettings(object):
 
     def get_raw_sampling_settings(self):
         """
-        Gets a reference to the raw sampling settings of the worksheet.
+        Gets a reference to the raw representation of the worksheet sampling settings.
 
+        :returns: the sampling settings
         :rtype: dict
         """
         return self._worksheet_definition['dataSpec']['datasetSelection']
 
     def save(self):
         """
-        Saves the settings to DSS
+        Saves the settings of the worksheet.
         """
         self._worksheet_definition = self.client._perform_json(
             "PUT",
@@ -163,7 +193,7 @@ class DSSStatisticsWorksheetSettings(object):
 
 class DSSStatisticsCardSettings(object):
     """
-    Object to manipulate the settings of a card
+    A handle to interact with the card settings.
     """
 
     def __init__(self, client, card_definition):
@@ -172,17 +202,19 @@ class DSSStatisticsCardSettings(object):
 
     def get_raw(self):
         """
-        Gets a reference to the raw settings of the card.
+        Gets a reference to the raw representation of the card settings.
 
+        :returns: the card settings
         :rtype: dict
         """
         return self._card_definition
 
     def compile(self):
         """
-        Gets the underlying computation used to compute the card results.
+        Gets the computation used to compute the card result.
 
-        :rtype: DSSStatisticsComputationSettings
+        :returns: the computation settings
+        :rtype: :class:`DSSStatisticsComputationSettings`
         """
         computation_json = self.client._perform_json(
             "POST", "/statistics/cards/compile", body=self._card_definition
@@ -198,7 +230,7 @@ class DSSStatisticsCardSettings(object):
 
 class DSSStatisticsCardResult(object):
     """
-    Object storing the results of a :class:`DSSStatisticsCardSettings`
+    A handle to interact with the computed result of a :class:`DSSStatisticsCardSettings`.
     """
 
     def __init__(self, card_result):
@@ -206,8 +238,9 @@ class DSSStatisticsCardResult(object):
 
     def get_raw(self):
         """
-        Gets a reference to the raw results of the card
+        Gets a reference to the raw representation of the card result.
 
+        :returns: the card result
         :rtype: dict
         """
         return self._card_result
@@ -215,7 +248,7 @@ class DSSStatisticsCardResult(object):
 
 class DSSStatisticsComputationSettings(object):
     """
-    Object to manipulate the settings of a computation
+    A handle to interact with the computation settings.
     """
 
     def __init__(self, computation_definition):
@@ -223,8 +256,9 @@ class DSSStatisticsComputationSettings(object):
 
     def get_raw(self):
         """
-        Gets the raw settings of the computation.
+        Gets a reference to the raw representation of the computation settings.
 
+        :returns: the computation settings
         :rtype: dict
         """
         return self._computation_definition
@@ -238,7 +272,7 @@ class DSSStatisticsComputationSettings(object):
 
 class DSSStatisticsComputationResult(object):
     """
-    Object storing the results of a :class:`DSSStatisticsComputationSettings`
+    A handle to interact with the computed result of a :class:`DSSStatisticsComputationSettings`.
     """
 
     def __init__(self, computation_result):
@@ -246,8 +280,9 @@ class DSSStatisticsComputationResult(object):
 
     def get_raw(self):
         """
-        Gets a reference to the raw results of the computation
+        Gets a reference to the raw representation of the computation result.
 
+        :returns: the computation result
         :rtype: dict
         """
         return self._computation_result

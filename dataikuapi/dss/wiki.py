@@ -1,6 +1,5 @@
 from .discussion import DSSObjectDiscussions
 from ..utils import DataikuException
-import json
 import sys
 import copy
 import re
@@ -15,9 +14,12 @@ else:
 class DSSWiki(object):
     """
     A handle to manage the wiki of a project
+
+    .. important::
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.project.DSSProject.get_wiki`
     """
+
     def __init__(self, client, project_key):
-        """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_wiki`"""
         self.client = client
         self.project_key = project_key
 
@@ -45,6 +47,7 @@ class DSSWiki(object):
         Private recursive method to get the flatten list of article IDs from the taxonomy
 
         :param list taxonomy:
+
         :returns: list of articles
         :rtype: list of :class:`dataikuapi.dss.wiki.DSSWikiArticle`
         """
@@ -65,11 +68,12 @@ class DSSWiki(object):
 
     def create_article(self, article_name, parent_id=None, content=None):
         """
-        Create a wiki article
+        Create a wiki article and return a handle to interact with it.
 
         :param str article_name: the article name
-        :param str parent_id: the parent article ID (or None if the article has to be at root level)
-        :param str content: the article content
+        :param str parent_id: the parent article ID (or None if the article has to be at root level, defaults to **None**)
+        :param str content: the article content (defaults to **None**)
+
         :returns: the created article
         :rtype: :class:`dataikuapi.dss.wiki.DSSWikiArticle`
         """
@@ -92,10 +96,12 @@ class DSSWiki(object):
     def get_export_stream(self, paper_size="A4", export_attachment=False):
         """
         Download the whole wiki of the project in PDF format as a binary stream.
-        Warning: this stream will monopolize the DSSClient until closed.
 
-        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
-        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+         .. warning::
+            You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER' (defaults to **A4**)
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file (defaults to **False**)
         :returns: the exported pdf or zip file as a stream
         """
         body = {
@@ -108,8 +114,9 @@ class DSSWiki(object):
         """
         Download the whole wiki of the project in PDF format into the given output file.
 
-        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
-        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+        :param str path: the path of the file where the pdf or zip file will be downloaded
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER' (defaults to **A4**)
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file (defaults to **False**)
         """
         with self.get_export_stream(paper_size=paper_size, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
@@ -118,38 +125,44 @@ class DSSWiki(object):
                         f.write(chunk)
                         f.flush()
 
+
 class DSSWikiSettings(object):
     """
     Global settings for the wiki, including taxonomy. Call save() to save
     """
     def __init__(self, client, project_key, settings):
-        """Do not call directly, use :meth:`dataikuapi.dss.wiki.DSSWiki.get_settings`"""
+        """Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.wiki.DSSWiki.get_settings`"""
         self.client = client
         self.project_key = project_key
         self.settings = settings
 
     def get_taxonomy(self):
         """
-        Get the taxonomy
+        Get the taxonomy.
         The taxonomy is an array listing at top level the root article IDs and their children in a tree format.
         Every existing article of the wiki has to be in the taxonomy once and only once.
         For instance:
-        [
-            {
-                'id': 'article1',
-                'children': []
-            },
-            {
-                'id': 'article2',
-                'children': [
-                    {
-                        'id': 'article3',
-                        'children': []
-                    }
-                ]
-            }
-        ]
-        Note that this is a direct reference, not a copy, so modifications to the returned object will be reflected when saving
+
+        .. code-block:: python
+
+            [
+                {
+                    'id': 'article1',
+                    'children': []
+                },
+                {
+                    'id': 'article2',
+                    'children': [
+                        {
+                            'id': 'article3',
+                            'children': []
+                        }
+                    ]
+                }
+            ]
+
+        .. note ::
+            Note that this is a direct reference, not a copy, so modifications to the returned object will be reflected when saving
 
         :returns: The taxonomy
         :rtype: list
@@ -158,11 +171,12 @@ class DSSWikiSettings(object):
 
     def __retrieve_article_in_taxonomy__(self, taxonomy, article_id, remove=False):
         """
-        Private recusive method that get the sub tree structure from the taxonomy for a specific article
+        Private recursive method that get the sub tree structure from the taxonomy for a specific article
 
         :param list taxonomy: the current level of taxonomy
         :param str article_id: the article to retrieve
-        :param bool remove: either remove the sub tree structure or not
+        :param bool remove: either remove the sub tree structure or not (defaults to **False**)
+
         :returns: the sub tree structure at a specific article level
         :rtype: dict
         """
@@ -182,7 +196,7 @@ class DSSWikiSettings(object):
         An helper to update the taxonomy by moving an article with its children as a child of another article
 
         :param str article_id: the main article ID
-        :param str parent_article_id: the new parent article ID or None for root level
+        :param str parent_article_id: the new parent article ID or None for root level (defaults to **None**)
         """
         old_taxonomy = copy.deepcopy(self.settings["taxonomy"])
 
@@ -236,7 +250,7 @@ class DSSWikiArticle(object):
     A handle to manage an article
     """
     def __init__(self, client, project_key, article_id_or_name):
-        """Do not call directly, use :meth:`dataikuapi.dss.wiki.DSSWiki.get_article`"""
+        """Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.wiki.DSSWiki.get_article`"""
         self.client = client
         self.project_key = project_key
 
@@ -248,7 +262,7 @@ class DSSWikiArticle(object):
             self.article_id = self.article_id.encode('utf-8')
 
     def get_data(self):
-        """"
+        """
         Get article data handle
 
         :returns: the article data handle
@@ -259,8 +273,10 @@ class DSSWikiArticle(object):
 
     def upload_attachement(self, fp, filename):
         """
-        Upload an attachment file and attaches it to the article
-        Note that the type of file will be determined by the filename extension
+        Upload and attach a file to the article.
+
+        .. note ::
+            Note that the type of file will be determined by the filename extension
 
         :param file fp: A file-like object that represents the upload file
         :param str filename: The attachement filename
@@ -270,11 +286,15 @@ class DSSWikiArticle(object):
         self.client._perform_json("POST", "/projects/%s/wiki/%s/upload" % (self.project_key, dku_quote_fn(self.article_id)), files={"file":(clean_filename, fp)})
 
     def get_uploaded_file(self, upload_id):
-        """"
-        Download the attachement of an article
+        """
+        Download an attachment of the article
+
+        .. warning::
+            You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
         :param str upload_id: The attachement upload id
-        :returns: The requests.Response object
+
+        :returns: The attachment file as a stream
         :rtype: :class:`requests.Response`
         """
         return self.client._perform_raw("GET", "/projects/%s/wiki/%s/uploads/%s" % (self.project_key, self.article_id, upload_id))
@@ -282,13 +302,16 @@ class DSSWikiArticle(object):
     def get_export_stream(self, paper_size="A4", export_children=False, export_attachment=False):
         """
         Download the article in PDF format as a binary stream.
-        Warning: this stream will monopolize the DSSClient until closed.
 
-        :param str path: the path of the file where the pdf or zip file will be downloaded
-        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
-        :param bool export_children: export the children of the article in the pdf
-        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+        .. warning::
+           You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
+
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER' (defaults to **A4**)
+        :param bool export_children: export the children of the article in the pdf (defaults to **False**)
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file (defaults to **False**)
+
         :returns: the exported pdf or zip file as a stream
+        :rtype: :class:`requests.Response`
         """
         body = {
             "paperSize": paper_size,
@@ -301,9 +324,10 @@ class DSSWikiArticle(object):
         """
         Download the article in PDF format into the given output file.
 
-        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER'
-        :param bool export_children: export the children of the article in the pdf
-        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file
+        :param str path: the path of the file where the pdf or zip file will be downloaded
+        :param str paper_size: the format of the exported page, can be one of 'A4', 'A3', 'US_LETTER' or 'LEDGER' (defaults to **A4**)
+        :param bool export_children: export the children of the article in the pdf (defaults to **False**)
+        :param bool export_attachment: export the attachments of the article(s) in addition to the pdf in a zip file (defaults to **False**)
         """
         with self.get_export_stream(paper_size=paper_size, export_children=export_children, export_attachment=export_attachment) as stream:
             with open(path, 'wb') as f:
@@ -311,7 +335,6 @@ class DSSWikiArticle(object):
                     if chunk:
                         f.write(chunk)
                         f.flush()
-    
 
     def delete(self):
         """
@@ -333,7 +356,7 @@ class DSSWikiArticleData(object):
     A handle to manage an article
     """
     def __init__(self, client, project_key, article_id, article_data):
-        """Do not call directly, use :meth:`dataikuapi.dss.wiki.DSSWikiArticle.get_data`"""
+        """Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.wiki.DSSWikiArticle.get_data`"""
         self.client = client
         self.project_key = project_key
         self.article_id = article_id # don't need to check unicode here (already done in DSSWikiArticle)
@@ -359,7 +382,9 @@ class DSSWikiArticleData(object):
     def get_metadata(self):
         """
         Get the article metadata
-        Note that this is a direct reference, not a copy, so modifications to the returned object will be reflected when saving
+
+        .. note ::
+            Note that this is a direct reference, not a copy, so modifications to the returned object will be reflected when saving
 
         :returns: the article metadata
         :rtype: dict

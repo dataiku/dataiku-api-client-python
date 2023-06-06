@@ -2,3 +2,5 @@
 .idea
 *.iml
 egg-info
+dist
+dataiku_api_client.egg-info/

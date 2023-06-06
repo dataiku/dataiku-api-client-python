@@ -7,7 +7,25 @@ import json
 class DSSSQLQuery(object):
     """
     A connection to a database or database-like on which queries can be run through DSS.
-    Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.sql_query`
+
+    .. important::
+    
+        Do not create this class directly, instead use :meth:`dataikuapi.DSSClient.sql_query`
+
+    Usage example:
+
+    .. code-block:: python
+
+        # run some query on a connection
+        query = client.sql_query('select * from "public"."SOME_TABLE"', connection='some_postgres_connection')
+        n = 0
+        for row in query.iter_rows():
+            n += 1
+            if n < 10:
+                print("row %s : %s" % (n, row))
+        query.verify()
+        print("Returned %s rows" % n)
+
     """
     def __init__(self, client, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key):
         self.client = client
@@ -35,20 +53,31 @@ class DSSSQLQuery(object):
 
     def get_schema(self):
         """
-        Get the query's result set's schema
+        Get the query's result set's schema.
+
+        The schema made of DSS column types, and built from mapping database types to DSS types. The actual
+        type in the database can be found in the `originalType` field (`originalSQLType` in BigQuery)
         
-        Returns:
-            the schema as a JSON array of columns
+        :return: a schema, as a dict with a `columns` array, in which each element is a column, itself as a dict of
+
+                     * **name** : the column name
+                     * **type** : the column type (smallint, int, bigint, float, double, boolean, date, string)
+                     * **length** : the string length
+                     * **comment** : the column name
+                     * **originalType** : type of the column in the database
+
+        :rtype: dict
         """
         return self.streaming_session['schema']
 
     def iter_rows(self):
         """
-        Get the query's results
+        Get an iterator on the query's results.
         
-        Returns:
-            an iterator over the rows, each row being a tuple of values. The order of values
-            in the tuples is the same as the order of columns in the schema returned by get_schema
+        :return: an iterator over the rows, each row being a tuple of values. The order of values
+                 in the tuples is the same as the order of columns in the schema returned by :meth:`~get_schema()`.
+                 The values are cast to python types according to the types in :meth:`~get_schema()`
+        :rtype: iterator[list]
         """
         csv_stream = self.client._perform_raw(
                 "GET", "/sql/queries/%s/stream" % (self.queryId),
@@ -60,11 +89,16 @@ class DSSSQLQuery(object):
 
     def verify(self):
         """
-        Verify that the result set streaming completed successfully and was not truncated
+        Verify that reading results completed successfully.
+
+        When using the :meth:`~iter_rows()` method, and the iterator stops returning rows, there is
+        no way to tell whether there are no more rows because the query didn't return more rows, or
+        because an error in the query, or in the fetching of its results, happened. You should thus
+        call :meth:`~verify()` after the iterator is done, because it will raise an Expcetion if
+        an error happened.
         
-        Raises:
-            if the query failed at some point while streaming the results, an exception will be raised.
-            If the call completes without exception, then the query was successfully streamed
+        :raises: Exception
+            
         """
         resp = self.client._perform_empty(
                 "GET", "/sql/queries/%s/finish-streaming" % (self.queryId))
