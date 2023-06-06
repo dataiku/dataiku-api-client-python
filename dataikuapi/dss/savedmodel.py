@@ -140,7 +140,8 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT", container_exec_config_name="NONE", set_active=True,
+    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT",
+                                        container_exec_config_name="NONE", set_active=True,
                                         binary_classification_threshold=0.5):
         """
         Creates a new version for this saved model from a path containing a MLFlow model.
@@ -153,14 +154,14 @@ class DSSSavedModel(object):
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
             mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
 
-                * If value is "INHERIT", the default active code env of the project will be used.
+            * If value is "INHERIT", the default active code env of the project will be used.
 
             (defaults to **INHERIT**)
-        :param str container_exec_config_name: Name of the containerized execution configuration to use for running the
-            evaluation process.
+        :param str container_exec_config_name: Name of the containerized execution configuration to use for reading
+            the metadata of the model
 
-                * If value is "INHERIT", the container execution configuration of the project will be used.
-                * If value is "NONE", local execution will be used (no container)
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
 
             (defaults to **INHERIT**)
         :param bool set_active: sets this new version as the active version of the saved model (defaults to **True**)
@@ -182,15 +183,16 @@ class DSSSavedModel(object):
                     "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
                         project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id
                     ),
-                    params={"codeEnvName": code_env_name, "containerExecConfigName": container_exec_config_name, "setActive": set_active,
-                            "binaryClassificationThreshold": binary_classification_threshold},
+                    params={"codeEnvName": code_env_name, "containerExecConfigName": container_exec_config_name,
+                            "setActive": set_active, "binaryClassificationThreshold": binary_classification_threshold},
                     files={"file": (archive_filename, fp)})
             return self.get_external_model_version_handler(version_id)
         finally:
             shutil.rmtree(archive_temp_dir)
 
-    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT", container_exec_config_name="INHERIT",
-                                                  set_active=True, binary_classification_threshold=0.5):
+    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT",
+                                                  container_exec_config_name="INHERIT", set_active=True,
+                                                  binary_classification_threshold=0.5):
         """
         Creates a new version for this saved model from a managed folder.
 
@@ -204,14 +206,14 @@ class DSSSavedModel(object):
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
             mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
 
-                * If value is "INHERIT", the default active code env of the project will be used.
+            * If value is "INHERIT", the default active code env of the project will be used.
 
             (defaults to **INHERIT**)
-        :param str container_exec_config_name: Name of the containerized execution configuration to use for running the
-            evaluation process.
+        :param str container_exec_config_name: Name of the containerized execution configuration to use for reading the
+            metadata of the model
 
-                * If value is "INHERIT", the container execution configuration of the project will be used.
-                * If value is "NONE", local execution will be used (no container)
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
 
             (defaults to **INHERIT**)
         :param bool set_active: sets this new version as the active version of the saved model (defaults to **True**)
@@ -220,7 +222,7 @@ class DSSSavedModel(object):
         :return: external model version handler in order to interact with the new MLFlow model version
         :rtype: :class:`dataikuapi.dss.savedmodel.ExternalModelVersionHandler`
         """
-        # TODO: Add a check that it's indeed a MLFlow model folder
+        # TODO: Add a check that it's indeed a MLflow model folder
         folder_ref = None
         if isinstance(managed_folder, DSSManagedFolder):
             folder_ref = "{}.{}".format(managed_folder.project_key, managed_folder.id)
@@ -246,18 +248,198 @@ class DSSSavedModel(object):
         )
         return self.get_external_model_version_handler(version_id)
 
-    def create_proxy_model_version(self, version_id, protocol, configuration):
+    def create_proxy_model_version(self, version_id, configuration, target_column_name=None,
+                                   class_labels=None, set_active=True, binary_classification_threshold=0.5,
+                                   evaluation_dataset=None, selection=None, use_optimal_threshold=True,
+                                   skip_expensive_reports=True, get_features_from_dataset=None, features_list=None,
+                                   container_exec_config_name="NONE"):
         """
-        EXPERIMENTAL. Creates a new version of a proxy model.
+        .. important::
+            Requires the saved model to have been created using
+            :meth:`dataikuapi.dss.project.DSSProject.create_proxy_model`.
 
-        This is an experimental API, subject to change.
+        :param version_id: Identifier of the version, as returned by :meth:`list_versions`
+        :type version_id: str
+        :param configuration: A dictionary containing the required params for the selected protocol.
 
+            For SageMaker, syntax is:
+            configuration = {
+                "endpoint_name": "<endpoint-name>"
+            }
+
+            For AzureML, syntax is:
+            configuration = {
+                "subscription_id": "<id>",
+                "resource_group": "<rg>",
+                "workspace": "<workspace>",
+                "endpoint_name": "<endpoint-name>"
+            }
+
+            For Vertex AI, syntax is:
+            configuration = {
+                "project_id": "<name> or <id>",
+                "endpoint_id": "<endpoint-id>"
+            }
+
+        :type configuration: dict
+        :param target_column_name: Name of the target column. Mandatory if model performance will be evaluated
+        :type target_column_name: str
+        :param class_labels: List of strings, ordered class labels. Mandatory for evaluation of classification models
+        :type class_labels: list or None
+        :param set_active: (optional) Sets this new version as the active version of the saved model (defaults to **True**)
+        :type set_active: bool
+        :param binary_classification_threshold: (optional) For binary classification, defines the actual threshold for the
+            imported version (defaults to **0.5**). Overwritten during evaluation if an evaluation dataset
+            is specified and `use_optimal_threshold` is True
+        :type binary_classification_threshold: float
+        :param evaluation_dataset: (optional) Dataset to use to evaluate the model and populate interpretation tabs
+        :type evaluation_dataset: str or :class:`dataikuapi.dss.dataset.DSSDataset` or :class:`dataiku.Dataset`
+        :param selection: (optional) Sampling parameter for the evaluation.
+
+            * Example 1: head 100 lines ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
+            * Example 2: random 500 lines ``DSSDatasetSelectionBuilder().with_random_fixed_nb_sampling(500)``
+            * Example 3: head 100 lines ``{"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}``
+
+            Defaults to head 100 lines
+        :type selection: dict or :class:`DSSDatasetSelectionBuilder` or None
+        :param use_optimal_threshold: (optional) Set as threshold for this model version the threshold that has been computed
+            during evaluation according to the metric set on the saved model setting
+            (i.e. ``prediction_metrics_settings['thresholdOptimizationMetric']``)
+        :type use_optimal_threshold: bool
+        :param skip_expensive_reports: (optional) Skip computation of expensive/slow reports (e.g. feature importance).
+        :type skip_expensive_reports: bool
+        :param get_features_from_dataset: (optional) Name of a dataset to get feature names from.
+        :type get_features_from_dataset: str or None
+        :param features_list: (optional) List of features, in JSON. Used if get_features_from_dataset is not defined
+        :type features_list: list of ``{"name": "feature_name", "type": "feature_type"}`` or None
+        :param container_exec_config_name: (optional) name of the containerized execution configuration to use for running the
+            evaluation process.
+
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
+        :type container_exec_config_name: str
+
+
+        * Example: create a SageMaker Saved Model and add an endpoint as a version, evaluated on a dataset:
+
+        .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+            # create a SageMaker saved model, whose endpoints are hosted in region eu-west-1
+            sm = project.create_proxy_model("SaveMaker Proxy Model", "BINARY_CLASSIFICATION", "sagemaker", "eu-west-1")
+
+            # configuration to add endpoint
+            configuration = {
+                "endpoint_name": "titanic-survived-endpoint"
+            }
+            smv = sm.create_proxy_model_version("v0",
+                                                configuration,
+                                                target_column_name="Survived",
+                                                class_labels=["0", "1"],
+                                                get_features_from_dataset="evaluation_dataset")
+
+        A dataset named "evaluation_dataset" must exist in the current project. Its schema and content should
+        match the endpoint expectations. Depending on the way the model deployed on the endpoint was created,
+        it may require a certain schema and not accept extra columns, it may not deal with missing features, etc.
+
+
+        * Example: create a Vertex AI Saved Model and add an endpoint as a version, without evaluating it:
+
+        .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+            # create a VertexAI saved model, whose endpoints are hosted in region europe-west-1
+            sm = project.create_proxy_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+            configuration = {
+                "project_id": "my-project",
+                "endpoint_id": "123456789012345678"
+            }
+
+            smv = sm.create_proxy_model_version("v1",
+                                                configuration,
+                                                target_column_name="Survived",
+                                                class_labels=["0", "1"],
+                                                get_features_from_dataset="titanic")
+
+        * A dataset named "my_dataset" must exist in the current project. It will be used to infer the schema of the
+        data to submit to the endpoint. As there is no evaluation dataset specified, the interpretation tabs
+        of this model version will be for the most empty. But the model still can be used to score datasets. It can also
+        be evaluated on a dataset by an Evaluation Recipe.
+
+        Example: create an AzureML Saved Model
+
+        .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+            # create an Azure ML saved model. No region specified, as this notion does not exist for Azure ML
+            sm = project.create_proxy_model("Azure ML Proxy Model", "BINARY_CLASSIFICATION")
+            configuration = {
+                "subscription_id": "<subscription-id>>",
+                "resource_group": "<your.resource.group-rg>",
+                "workspace": "<your-workspace>",
+                "endpoint_name": "<endpoint-name>"
+            }
+
+            features_list = [{'name': 'Pclass', 'type': 'bigint'},
+                             {'name': 'Age', 'type': 'double'},
+                             {'name': 'SibSp', 'type': 'bigint'},
+                             {'name': 'Parch', 'type': 'bigint'},
+                             {'name': 'Fare', 'type': 'double'}]
+
+
+            smv = sm.create_proxy_model_version("20230324-in-prod",
+                                                configuration,
+                                                target_column_name="Survived",
+                                                class_labels=["0", "1"],
+                                                features_list=features_list)
+
+        * Example: minimalistic creation of a VertexAI model binary classification model
+
+        .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+
+            sm = project.create_proxy_model("Raw Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+            configuration = {
+                "project_id": "my-project",
+                "endpoint_id": "123456789012345678"
+            }
+
+            smv = sm.create_proxy_model_version("legacy-model",
+                                                configuration,
+                                                class_labels=["0", "1"])
+
+        This model will have empty interpretation tabs and can not be evaluated later by an Evaluation Recipe, as its
+        target is not defined, but it can be scored.
+
+        """
+        model_version = self._create_proxy_model_version(version_id, configuration, set_active,
+                                                         binary_classification_threshold)
+        model_version.set_core_metadata(target_column_name, class_labels, get_features_from_dataset, features_list,
+                                        container_exec_config_name=container_exec_config_name)
+        if evaluation_dataset:
+            model_version.evaluate(evaluation_dataset, container_exec_config_name, selection, use_optimal_threshold,
+                                   skip_expensive_reports)
+
+    def _create_proxy_model_version(self, version_id, configuration, set_active=True,
+                                   binary_classification_threshold=0.5):
+        """
         .. important::
             Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_proxy_model`.
 
         :param str version_id: identifier of the version, as returned by :meth:`list_versions`
-        :param str protocol: one of ["KServe", "DSS_API_NODE"]
         :param dict configuration: A dictionary containing the required params for the selected protocol
+        :param bool set_active: sets this new version as the active version of the saved model (defaults to **True**)
+        :param float binary_classification_threshold: for binary classification, defines the actual threshold for the
+            imported version (defaults to **0.5**)
         :return: external model version handler in order to interact with the new Proxy model version
         :rtype: :class:`dataikuapi.dss.savedmodel.ExternalModelVersionHandler`
         """
@@ -265,12 +447,16 @@ class DSSSavedModel(object):
 
         # Set the type in configuration
         assert isinstance(configuration, dict), "configuration should be a dictionary containing the required params for the selected protocol"
-        configuration["protocol"] = protocol
+        configuration["protocol"] = self.get_settings().get_raw()["proxyModelProtocol"]
         self.client._perform_empty(
-            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}?containerExecConfigName={containerExecConfigName}".format(
-                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id, containerExecConfigName="NONE"
+            "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
+                project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id
             ),
-            params={"configuration": json.dumps(configuration)},
+            params={
+                "setActive": set_active,
+                "configuration": json.dumps(configuration),
+                "binaryClassificationThreshold": binary_classification_threshold
+            },
             files={"file": (None, None)}  # required for backend-mandated multipart request
         )
         return self.get_external_model_version_handler(version_id)
@@ -440,15 +626,15 @@ class ExternalModelVersionHandler:
         :param str target_column_name: name of the target column. Mandatory in order to be able to evaluate performance
         :param class_labels: List of strings, ordered class labels. Mandatory in order to be able to evaluate performance on classification models
         :type class_labels: list or None
-        :param get_features_from_dataset: mame of a dataset to get feature names from
+        :param get_features_from_dataset: name of a dataset to get feature names from
         :type get_features_from_dataset: str or None
         :param features_list: list of ``{"name": "feature_name", "type": "feature_type"}``
         :type features_list: list or None
         :param str container_exec_config_name: name of the containerized execution configuration to use for running the
             evaluation process.
 
-                * If value is "INHERIT", the container execution configuration of the project will be used.
-                * If value is "NONE", local execution will be used (no container)
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
 
             (defaults to **None**)
         """
@@ -486,7 +672,8 @@ class ExternalModelVersionHandler:
                 container_exec_config_name=container_exec_config_name),
             body=metadata)
 
-    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None, use_optimal_threshold=True):
+    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None, use_optimal_threshold=True,
+                 skip_expensive_reports=True):
         """
         Evaluates the performance of this model version on a particular dataset.
         After calling this, the "result screens" of the MLFlow model version will be available
@@ -504,15 +691,15 @@ class ExternalModelVersionHandler:
         :param str container_exec_config_name: Name of the containerized execution configuration to use for running the
             evaluation process.
 
-                * If value is "INHERIT", the container execution configuration of the project will be used.
-                * If value is "NONE", local execution will be used (no container)
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
 
             (defaults to **INHERIT**)
         :param selection:
             Sampling parameter for the evaluation.
 
-                * Example 1: ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
-                * Example 2: ``{"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}``
+            * Example 1: ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
+            * Example 2: ``{"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}``
 
             (defaults to **None**)
         :type selection: dict or :class:`DSSDatasetSelectionBuilder` or None
@@ -520,6 +707,7 @@ class ExternalModelVersionHandler:
             Optimized threshold has been computed according to the metric set on the saved model setting
             (i.e. ``prediction_metrics_settings['thresholdOptimizationMetric']``)
             (defaults to **True**)
+        :param boolean skip_expensive_reports: Skip expensive/slow reports (e.g. feature importance).
         """
         sampling_param = selection.build() if isinstance(
             selection, DSSDatasetSelectionBuilder) else selection
@@ -532,9 +720,9 @@ class ExternalModelVersionHandler:
             "samplingParam": sampling_param
         }
         post = ("/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}/external-ml/actions/evaluate"
-                "?useOptimalThreshold={use_optimal_threshold}").format(
+                "?useOptimalThreshold={use_optimal_threshold}&skipExpensiveReports={skip_expensive_reports}").format(
             project_id=self.saved_model.project_key, saved_model_id=self.saved_model.sm_id, version_id=self.version_id,
-            use_optimal_threshold=use_optimal_threshold)
+            use_optimal_threshold=use_optimal_threshold, skip_expensive_reports=skip_expensive_reports)
         self.saved_model.client._perform_empty("POST", post, body=req)
 
 

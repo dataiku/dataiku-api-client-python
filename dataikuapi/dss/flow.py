@@ -1,3 +1,4 @@
+from .labeling_task import DSSLabelingTask
 from ..utils import _write_response_content_to_file
 from .utils import AnyLoc
 from .dataset import DSSDataset
@@ -235,6 +236,8 @@ class DSSProjectFlow(object):
             ot = "RECIPE"
         elif isinstance(obj, DSSStreamingEndpoint):
             ot = "STREAMING_ENDPOINT"
+        elif isinstance(obj, DSSLabelingTask):
+            ot = "LABELING_TASK"
         else:
             raise ValueError("Cannot transform to DSS object ref: %s" % obj)
 
@@ -382,8 +385,9 @@ class DSSSchemaPropagationRunBuilder(object):
         :returns: A future representing the schema propagation job
         :rtype: :class:`.DSSFuture`
         """
-        future_resp = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/%s/" % (self.project.project_key, self.dataset_name),
-                                                body=self.settings)
+        loc = AnyLoc.from_ref(self.project.project_key, self.dataset_name)
+        future_resp = self.client._perform_json("POST", "/projects/%s/flow/tools/propagate-schema/" % self.project.project_key,
+                                                body={ "options": self.settings, "sources": [{"projectKey": loc.project_key, "id": loc.object_id}]})
         return DSSFuture.from_resp(self.client, future_resp)
 
 
@@ -439,6 +443,10 @@ class DSSFlowZone(object):
             return p.get_recipe(zone_item["objectId"])
         elif zone_item["objectType"] == "STREAMING_ENDPOINT":
             return p.get_streaming_endpoint(zone_item["objectId"])
+        elif zone_item["objectType"] == "LABELING_TASK":
+            return p.get_labeling_task(zone_item["objectId"])
+        elif zone_item["objectType"] == "MODEL_EVALUATION_STORE":
+            return p.get_model_evaluation_store(zone_item["objectId"])
         else:
             raise ValueError("Cannot transform to DSS object: %s" % zone_item)
 
@@ -486,11 +494,15 @@ class DSSFlowZone(object):
         """
         The list of items explicitly belonging to this zone.
 
-        This list is read-only, to modify it, use :meth:`add_item` and :meth:`remove_item`.
+        This list is read-only.
+        To add an object, use :meth:`add_item`. It will remove it from its current zone, if any.
+        To remove an object from a zone without placing in another specific zone, add it to the default zone: ``flow.get_zone('default').add_item(item)``
 
-        Note that the "default" zone never has any items, as it contains all items that are not
-        explicitly in a zone. To get the full list of items in a zone, including in the "default" zone, use
-        the :meth:`get_graph` method.
+        .. note ::
+            The "default" zone content is defined as all items that are not explicitly in another zone.
+            It cannot directly be listed with the ``items`` property.
+            To get the list of items including those in the default zone, use the :meth:`get_graph` method.
+
 
         :returns: the items in the zone
         :rtype: list of :class:`.DSSDataset`,
@@ -629,11 +641,13 @@ class DSSProjectFlowGraph(object):
                 :class:`.DSSModelEvaluationStore` or
                 :class:`.DSSStreamingEndpoint`
         """
+
         ret = []
         for node in self.nodes.values():
             if len(node["predecessors"]) == 0 and node["type"].startswith("COMPUTABLE"):
                 ret.append(node)
         return self._convert_nodes_list(ret, as_type)
+
 
     def get_source_recipes(self, as_type="dict"):
         """
@@ -717,6 +731,8 @@ class DSSProjectFlowGraph(object):
             return DSSSavedModel(self.flow.client, self.flow.project.project_key, node["ref"])
         elif node["type"] == "COMPUTABLE_STREAMING_ENDPOINT":
             return DSSStreamingEndpoint(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "RUNNABLE_LABELING_TASK":
+            return DSSLabelingTask(self.flow.client, self.flow.project.project_key, node["ref"])
         else:
             # TODO add streaming elements
             raise Exception("unsupported node type: %s" % node["type"])

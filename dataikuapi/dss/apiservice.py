@@ -93,21 +93,8 @@ class DSSAPIServiceSettings(object):
         This returns a reference to the raw settings, not a copy, so changes made 
         to the returned object will be reflected when saving.
 
-        :return: the settings of the API service, as a dict. Notable fields are:
-
-                    * **projectKey** and **id** : identifier of the API service
-                    * **name** : name of API service in UI
-                    * **tags** : list of tags (each a string)
-                    * **authMethod** : method used to authenticate calls on the service. Possible values: PUBLIC, API_KEYS, OAUTH2
-                    * **authRealm** : dict of API keys settings, used when **authMethod** is API_KEYS. This dict has a sub-field:
-
-                        * **queryKeys** : list of API keys allowed on queries, each key being a string
-
-                    * **oauth2Config** : dict of OAuth2 settings, used when **authMethod** is OAUTH2
-                    * **endpoints** : list of endpoints, each one a dict. Endpoint have different fields depending on their type, but always have at least:
-
-                        * **id** : identifier of the endpoint
-                        * **type** : type of endpoint. Possible values: STD_PREDICTION, STD_CLUSTERING, STD_FORECAST, STD_CAUSAL_PREDICTION, CUSTOM_PREDICTION, CUSTOM_R_PREDICTION, R_FUNCTION, PY_FUNCTION, DATASETS_LOOKUP, SQL_QUERY
+        :return: the settings of the API service, as a dict. The definitions of the endpoints are inside
+                 the **endpoints** field, itself a list of dict.
 
         :rtype: dict
         """

@@ -26,7 +26,8 @@ class GovernTimeSeries(object):
         if max_timestamp is not None:
             params["timestampMax"] = max_timestamp
 
-        datapoints = self.client._perform_json("GET", "/time-series/%s" % self.time_series_id, params=params)
+        datapoints = self.client._perform_json(
+            "GET", "/time-series/%s" % self.time_series_id, params=params)
         return datapoints
 
     def push_values(self, datapoints, upsert=True):
@@ -38,7 +39,11 @@ class GovernTimeSeries(object):
         :return: None
         """
 
-        self.client._perform_json("PUT", "/time-series/%s" % self.time_series_id, body=datapoints, params={"upsert": upsert})
+        for datapoint in datapoints:
+            datapoint['timeSeriesId'] = self.time_series_id
+
+        self.client._perform_json("PUT", "/time-series/%s" %
+                                  self.time_series_id, body=datapoints, params={"upsert": upsert})
 
     def delete(self, min_timestamp=None, max_timestamp=None):
         """
@@ -57,5 +62,5 @@ class GovernTimeSeries(object):
         if max_timestamp is not None:
             params["timestampMax"] = max_timestamp
 
-        self.client._perform_empty("DELETE", "/time-series/%s" % self.time_series_id, params=params)
-
+        self.client._perform_empty(
+            "DELETE", "/time-series/%s" % self.time_series_id, params=params)

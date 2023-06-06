@@ -66,10 +66,8 @@ class DSSJobWaiter(object):
 
     def wait(self, no_fail=False):
         """
-        Waits for the job. While waiting, if the job was aborted or if it failed
-        an exception is raised depending on the `no_fail` parameter.
-        If the job already stopped before entering this function
-        its state will be returned regardless and no error will be raised.
+        Waits for the job to finish. If the job fails or is aborted,
+        an exception is raised unless the `no_fail` parameter is set to True.
         
         :param boolean no_fail: (optional) should an error be raised if the job finished with another status than `DONE` (defaults to **False**)
 
@@ -84,9 +82,10 @@ class DSSJobWaiter(object):
             sleep_time = 60 if sleep_time >= 60 else sleep_time * 1.2
             time.sleep(int(sleep_time))
             job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
-            if job_state in ["ABORTED", "FAILED"]:
-                if no_fail:
-                    break
-                else:
-                    raise DataikuException("Job run did not finish. Status: %s" % (job_state))
-        return job_state
+
+        if no_fail or (job_state == "DONE"):
+            return job_state
+        
+        raise DataikuException("Job run did not finish. Status: %s" % (job_state))
+        
+        

@@ -48,7 +48,7 @@ class DSSJupyterNotebookListItem(DSSTaggableObjectListItem):
 
         The kernel spec is internal data for Jupyter, that identifies the kernel. 
 
-        :return: the spec of a Jupyter kernel. Top-level fields are:
+        :return: the Jupyter spec of a Jupyter kernel. Top-level fields are:
 
                     * **name** : identifier of the kernel in Jupyter, for example 'python2' or 'python3'
                     * **display_name** : name of the kernel as shown in the Jupyter UI
@@ -105,20 +105,8 @@ class DSSJupyterNotebook(object):
         :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.jupyternotebook.DSSNotebookSession`
 
         :return: a list of :class:`dataikuapi.dss.jupyternotebook.DSSNotebookSession` if **as_objects** is True, a list of dict 
-                 otherwise. The dict has fields:
-
-                    * **sessionId** : identifier of the session in the Jupyter server
-                    * **notebookName** : name of the notebook
-                    * **projectKey** : key of the DSS project containing the notebookd
-                    * **kernelId** : identifier of the running kernel in the Jupyter server (a session can change the kernel, for example if you restart it)
-                    * **kernelConnections** : how many kernels are connected to this session
-                    * **kernelExecutionState** : state of the notebook in Jupyter. Common states are 'idle' and 'busy'
-                    * **kernelId** : identifier of the running kernel in the Jupyter server
-                    * **kernelLastActivityTime** : timestamp in milliseconds of the last run of a cell in the notebook
-                    * **kernelPid** : pid of the process running the kernel
-                    * **sessionCreator** : name of user that started the session
-                    * **sessionCreatorDisplayName** : display name of user that started the session
-                    * **sessionStartTime** : timestamp in milliseconds of the session creation
+                 otherwise. The dict holds information about the kernels currently running the notebook, notably a **sessionId** for
+                 the Jupyter session id, and a **kernelId** for the Jupyter kernel id.
 
         :rtype: list
         """

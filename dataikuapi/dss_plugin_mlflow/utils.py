@@ -78,7 +78,7 @@ class MLflowHandle:
             try:
                 from dataiku import Folder
                 if isinstance(managed_folder, Folder):
-                    mf_full_id = managed_folder.get_id()
+                    mf_full_id = managed_folder.name
             except ImportError:
                 pass
 

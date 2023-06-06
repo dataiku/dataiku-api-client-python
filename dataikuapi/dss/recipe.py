@@ -193,6 +193,8 @@ class DSSRecipe(object):
                 "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
         type = data["recipe"]["type"]
 
+        if type == "generate_features":
+            return GenerateFeaturesRecipeSettings(self, data)
         if type == "grouping":
             return GroupingRecipeSettings(self, data)
         elif type == "window":
@@ -291,21 +293,7 @@ class DSSRecipe(object):
 
                     * **label** : label of the object (not defined for recipes)
                     * **description** : description of the object (not defined for recipes)
-                    * **checklists** : checklists of the object, as a dict with a **checklists** field, which is a list of checklists, each a dict of fields:
-
-                        * **id** : identifier of the checklist
-                        * **title** : label of the checklist
-                        * **createdBy** : user who created the checklist
-                        * **createdOn** : timestamp of creation, in milliseconds
-                        * **items** : list of the items in the checklist, each a dict of
-
-                            * **done** : True if the item has been done
-                            * **text** : label of the item
-                            * **createdBy** : who created the item
-                            * **createdOn** : when the item was created, as a timestamp in milliseconds
-                            * **stateChangedBy** : who ticked the item as done (or not done)
-                            * **stateChangedOn** : when the item was last changed to done (or not done), as a timestamp in milliseconds 
-
+                    * **checklists** : checklists of the object, as a dict with a **checklists** field, which is a list of checklists, each a dict.
                     * **tags** : list of tags, each a string
                     * **custom** : custom metadata, as a dict with a **kv** field, which is a dict with any contents the user wishes
                     * **customFields** : dict of custom field info (not defined for recipes)
@@ -380,36 +368,8 @@ class DSSRecipeStatus(object):
         This method will raise if there is no selected engine, whether it's because the present recipe type
         has no notion of engine, or because DSS couldn't find any viable engine for running the recipe.
 
-        :return: a dict of the details of the selected recipe, with fields:
-
-                    * **type** : engine type
-                    * **typeLabel** : user-friendly label for the type
-                    * **variant** : engine sub-type. For example, **type** can be SPARK, and **variant** one of SPARK_SQL, SPARK_SCALA or SPARK_NATIVE
-                    * **variantLabel** : user-friendly label for the variant
-                    * **label** : user-friendly label for the engine (type and variant)
-                    * **description** : longer version of **label**
-                    * **isSelectable** : whether the engine can be selected (would be always True for the engine returned by this method)
-                    * **recommended** : whether this is the engine DSS recommends, given the inputs and outputs of the recipe, and the DSS instance setup
-                    * **statusWarnLevel** : status of the check on the engine. Possible values: OK, WARN, ERROR
-                    * **statusMessage** : optional message about the status
-                    * **statusAdditionalMessage** : optional details about **statusMessage** (only for Prepare recipes)
-                    * **canEngineAppend** : whether the engine handles appending to outputs, instead of just overwriting outputs
-
-                 Many engines have additional fields with more detailed information on their known abilities:
-
-                    * **queryBased** : whether the engine will translate the recipe to SQL form
-                    * **canAnalyticalFunctions** : whether OLAP functions are accessible (for group, window, join, ... )
-                    * **canStddevAsAnalyticalFunctions** : whether there is an OLAP function to compute the standard deviation
-                    * **canDistinctSelect** : whether SELECT DISTINCT... is possible (for visual recipes)
-                    * **canNonEquiJoin** : whether join conditions can be other than mere equalities (for join recipes)
-                    * **canFullOuterJoin** : whether full outer join is possible (for join recipes)
-                    * **canDeduplicateJoinMatches** : whether it's possible to have unique join matches (for join recipes)
-                    * **doNotSupportLeadLagWithWindow** : whether lead and lag exist as OLAP functions
-                    * **aggregabilities** : capabilities for the aggregates in this SQL dialect, as a dict of aggregate name to a dict of capabilities
-                    * **identifierQuotingCharacter** : quoting character for identifier in SQL code
-                    * **stringQuotingCharacter** : quoting character for literals in SQL code
-                    * **lowercasesColumnNames** : whether the engine will automatically lowercase column names
-
+        :return: a dict of the details of the selected engine. The type of engine is in a **type** field. Depending
+                 on the type, additional field will give more details, like whether some aggregations are possible.
         :rtype: dict
         """
         if not "selectedEngine" in self.data:
@@ -573,30 +533,11 @@ class DSSRecipeSettings(DSSTaggableObjectSettings):
 
                     * **name** and **projectKey** : identifiers of the recipe
                     * **type** : type of the recipe
-                    * **shortDesc** : short description of the recipe
-                    * **description** : longer description (markdown-enabled)
-                    * **tags** : list of tags, each one a string
-                    * **checklists** : list of checklists on the recipe
-                    * **doc** : free text attached to the recipe (not shown in UI)
                     * **params** : type-specific parameters of the recipe (on top of what is in the payload)
-                    * **customMeta** : dict with a **kv** field, itself a dict
-                    * **redispatchPartitioning** : for 'sync' and 'shaker' recipe, whether the recipe re-dispatches partitions of the input to the (partitioned) output
-                    * **maxRunningActivities** : maximum number of partitions this recipe can run in parallel in a given job 
-                    * **variables** : dict of recipe-specific variables
-                    * **dkuProperties** : list of properties, each a dict with **name** and **value** string fields
-                    * **labels** : (for model training recipes) list of labels to propagate to the model evaluation stores. Each label is a dict with fields **key** and **value**
                     * **inputs** : input roles to the recipe, as a dict of role name to role, where a role is a dict with an **items** field consisting of a list of one dict per input object. Each individual input has fields:
 
                         * **ref** : a dataset name or a managed folder id or a saved model id. Should be prefixed by the project key for exposed items, like in "PROJECT_KEY.dataset_name"
-                        * **deps** : for partitioned inputs, a list of partition dependencies mapping output dimensions to dimensions in this input. Each partition dependency is a dict of:
-
-                            * **out** : reference to the output used to compute the values for this partition dimension
-                            * **idim** : name of the partition dimension in the input
-                            * **odim** : name of the partition dimension in the output **out**
-                            * **func** : function to use to deduce input partition values from a given output partition value. Possible values are: equals, all_available, time_range, latest_available, values, custom_python
-                            * **params** : additional parameters for the dependency, for example the Python code when **func** is 'custom_python'
-                            * **values** : list of values when **func** is 'values'. Each value is a string
-                            * **expandVariables** : when **func** is 'values', whether the strings in **values** should go through variable expansion, variables being added as '${variable_name}'.
+                        * **deps** : for partitioned inputs, a list of partition dependencies mapping output dimensions to dimensions in this input. Each partition dependency is a dict.
 
                     * **outputs** : output roles to the recipe, as a dict of role name to role, where a role is a dict with a **items** field consisting of a list of one dict per output object. Each individual output has fields:
 
@@ -1144,6 +1085,29 @@ class VirtualInputsSingleOutputRecipeCreator(SingleOutputRecipeCreator):
 # Per-recipe-type classes: Visual recipes
 #####################################################
 
+class GenerateFeaturesRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a Generate features recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+    """
+    pass
+
+
+class GenerateFeaturesRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
+    """
+    Create a generate features recipes
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+   """
+    def __init__(self, name, project):
+        VirtualInputsSingleOutputRecipeCreator.__init__(self, 'generate_features', name, project)
+
+
 class GroupingRecipeSettings(DSSRecipeSettings):
     """
     Settings of a grouping recipe. 
@@ -1182,15 +1146,9 @@ class GroupingRecipeSettings(DSSRecipeSettings):
 
         :param string column: name of the column to aggregate on
 
-        :return: the settings of the aggregations on a particular column, as a dict with fields:
-
-                    * **column** : name of the column to aggregate
-                    * **min**, **max**, **count**, **countDistinct**, **sum**, **concat**, **stddev**, **avg**, **first**, **last** and **sum2** : one boolean per aggregate, indicating whether it's computed. **sum2** is the sum of squares.
-                    * **concatSeparator** : for the **concat** aggregate, a string to separate values 
-                    * **concatDistinct** : for the **concat** aggregate, whether values concatenated are deduplicated
-                    * **firstLastNotNull** : for **last** and **first**, whether empty values are ignored
-                    * **orderColumn** : for **last** and **first**, name of a column on which rows in the group are sorted prior to taking the first or last row
-
+        :return: the settings of the aggregations on a particular column, as a dict. The name of
+                 the column to perform aggregates on is in a **column** field, and the aggregates
+                 are toggled on or off with boolean fields.
         :rtype: dict
         """
         found = None
@@ -1240,15 +1198,7 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         :param boolean avg: whether the mean aggregate is computed
         :param boolean stddev: whether the standard deviation aggregate is computed
 
-        :return: the settings of the aggregations on a the column, as a dict with fields:
-
-                    * **column** : name of the column to aggregate
-                    * **min**, **max**, **count**, **countDistinct**, **sum**, **concat**, **stddev**, **avg**, **first**, **last** : one boolean per aggregate, indicating whether it's computed
-                    * **concatSeparator** : for the **concat** aggregate, a string to separate values 
-                    * **concatDistinct** : for the **concat** aggregate, whether values concatenated are deduplicated
-                    * **firstLastNotNull** : for **last** and **first**, whether empty values are ignored
-                    * **orderColumn** : for **last** and **first**, name of a column on which rows in the group are sorted prior to taking the first or last row
-        
+        :return: the settings of the aggregations on a the column, as a dict. The name of the column is in a **column** field.
         :rtype dict
         """
         cs = self.get_or_create_column_settings(column)
@@ -1466,8 +1416,6 @@ class PrepareRecipeSettings(DSSRecipeSettings):
                     * **params** : dict of the step's own parameters. Each step type has its own parameters.
                     * **disabled** : whether the step is disabled
                     * **name** : label of the step
-                    * **comment** : comment on the step
-                    * **alwaysShowComment**, **mainColor** and **secondaryColor** : UI settings
 
         :rtype: list[dict]
         """
@@ -1536,31 +1484,9 @@ class JoinRecipeSettings(DSSRecipeSettings):
         This method returns a reference to the list of inputs, not a copy. Modifying the list
         then calling :meth:`DSSRecipeSettings.save()` commits the changes.
 
-        :return: a list of virtual inputs, each one a dict of 
-
-                    * **index** : index of the dataset of this virtual input in the recipe's list of inputs
-                    * **preFilter** : filter applied to the input, as a dict of:
-
-                        * **distinct** : whether the records in the input should be deduplicated
-                        * **enabled** : whether filtering is enabled
-                        * **uiData** : settings of the filter, if **enabled** is True, as a dict of:
-
-                            * **mode** : type of filter. Possible values: CUSTOM, SQL, '&&' (boolean AND of conditions) and '||' (boolean OR of conditions)
-                            * **conditions** : if mode is '&&' or '||', then a list of the actual filter conditions, each one a dict
-
-                        * **expression** : if **uiData.mode** is CUSTOM, a formula in DSS `formula language <https://doc.dataiku.com/dss/latest/formula/index.html>`_ . If **uiData.mode** is SQL, a SQL expression.
-
-                    * **computedColumns** : list of computed columns added to the input, each one a dict of:
-
-                        * **mode** : type of expression used to define the computations. One of GREL or SQL.
-                        * **name** : name of the column generated
-                        * **type** : name of a DSS type for the computed column
-                        * **expr** : if **mode** is CUSTOM, a formula in DSS `formula language <https://doc.dataiku.com/dss/latest/formula/index.html>`_ . If **mode** is SQL, a SQL expression.
-
-                    * **alias** : optional alias to use instead of the name of the dataset pointed by this virtual input
-                    * **autoSelectColumns** : whether to select all columns of the input 
-                    * **prefix** : optional prefix to add to all columns of this input in the output schema
-
+        :return: a list of virtual inputs, each one a dict. The field **index** holds the index of 
+                 the dataset of this virtual input in the recipe's list of inputs. Pre-filter, computed
+                 columns and column selection properties (if applicable) are defined in each virtual input.
         :rtype: list[dict]
         """
         return self.obj_payload["virtualInputs"]
@@ -1573,27 +1499,8 @@ class JoinRecipeSettings(DSSRecipeSettings):
         This method returns a reference to the list of joins, not a copy. Modifying the list
         then calling :meth:`DSSRecipeSettings.save()` commits the changes.
 
-        :return: list of the join definitions, each as a dict of:
-
-                    * **table1** : index of the virtual input used as left-side in this join
-                    * **table2** : index of the virtual input used as right-side in this join
-                    * **type** : type of join. Possible values: INNER, LEFT, RIGHT, FULL (full outer), CROSS, ADVANCED
-                    * **outerJoinOnTheLeft** : used in ADVANCED mode only, whether to keep unmatched rows in left dataset or not
-                    * **rightLimit** : optional limiting of the number of lines that can match each line of the left-side (after taking into account all conditions), as a dict
-                    * **conditionsMode** : how the join conditions are assembled. Possible values: AND (match all conditions), OR (match at least one condition), NATURAL (for natural joins), CUSTOM
-                    * **customSQLCondition** : when **conditionsMode** is CUSTOM, the SQL expression of the join conditions
-                    * **on** : for **conditionsMode** valued AND or OR, a list of join conditions, each one a dict of:
-
-                        * **column1** : name of the column on the left-side
-                        * **column2** : name of the column on the right-side
-                        * **type** : type of the condition. Possible values are EQ,  LTE, LT, GTE, GT, NE, WITHIN_RANGE, K_NEAREST, K_NEAREST_INFERIOR, CONTAINS, STARTS_WITH
-                        * **caseInsensitive** : for conditions on strings, whether the equality is case-sensitive
-                        * **normalizeText** : for conditions on strings, whether to lowercase and strip accents on both sides
-                        * **maxDistance** : for K_NEAREST, K_NEAREST_INFERIOR condition, the maximum allowed distance for the nearest element
-                        * **maxMatches** : for K_NEAREST, K_NEAREST_INFERIOR, the maximum number of matches (use 0 for unlimited)
-                        * **strict** : whether the limit of **maxMatches** is strict. If not, matches at the same distance are taken, even if this means going over **maxMatches**
-                        * **dateDiffUnit** : for comparison on date columns, rounding applied before comparing. Possible values are YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND.
-
+        :return: list of the join definitions, each as a dict. The **table1** and **table2** fields
+                 give the indices of the virtual inputs on the left side and right side respectively.
         :rtype: list[dict]
         """
         return self.obj_payload["joins"]
@@ -1648,7 +1555,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         return join
 
     @staticmethod
-    def add_condition_to_join(self, join, type="EQ", column1=None, column2=None):
+    def add_condition_to_join(join, type="EQ", column1=None, column2=None):
         """
         Add a condition to a join.
 
@@ -1659,7 +1566,7 @@ class JoinRecipeSettings(DSSRecipeSettings):
         :param string column2: name of right-side column
         """
         cond = {
-            "type" : type,
+            "type": type,
             "column1": {"name": column1, "table": join["table1"]},
             "column2": {"name": column2, "table": join["table2"]},
         }
