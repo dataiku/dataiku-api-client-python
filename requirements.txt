@@ -1,3 +1,2 @@
-requests<2.22
+requests<3
 python-dateutil
-nose
