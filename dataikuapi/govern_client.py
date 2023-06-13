@@ -53,11 +53,11 @@ class GovernClient(object):
 
         try:
             http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    params=params, data=body,
-                    files=files,
-                    stream=stream,
-                    headers=headers)
+                method, "%s/dip/publicapi%s" % (self.host, path),
+                params=params, data=body,
+                files=files,
+                stream=stream,
+                headers=headers)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -67,23 +67,23 @@ class GovernClient(object):
                 ex = {"message": http_res.text}
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
-    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
+    def _perform_empty(self, method, path, params=None, body=None, files=None, raw_body=None):
         self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
 
-    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_text(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body).text
 
-    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_json(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
 
-    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_raw(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
 
     def _perform_json_upload(self, method, path, name, f):
         try:
             http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    files = {'file': (name, f, {'Expires': '0'})} )
+                method, "%s/dip/publicapi%s" % (self.host, path),
+                files={'file': (name, f, {'Expires': '0'})})
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -216,6 +216,18 @@ class GovernClient(object):
     # Time Series
     ########################################################
 
+    def create_time_series(self, datapoints=[]):
+        """
+        Create a new time series and push a list of values inside it.
+
+        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timeSeriesId", "timestamp" (an epoch in milliseconds), and "value" (an object)
+        :return: the created time-series object
+        :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
+        """
+
+        result = self._perform_json("POST", "/time-series", body=datapoints)
+        return GovernTimeSeries(self, result["id"])
+
     def get_time_series(self, time_series_id):
         """
         Return a handle to interact with the time series
@@ -281,7 +293,6 @@ class GovernClient(object):
         return GovernUser(self, login)
 
     def get_own_user(self):
-
         """
         Get a handle to interact with the current user
 

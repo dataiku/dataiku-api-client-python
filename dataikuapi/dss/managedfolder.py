@@ -313,17 +313,7 @@ class DSSManagedFolder(object):
         :param string metric: identifier of the metric to get values of
         
         :returns: an object containing the values of the metric, cast to the appropriate type (double, 
-                  boolean,...). Top-level fields are:
-
-                     * **metricId** : identifier of the metric
-                     * **metric** : dict of the metric's definition
-                     * **valueType** : type of the metric values in the **values** array
-                     * **lastValue** : most recent value, as a dict of
-
-                        - **time** : timestamp of the value computation
-                        - **value** : value of the metric at **time**
-
-                     * **values** : list of values, each one a dict of the same structure as **lastValue**
+                  boolean,...). The identifier of the metric is in a **metricId** field.
 
         :rtype: dict
         """
@@ -443,19 +433,10 @@ class DSSManagedFolderSettings(DSSTaggableObjectSettings):
 
     def get_raw(self):
         """
-        Get the managef folder settings as a dict
+        Get the managed folder settings.
 
-        :returns: the settings. Top-level fields are:
-
-                    * **name** : the label of the managed folder
-                    * **type** : the type of the filesystem underlying the managed folder (S3, HDFS, GCS, ...)
-                    * **params** : the type-specific parameters, like the connection to use or the root path of the managed folder inside the connection
-                    * **contentType** : an optional semantic type describing the files in the folder
-                    * **partitioning** : definition of the partitioning of the managed folder
-                    * **selection** : when partitioned, the partitions to show when viewing the managed folder
-                    * **flowOptions** : build options
-                    * **metrics** : probes for computing metrics on the managed folder
-                    * **checks** : definitions of the checks on the managed folder
+        :returns: the settings, as a dict. The definition of the actual location of the files in the 
+                  managed folder is a **params** sub-dict.
 
         :rtype: dict
         """

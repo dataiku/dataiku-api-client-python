@@ -211,13 +211,24 @@ class DSSAPIDeployerInfraSettings(object):
         self.settings = settings
 
     def get_type(self):
-        """Gets the type of this infra, either STATIC or K8S"""
+        """
+        Gets the type of this infra
+
+        :returns: the type of this infra
+        :rtype: string
+        """
         return self.settings["type"]
 
     def add_apinode(self, url, api_key, graphite_prefix=None):
-        """Adds an API node to the list of nodes of this infra.
+        """
+        Adds an API node to the list of nodes of this infra.
 
-        Only applicable to STATIC infrastructures"""
+        Only applicable to STATIC infrastructures
+
+        :param str url: url of the API node that will be added to this infra
+        :param str api_key: api key secret to connect to the API node
+        :param str graphite_prefix: graphite prefix for metric reports if graphite is configured
+        """
         new_node = {
             "url": url,
             "adminAPIKey" : api_key,
@@ -353,7 +364,7 @@ class DSSAPIDeployerDeployment(object):
         before its deletion.
 
         :param boolean disable_first: If True, automatically disables this deployment before deleting it.
-        If False, will raise an Exception if this deployment is enabled.
+            If False, will raise an Exception if this deployment is enabled.
 
         """
 
@@ -394,6 +405,8 @@ class DSSAPIDeployerDeploymentSettings(object):
     def set_enabled(self, enabled):
         """
         Enables or disables this deployment
+
+        :param bool enabled: True/False to Enable/Disable this deployment
         """
         self.settings["enabled"] = enabled
 
@@ -452,6 +465,9 @@ class DSSAPIDeployerDeploymentStatus(object):
     def get_service_urls(self):
         """
         Returns service-level URLs for this deployment (ie without the enpdoint-specific suffix)
+
+        :returns: a list of service-level URLs for this deployment
+        :rtype: list
         """
 
         if "deployedServiceId" in self.light_status["deploymentBasicInfo"]:
@@ -597,7 +613,7 @@ class DSSAPIDeployerServiceStatus(object):
         Returns the deployments that have been created from this published project
 
         :param str infra_id: Identifier of an infra, allows to only keep in the returned list the deployments on this infra.
-        If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
+            If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
 
         :returns: a list of deployments
         :rtype: list of :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeployment`

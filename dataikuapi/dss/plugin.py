@@ -24,27 +24,8 @@ class DSSPluginSettings(object):
             This method returns a reference to the settings, not a copy. Changing values in the reference
             then calling :meth:`save()` results in these changes being saved.
 
-        :return: the settings as a dict. Top-level fields are:
-
-                    * **permissions** : list of permissions, per group, as a list of dict, each with fields
-
-                        * **group** : name of a DSS group
-                        * **admin** : whether the group can administer the plugin (edit settings and presets)
-
-                    * **defaultPermission** : default permissions for the plugin, as a dict. The dict has the same fields as in **permissions**, minus the **group**
-                    * **detailsNotVisible** : if True, only **presets** and **accessibleParameterSetDescs** are filled
-                    * **config** : plugin-level settings (deprecated)
-                    * **codeEnvName** : name of the code env currently associated to the plugin
-                    * **accessibleParameterSetDescs** : list of parameter set definitions that the user can make presets for. Each definition is a dict (see :meth:`DSSPluginParameterSet.desc()`)
-                    * **presets** : list of presets (see :meth:`DSSPluginParameterSet.presets()`)
-                    * **parameterSets** : list of settings for the parameter sets, as a list of dict (see :meth:`DSSPluginParameterSet.settings()`)
-                    * **appTemplates** : list of settings for the Dataiku App templates in this plugin, as a list of dict. Each dict has keys:
-
-                        * **name** : name of the template
-                        * **remapping** : settings to remap connections and code envs upon instantiation of the app template, as a dict. The dict has fields:
-
-                            * **connections** : list of remappings for connections, as a list of dict with fields **source** and **target**, applied to connection names
-                            * **codeEnvs** : list of remappings for code envs, as a list of dict with fields **source** and **target**, applied to code env names
+        :return: the settings as a dict. The settings consist of the plugin code env's name, the presets and 
+                 the permissions to use the plugin components.
 
         :rtype: dict
         """
@@ -111,13 +92,8 @@ class DSSPluginParameterSet(object):
         """
         Get the raw definition of the parameter set.
 
-        :return: a parameter set definition, as a dict of:
-
-                        * **id** : name of the parameter set
-                        * **ownerPluginId** : name of the plugin
-                        * **elementType** : unique identifier of the parameter set on the DSS instance, built from plugin and parameter set names
-                        * **folderName** : name of the folder holding the parameter set files, inside the plugin directory
-                        * **desc** : the parameter set's contents as a dict. See `the doc <https://doc.dataiku.com/dss/latest/plugins/reference/params.html#preset-parameters>`_
+        :return: a parameter set definition, as a dict. The parameter set's contents is a **desc** sub-dict. 
+                 See `the doc <https://doc.dataiku.com/dss/latest/plugins/reference/params.html#preset-parameters>`_
 
         :rtype: dict
         """
@@ -131,17 +107,8 @@ class DSSPluginParameterSet(object):
         These settings control the behavior of the parameter set, and comprise notably the permissions,
         but not the presets of this parameter set.
 
-        :return: the settings of the parameter set, as a dict of:
-
-                        * **name** : name of the parameter set in the plugin
-                        * **type** : identifier of the parameter set (unique on the DSS instance)
-                        * **permissions** : list of permissions, per group, as a list of dict. Unless given access via **permissions**, only admins of the plugin can add presets for the parameter set. Each dict has fields:
-
-                            * **group** : name of a DSS group
-                            * **definableInline** : whether presets of this parameter set can be defined directly in the forms of the plugin components that use them
-                            * **definableAtProjectLevel** : whether project-level presets can be made of this parameter set
-
-                        * **defaultPermission** : default permissions for the parameter set, as a dict. The dict has the same fields as in **permissions**, minus the **group**
+        :return: the settings of the parameter set, as a dict. The parameter set's settings consist of the permissions 
+                 controlling whether the presets of the parameter set can be created inline or at the project level.
 
         :rtype: dict
         """
@@ -161,21 +128,8 @@ class DSSPluginParameterSet(object):
 
         :param string preset_name: name of a preset
 
-        :return: a preset definition, as a dict of:
-
-                        * **type** : type of the parameter set this preset belongs to (type being the instance-wide unique identifier)
-                        * **name** : preset name
-                        * **description** : preset description
-                        * **owner** : login of the owner of the preset
-                        * **permissions** : list of permissions, per group, as a list of dict, each with fields
-
-                            * **group** : name of a DSS group
-                            * **use** : whether the group can use the preset
-
-                        * **defaultPermission** : default permissions for the plugin, as a dict. The dict has the same fields as in **permissions**, minus the **group**
-                        * **config** : values of the preset, as a dict. Each key of the dict is the name of some parameter in the definition of the parameter set
-                        * **pluginConfig** : plugin-level values of the preset, as a dict. These values can only be set in the plugin's settings, not in the components using the preset.
-
+        :return: a preset definition, as a dict. The values of the preset are in the **config** sub-dict, keyed
+                 by the names of the parameters defined in the parameter set.
         :rtype: dict
         """
         for p in self._presets:

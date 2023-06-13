@@ -4,6 +4,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
@@ -18,7 +19,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
-from .dss.utils import DSSInfoMessages
+from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
@@ -509,7 +510,7 @@ class DSSClient(object):
         elif as_type == "objects" or as_type == "object":
             return [DSSConnection(self, name) for name in items_dict.keys()]
         else:
-            raise ValueError("Unknown as_type") 
+            raise ValueError("Unknown as_type")
 
     def get_connection(self, name):
         """
@@ -679,7 +680,7 @@ class DSSClient(object):
         elif as_type == "objects" or as_type == "object":
             return [DSSCodeStudioTemplate(self, item["id"]) for item in items]
         else:
-            raise ValueError("Unknown as_type") 
+            raise ValueError("Unknown as_type")
 
     def get_code_studio_template(self, template_id):
         """
@@ -1061,7 +1062,12 @@ class DSSClient(object):
     # Bundles / Import (Automation node)
     ########################################################
 
-    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None):
+    class PermissionsPropagationPolicy(Enum):
+        NONE = "NONE"
+        READ_ONLY = "READ_ONLY"
+        ALL = "ALL"
+
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
@@ -1069,9 +1075,12 @@ class DSSClient(object):
         :param string archive_path: Path on the local machine where the archive is
         :param project_folder: the project folder in which the project will be created or None for root project folder
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
+        :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
+        :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
         """
         params = {
-            "archivePath" : osp.abspath(archive_path)
+            "archivePath": osp.abspath(archive_path),
+            "permissionsPropagationPolicy": permissions_propagation_policy
         }
         if project_folder is not None:
             params["projectFolderId"] = project_folder.project_folder_id
@@ -1425,7 +1434,63 @@ class DSSClient(object):
         })
         return DSSWorkspace(self, workspace_key)
 
+    ########################################################
+    # Data Collections
+    ########################################################
 
+    def list_data_collections(self, as_type="listitems"):
+        """
+        List the accessible data collections
+
+        :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
+        :returns: The list of data collections.
+        :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
+            a list of :class:`dataikuapi.dss.data_collection.DSSDataCollection` if as_type is "objects",
+            a list of dict if as_type is "dict"
+        """
+        items = self._perform_json("GET", "/data-collections/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSDataCollectionListItem(self, item) for item in items]
+        if as_type == "objects" or as_type == "object":
+            return [DSSDataCollection(self, item["id"]) for item in items]
+        else:
+            return items
+
+    def get_data_collection(self, id):
+        """
+        Get a handle to interact with a specific data collection
+
+        :param str id: the id of the data collection to fetch
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
+        """
+        return DSSDataCollection(self, id)
+
+    def create_data_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
+        """
+        Create a new data collection and return a handle to interact with it
+
+        :param str displayName: the display name for the data collection.
+        :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
+        :param tags: The list of tags to use (defaults to *[]*)
+        :type tags: list of str
+        :param str description: a description for the data collection
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+        :param permissions: Initial permissions for the data collection (can be modified later - current user will always be added as admin).
+        :type permissions: a list of :class:`dict`
+
+        :returns: Handle of the newly created Data Collection
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
+        """
+        res = self._perform_json("POST", "/data-collections/", body={
+            "id": id,
+            "tags": tags if tags is not None else [],
+            "displayName": displayName,
+            "color": color,
+            "description": description,
+            "permissions": permissions
+        })
+        return DSSDataCollection(self, res['id'])
+    
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client
