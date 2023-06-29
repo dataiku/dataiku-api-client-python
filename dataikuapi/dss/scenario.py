@@ -367,8 +367,6 @@ class DSSScenarioStatus(object):
                     * **active** : whether the scenario runs its automatic triggers
                     * **running** : whether the scenario is currently running
                     * **start** : if the scenario is running, the timestamp of the beginning of the run
-                    * **futureId** : identifier of the thread running the scenario in the DSS backend. Can be used to instantiate a :class:`dataikuapi.dss.future.DSSFuture`
-                    * **trigger** : if the scenario is running, the trigger fire that initiated it, as a dict (see :meth:DSSTriggerFire.get_raw()`)
 
         :rtype: dict
         """
