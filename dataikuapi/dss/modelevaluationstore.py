@@ -415,6 +415,7 @@ class DSSModelEvaluationFullInfo:
         self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
         self.target_variable = self.full_info["evaluation"].get("targetVariable")  # type: str
         self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
+        self.has_model = self.full_info["evaluation"]["hasModel"]
         """The user-accessible metadata (name, labels)
         Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling :meth:`save_user_meta`."""
 

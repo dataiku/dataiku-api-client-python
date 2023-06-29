@@ -517,6 +517,20 @@ class DSSUser(object):
         return DSSUserActivity(self.client, self.login, activity)
 
     ########################################################
+    # Supplier interaction
+    ########################################################
+
+    def start_resync_from_supplier(self):
+        """
+        Starts a resync of the user from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self.client._perform_json("POST", "/admin/users/%s/actions/resync" % self.login)
+        return DSSFuture.from_resp(self.client, future_resp)
+
+    ########################################################
     # Legacy
     ########################################################
 

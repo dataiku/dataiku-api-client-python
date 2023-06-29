@@ -435,6 +435,66 @@ class DSSClient(object):
         resp = self._perform_json("GET", "/admin/authorization-matrix")
         return DSSAuthorizationMatrix(resp)
 
+    def start_resync_users_from_supplier(self, logins):
+        """
+        Starts a resync of multiple users from an external supplier (LDAP, Azure AD or custom auth)
+        
+        :param list logins: list of logins to resync
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi", body=logins)
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_resync_all_users_from_supplier(self):
+        """
+        Starts a resync of all users from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi")
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_groups(self, user_source_type):
+        """
+        Fetch groups from external source
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of group names
+        """
+        future_resp = self._perform_json("GET", "/admin/external-groups", params={'userSourceType': user_source_type})
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_users(self, user_source_type, login=None, group_name=None):
+        """
+        Fetch users from external source filtered by login or group name:
+         - if login is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
+         - else,
+            - if group_name is provided, will search for members of the group in the external source
+            - else will search for all users
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param login: optional - the login of the user in the external source
+        :param group_name: optional - the group name of the group in the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of ExternalUser
+        """
+        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'groupName': group_name})
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_provision_users(self, user_source_type, users):
+        """
+        Provision users of given source type
+
+        :param string user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param list users: list of user attributes coming form the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/provision", body={'userSourceType': user_source_type, 'users': users})
+        return DSSFuture.from_resp(self, future_resp)
+
     ########################################################
     # Groups
     ########################################################
@@ -511,6 +571,17 @@ class DSSClient(object):
             return [DSSConnection(self, name) for name in items_dict.keys()]
         else:
             raise ValueError("Unknown as_type")
+
+    def list_connections_names(self, connection_type):
+        """
+        List all connections names on the DSS instance.
+
+        :param str connection_type: Returns only connections with this type. Use 'all' if you don't want to filter.
+
+        :return: the list of connections names
+        :rtype: List[str]
+        """
+        return self._perform_json("GET", "/connections/get-names", params={"type": connection_type})
 
     def get_connection(self, name):
         """

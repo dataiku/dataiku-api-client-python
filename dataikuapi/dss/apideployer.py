@@ -88,8 +88,8 @@ class DSSAPIDeployer(object):
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
-        :param str type: STATIC or KUBERNETES
-        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
+        :param str type: STATIC or K8S
+        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check whether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """
         settings = {
@@ -358,13 +358,16 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
-    def delete(self, disable_first=False):
+    def delete(self, disable_first=False, ignore_pre_delete_errors=False):
         """
         Deletes this deployment. The disable_first flag automatically disables the deployment
         before its deletion.
 
         :param boolean disable_first: If True, automatically disables this deployment before deleting it.
             If False, will raise an Exception if this deployment is enabled.
+
+        :param boolean ignore_pre_delete_errors: If True, any error occurred during the actions performed previously to
+        delete the deployment will be ignored and the delete action will be performed anyway.
 
         """
 
@@ -377,7 +380,9 @@ class DSSAPIDeployerDeployment(object):
             settings.set_enabled(enabled=False)
             settings.save()
         self.client._perform_empty(
-                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
+                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id),
+            params = { "ignorePreDeleteErrors" : ignore_pre_delete_errors }
+        )
 
                 
             

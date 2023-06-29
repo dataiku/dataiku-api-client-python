@@ -1,8 +1,7 @@
 import datetime
 
-from ..utils import DataikuException
+from ..utils import DataikuException, DataikuValueCaster
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from .future import DSSFuture
 import json, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 from .future import DSSFuture
@@ -331,6 +330,33 @@ class DSSDataset(object):
         }
         future_resp = self.client._perform_json("POST", "/projects/%s/datasets/%s/actions/copyTo" % (self.project_key, self.dataset_name), body=dqr)
         return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
+
+    def search_data_elastic(self, query_string, start=0, size=128, sort_columns=None, partitions=None):
+        """
+        .. caution::
+            Only for datasets on Elasticsearch connections
+
+        Query the service with a search string to directly fetch data
+        :param str query_string: Elasticsearch compatible query string
+        :param int start: row to start fetching the data
+        :param int size: number of results to return
+        :param list sort_columns: list of {"column", "order"} dict, which is the order to fetch data. "order" is "asc" for ascending, "desc" for descending
+        :param list partitions: if the dataset is partitioned, a list of partition ids to search
+        :return: a dict containing "columns", "rows", "warnings", "found" (when start == 0)
+        :rtype: dict
+        """
+        params = {
+            "queryString": query_string,
+            "start": start,
+            "size": size,
+            "sortColumns": json.dumps(sort_columns),
+            "partitions": json.dumps(partitions),
+        }
+        future_resp = self.client._perform_json("GET", "/projects/%s/datasets/%s/search-data-elastic" % (self.project_key, self.dataset_name), params=params)
+        result = DSSFuture(self.client, future_resp.get("jobId", None), future_resp).wait_for_result()
+        value_caster = DataikuValueCaster(result["columns"])
+        result["rows"] = [value_caster.cast_values(row) for row in result["rows"]]
+        return result
 
     ########################################################
     # Dataset actions
