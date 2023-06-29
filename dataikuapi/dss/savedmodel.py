@@ -62,9 +62,11 @@ class DSSSavedModel(object):
         """
         Gets the versions of this saved model.
 
-        :return: a list of the versions, as a dict of object. Each object contains at least an "id" parameter, which
-            can be passed to :meth:`get_metric_values`, :meth:`get_version_details` and :meth:`set_active_version`
-        :rtype: list
+        This returns each version as a dict of object. Each object contains at least an "id" parameter, which
+        can be passed to :meth:`get_metric_values`, :meth:`get_version_details` and :meth:`set_active_version`.
+
+        :return: The list of the versions
+        :rtype: list[dict]
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/savedmodels/%s/versions" % (self.project_key, self.sm_id))
@@ -73,10 +75,11 @@ class DSSSavedModel(object):
         """
         Gets the active version of this saved model.
 
-        :return: a dict representing the active version or None if no version is active.
-            The dict contains at least an "id" parameter, which can be passed to :meth:`get_metric_values`,
-            :meth:`get_version_details` and :meth:`set_active_version`.
-        :rtype: dict or None
+        The returned dict contains at least an "id" parameter, which can be passed to :meth:`get_metric_values`,
+        :meth:`get_version_details` and :meth:`set_active_version`.
+
+        :return: A dict representing the active version or None if no version is active.
+        :rtype: Union[dict, None]
         """
         filtered = [x for x in self.list_versions() if x["active"]]
         if len(filtered) == 0:
@@ -106,7 +109,7 @@ class DSSSavedModel(object):
         """
         Sets a particular version of the saved model as the active one.
 
-        :param str version_id: identifier of the version, as returned by :meth:`list_versions`
+        :param str version_id: Identifier of the version, as returned by :meth:`list_versions`
         """
         self.client._perform_empty(
             "POST", "/projects/%s/savedmodels/%s/versions/%s/actions/setActive" % (self.project_key, self.sm_id, version_id))
@@ -134,7 +137,7 @@ class DSSSavedModel(object):
         Fetches the last ML task that has been exported to this saved model.
 
         :return: origin ML task or None if the saved model does not have an origin ml task
-        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask` or None
+        :rtype: Union[:class:`dataikuapi.dss.ml.DSSMLTask`, None]
         """
         fmi = self.get_settings().get_raw().get("lastExportedFrom")
         if fmi is not None:
@@ -477,7 +480,7 @@ class DSSSavedModel(object):
 
     def get_metric_values(self, version_id):
         """
-        Gets the values of the metrics on the version of this saved model
+        Gets the values of the metrics on the specified version of this saved model
 
         :param str version_id: identifier of the version, as returned by :meth:`list_versions`
         :return: a list of metric objects and their value
@@ -577,7 +580,10 @@ class MLFlowVersionSettings:
 
     @property
     def raw(self):
-        """The raw settings of the imported MLFlow model version"""
+        """
+        :return: The raw settings of the imported MLFlow model version
+        :rtype: dict
+        """
         return self.data
 
     def save(self):

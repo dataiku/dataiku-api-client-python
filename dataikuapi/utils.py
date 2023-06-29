@@ -44,32 +44,28 @@ def none_if_throws(f):
     return aux
 
 
-class DataikuStreamedHttpUTF8CSVReader(object):
-    """
-    A CSV reader with a schema
-    """
-    def __init__(self, schema, csv_stream):
-        self.schema = schema
-        self.csv_stream = csv_stream
-
-    def iter_rows(self):
+class DataikuValueCaster(object):
+    def __init__(self, schema):
+        self.casters = self._get_value_casters(schema)
+        
+    def _get_value_casters(self, schema):
         def decode(x):
             if sys.version_info > (3,0):
                 return x
             else:
                 return unicode(x, "utf8")
-
+    
         def parse_iso_date(s):
             if s == "":
                 return None
             else:
                 return date_iso_parser.parse(s)
-
+    
         def str_to_bool(s):
             if s is None:
                 return False
             return s.lower() == "true"
-
+    
         CASTERS = {
             "tinyint" : int,
             "smallint" : int,
@@ -80,10 +76,24 @@ class DataikuStreamedHttpUTF8CSVReader(object):
             "date": parse_iso_date,
             "boolean": str_to_bool,
         }
+        return [CASTERS.get(col["type"], decode) for col in schema]
+    
+    def cast_values(self, values):
+        return [none_if_throws(caster)(val)
+                for (caster, val) in dku_zip_longest(self.casters, values)]
+
+
+class DataikuStreamedHttpUTF8CSVReader(object):
+    """
+    A CSV reader with a schema
+    """
+    def __init__(self, schema, csv_stream):
+        self.schema = schema
+        self.csv_stream = csv_stream
+
+    def iter_rows(self):
         schema = self.schema
-        casters = [
-            CASTERS.get(col["type"], decode) for col in schema
-        ]
+        value_caster = DataikuValueCaster(schema)
         with closing(self.csv_stream) as r:
             if sys.version_info > (3,0):
                 raw_generator = codecs.iterdecode(r.raw, 'utf-8')
@@ -93,8 +103,8 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 delimiter='\t',
                                                 quotechar='"',
                                                 doublequote=True):
-                yield [none_if_throws(caster)(val)
-                        for (caster, val) in dku_zip_longest(casters, uncasted_tuple)]
+                yield value_caster.cast_values(uncasted_tuple)
+
 
 class CallableStr(str):
     def __init__(self, val):

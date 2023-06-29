@@ -1424,6 +1424,13 @@ class DSSProject(object):
         :param str bundle_id: bundle id tag
         """
         return self.client._perform_json("PUT", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
+    
+    def delete_exported_bundle(self, bundle_id):
+        """
+        Deletes a project bundle from the Design node
+        :param str bundle_id: bundle id tag
+        """
+        return self.client._perform_json("DELETE", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
 
     def get_exported_bundle_archive_stream(self, bundle_id):
         """

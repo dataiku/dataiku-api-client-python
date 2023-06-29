@@ -1,4 +1,5 @@
 from datetime import datetime
+from dataikuapi.govern.future import GovernFuture
 
 class GovernUser(object):
     """
@@ -42,6 +43,19 @@ class GovernUser(object):
                                 extra_headers={"X-DKU-ProxyUser": self.login})
         else:
             raise ValueError("Don't know how to proxy this client")
+
+    ########################################################
+    # Supplier interaction
+    ########################################################
+
+    def start_resync_from_supplier(self):
+        """
+        Starts a resync of the user from an external supplier (LDAP, Azure AD or custom auth)
+        :return: a :class:`dataikuapi.govern.future.GovernFuture` representing the sync process
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        """
+        future_resp = self.client._perform_json("POST", "/admin/users/%s/actions/resync" % self.login)
+        return GovernFuture.from_resp(self.client, future_resp)
 
 
 class GovernOwnUser(object):
