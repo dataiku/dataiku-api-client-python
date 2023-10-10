@@ -1,13 +1,13 @@
 
 import tempfile
 
-from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 from .discussion import DSSObjectDiscussions
 from .managedfolder import DSSManagedFolder
 from .metrics import ComputedMetrics
 from .ml import DSSMLTask
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
+from .utils import DSSDatasetSelectionBuilder
 from ..utils import _make_zipfile, dku_basestring_type
 
 try:

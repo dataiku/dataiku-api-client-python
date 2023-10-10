@@ -3,18 +3,18 @@ import json
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
-from dataikuapi.govern.future import GovernFuture
-from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
-from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
-from dataikuapi.govern.admin_custom_pages_handler import GovernAdminCustomPagesHandler
-from dataikuapi.govern.admin_roles_permissions_handler import GovernAdminRolesPermissionsHandler
-from dataikuapi.govern.artifact import GovernArtifact
-from dataikuapi.govern.artifact_search import GovernArtifactSearchRequest
-from dataikuapi.govern.blueprint import GovernBlueprintListItem, GovernBlueprint
-from dataikuapi.govern.custom_page import GovernCustomPageListItem, GovernCustomPage
-from dataikuapi.govern.time_series import GovernTimeSeries
-from dataikuapi.govern.uploaded_file import GovernUploadedFile
-from dataikuapi.utils import DataikuException
+from .govern.future import GovernFuture
+from .govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
+from .govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
+from .govern.admin_custom_pages_handler import GovernAdminCustomPagesHandler
+from .govern.admin_roles_permissions_handler import GovernAdminRolesPermissionsHandler
+from .govern.artifact import GovernArtifact
+from .govern.artifact_search import GovernArtifactSearchRequest
+from .govern.blueprint import GovernBlueprintListItem, GovernBlueprint
+from .govern.custom_page import GovernCustomPageListItem, GovernCustomPage
+from .govern.time_series import GovernTimeSeries
+from .govern.uploaded_file import GovernUploadedFile
+from .utils import DataikuException
 
 
 class GovernClient(object):

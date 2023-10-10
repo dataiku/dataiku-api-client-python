@@ -1,4 +1,4 @@
-from dataikuapi.govern.artifact import GovernArtifact
+from .artifact import GovernArtifact
 import copy
 
 class GovernArtifactSearchRequest(object):

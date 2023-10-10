@@ -1,4 +1,4 @@
-from dataikuapi.govern.blueprint import GovernBlueprintVersion
+from .blueprint import GovernBlueprintVersion
 
 class GovernArtifact(object):
     """

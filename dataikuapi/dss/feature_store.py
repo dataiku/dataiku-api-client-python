@@ -1,4 +1,4 @@
-from dataikuapi.dss.dataset import DSSDataset
+from .dataset import DSSDataset
 
 
 class DSSFeatureGroupListItem(object):

@@ -598,7 +598,7 @@ class DSSUser(object):
         :return: a client through which calls will be run as the user
         :rtype: :class:`dataikuapi.DSSClient`
         """
-        from dataikuapi.dssclient import DSSClient
+        from ..dssclient import DSSClient
 
         if self.client.api_key is not None:
             return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})

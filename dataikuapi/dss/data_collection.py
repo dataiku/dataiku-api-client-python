@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from dataikuapi.dss.dataset import DSSDataset
+from .dataset import DSSDataset
 
 
 class DSSDataCollectionListItem(object):

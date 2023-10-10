@@ -1,6 +1,6 @@
-from dataikuapi.dss.app import DSSApp
-from dataikuapi.dss.dataset import DSSDataset
-from dataikuapi.dss.wiki import DSSWikiArticle
+from .app import DSSApp
+from .dataset import DSSDataset
+from .wiki import DSSWikiArticle
 
 
 class DSSWorkspace:

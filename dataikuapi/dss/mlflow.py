@@ -2,8 +2,8 @@ import json
 import time
 from datetime import datetime
 
-from dataikuapi.dss.savedmodel import ExternalModelVersionHandler
-from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
+from .savedmodel import ExternalModelVersionHandler
+from .utils import DSSDatasetSelectionBuilder
 
 class DSSMLflowExtension(object):
     """

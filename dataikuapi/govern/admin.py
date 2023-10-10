@@ -1,5 +1,5 @@
 from datetime import datetime
-from dataikuapi.govern.future import GovernFuture
+from .future import GovernFuture
 
 class GovernUser(object):
     """
