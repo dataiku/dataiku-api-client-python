@@ -1,4 +1,3 @@
-
 import tempfile
 
 from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
@@ -33,7 +32,7 @@ class DSSSavedModel(object):
         self.project = client.get_project(project_key)
         self.project_key = project_key
         self.sm_id = sm_id
-  
+
     @property
     def id(self):
         """
@@ -251,39 +250,49 @@ class DSSSavedModel(object):
         )
         return self.get_external_model_version_handler(version_id)
 
-    def create_proxy_model_version(self, version_id, configuration, target_column_name=None,
+    def create_external_model_version(self, version_id, configuration, target_column_name=None,
                                    class_labels=None, set_active=True, binary_classification_threshold=0.5,
-                                   evaluation_dataset=None, selection=None, use_optimal_threshold=True,
-                                   skip_expensive_reports=True, get_features_from_dataset=None, features_list=None,
-                                   container_exec_config_name="NONE"):
+                                   input_dataset=None, selection=None, use_optimal_threshold=True,
+                                   skip_expensive_reports=True, features_list=None, container_exec_config_name="NONE",
+                                   input_format="GUESS", output_format="GUESS", evaluate=True):
         """
+        EXPERIMENTAL. Creates a new version of an external model.
+
         .. important::
             Requires the saved model to have been created using
-            :meth:`dataikuapi.dss.project.DSSProject.create_proxy_model`.
+            :meth:`dataikuapi.dss.project.DSSProject.create_external_model`.
 
         :param version_id: Identifier of the version, as returned by :meth:`list_versions`
         :type version_id: str
-        :param configuration: A dictionary containing the required params for the selected protocol.
+        :param configuration: A dictionary containing the desired saved model version configuration.
 
-            For SageMaker, syntax is:
-            configuration = {
-                "endpoint_name": "<endpoint-name>"
-            }
+          * For SageMaker, syntax is:
 
-            For AzureML, syntax is:
-            configuration = {
-                "subscription_id": "<id>",
-                "resource_group": "<rg>",
-                "workspace": "<workspace>",
-                "endpoint_name": "<endpoint-name>"
-            }
+            .. code-block:: python
 
-            For Vertex AI, syntax is:
-            configuration = {
-                "project_id": "<name> or <id>",
-                "endpoint_id": "<endpoint-id>"
-            }
+                configuration = {
+                    "protocol": "sagemaker",
+                    "endpoint_name": "<endpoint-name>"
+                }
+  
+          * For AzureML, syntax is:
 
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "azure-ml",
+                    "endpoint_name": "<endpoint-name>"
+                }
+  
+          * For Vertex AI, syntax is:
+  
+            .. code-block:: python
+            
+                configuration = {
+                    "protocol": "vertex-ai",
+                    "endpoint_id": "<endpoint-id>"
+                }
+  
         :type configuration: dict
         :param target_column_name: Name of the target column. Mandatory if model performance will be evaluated
         :type target_column_name: str
@@ -295,9 +304,11 @@ class DSSSavedModel(object):
             imported version (defaults to **0.5**). Overwritten during evaluation if an evaluation dataset
             is specified and `use_optimal_threshold` is True
         :type binary_classification_threshold: float
-        :param evaluation_dataset: (optional) Dataset to use to evaluate the model and populate interpretation tabs
-        :type evaluation_dataset: str or :class:`dataikuapi.dss.dataset.DSSDataset` or :class:`dataiku.Dataset`
-        :param selection: (optional) Sampling parameter for the evaluation.
+        :param input_dataset: (mandatory if either evaluate=True, input_format=GUESS, output_format=GUESS, features_list is None)
+            Dataset to use to infer the features names and types (if features_list is not set), evaluate the model, populate interpretation tabs,
+            and guess input/output formats (if input_format=GUESS or output_format=GUESS).
+        :type input_dataset: str or :class:`dataikuapi.dss.dataset.DSSDataset` or :class:`dataiku.Dataset`
+        :param selection: (optional) Sampling parameter for input_dataset during evaluation.
 
             * Example 1: head 100 lines ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
             * Example 2: random 500 lines ``DSSDatasetSelectionBuilder().with_random_fixed_nb_sampling(500)``
@@ -311,132 +322,174 @@ class DSSSavedModel(object):
         :type use_optimal_threshold: bool
         :param skip_expensive_reports: (optional) Skip computation of expensive/slow reports (e.g. feature importance).
         :type skip_expensive_reports: bool
-        :param get_features_from_dataset: (optional) Name of a dataset to get feature names from.
-        :type get_features_from_dataset: str or None
-        :param features_list: (optional) List of features, in JSON. Used if get_features_from_dataset is not defined
+        :param features_list: (optional) List of features, in JSON. Used if input_dataset is not defined
         :type features_list: list of ``{"name": "feature_name", "type": "feature_type"}`` or None
+
         :param container_exec_config_name: (optional) name of the containerized execution configuration to use for running the
             evaluation process.
 
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
+
         :type container_exec_config_name: str
 
+        :param input_format: (optional) Input format to use when querying the underlying endpoint.
+            For the 'azure-ml' and 'sagemaker' protocols, this option must be set if input_dataset is not set.
+            Supported values are:
+
+            * For all protocols:
+                - GUESS (default): Guess the input format by cycling through supported input formats and making requests using data from input_dataset.
+
+            * For Amazon SageMaker:
+                - INPUT_SAGEMAKER_CSV
+                - INPUT_SAGEMAKER_JSON
+
+            * For Vertex AI:
+                - INPUT_VERTEX_DEFAULT
+
+            * For Azure Machine Learning:
+                - INPUT_AZUREML_JSON_INPUTDATA
+                - INPUT_AZUREML_JSON_WRITER
+                - INPUT_AZUREML_JSON_INPUTDATA_DATA
+        :type input_format: str
+
+        :param output_format: (optional) Output format to use to parse the underlying endpoint's response.
+            For the 'azure-ml' and 'sagemaker' protocols, this option must be set if input_dataset is not set.
+            Supported values are:
+
+            * For all protocols:
+                - GUESS (default): Guess the output format by cycling through supported output formats and making requests using data from input_dataset.
+
+            * For Amazon SageMaker:
+                - OUTPUT_SAGEMAKER_CSV
+                - OUTPUT_SAGEMAKER_ARRAY_AS_STRING
+                - OUTPUT_SAGEMAKER_JSON
+
+            * For Vertex AI:
+                - OUTPUT_VERTEX_DEFAULT
+
+            * For Azure Machine Learning:
+                - OUTPUT_AZUREML_JSON_OBJECT
+                - OUTPUT_AZUREML_JSON_ARRAY
+        :type output_format: str
+
+        :param evaluate: (optional) True (default) if this model should be evaluated using input_dataset, False to disable evaluation.
+        :type evaluate: bool
 
         * Example: create a SageMaker Saved Model and add an endpoint as a version, evaluated on a dataset:
 
-        .. code-block:: python
-
-            import dataiku
-            client = dataiku.api_client()
-            project = client.get_default_project()
-            # create a SageMaker saved model, whose endpoints are hosted in region eu-west-1
-            sm = project.create_proxy_model("SaveMaker Proxy Model", "BINARY_CLASSIFICATION", "sagemaker", "eu-west-1")
-
-            # configuration to add endpoint
-            configuration = {
+          .. code-block:: python
+  
+              import dataiku
+              client = dataiku.api_client()
+              project = client.get_default_project()
+              # create a SageMaker saved model, whose endpoints are hosted in region eu-west-1
+              sm = project.create_external_model("SaveMaker External Model", "BINARY_CLASSIFICATION", "sagemaker", "eu-west-1")
+  
+              # configuration to add endpoint
+              configuration = {
                 "endpoint_name": "titanic-survived-endpoint"
-            }
-            smv = sm.create_proxy_model_version("v0",
+              }
+              smv = sm.create_external_model_version("v0",
                                                 configuration,
                                                 target_column_name="Survived",
                                                 class_labels=["0", "1"],
-                                                get_features_from_dataset="evaluation_dataset")
-
-        A dataset named "evaluation_dataset" must exist in the current project. Its schema and content should
-        match the endpoint expectations. Depending on the way the model deployed on the endpoint was created,
-        it may require a certain schema and not accept extra columns, it may not deal with missing features, etc.
-
-
+                                                input_dataset="evaluation_dataset")
+  
+          A dataset named "evaluation_dataset" must exist in the current project. Its schema and content should
+          match the endpoint expectations. Depending on the way the model deployed on the endpoint was created,
+          it may require a certain schema and not accept extra columns, it may not deal with missing features, etc.
+  
         * Example: create a Vertex AI Saved Model and add an endpoint as a version, without evaluating it:
 
-        .. code-block:: python
+          .. code-block:: python
 
-            import dataiku
-            client = dataiku.api_client()
-            project = client.get_default_project()
-            # create a VertexAI saved model, whose endpoints are hosted in region europe-west-1
-            sm = project.create_proxy_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
-            configuration = {
-                "project_id": "my-project",
-                "endpoint_id": "123456789012345678"
-            }
+              import dataiku
+              client = dataiku.api_client()
+              project = client.get_default_project()
+              # create a VertexAI saved model, whose endpoints are hosted in region europe-west-1
+              sm = project.create_external_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+              configuration = {
+                  "project_id": "my-project",
+                  "endpoint_id": "123456789012345678"
+              }
 
-            smv = sm.create_proxy_model_version("v1",
-                                                configuration,
-                                                target_column_name="Survived",
-                                                class_labels=["0", "1"],
-                                                get_features_from_dataset="titanic")
+              smv = sm.create_external_model_version("v1",
+                                                  configuration,
+                                                  target_column_name="Survived",
+                                                  class_labels=["0", "1"],
+                                                  input_dataset="titanic")
 
-        * A dataset named "my_dataset" must exist in the current project. It will be used to infer the schema of the
-        data to submit to the endpoint. As there is no evaluation dataset specified, the interpretation tabs
-        of this model version will be for the most empty. But the model still can be used to score datasets. It can also
-        be evaluated on a dataset by an Evaluation Recipe.
+          A dataset named "my_dataset" must exist in the current project. It will be used to infer the schema of the
+          data to submit to the endpoint. As there is no evaluation dataset specified, the interpretation tabs
+          of this model version will be for the most empty. But the model still can be used to score datasets. It can also
+          be evaluated on a dataset by an Evaluation Recipe.
+        * Example: create an AzureML Saved Model
 
-        Example: create an AzureML Saved Model
+          .. code-block:: python
 
-        .. code-block:: python
+              import dataiku
+              client = dataiku.api_client()
+              project = client.get_default_project()
+              # create an Azure ML saved model. No region specified, as this notion does not exist for Azure ML
+              sm = project.create_external_model("Azure ML Proxy Model", "BINARY_CLASSIFICATION")
+              configuration = {
+                  "subscription_id": "<subscription-id>>",
+                  "resource_group": "<your.resource.group-rg>",
+                  "workspace": "<your-workspace>",
+                  "endpoint_name": "<endpoint-name>"
+              }
 
-            import dataiku
-            client = dataiku.api_client()
-            project = client.get_default_project()
-            # create an Azure ML saved model. No region specified, as this notion does not exist for Azure ML
-            sm = project.create_proxy_model("Azure ML Proxy Model", "BINARY_CLASSIFICATION")
-            configuration = {
-                "subscription_id": "<subscription-id>>",
-                "resource_group": "<your.resource.group-rg>",
-                "workspace": "<your-workspace>",
-                "endpoint_name": "<endpoint-name>"
-            }
-
-            features_list = [{'name': 'Pclass', 'type': 'bigint'},
-                             {'name': 'Age', 'type': 'double'},
-                             {'name': 'SibSp', 'type': 'bigint'},
-                             {'name': 'Parch', 'type': 'bigint'},
-                             {'name': 'Fare', 'type': 'double'}]
+              features_list = [{'name': 'Pclass', 'type': 'bigint'},
+                               {'name': 'Age', 'type': 'double'},
+                               {'name': 'SibSp', 'type': 'bigint'},
+                               {'name': 'Parch', 'type': 'bigint'},
+                               {'name': 'Fare', 'type': 'double'}]
 
 
-            smv = sm.create_proxy_model_version("20230324-in-prod",
-                                                configuration,
-                                                target_column_name="Survived",
-                                                class_labels=["0", "1"],
-                                                features_list=features_list)
-
+              smv = sm.create_external_model_version("20230324-in-prod",
+                                                  configuration,
+                                                  target_column_name="Survived",
+                                                  class_labels=["0", "1"],
+                                                  features_list=features_list)
         * Example: minimalistic creation of a VertexAI model binary classification model
 
-        .. code-block:: python
+          .. code-block:: python
 
-            import dataiku
-            client = dataiku.api_client()
-            project = client.get_default_project()
+              import dataiku
+              client = dataiku.api_client()
+              project = client.get_default_project()
 
-            sm = project.create_proxy_model("Raw Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
-            configuration = {
-                "project_id": "my-project",
-                "endpoint_id": "123456789012345678"
-            }
+              sm = project.create_external_model("Raw Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+              configuration = {
+                  "project_id": "my-project",
+                  "endpoint_id": "123456789012345678"
+              }
 
-            smv = sm.create_proxy_model_version("legacy-model",
-                                                configuration,
-                                                class_labels=["0", "1"])
+              smv = sm.create_external_model_version("legacy-model",
+                                                  configuration,
+                                                  class_labels=["0", "1"])
 
-        This model will have empty interpretation tabs and can not be evaluated later by an Evaluation Recipe, as its
-        target is not defined, but it can be scored.
+          This model will have empty interpretation tabs and can not be evaluated later by an Evaluation Recipe, as its
+          target is not defined, but it can be scored.
 
         """
-        model_version = self._create_proxy_model_version(version_id, configuration, set_active,
+        model_version = self._create_external_model_version(version_id, configuration, set_active,
                                                          binary_classification_threshold)
-        model_version.set_core_metadata(target_column_name, class_labels, get_features_from_dataset, features_list,
-                                        container_exec_config_name=container_exec_config_name)
-        if evaluation_dataset:
-            model_version.evaluate(evaluation_dataset, container_exec_config_name, selection, use_optimal_threshold,
-                                   skip_expensive_reports)
+        model_version._set_core_external_metadata(target_column_name, class_labels, features_list, input_dataset,
+                                        container_exec_config_name=container_exec_config_name,
+                                        input_format=input_format,
+                                        output_format=output_format)
+        if evaluate:
+            if input_dataset is None:
+                raise ValueError("You must provide an input_dataset to evaluate this model, or set evaluate to False")
+            model_version.evaluate(input_dataset, container_exec_config_name, selection, use_optimal_threshold, skip_expensive_reports)
 
-    def _create_proxy_model_version(self, version_id, configuration, set_active=True,
+    def _create_external_model_version(self, version_id, configuration, set_active=True,
                                    binary_classification_threshold=0.5):
         """
         .. important::
-            Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_proxy_model`.
+            Requires the saved model to have been created using :meth:`dataikuapi.dss.project.DSSProject.create_external_model`.
 
         :param str version_id: identifier of the version, as returned by :meth:`list_versions`
         :param dict configuration: A dictionary containing the required params for the selected protocol
@@ -450,14 +503,13 @@ class DSSSavedModel(object):
 
         # Set the type in configuration
         assert isinstance(configuration, dict), "configuration should be a dictionary containing the required params for the selected protocol"
-        configuration["protocol"] = self.get_settings().get_raw()["proxyModelProtocol"]
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
                 project_id=self.project_key, saved_model_id=self.sm_id, version_id=version_id
             ),
             params={
                 "setActive": set_active,
-                "configuration": json.dumps(configuration),
+                "proxyModelVersionConfiguration": json.dumps(configuration),
                 "binaryClassificationThreshold": binary_classification_threshold
             },
             files={"file": (None, None)}  # required for backend-mandated multipart request
@@ -588,7 +640,7 @@ class MLFlowVersionSettings:
 
     def save(self):
         """Saves the settings of this MLFlow model version"""
-        self.version_handler.saved_model.client._perform_empty("PUT", 
+        self.version_handler.saved_model.client._perform_empty("PUT",
             "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.version_handler.saved_model.project_key, self.version_handler.saved_model.sm_id, self.version_handler.version_id),
             body=self.data)
 
@@ -619,32 +671,8 @@ class ExternalModelVersionHandler:
         metadata = self.saved_model.client._perform_json("GET", "/projects/%s/savedmodels/%s/versions/%s/external-ml/metadata" % (self.saved_model.project_key, self.saved_model.sm_id, self.version_id))
         return MLFlowVersionSettings(self, metadata)
 
-    def set_core_metadata(self,
-            target_column_name, class_labels=None,
-            get_features_from_dataset=None, features_list=None,
-            output_style="AUTO_DETECT", container_exec_config_name="NONE"):
-        """
-        Sets metadata for this MLFlow model version
-
-        In addition to ``target_column_name``, one of ``get_features_from_dataset`` or ``features_list`` must be passed in order
-        to be able to evaluate performance
-
-        :param str target_column_name: name of the target column. Mandatory in order to be able to evaluate performance
-        :param class_labels: List of strings, ordered class labels. Mandatory in order to be able to evaluate performance on classification models
-        :type class_labels: list or None
-        :param get_features_from_dataset: name of a dataset to get feature names from
-        :type get_features_from_dataset: str or None
-        :param features_list: list of ``{"name": "feature_name", "type": "feature_type"}``
-        :type features_list: list or None
-        :param str container_exec_config_name: name of the containerized execution configuration to use for running the
-            evaluation process.
-
-            * If value is "INHERIT", the container execution configuration of the project will be used.
-            * If value is "NONE", local execution will be used (no container)
-
-            (defaults to **None**)
-        """
-
+    def _init_model_version_info(self, target_column_name, class_labels=None,
+                                 get_features_from_dataset=None, features_list=None):
         if features_list is not None and get_features_from_dataset is not None:
             raise Exception("The information of the features should come either from the features_list or get_features_from_dataset, but not both.")
 
@@ -668,6 +696,28 @@ class ExternalModelVersionHandler:
                 if not ("name" in feature and "type" in feature):
                     raise Exception("The features_list should be a list of {'name': 'feature_name', 'type': 'feature_type'}")
             metadata["features"] = features_list
+        return metadata
+
+    def _set_core_external_metadata(self,
+            target_column_name, class_labels=None,
+            features_list=None, input_dataset=None, container_exec_config_name="NONE",
+            input_format="GUESS", output_format="GUESS"):
+        """
+            Sets core metadata of external models, see :meth:`DSSSavedModel.create_external_model_version` for details about parameters.
+        """
+        if features_list is not None:
+            model_version_info = self._init_model_version_info(target_column_name, class_labels, None, features_list)
+        else:
+            model_version_info = self._init_model_version_info(target_column_name, class_labels, input_dataset, None)
+        protocol = model_version_info["proxyModelVersionConfiguration"]["protocol"]
+        if protocol == "vertex-ai":
+            model_version_info["inputFormat"] = "INPUT_VERTEX_DEFAULT"
+            model_version_info["outputFormat"] = "OUTPUT_VERTEX_DEFAULT"
+        elif protocol == "azure-ml" or protocol == "sagemaker":
+            model_version_info["inputFormat"] = input_format
+            model_version_info["outputFormat"] = output_format
+            if input_dataset is not None:
+                model_version_info["signatureAndFormatsGuessingDataset"] = input_dataset
 
         self.saved_model.client._perform_empty(
             "PUT",
@@ -676,7 +726,42 @@ class ExternalModelVersionHandler:
                 sm_id=self.saved_model.sm_id,
                 version_id=self.version_id,
                 container_exec_config_name=container_exec_config_name),
-            body=metadata)
+            body=model_version_info)
+
+    def set_core_metadata(self,
+            target_column_name, class_labels=None,
+            get_features_from_dataset=None, features_list=None,
+            container_exec_config_name="NONE"):
+        """
+        Sets metadata for this MLFlow model version
+
+        In addition to ``target_column_name``, one of ``get_features_from_dataset`` or ``features_list`` must be passed in order
+        to be able to evaluate performance
+
+        :param str target_column_name: name of the target column. Mandatory in order to be able to evaluate performance
+        :param class_labels: List of strings, ordered class labels. Mandatory in order to be able to evaluate performance on classification models
+        :type class_labels: list or None
+        :param get_features_from_dataset: name of a dataset to get feature names from
+        :type get_features_from_dataset: str or None
+        :param features_list: list of ``{"name": "feature_name", "type": "feature_type"}``
+        :type features_list: list or None
+        :param str container_exec_config_name: name of the containerized execution configuration to use for running the
+            evaluation process.
+
+            * If value is "INHERIT", the container execution configuration of the project will be used.
+            * If value is "NONE", local execution will be used (no container)
+
+            (defaults to **None**)
+        """
+        model_version_info = self._init_model_version_info(target_column_name, class_labels, get_features_from_dataset, features_list)
+        self.saved_model.client._perform_empty(
+            "PUT",
+            "/projects/{project_key}/savedmodels/{sm_id}/versions/{version_id}/external-ml/metadata?containerExecConfigName={container_exec_config_name}".format(
+                project_key=self.saved_model.project_key,
+                sm_id=self.saved_model.sm_id,
+                version_id=self.version_id,
+                container_exec_config_name=container_exec_config_name),
+            body=model_version_info)
 
     def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None, use_optimal_threshold=True,
                  skip_expensive_reports=True):

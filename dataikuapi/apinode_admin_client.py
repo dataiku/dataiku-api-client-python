@@ -68,7 +68,7 @@ class APINodeAdminClient(DSSBaseClient):
         :param file_dir: path of an exported code env base folder
         :param language: language of the code env (`python` or `R`)
         """
-        self._perform_empty("POST", "cached-code-envs", params={
+        return self._perform_json("POST", "cached-code-envs", params={
             "fileDir": file_dir,
             "language": language
         })

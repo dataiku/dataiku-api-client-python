@@ -367,7 +367,7 @@ class DSSAPIDeployerDeployment(object):
             If False, will raise an Exception if this deployment is enabled.
 
         :param boolean ignore_pre_delete_errors: If True, any error occurred during the actions performed previously to
-        delete the deployment will be ignored and the delete action will be performed anyway.
+            delete the deployment will be ignored and the delete action will be performed anyway.
 
         """
 

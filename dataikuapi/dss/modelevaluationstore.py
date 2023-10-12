@@ -234,6 +234,78 @@ class DSSModelEvaluationStore(object):
             return self.client._perform_json(
                 "POST" , "%s/computeMetrics" % url)
 
+    def run_checks(self, evaluation_id='', checks=None):
+        """
+        Run checks on a partition of this model evaluation store.
+
+        If the checks are not specified, the checks
+        setup on the model evaluation store are used.
+
+        :param str evaluation_id: (optional) id of evaluation on which checks should be run. Last evaluation is used if not specified.
+        :param list[string] checks: (optional) ids of the checks to run.
+
+        :returns: a checks computation report, as a dict.
+        :rtype: dict
+        """
+        if checks is None:
+            return self.client._perform_json(
+                "POST", "/projects/%s/modelevaluationstores/%s/actions/runChecks" %(self.project_key, self.mes_id),
+                params={'evaluationId': evaluation_id})
+        else:
+            return self.client._perform_json(
+                "POST", "/projects/%s/modelevaluationstores/%s/actions/runChecks" %(self.project_key, self.mes_id),
+                params={'evaluationId': evaluation_id}, body=checks)
+
+    class MetricDefinition(dict):
+        def __init__(self, code, value, name=None, description=None):
+            dict.__init__(self, {"metricCode": code, "value": value, "name": name, "description": description})
+
+    class LabelDefinition(dict):
+        def __init__(self, key, value):
+            dict.__init__(self, {"key": key, "value": value})
+
+    def add_custom_model_evaluation(self, metrics, evaluation_id=None, name=None, labels=None, model=None):
+        """
+        Adds a model evaluation with custom metrics to the model evaluation store.
+        :param list[DSSModelEvaluationStore.MetricDefinition] metrics: the metrics to add.
+        :param str evaluation_id: the id of the evaluation (optional)
+        :param str name: the human-readable name of the evaluation (optional)
+        :param list[DSSModelEvaluationStore.LabelDefinition] labels: labels to set on the model evaluation (optionam). See below.
+        :param model: saved model version (full ID or DSSTrainedPredictionModelDetails) of the evaluated model (optional)
+        :type model: Union[str,  DSSTrainedPredictionModelDetails]
+
+        Code sample:
+
+        .. code-block:: python
+
+            import dataiku
+            from dataikuapi.dss.modelevaluationstore import DSSModelEvaluationStore
+
+            client=dataiku.api_client()
+            project=client.get_default_project()
+            mes=project.get_model_evaluation_store("7vFZWNck")
+
+            accuracy = DSSModelEvaluationStore.MetricDefinition("accuracy", 0.95, "Accuracy")
+            other = DSSModelEvaluationStore.MetricDefinition("other", 42, "Other", "Other metric desc")
+            label = DSSModelEvaluationStore.LabelDefinition("custom:myLabel", "myValue")
+
+            mes.add_custom_model_evaluation([accuracy, pouet], labels=[label])
+            mes.run_checks()
+        """
+        if hasattr(model, 'full_id'):
+            model = model.full_id
+
+        url = "/projects/%s/modelevaluationstores/%s/evaluations" % (self.project_key, self.mes_id)
+        return self.client._perform_json(
+            "POST", url,
+            body={
+                "evaluationId": evaluation_id,
+                "name": name,
+                "metrics": metrics,
+                "labels": labels,
+                "fullModelId": model
+            })
+
 
 class DSSModelEvaluationStoreSettings:
     """
@@ -411,8 +483,8 @@ class DSSModelEvaluationFullInfo:
             self.model_full_id = self.full_info["evaluation"]["modelRef"]["fullId"]  # type: str
         else:
             self.model_full_id = None
-        self.prediction_type = self.full_info["evaluation"]["predictionType"]  # type: str
-        self.prediction_variable = self.full_info["evaluation"]["predictionVariable"]  # type: str
+        self.prediction_type = self.full_info["evaluation"].get("predictionType")  # type: str
+        self.prediction_variable = self.full_info["evaluation"].get("predictionVariable")  # type: str
         self.target_variable = self.full_info["evaluation"].get("targetVariable")  # type: str
         self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
         self.has_model = self.full_info["evaluation"]["hasModel"]

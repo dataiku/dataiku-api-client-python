@@ -1199,7 +1199,7 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         :param boolean stddev: whether the standard deviation aggregate is computed
 
         :return: the settings of the aggregations on a the column, as a dict. The name of the column is in a **column** field.
-        :rtype dict
+        :rtype: dict
         """
         cs = self.get_or_create_column_settings(column)
         if type is not None:

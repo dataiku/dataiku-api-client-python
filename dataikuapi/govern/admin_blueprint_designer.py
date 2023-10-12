@@ -246,7 +246,7 @@ class GovernAdminBlueprintVersion(object):
         Get the sign-off configurations for a specific step
 
         :param str step_id: The step ID of the sign-off
-        :return: The signoff configuration as an object
+        :return: The sign-off configuration as an object
         :rtype: a :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignoffConfiguration`
         """
 
@@ -391,7 +391,7 @@ class GovernAdminSignoffConfigurationListItem(object):
         :return: the sign-off configuration object
         :rtype: a :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignoffConfiguration`
         """
-        return GovernAdminSignoffConfiguration(self.client, self.blueprint_id, self.version_id, self._data["stepId"])
+        return GovernAdminSignoffConfiguration(self.client, self.blueprint_id, self.version_id, self._data["id"]["stepId"])
 
 
 class GovernAdminSignoffConfiguration(object):
@@ -428,7 +428,7 @@ class GovernAdminSignoffConfiguration(object):
 
 class GovernAdminSignoffConfigurationDefinition(object):
     """
-    The definition of signoff configuration.
+    The definition of sign-off configuration.
     Do not create this class directly, instead use :meth:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminSignoffConfiguration.get_definition`
     """
 
@@ -441,9 +441,9 @@ class GovernAdminSignoffConfigurationDefinition(object):
 
     def get_raw(self):
         """
-        Get raw definition of the signoff configuration
+        Get raw definition of the sign-off configuration
 
-        :return: the raw configuration of the signoff, as a dict. Modifications made to the returned object are reflected
+        :return: the raw configuration of the sign-off, as a dict. Modifications made to the returned object are reflected
          when saving
         :rtype: dict
         """
@@ -451,7 +451,7 @@ class GovernAdminSignoffConfigurationDefinition(object):
 
     def save(self):
         """
-        Save this settings back to the signoff configuration.
+        Save this settings back to the sign-off configuration.
 
         :return: None
         """

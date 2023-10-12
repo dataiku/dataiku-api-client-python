@@ -23,20 +23,27 @@ def parse_dss_managed_folder_uri(uri):
 class PluginDSSManagedFolderArtifactRepository:
 
     def __init__(self, artifact_uri):
-        if os.environ.get("DSS_MLFLOW_APIKEY") is not None:
-            self.client = DSSClient(
-                os.environ.get("DSS_MLFLOW_HOST"),
-                api_key=os.environ.get("DSS_MLFLOW_APIKEY")
-            )
-        else:
-            self.client = DSSClient(
-                os.environ.get("DSS_MLFLOW_HOST"),
-                internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET")
-            )
+        self.client = DSSClient(
+            os.environ.get("DSS_MLFLOW_HOST"),
+            api_key=os.environ.get("DSS_MLFLOW_APIKEY"),
+            internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET"),
+            insecure_tls= self._should_use_insecure_tls
+        )
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
         parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
         self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
         self.base_artifact_path = PurePosixPath(parsed_uri.path)
+
+    @property
+    def _should_use_insecure_tls(self):
+        insecure_tls = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS")
+        # this env variable is documented in MLFlow, it's not ours, we must parse it similarly to how MLflow does it.
+        # https://github.com/mlflow/mlflow/blob/dde5d79f57eada1820da1cafe4d58eeff476a022/mlflow/environment_variables.py#L70
+        if insecure_tls is not None:
+            insecure_tls = insecure_tls.lower()
+            return insecure_tls in ["true", "1"]
+        else:
+            return False
 
     def __get_managed_folder(self, managed_folder_smart_id):
         chunks = managed_folder_smart_id.split('.')

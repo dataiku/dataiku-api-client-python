@@ -31,6 +31,7 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
     DSSManagedStreamingEndpointCreationHelper
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
+from .llm import DSSLLM
 from ..dss_plugin_mlflow import MLflowHandle
 
 class DSSProject(object):
@@ -942,50 +943,103 @@ class DSSProject(object):
         id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
         return self.get_saved_model(id)
 
-    def create_proxy_model(self, name, prediction_type, protocol, region=None, auth_connection=None):
+    def create_external_model(self, name, prediction_type, configuration):
         """
-        Create a new Saved model that can contain proxied remote endpoints as versions.
+        EXPERIMENTAL. Creates a new Saved model that can contain external remote endpoints as versions.
 
         :param string name: Human-readable name for the new saved model in the flow
         :param string prediction_type: One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
-        :param string protocol: Cloud provider. One of sagemaker, vertex-ai, azure-ml
-        :param string region: Deployed endpoint region, if applicable for your cloud vendor (eg. "eu-west-3")
-        :param string auth_connection: (optional) Name of the DSS connection to use for authentication. Credentials
-            will be derived from environment if not defined. The connection must be:
-            - an Amazon S3 connection for a SageMaker Saved model
-            - an Azure Blob Storage connection for an Azure ML Saved model
-            - a Google Cloud Storage connection for a Vertex AI Saved Model
+        :param dict configuration: A dictionary containing the desired external saved model configuration.
 
-        See reference documentation for details.
+          - For SageMaker, the syntax is:
 
-        * Example: create a saved model for SageMaker endpoints serving binary classification models in region eu-west-1
+            .. code-block:: python
 
-        .. code-block:: python
+                configuration = {
+                    "protocol": "sagemaker",
+                    "region": "<region-name>"
+                    "connection": "<connection-name>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``region``: The AWS region of the endpoint, e.g. ``eu-west-1``
+            - ``connection``: (optional) The DSS SageMaker connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+
+          - For AzureML, syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "azure-ml",
+                    "connection": "<connection-name>",
+                    "subscription_id": "<id>",
+                    "resource_group": "<rg>",
+                    "workspace": "<workspace>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``connection``: (optional) The DSS Azure ML connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+            - ``subscription_id``: The Azure subscription ID
+            - ``resource_group``: The Azure resource group
+            - ``workspace``: The Azure ML workspace
+
+          - For Vertex AI, syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "vertex-ai",
+                    "region": "<region-name>"
+                    "connection": "<connection-name>",
+                    "project_id": "<name> or <id>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``region``: The GCP region of the endpoint, e.g. ``europe-west-1``
+            - ``connection``: (optional) The DSS Vertex AI connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+            - ``project_id``: The ID or name of the GCP project
+
+        - Example: create a saved model for SageMaker endpoints serving binary classification models in region eu-west-1
+
+          .. code-block:: python
 
             import dataiku
             client = dataiku.api_client()
             project = client.get_default_project()
-            sm = project.create_proxy_model("SaveMaker Proxy Model", "BINARY_CLASSIFICATION", "sagemaker", "eu-west-1")
+            configuration = {
+                "protocol": "sagemaker",
+                "region": "eu-west-1"
+            }
+            sm = project.create_external_model("SaveMaker Proxy Model", "BINARY_CLASSIFICATION", configuration)
 
-        * Example: create a saved model for Vertex AI endpoints serving regression models in region eu-west-1, performing
-            authentication using DSS connection "vertex_conn" of type GCS
+        - Example: create a saved model for Vertex AI endpoints serving regression models in region eu-west-1, on
+          project "my-project", performing authentication using DSS connection "vertex_conn" of type "Vertex AI".
 
-        .. code-block:: python
+          .. code-block:: python
 
             import dataiku
             client = dataiku.api_client()
             project = client.get_default_project()
-            sm = project.create_proxy_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai",
-                "europe-west1", "vertex_conn")
+            configuration = {
+                "protocol": "vertex-ai",
+                "region": "europe-west1",
+                "connection": "vertex_conn"
+                "project_id": "my-project"
+            }
+            sm = project.create_external_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", configuration)
 
         """
         model = {
             "savedModelType": "PROXY_MODEL",
             "predictionType": prediction_type,
             "name": name,
-            "protocol": protocol,
-            "region": region,
-            "authenticationConnection": auth_connection
+            "proxyModelConfiguration": configuration
         }
 
         saved_model_id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
@@ -2055,6 +2109,12 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibrary`
         """
         return DSSLibrary(self.client, self.project_key)
+
+    ########################################################
+    # LLM
+    ########################################################
+    def get_llm(self, llm_id):
+        return DSSLLM(self.client, self.project_key, llm_id)
 
     ########################################################
     # Webapps

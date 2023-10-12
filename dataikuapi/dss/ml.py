@@ -686,7 +686,7 @@ class HyperparameterSearchSettings(object):
         Sets the search strategy to "GRID", to perform a grid-search over the hyperparameters.
 
         :param shuffle: if True (default), iterate over a shuffled grid as opposed to lexicographical
-        iteration over the cartesian product of the hyperparameters
+            iteration over the cartesian product of the hyperparameters
         :type shuffle: bool
         :param seed: Seed value used to ensure reproducible results (defaults to **1337**)
         :type seed: int
@@ -811,7 +811,7 @@ class HyperparameterSearchSettings(object):
 
         The mode will be set to either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT", depending on whether time-based ordering is enabled.
 
-        :param split_ratio: The ratio of the data used for training during hyperparameter search (defaults to **0.8*)
+        :param split_ratio: The ratio of the data used for training during hyperparameter search (defaults to **0.8**)
         :type split_ratio: float
         :param stratified: If True, keep the same proportion of each target classes in both splits (defaults to **True**)
         :type stratified: bool
@@ -870,7 +870,7 @@ class HyperparameterSearchSettings(object):
         Sets the distribution parameters for the hyperparameter search execution.
 
         :param distributed: if True, distribute search in the Kubernetes cluster selected
-        in the runtime environment's containerized execution configuration (defaults to **False**)
+            in the runtime environment's containerized execution configuration (defaults to **False**)
         :type distributed: bool
         :param n_containers: number of containers to use for the distributed search (defaults to **4**)
         :type n_containers: int
