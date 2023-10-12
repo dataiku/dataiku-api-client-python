@@ -180,8 +180,9 @@ class DSSConnection(object):
 
             # make details of a connection accessible to some groups
             connection = client.get_connection("my_connection_name")
-            settings = connection.settings()
-            settings.set_readability(False, "group1", "group2")
+            settings = connection.get_settings()
+            readability = settings.details_readability
+            readability.set_readability(False, "group1", "group2")
             settings.save()
 
         :return: the settings of the connection
@@ -396,7 +397,7 @@ class DSSConnectionSettings(object):
         Set who can use the connection.
 
         :param boolean all: if True, anybody can use the connection
-        :param *string groups: a list of groups that can use the connection
+        :param \*string groups: a list of groups that can use the connection
         """
         if all:
             self.settings["usableBy"] = 'ALL' 
@@ -453,7 +454,7 @@ class DSSConnectionDetailsReadability(object):
         To make the details readable by nobody, pass all=False and no group.
 
         :param boolean all: if True, anybody can use the connection
-        :param *string groups: a list of groups that can use the connection
+        :param \*string groups: a list of groups that can use the connection
         """
         if all:
             self._data["readableBy"] = 'ALL' 

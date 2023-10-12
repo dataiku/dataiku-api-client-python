@@ -4,7 +4,7 @@ from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
 from dataikuapi.govern.future import GovernFuture
-from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
+from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings, GovernUserActivity, GovernAuthorizationMatrix
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
 from dataikuapi.govern.admin_custom_pages_handler import GovernAdminCustomPagesHandler
 from dataikuapi.govern.admin_roles_permissions_handler import GovernAdminRolesPermissionsHandler
@@ -217,7 +217,7 @@ class GovernClient(object):
     # Time Series
     ########################################################
 
-    def create_time_series(self, datapoints=[]):
+    def create_time_series(self, datapoints=None):
         """
         Create a new time series and push a list of values inside it.
 
@@ -225,7 +225,8 @@ class GovernClient(object):
         :return: the created time-series object
         :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
         """
-
+        if datapoints is None:
+            datapoints = []
         result = self._perform_json("POST", "/time-series", body=datapoints)
         return GovernTimeSeries(self, result["id"])
 
@@ -293,14 +294,6 @@ class GovernClient(object):
         """
         return GovernUser(self, login)
 
-    def get_own_user(self):
-        """
-        Get a handle to interact with the current user
-
-        :return: A :class:`~dataikuapi.govern.admin.GovernOwnUser` user handle
-        """
-        return GovernOwnUser(self)
-
     def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST'):
         """
         Create a user, and return a handle to interact with it
@@ -328,6 +321,42 @@ class GovernClient(object):
             "userProfile": profile
         })
         return GovernUser(self, login)
+
+    def get_own_user(self):
+        """
+        Get a handle to interact with the current user
+
+        :return: A :class:`~dataikuapi.govern.admin.GovernOwnUser` user handle
+        """
+        return GovernOwnUser(self)
+
+    def list_users_activity(self, enabled_users_only=False):
+        """
+        List all users activity
+
+        Note: this call requires an API key with admin rights
+
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.govern.admin.GovernUserActivity`
+        :rtype: list of :class:`dataikuapi.govern.admin.GovernUserActivity`
+        """
+        params = {
+            "enabledUsersOnly": enabled_users_only
+        }
+        all_activity = self._perform_json("GET", "/admin/users-activity", params=params)
+
+        return [GovernUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
+
+    def get_authorization_matrix(self):
+        """
+        Get the authorization matrix for all enabled users and groups
+
+        Note: this call requires an API key with admin rights
+
+        :return: The authorization matrix
+        :rtype: A :class:`dataikuapi.govern.admin.GovernAuthorizationMatrix` authorization matrix handle
+        """
+        resp = self._perform_json("GET", "/admin/authorization-matrix")
+        return GovernAuthorizationMatrix(resp)
 
     def start_resync_users_from_supplier(self, logins):
         """
@@ -572,3 +601,47 @@ class GovernClient(object):
         :return: None
         """
         self._perform_empty("POST", "/admin/licensing/license", body=json.loads(license))
+
+    ########################################################
+    # Global Instance Info
+    ########################################################
+
+    def get_instance_info(self):
+        """
+        Get global information about the Govern instance
+
+        :returns: a :class:`GovernInstanceInfo`
+        """
+        resp = self._perform_json("GET", "/instance-info")
+        return GovernInstanceInfo(resp)
+
+
+class GovernInstanceInfo(object):
+    """Global information about the Govern instance"""
+
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`GovernClient.get_instance_info`"""
+        self._data = data
+
+    @property
+    def raw(self):
+        """Returns all data as a Python dictionary"""
+        return self._data
+
+    @property
+    def node_id(self):
+        """Returns the node id (as defined in Cloud Stacks or in install.ini)"""
+        return self._data["nodeId"]
+
+    @property
+    def node_name(self):
+        """Returns the node name as it appears in the navigation bar"""
+        return self._data["nodeName"]
+
+    @property
+    def node_type(self):
+        """
+        Returns the node type
+        :return: GOVERN
+        """
+        return self._data["nodeType"]
