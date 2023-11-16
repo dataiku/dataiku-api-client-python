@@ -68,6 +68,15 @@ class DSSConnectionInfo(dict):
         """
         return self["type"]
 
+    def get_credential_mode(self):
+        """
+        Get the credential mode of the connection
+
+        :return: a connection mode
+        :rtype: string
+        """
+        return self["credentialsMode"]
+
     def get_params(self):
         """
         Get the parameters of the connection, as a dict
@@ -276,6 +285,7 @@ class DSSConnection(object):
             "POST", "/admin/connections/%s/sync" % self.name,
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
 
 class DSSConnectionSettings(object):
     """
