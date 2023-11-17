@@ -26,6 +26,7 @@ class MLflowHandle:
         self.project_key = project.project_key
         self.client = client
         self.mlflow_env = {}
+        self.env_save = {}
 
         # Load DSS as the plugin
         self.tempdir = tempfile.mkdtemp()
@@ -64,11 +65,13 @@ class MLflowHandle:
                 "DSS_MLFLOW_INTERNAL_TICKET": self.client.internal_ticket
             })
 
-        if not client._session.verify:
+        if client._session.verify == False:
             self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "true"})
-        elif isinstance(client._session.verify, str):
-            self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
-
+            self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": None})
+        else:
+            self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "false"})
+            if isinstance(client._session.verify, str):
+                self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
         mf_full_id = None
         if isinstance(managed_folder, DSSManagedFolder):
             mf_full_id = managed_folder.project.project_key + "." + managed_folder.id
@@ -105,13 +108,31 @@ class MLflowHandle:
             "DSS_MLFLOW_HOST": self.client.host,
             "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_full_id
         })
-
-        os.environ.update(self.mlflow_env)
+        self.override_env(self.mlflow_env)
 
     def clear(self):
         shutil.rmtree(self.tempdir)
-        for variable in self.mlflow_env:
+        self.restore_env(self.mlflow_env)
+
+    def override_env(self, overrides):
+        assert len(self.env_save) == 0, "Environment variables already overriden, override_env called twice?"
+        for key, value in overrides.items():
+            try:
+                current_value = os.environ.pop(key)
+                self.env_save[key] = current_value
+                if value is None:
+                    # allow to unset env variables by using 'None' as a value in overrides
+                    del os.environ[key]
+            except KeyError:
+                # Means that overriden var does not exist, safe to ignore.
+                pass
+            if value is not None:
+                os.environ[key] = value
+
+    def restore_env(self, overrides):
+        for variable in overrides:
             os.environ.pop(variable, None)
+        os.environ.update(self.env_save)
 
     def import_mlflow(self):
         import mlflow

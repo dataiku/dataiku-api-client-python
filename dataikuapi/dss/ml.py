@@ -3523,7 +3523,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 "POST", "/projects/%s/savedmodels/%s/versions/%s/shapley-feature-importance" %
                         (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
-            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         return future
 
     def compute_subpopulation_analyses(self, split_by, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
