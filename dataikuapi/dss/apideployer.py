@@ -36,7 +36,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, service_id, infra_id, version, ignore_warnings=False):
+    def create_deployment(self, deployment_id, service_id, infra_id, version, endpoint_id=None, ignore_warnings=False):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
@@ -44,15 +44,17 @@ class DSSAPIDeployer(object):
         :param str deployment_id: Identifier of the deployment to create
         :param str service_id: Identifier of the API Service to target
         :param str infra_id: Identifier of the deployment infrastructure to use
-        :param str version_id: Identifier of the API Service version to deploy
+        :param str version: Identifier of the API Service version to deploy
+        :param str endpoint_id: Identifier of the endpoint to deploy if you use a Deploy Anywhere infra. Ignored otherwise
         :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         settings = {
-            "deploymentId" : deployment_id,
-            "publishedServiceId" : service_id,
-            "infraId" : infra_id,
-            "version" : version
+            "deploymentId": deployment_id,
+            "publishedServiceId": service_id,
+            "infraId": infra_id,
+            "version": version,
+            "endpointId": endpoint_id
         }
         self.client._perform_json("POST", "/api-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
@@ -88,8 +90,8 @@ class DSSAPIDeployer(object):
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
-        :param str type: STATIC or KUBERNETES
-        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check wether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
+        :param str type: STATIC, K8S, AZURE_ML, SAGEMAKER or VERTEX_AI
+        :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check whether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """
         settings = {
@@ -211,13 +213,24 @@ class DSSAPIDeployerInfraSettings(object):
         self.settings = settings
 
     def get_type(self):
-        """Gets the type of this infra, either STATIC or K8S"""
+        """
+        Gets the type of this infra
+
+        :returns: the type of this infra
+        :rtype: string
+        """
         return self.settings["type"]
 
     def add_apinode(self, url, api_key, graphite_prefix=None):
-        """Adds an API node to the list of nodes of this infra.
+        """
+        Adds an API node to the list of nodes of this infra.
 
-        Only applicable to STATIC infrastructures"""
+        Only applicable to STATIC infrastructures
+
+        :param str url: url of the API node that will be added to this infra
+        :param str api_key: api key secret to connect to the API node
+        :param str graphite_prefix: graphite prefix for metric reports if graphite is configured
+        """
         new_node = {
             "url": url,
             "adminAPIKey" : api_key,
@@ -347,13 +360,16 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
-    def delete(self, disable_first=False):
+    def delete(self, disable_first=False, ignore_pre_delete_errors=False):
         """
         Deletes this deployment. The disable_first flag automatically disables the deployment
         before its deletion.
 
         :param boolean disable_first: If True, automatically disables this deployment before deleting it.
-        If False, will raise an Exception if this deployment is enabled.
+            If False, will raise an Exception if this deployment is enabled.
+
+        :param boolean ignore_pre_delete_errors: If True, any error occurred during the actions performed previously to
+            delete the deployment will be ignored and the delete action will be performed anyway.
 
         """
 
@@ -366,7 +382,9 @@ class DSSAPIDeployerDeployment(object):
             settings.set_enabled(enabled=False)
             settings.save()
         self.client._perform_empty(
-                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id))
+                "DELETE", "/api-deployer/deployments/%s" % (self.deployment_id),
+            params = { "ignorePreDeleteErrors" : ignore_pre_delete_errors }
+        )
 
                 
             
@@ -394,6 +412,8 @@ class DSSAPIDeployerDeploymentSettings(object):
     def set_enabled(self, enabled):
         """
         Enables or disables this deployment
+
+        :param bool enabled: True/False to Enable/Disable this deployment
         """
         self.settings["enabled"] = enabled
 
@@ -452,6 +472,9 @@ class DSSAPIDeployerDeploymentStatus(object):
     def get_service_urls(self):
         """
         Returns service-level URLs for this deployment (ie without the enpdoint-specific suffix)
+
+        :returns: a list of service-level URLs for this deployment
+        :rtype: list
         """
 
         if "deployedServiceId" in self.light_status["deploymentBasicInfo"]:
@@ -597,7 +620,7 @@ class DSSAPIDeployerServiceStatus(object):
         Returns the deployments that have been created from this published project
 
         :param str infra_id: Identifier of an infra, allows to only keep in the returned list the deployments on this infra.
-        If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
+            If not set, the list contains all the deployments using this published project, across every infra of the Project Deployer.
 
         :returns: a list of deployments
         :rtype: list of :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeployment`

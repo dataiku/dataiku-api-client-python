@@ -535,20 +535,10 @@ class DSSStreamingEndpointSettings(object):
 
     def get_raw(self):
         """
-        Get the streaming endpoint settings as a dict.
+        Get the streaming endpoint settings.
 
-        :returns: the settings. Top-level fields are:
-
-                    * **id** : the name (used as identifier) of the streaming endpoint
-                    * **type** : the type of the connection underlying the streaming endpoint (Kafka, SQS, ...)
-                    * **params** : the type-specific parameters, as a dict. Depend on the connection type
-                    * **tags** : list of tags, each a string
-                    * **schema** : the columns of the streaming endpoing, as a dict with a `columns` array, in which each element is a column, itself as a dict of
-
-                        * **name** : the column name
-                        * **type** : the column type (smallint, int, bigint, float, double, boolean, date, string)
-                        * **length** : the string length
-                        * **comment** : user comment about the column
+        :returns: the settings, as a dict. The type-specific parameters, that depend on the connection type,
+                  are a **params** sub-dict.
 
         :rtype: dict
         """

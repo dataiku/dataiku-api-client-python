@@ -4,6 +4,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 
+from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
@@ -18,7 +19,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
-from .dss.utils import DSSInfoMessages
+from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
@@ -27,7 +28,7 @@ from .utils import DataikuException, dku_basestring_type
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket = None, extra_headers = None):
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, insecure_tls=False):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -39,6 +40,8 @@ class DSSClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
+        if insecure_tls:
+            self._session.verify = False
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")
@@ -434,6 +437,66 @@ class DSSClient(object):
         resp = self._perform_json("GET", "/admin/authorization-matrix")
         return DSSAuthorizationMatrix(resp)
 
+    def start_resync_users_from_supplier(self, logins):
+        """
+        Starts a resync of multiple users from an external supplier (LDAP, Azure AD or custom auth)
+        
+        :param list logins: list of logins to resync
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi", body=logins)
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_resync_all_users_from_supplier(self):
+        """
+        Starts a resync of all users from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi")
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_groups(self, user_source_type):
+        """
+        Fetch groups from external source
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of group names
+        """
+        future_resp = self._perform_json("GET", "/admin/external-groups", params={'userSourceType': user_source_type})
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_users(self, user_source_type, login=None, group_name=None):
+        """
+        Fetch users from external source filtered by login or group name:
+         - if login is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
+         - else,
+            - if group_name is provided, will search for members of the group in the external source
+            - else will search for all users
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param login: optional - the login of the user in the external source
+        :param group_name: optional - the group name of the group in the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of ExternalUser
+        """
+        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'groupName': group_name})
+        return DSSFuture.from_resp(self, future_resp)
+
+    def start_provision_users(self, user_source_type, users):
+        """
+        Provision users of given source type
+
+        :param string user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param list users: list of user attributes coming form the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/provision", body={'userSourceType': user_source_type, 'users': users})
+        return DSSFuture.from_resp(self, future_resp)
+
     ########################################################
     # Groups
     ########################################################
@@ -509,7 +572,18 @@ class DSSClient(object):
         elif as_type == "objects" or as_type == "object":
             return [DSSConnection(self, name) for name in items_dict.keys()]
         else:
-            raise ValueError("Unknown as_type") 
+            raise ValueError("Unknown as_type")
+
+    def list_connections_names(self, connection_type):
+        """
+        List all connections names on the DSS instance.
+
+        :param str connection_type: Returns only connections with this type. Use 'all' if you don't want to filter.
+
+        :return: the list of connections names
+        :rtype: List[str]
+        """
+        return self._perform_json("GET", "/connections/get-names", params={"type": connection_type})
 
     def get_connection(self, name):
         """
@@ -679,7 +753,7 @@ class DSSClient(object):
         elif as_type == "objects" or as_type == "object":
             return [DSSCodeStudioTemplate(self, item["id"]) for item in items]
         else:
-            raise ValueError("Unknown as_type") 
+            raise ValueError("Unknown as_type")
 
     def get_code_studio_template(self, template_id):
         """
@@ -1061,7 +1135,12 @@ class DSSClient(object):
     # Bundles / Import (Automation node)
     ########################################################
 
-    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None):
+    class PermissionsPropagationPolicy(Enum):
+        NONE = "NONE"
+        READ_ONLY = "READ_ONLY"
+        ALL = "ALL"
+
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
@@ -1069,9 +1148,12 @@ class DSSClient(object):
         :param string archive_path: Path on the local machine where the archive is
         :param project_folder: the project folder in which the project will be created or None for root project folder
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
+        :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
+        :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
         """
         params = {
-            "archivePath" : osp.abspath(archive_path)
+            "archivePath": osp.abspath(archive_path),
+            "permissionsPropagationPolicy": permissions_propagation_policy
         }
         if project_folder is not None:
             params["projectFolderId"] = project_folder.project_folder_id
@@ -1236,6 +1318,23 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
+    def build_base_image(self, build_type, build_options=None):
+        """
+        Build the base image for containerized execution.
+        
+        :param string build_type: either EXEC, SPARK or STREAM_ENGINE
+        :param dict build_options: options for the build. Notable fields are:
+                                     
+                                    * **distrib** (optional) : desired distribution to use in the image, either 'centos7' or 'almalinux8'
+                                    * **R** : install R binaries in the image. Either YES, NO or DEFAULT
+                                    * **py37**, **py38**, **py39**, **py310**, **py311** : install Python 3.7 (resp. 3.8, 3.9, ...) binaries in the image. Either YES, NO or DEFAULT
+                                    * **cudaVersion** : if set, install CUDA in the image. Possible versions are ["9.0", "10.0", "10.1", "10.2", "11.0", "11.2"]
+                                    * **extraOptions** : additional build command parameters, as a list of string
+        """
+        build_options = build_options or {}
+        resp = self._perform_json("POST", "/admin/container-exec/actions/build-base-image", params={'type': build_type}, body=build_options)
+        return DSSFuture.from_resp(self, resp)
+        
     ########################################################
     # Global Instance Info
     ########################################################
@@ -1425,7 +1524,63 @@ class DSSClient(object):
         })
         return DSSWorkspace(self, workspace_key)
 
+    ########################################################
+    # Data Collections
+    ########################################################
 
+    def list_data_collections(self, as_type="listitems"):
+        """
+        List the accessible data collections
+
+        :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
+        :returns: The list of data collections.
+        :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
+            a list of :class:`dataikuapi.dss.data_collection.DSSDataCollection` if as_type is "objects",
+            a list of dict if as_type is "dict"
+        """
+        items = self._perform_json("GET", "/data-collections/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSDataCollectionListItem(self, item) for item in items]
+        if as_type == "objects" or as_type == "object":
+            return [DSSDataCollection(self, item["id"]) for item in items]
+        else:
+            return items
+
+    def get_data_collection(self, id):
+        """
+        Get a handle to interact with a specific data collection
+
+        :param str id: the id of the data collection to fetch
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
+        """
+        return DSSDataCollection(self, id)
+
+    def create_data_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
+        """
+        Create a new data collection and return a handle to interact with it
+
+        :param str displayName: the display name for the data collection.
+        :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
+        :param tags: The list of tags to use (defaults to *[]*)
+        :type tags: list of str
+        :param str description: a description for the data collection
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+        :param permissions: Initial permissions for the data collection (can be modified later - current user will always be added as admin).
+        :type permissions: a list of :class:`dict`
+
+        :returns: Handle of the newly created Data Collection
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
+        """
+        res = self._perform_json("POST", "/data-collections/", body={
+            "id": id,
+            "tags": tags if tags is not None else [],
+            "displayName": displayName,
+            "color": color,
+            "description": description,
+            "permissions": permissions
+        })
+        return DSSDataCollection(self, res['id'])
+    
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client

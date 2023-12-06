@@ -1,6 +1,7 @@
 from .future import DSSFuture
 import json, warnings
 from datetime import datetime
+from ..utils import _timestamp_ms_to_zoned_datetime
 
 
 class DSSConnectionListItem(dict):
@@ -68,6 +69,15 @@ class DSSConnectionInfo(dict):
         """
         return self["type"]
 
+    def get_credential_mode(self):
+        """
+        Get the credential mode of the connection
+
+        :return: a connection mode
+        :rtype: string
+        """
+        return self["credentialsMode"]
+
     def get_params(self):
         """
         Get the parameters of the connection, as a dict
@@ -76,6 +86,15 @@ class DSSConnectionInfo(dict):
         :rtype: dict
         """
         return self["params"]
+
+    def get_resolved_params(self):
+        """
+        Get the resolved parameters of the connection, as a dict. May be null depending on the connection type.
+
+        :return: the resolved parameters, as a dict. Each connection type has different sets of fields.
+        :rtype: dict
+        """
+        return self["resolvedParams"]
 
     def get_basic_credential(self):
         """
@@ -101,6 +120,16 @@ class DSSConnectionInfo(dict):
             raise ValueError("No AWS credential available")
         return self["resolvedAWSCredential"]
 
+    def get_oauth2_credential(self):
+        """
+        Get the OAUTH2 credential for this connection, if available.
+
+        :return: the credential, as a dict containing "accessToken"
+        :rtype: dict
+        """
+        if not "resolvedOAuth2Credential" in self:
+            raise ValueError("No OAUTH2 credential available")
+        return self["resolvedOAuth2Credential"]
 
 class DSSConnection(object):
     """
@@ -170,8 +199,9 @@ class DSSConnection(object):
 
             # make details of a connection accessible to some groups
             connection = client.get_connection("my_connection_name")
-            settings = connection.settings()
-            settings.set_readability(False, "group1", "group2")
+            settings = connection.get_settings()
+            readability = settings.details_readability
+            readability.set_readability(False, "group1", "group2")
             settings.save()
 
         :return: the settings of the connection
@@ -266,6 +296,7 @@ class DSSConnection(object):
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
+
 class DSSConnectionSettings(object):
     """
     Settings of a DSS connection.
@@ -289,20 +320,6 @@ class DSSConnectionSettings(object):
 
                     * **type** : type of the connection (for example PostgreSQL, Azure, ...)
                     * **params** : dict of the parameters specific to the connection type
-                    * **allowWrite** : if False, DSS will not perform write operations on the connection
-                    * **allowManagedDatasets** : whether DSS will allow creating managed datasets on the connection
-                    * **allowManagedFolders** : whether DSS will allow creating managed folders on the connection
-                    * **credentialsMode** : whether the credentials of the connection are per-user ("PER_USER") or global for all users ("GLOBAL")
-                    * **usableBy** : defines which DSS users can use the connection. Possible values: ALL, ALLOWED
-                    * **allowedGroups** : if **usableBy** is "ALLOWED", a list of group names
-                    * **detailsReadability** : definition of which DSS users can access the details of the connection, in particular the credentials in it
-
-                        * **readableBy** : defines which users can access the details. Possible values: NONE, ALL, ALLOWED.
-                        * **allowedGroups** : if **readableBy** is "ALLOWED", a list of group names
-
-                    * **indexingSettings** : for SQL-like connection, what to index
-                    * **maxActivities** : maximum number of concurrent activities in all jobs of the instance that use the connection
-                    * **useGlobalProxy** : if a proxy is defined in the DSS general settings, whether to use it or not
 
         :rtype: dict
         """
@@ -400,7 +417,7 @@ class DSSConnectionSettings(object):
         Set who can use the connection.
 
         :param boolean all: if True, anybody can use the connection
-        :param *string groups: a list of groups that can use the connection
+        :param \*string groups: a list of groups that can use the connection
         """
         if all:
             self.settings["usableBy"] = 'ALL' 
@@ -457,7 +474,7 @@ class DSSConnectionDetailsReadability(object):
         To make the details readable by nobody, pass all=False and no group.
 
         :param boolean all: if True, anybody can use the connection
-        :param *string groups: a list of groups that can use the connection
+        :param \*string groups: a list of groups that can use the connection
         """
         if all:
             self._data["readableBy"] = 'ALL' 
@@ -521,6 +538,20 @@ class DSSUser(object):
         return DSSUserActivity(self.client, self.login, activity)
 
     ########################################################
+    # Supplier interaction
+    ########################################################
+
+    def start_resync_from_supplier(self):
+        """
+        Starts a resync of the user from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self.client._perform_json("POST", "/admin/users/%s/actions/resync" % self.login)
+        return DSSFuture.from_resp(self.client, future_resp)
+
+    ########################################################
     # Legacy
     ########################################################
 
@@ -536,15 +567,7 @@ class DSSUser(object):
 
                     * **login** : identifier of the user, can't be modified
                     * **enabled** : whether the user can log into DSS
-                    * **email** : email of the user
-                    * **displayName** : name of the user in the UI
                     * **groups** : list of group names this user belongs to
-                    * **sourceType** : how the user logs in. Possible values: LOCAL, LOCAL_NO_AUTH, LDAP, SAAS, PAM
-                    * **userProfile** : name of the license profile the user belongs to 
-                    * **credentials** : dict of connection name or plugin preset name to credentials
-                    * **secrets** : list of secrets, as name/value pairs
-                    * **adminProperties** and **userProperties** : dicts of arbitrary properties
-                    * **activeWebSocketSesssions** : number of tabs currently open by the user (informative only, not modifiable)
 
         :rtype: dict
         """
@@ -652,15 +675,7 @@ class DSSUserSettingsBase(object):
 
                     * **login** : identifier of the user, can't be modified
                     * **enabled** : whether the user can log into DSS
-                    * **email** : email of the user
-                    * **displayName** : name of the user in the UI
                     * **groups** : list of group names this user belongs to
-                    * **sourceType** : how the user logs in. One of: LOCAL, LOCAL_NO_AUTH, LDAP, SAAS, PAM
-                    * **userProfile** : name of the license profile the user belongs to 
-                    * **credentials** : dict of connection name or plugin preset name to credentials
-                    * **secrets** : list of secrets, as name/value pairs
-                    * **adminProperties** and **userProperties** : dicts of arbitrary properties
-                    * **activeWebSocketSesssions** : number of tabs currently open by the user (informative only, not modifiable)
 
         :rtype: dict
         """
@@ -830,7 +845,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     def save(self):
         """
@@ -897,7 +912,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_failed_login(self):
@@ -910,7 +925,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_session_activity(self):
@@ -926,7 +941,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSessionActivity"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
 
 class DSSAuthorizationMatrix(object):
@@ -945,16 +960,7 @@ class DSSAuthorizationMatrix(object):
         """
         Get the raw authorization matrix as a dict
 
-        :return: the authorization matrix. There are 2 parts in the matrix, each as a top-level field and with similar structures,
-                 the **perUser** and **perGroup**:
-
-                    * **users** (resp. **groups**) : list of user (resp. group) names
-                    * **mayXXXX** (with different permissions as "XXXX") : list of booleans of the same length as **users** (resp. **groups**) indicating where the corresponding user has the permission
-                    * **projectsGrants** : list of project permissions, each as a dict of:
-
-                        * **projectKey** and **projectName** : identifiers of the project
-                        * **grants** : list of dict of the same length as **users** (resp. **groups**) indicating which grants the corresponding user has on the project
-
+        :return: the authorization matrix. There are 2 parts in the matrix, each as a top-level field and with similar structures, **perUser** and **perGroup**.
         :rtype: dict
         """
         return self.authorization_matrix
@@ -992,10 +998,6 @@ class DSSGroup(object):
 
                     * **name** : name of the group
                     * **sourceType** : type of group. Possible values: LOCAL, LDAP
-                    * **description** : description of the group
-                    * **canObtainAPITicketFromCookiesForGroupsRegex** : users in the group can impersonate users from groups whose name match this regex
-                    * **admin** : whether users in the group have administrative rights in DSS
-                    * **mayXXXX** : whether users in the group has the "XXXX" permission
 
         :rtype: dict
         """
@@ -1374,13 +1376,9 @@ class DSSCodeEnv(object):
 
         :param string project_key: project to get the version for
 
-        :return: the code env version full reference for the version of the code env that the project use. Fields are
-
-                    * **lang** : language of the code env (PYTHON or R)
-                    * **name** : name of the code env
-                    * **version** : identifier of the version
-                    * **projectKey** : project key
-                    * **bundleId** : identifier of the active bundle in the project
+        :return: the code env version full reference for the version of the code env that the project use, as a dict. The dict
+                 should contains a **version** field holding the identifier of the version and a **bundleId** field for the 
+                 identifier of the active bundle in the project.
 
         :rtype: dict
         """
@@ -1501,12 +1499,10 @@ class DSSCodeEnv(object):
         """
         List usages of the code env in the instance
 
-        :return: a list of objects where the code env is used. Each usage has fields:
+        :return: a list of objects where the code env is used. Each usage has is a dict with at least:
 
-                    * **envLang** and **envName** : identifiers of the code env
                     * **envUsage** : type of usage. Possible values: PROJECT, RECIPE, NOTEBOOK, PLUGIN, SCENARIO, SCENARIO_STEP, SCENARIO_TRIGGER, DATASET_METRIC, DATASET_CHECK, DATASET, WEBAPP, REPORT, API_SERVICE_ENDPOINT, SAVED_MODEL, MODEL, CODE_STUDIO_TEMPLATE
                     * **projectKey** and **objectId** : identifier of the object where the code env is used
-                    * **accessible** : if False, the **projectKey** and **objectId** are obfuscated and point to an object of a project that the user can't access
 
         :rtype: list[dict]
         """
@@ -1517,12 +1513,7 @@ class DSSCodeEnv(object):
         """
         List logs of the code env in the instance
 
-        :return: a list of log descriptions. Each log description has fields:
-
-                    * **name** : name of the log file
-                    * **totalSize** : size in bytes of the log
-                    * **lastModified** : timestamp in milliseconds of the last change to the log
-                    * **tail** : structure holding the tail of the log file
+        :return: a list of log descriptions. Each log description as a dict with at least a **name** field for the name of the log file.
 
         :rtype: list[dict]
         """
@@ -1700,46 +1691,9 @@ class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, 
         """
         Get the raw code env settings
 
-        The structure depends on the type of code env. Notable fields are:
-
-          * **envLang** and **envName** : identifiers of the code env
-          * **desc** : definition of the code env, persisted on disk
-
-              * **deploymentMode** : type of code env. Possible values: DSS_INTERNAL, DESIGN_MANAGED, DESIGN_NON_MANAGED, PLUGIN_MANAGED, PLUGIN_NON_MANAGED, EXTERNAL_CONDA_NAMED
-              * **conda** : if True, the code env is created using Conda. If False, using virtualenv (for Python) or by linking to the system R (for R)
-              * **externalCondaEnvName** : for EXTERNAL_CONDA_NAMED code envs, the name of the associated conda env
-              * **envSettings** : settings for the building of the code env
-
-                  * **inheritGlobalSettings** : if True, values come from the instance general settings
-                  * **condaInstallExtraOptions** : extra command line options to pass to `conda install`
-                  * **condaCreateExtraOptions** : extra command line options to pass to `conda create`
-                  * **pipInstallExtraOptions** : extra command line options to pass to `pip install`
-                  * **virtualenvCreateExtraOptions** : extra command line options to pass to `virtualenv`
-                  * **cranMirrorURL** : URL of CRAN mirror to use to pull package
-
-              * **allContainerConfs** : if True, build container images for all container configs on code env updates. If False, build images only for configs in **containerConfs**
-              * **containerConfs** : list of container config names
-              * **allSparkKubernetesConfs** :  if True, build container images for all spark configs on code env updates. If False, build images only for configs in **sparkKubernetesConfs**
-              * **sparkKubernetesConfs** : list of spark config names
-              * **rebuildDependentCodeStudioTemplates** : which code studio templates to rebuild on code env updates. Possible values are ASK (open modal to ask for user input), ALL, NONE
-              * **owner** : login of the owner of the code env
-              * **usableByAll** : if True, all users can use the code env. If false, **permissions** apply
-              * **permissions** : list of permissions items. Each item has a group name and booleans for each permission
-
-              * **yarnPythonBin** or **yarnRBin** : path to Python (resp. R) on the cluster nodes, for use in Spark jobs running on Yarn
-              * **pythonInterpreter** : type of Python used. Possible values: PYTHON27, PYTHON34, PYTHON35, PYTHON36, PYTHON37, PYTHON38, PYTHON39, PYTHON310, PYTHON311, CUSTOM
-              * **customInterpreter** : if **pythonInterpreter** is "CUSTOM", the path to the Python binary
-              * **corePackagesSet** : which set of core packages to instal in the code env. Possible values: LEGACY_PANDAS023, PANDAS10, PANDAS11, PANDAS12, PANDAS13
-              * **installJupyterSupport** : if True, the packages necessary for using the code env in notebooks are installed
-              * **dockerImageResources** : behavior w.r.t. code env resources. Possible values: INIT (run initialization script), COPY (copy resources), NONE
-
-          * several fields from **desc** are also copied to the top-level, notably **deploymentMode** and the fields around permission handling.
-          * **canUpdateCodeEnv** and **canManageUsersCodeEnv** : (read-only) indicate whether the current user can update the code env or manage its permissions
-          * **resourcesInitScript** : for Python code env, the contents resource script
-          * **info** : (read-only) for Python code env, a dict with a **pythonVersion** field
-          * **specPackageList** and **specCondaEnvironment** : list of packages requested by the user, as strings
-          * **actualPackageList** and **actualCondaEnvironment** : (read-only) actual packages in the code env, as strings
-          * **mandatoryPackageList** and **mandatoryCondaEnvironment** : (read-only) base packages added automatically by DSS on update, as strings
+        The structure depends on the type of code env. The data consists of the definition 
+        as it is persisted on disk, the lists of requested packages and resource script (if
+        relevant).
 
         :return: code env settings
         :rtype: dict
@@ -1763,31 +1717,10 @@ class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsB
         """
         Get the raw code env settings
 
-        The structure depends on the type of code env. Notable fields are:
-
-          * **envLang** and **envName** : identifiers of the code env
-          * **deploymentMode** : type of code env. Possible values: DSS_INTERNAL, PLUGIN_MANAGED, PLUGIN_NON_MANAGED, AUTOMATION_VERSIONED, AUTOMATION_SINGLE, AUTOMATION_NON_MANAGED_PATH, EXTERNAL_CONDA_NAMED
-          * **allContainerConfs** : if True, build container images for all container configs on code env updates. If False, build images only for configs in **containerConfs**
-          * **containerConfs** : list of container config names
-          * **allSparkKubernetesConfs** :  if True, build container images for all spark configs on code env updates. If False, build images only for configs in **sparkKubernetesConfs**
-          * **sparkKubernetesConfs** : list of spark config names
-          * **rebuildDependentCodeStudioTemplates** : which code studio templates to rebuild on code env updates. Possible values are ASK (open modal to ask for user input), ALL, NONE
-          * **owner** : login of the owner of the code env
-          * **usableByAll** : if True, all users can use the code env. If false, **permissions** apply
-          * **permissions** : list of permissions items. Each item has a group name and booleans for each permission
-          * **envSettings** : settings for the building of the code env
-
-              * **overrideImportedEnvSettings** : if False, values come from the instance general settings
-              * **condaInstallExtraOptions** : extra command line options to pass to `conda install`
-              * **condaCreateExtraOptions** : extra command line options to pass to `conda create`
-              * **pipInstallExtraOptions** : extra command line options to pass to `pip install`
-              * **virtualenvCreateExtraOptions** : extra command line options to pass to `virtualenv`
-              * **cranMirrorURL** : URL of CRAN mirror to use to pull package
-
-          * **canUpdateCodeEnv** and **canManageUsersCodeEnv** : (read-only) indicate whether the current user can update the code env or manage its permissions
-          * **currentVersion** : when **deploymentMode** is "AUTOMATION_SINGLE", the single version. Use :meth:`get_version()` to access
-          * **versions** : when **deploymentMode** is "AUTOMATION_VERSIONED", a list of code env versions. Use :meth:`get_version()` to access
-          * **noVersion** : when **deploymentMode** is neither "AUTOMATION_SINGLE" nor "AUTOMATION_VERSIONED", the spec of the code env. Use :meth:`get_version()` to access
+        The structure depends on the type of code env. The data consists of the definition 
+        as it is persisted on disk, and the identifiers of the versions of the code env, or
+        the spec of the unique version if the code env is not versioned. To access the lists of
+        requested packages or resource scripts. Use :meth:`get_version()`.
 
         :return: code env settings
         :rtype: dict
@@ -1838,27 +1771,8 @@ class DSSAutomationCodeEnvVersionSettings(DSSCodeEnvPackageListBearer):
         """
         Get the raw code env version settings
 
-        The structure depends on the type of code env. Notable fields are:
-
-          * **versionId** : identifier of the code env version
-          * **path** : (read-only) location of the version on disk
-          * **desc** : definition of the code env, persisted on disk
-
-              * **versionId** : type of code env. Possible values: DSS_INTERNAL, DESIGN_MANAGED, DESIGN_NON_MANAGED, PLUGIN_MANAGED, PLUGIN_NON_MANAGED, EXTERNAL_CONDA_NAMED
-              * **conda** : if True, the code env is created using Conda. If False, using virtualenv (for Python) or by linking to the system R (for R)
-              * **externalCondaEnvName** : for EXTERNAL_CONDA_NAMED code envs, the name of the associated conda env
-              * **yarnPythonBin** or **yarnRBin** : path to Python (resp. R) on the cluster nodes, for use in Spark jobs running on Yarn
-              * **pythonInterpreter** : type of Python used. Possible values: PYTHON27, PYTHON34, PYTHON35, PYTHON36, PYTHON37, PYTHON38, PYTHON39, PYTHON310, PYTHON311, CUSTOM
-              * **customInterpreter** : if **pythonInterpreter** is "CUSTOM", the path to the Python binary
-              * **corePackagesSet** : which set of core packages to instal in the code env. Possible values: LEGACY_PANDAS023, PANDAS10, PANDAS11, PANDAS12, PANDAS13
-              * **installJupyterSupport** : if True, the packages necessary for using the code env in notebooks are installed
-              * **dockerImageResources** : behavior w.r.t. code env resources. Possible values: INIT (run initialization script), COPY (copy resources), NONE
-
-          * **resourcesInitScript** : for Python code env, the contents resource script
-          * **info** : (read-only) for Python code env, a dict with a **pythonVersion** field
-          * **specPackageList** and **specCondaEnvironment** : list of packages requested by the user, as strings
-          * **actualPackageList** and **actualCondaEnvironment** : (read-only) actual packages in the code env, as strings
-          * **mandatoryPackageList** and **mandatoryCondaEnvironment** : (read-only) base packages added automatically by DSS on update, as strings
+        The structure depends on the type of code env. The dict contains a **versionId** field, and the
+        definition of the code env requirements.
 
         :return: code env settings
         :rtype: dict
@@ -1900,28 +1814,9 @@ class DSSGlobalApiKey(object):
 
             This call requires an API key with admin rights
 
-        :return: the API key definition. Top-level fields are:
-
-                    * **id** : identifier of the key
-                    * **key** : value of the key
-                    * **label** : label of the key
-                    * **description** : longer description of the key
-                    * **createdOn** : timestamp of creation, in milliseconds   
-                    * **createdBy** : login of user who created the key   
-                    * **dssUserForImpersonation** : login of user that the key impersonates
-                    * **adminProperties** : dict of properties set by administrators
-                    * **userProperties** : dict of properties set by users with access to the key
-                    * **globalPermissions** : dict of instance-wide permissions (each field is a boolean for a permission)
-                    * **execSQLLike** : whether the key can run SQL queries
-                    * **projectFolders** : dict of project folder identifier to dict of permissions on that project folder
-                    * **projects** : dict of project key to dict of permissions on that project
-                    * **codeEnvs** : dict of code env name to dict of permissions on that code env
-                    * **clusters** : dict of cluster name to dict of permissions on that cluster
-                    * **codeStudioTemplates** : dict of code studio template identifier to dict of permissions on that code studio template
-                    * **plugins** : dict of plugin identifier to dict of permissions on that plugin
-                    * **pluginPresets** : dict of preset identifier to dict of permissions on that preset
-                    * **pluginParameterSets** : dict of parameter set name to dict of permissions on that parameter set
-                    * **unscopedDatasets** : list of dict giving permissions to specific datasets
+        :return: the API key definition, as a dict. The API key should be in a **key** field, 
+                 distinct of the **id** field which contains an identifier of the key. The
+                 dict additionally contains the definition of the permissions attached to the key.
 
         :rtype: dict
         """
@@ -2031,7 +1926,7 @@ class DSSGlobalApiKeyListItem(dict):
         :rtype: :class:`datetime.datetime`
         """
         timestamp = self["createdOn"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
    
     @property
     def created_by(self):
@@ -2062,15 +1957,8 @@ class DSSPersonalApiKey(object):
         """
         Get the API key's definition
         
-        :return: the personal API key definition. Top level fields are:
-
-                    * **id** : identifier of the key
-                    * **key** : value of the key
-                    * **user** : login of the user that this key acts on behalf of 
-                    * **label** : label of the key
-                    * **description** : longer description of the key
-                    * **createdOn** : timestamp of creation, in milliseconds   
-                    * **createdBy** : login of the user who create the key 
+        :return: the personal API key definition, as a dict. The key itself is in a **key** field,
+                 and the login of the user of this personal key in a **user** field.
 
         :rtype: dict
         """
@@ -2162,7 +2050,7 @@ class DSSPersonalApiKeyListItem(dict):
         :rtype: :class:`datetime.datetime`
         """
         timestamp = self["createdOn"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
    
     @property
     def created_by(self):
@@ -2229,20 +2117,8 @@ class DSSCluster(object):
 
             Deprecated, use :meth:`get_settings()`
 
-        :return: the definition of the cluster. Fields are:
-
-                    * **id** : unique identifier of the cluster
-                    * **name** : name of the cluster, in the UI
-                    * **architecture** : kind of cluster (either HADOOP or KUBERNETES)
-                    * **origin** : agent who created the cluster (either MANUAL or SCENARIO)
-                    * **type** : type of cluster. Can be "manual" or a plugin cluster element type
-                    * **params** : for clusters from plugin components, the settings shown in the cluster's form.
-                    * **state** : (read-only) current state of the cluster. Possible values are NONE, STARTING, RUNNING, STOPPING
-                    * **data** : when in **state** "RUNNING", a dict of data for use by the cluster's plugin component. Contents depend on each cluster type.
-                    * **owner**, **usableByAll** and **permissions** : definition of permissions on cluster
-                    * **canUpdateCluster** : (read-only) whether the user can update the cluster's settings or state
-                    * **canManageUsersCluster** : (read-only) whether the user can manage the cluster's permissions
-                    * **XXXXSettings** : dict of settings (resp. override mask) for XXXX in Hadoop, Hive, Impala, Spark and Container. These settings apply on top of the corresponding settings in the instance's general settings
+        :return: the definition of the cluster as a dict. For clusters from plugin components, the settings
+                 of the cluster are in a **params** field.
 
         :rtype: dict
         """
@@ -2470,14 +2346,7 @@ class DSSClusterStatus(object):
         """
         Gets the whole status as a raw dictionary.
 
-        :return: status information, with fields:
-
-                    * **state** : current state of the cluster. Possible values are NONE, STARTING, RUNNING, STOPPING
-                    * **clusterType** : type of cluster. Can be "manual" or a plugin cluster element type
-                    * **usages** : list of usages of the cluster. Each usage is a dict with either **projectKey** (when cluster is set in the project's settings), or **scenarioId**, **scenarioProjectKey** and **scenarioRunId** (when the cluster is created and used by a scenario run)
-                    * **otherProjectUsagesCount** : number of projects that use the cluster but that the user cannot access (these projects are not in **usages**)
-                    * **otherScenarioUsagesCount** : number of scenarios that use the cluster but that the user cannot access (these scenarios are not in **usages**)
-                    * **error** : if the cluster start failed, a dict with error information
+        :return: status information, as a dict. The current state of the cluster is in a **state** field, with ossible values: NONE, STARTING, RUNNING, STOPPING
 
         :rtype: dict
         """
@@ -2655,10 +2524,7 @@ class DSSCodeStudioTemplateListItem(object):
         :rtype: :class:`datetime.datetime`
         """
         ts = self._data.get("lastBuilt", 0)
-        if ts > 0:
-            return datetime.fromtimestamp(ts / 1000)
-        else:
-            return None
+        return _timestamp_ms_to_zoned_datetime(ts)
 
 class DSSCodeStudioTemplate(object):
     """
@@ -2721,20 +2587,8 @@ class DSSCodeStudioTemplateSettings(object):
         """
         Gets all settings as a raw dictionary. 
 
-        :return: a reference to the raw settings, not a copy. Keys are
-
-                    * **id** : unique identifier of the template
-                    * **type** : type of the template. Builtin values are 'manual' and 'block_based'; more types can be added via plugin components
-                    * **label** : label of the template in the UI
-                    * **icon** : icon to use for code studios on this template
-                    * **tags** : list of tags (strings)
-                    * **isEditor** : whether the template defines a code studio that can be used to edit objects in DSS
-                    * **owner**, **defaultPermission** and **permissions** : definition of the permissions on the template
-                    * **defaultContainerConf** : container config to use on code studios created on this template
-                    * **allowContainerConfOverride** : if True, the container config of code studios on this template can be overriden at the project level
-                    * **allContainerConfs** : if True, build the container images for all configs of the instance
-                    * **containerConfs** : if **allContainerConfs** is False, a list of container config names to build images for
-                    * **params** : definition of the contents of the template. Depends on the **type**
+        :return: a reference to the raw settings, as a dict (not a copy). The dict contains a **type** field
+                 and the actual template settings in a **params** field.
 
         :rtype: dict
         """

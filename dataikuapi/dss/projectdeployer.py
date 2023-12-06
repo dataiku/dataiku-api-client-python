@@ -304,29 +304,12 @@ class DSSProjectDeployerInfraSettings(object):
 
     def get_raw(self):
         """
-        Get the raw settings of this infrastracture. 
+        Get the raw settings of this infrastructure. 
 
         This returns a reference to the raw settings, not a copy, so changes made to the returned 
         object will be reflected when saving.
 
-        :return: the settings, as a dict with fields:
-
-                    * **id** : unique identifier of the infrastructure
-                    * **stage** : name of the stage of the infrastructure
-                    * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
-                    * **autoconfigureFromNodesDirectory** : whether this infrastructure is automatically setup according to what's in the fleet
-                    * **nodeId** : when configured from a fleet, the name of the automation node in the fleet
-                    * **automationNodeUrl** : URL of the automation node that this infrastructure points to
-                    * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
-                    * **adminApiKey** : API key used to communicate with the automation node
-                    * **trustAllSSLCertificates** : whether to verify SSL certificates when communicating with the automation node
-                    * **permissions** : list of permissions per group, each as a dict of:
-
-                        * **group** : name of the group being granted the permissions
-                        * **admin** : whether the group can administer the infrastructure
-                        * **read** : whether the group can see the deployments running on the infrastructure                        
-                        * **deploy** : whether the group can create deployments on the infrastructure
-
+        :return: the settings, as a dict.
         :rtype: dict
         """
         return self.settings
@@ -366,29 +349,8 @@ class DSSProjectDeployerInfraStatus(object):
         """
         Get the raw status information. 
 
-        :return: the status, as a dict with fields:
-
-                    * **isAdmin** : whether the user can administer the infrastructure
-                    * **canDeploy** : whether the user can deploy bundles on the infrastructure
-                    * **infraBasicInfo** : summary of the infrastructure, as a dict with fields:
-
-                        * **id** : unique identifier of the infrastructure
-                        * **stage** : name of the stage of the infrastructure
-                        * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
-                        * **automationNodeUrl** : URL of the automation node that this infrastructure points to
-                        * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
-
-                    * **deployments** : list of summaries of the deployments on the infrastructure, as a list of dict with fields:
-
-                        * **id** : identifier of the deployment
-                        * **infraId** : identifier of the infrastructure
-                        * **tags** : list of tags, each a string
-                        * **createdByDisplayName** : login of the user who created the deployment
-                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
-                        * **publishedProjectKey** : key of the published project of the deployment
-                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
-                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
-
+        :return: the status, as a dict. The dict contains a list of the bundles currently deployed on the infrastructure
+                 as a **deployments** field.
         :rtype: dict
         """
         return self.light_status
@@ -513,30 +475,11 @@ class DSSProjectDeployerDeploymentSettings(object):
         This returns a reference to the raw settings, not a copy, so changes made to the returned 
         object will be reflected when saving.
 
-        :return: the settings, as a dict of: 
+        :return: the settings, as a dict. Notable fields are:
 
                     * **id** : identifier of the deployment
                     * **infraId** : identifier of the infrastructure on which the deployment is done
-                    * **tags** : list of tags, each one a string
-                    * **publishedProjectKey** : key of the published project on the Project Deployer
                     * **bundleId** : identifier of the bundle of the published project being deployed 
-                    * **deployedProjectKey** : key of the project the deployment is deployed to on the automation node
-                    * **projectFolderId** : identifier of the project folder on the automation node
-                    * **bundleContainerSettings** : bundle settings on the automation node, as a dict of:
-
-                        * **remapping** : remapping settings for connections and code envs for the bundle on the automation node, as a dict with fields:
-
-                            * **connections** : list of remappings, each a dict of **source** and **target** fields holding connection names
-                            * **codeEnvs** : list of remappings, each a dict of **source** and **target** fields holding code env names
-
-                        * **codeEnvsBehavior** : defines the behavior w.r.t. code envs used by the bundle, as a dict of:
-
-                            * **importTimeMode** : one of INSTALL_IF_MISS, FAIL_IF_MISS or DO_NOTHING
-                            * **envImportSpecificationMode** : one of SPECIFIED or ACTUAL
-
-                    * **localVariables** : override to the project local variables on the automation node, as a dict
-                    * **scenariosToActivate** : dict of scenario name to boolean, controlling which scenarios of the bundle are (de)activated upon deployment
-                    * **disableAutomaticTriggers** : whether the automatic triggers in the scenario should be all deactivated after the deployment
 
         :rtype: dict
         """
@@ -587,35 +530,8 @@ class DSSProjectDeployerDeploymentStatus(object):
 
         This returns a dictionary with various information about the deployment, but not the actual health of the deployment
 
-        :returns: a summary, as a dict with fields:
-
-                    * **deploymentBasicInfo** : summary of the definition of the deployment, as a dict of:
-
-                        * **id** : identifier of the deployment
-                        * **infraId** : identifier of the infrastructure
-                        * **tags** : list of tags, each a string
-                        * **createdByDisplayName** : login of the user who created the deployment
-                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
-                        * **publishedProjectKey** : key of the published project of the deployment
-                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
-                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
-
-                    * **infraBasicInfo** : summary of the infrastructure on which the deployment is made, as a dict of:
-
-                        * **id** : unique identifier of the infrastructure
-                        * **stage** : name of the stage of the infrastructure
-                        * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
-                        * **automationNodeUrl** : URL of the automation node that this infrastructure points to
-                        * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
-
-                    * **projectBasicInfo** : summary of the published project from where the bundle of this deployment originates, as a dict of:
-
-                        * **id** : key of the project
-                        * **name** : name of the project
-
-                    * **packages** : list of bundles in the published project of this deployment (see :meth:`DSSProjectDeployerProjectStatus.get_bundles()`)
-                    * **neverEverDeployed** : True if the deployment hasn't yet been deployed
-
+        :returns: a summary, as a dict, with summary information on the deployment, the project from which the deployed
+                  bundle originates, and the infrastructure on which it's deployed.
         :rtype: dict
         """
         return self.light_status
@@ -626,21 +542,8 @@ class DSSProjectDeployerDeploymentStatus(object):
 
         This returns various information about the deployment, notably its health.
 
-        :return: a status, as a dict with fields:
-
-                    * **deploymentId** : identifier of the deployment
-                    * **health** : the current health of the deployment. Possible values: UNKNOWN, ERROR, WARNING, HEALTHY, UNHEALTHY, OUT_OF_SYNC
-                    * **healthMessages** : detailed messages of errors or warnings that occurred while checking the health
-                    * **monitoring** : information about the scenarios in the project on the automation node, as a dict of:
-
-                        * **hasScenarios** : whether there are scenarios in the project
-                        * **hasActiveScenarios** : whether there are active scenarios in the project
-                        * **failed** : list of names of the scenarios whose last run ended in failed state
-                        * **warning** : list of names of the scenarios whose last run ended in warning state
-                        * **successful** : list of names of the scenarios whose last run ended in success state
-                        * **aborted** : list of names of the scenarios whose last run was aborted
-                        * **running** : list of names of the scenarios currently running
-
+        :return: a status, as a dict. The overall status of the deployment is in a **health** field (possible values: UNKNOWN, ERROR, 
+                 WARNING, HEALTHY, UNHEALTHY, OUT_OF_SYNC).
         :rtype: dict
         """
         return self.heavy_status
@@ -764,21 +667,7 @@ class DSSProjectDeployerProjectSettings(object):
         This returns a reference to the raw settings, not a copy, so changes made to the returned 
         object will be reflected when saving.
 
-        :return: the settings, as a dict with fields:
-
-                        * **id** : key of the project
-                        * **name** : name of the project
-                        * **owner** : owner of the published project (independent of the owner of the project on the design node)
-                        * **permissions** : list of permissions per group, each as a dict of:
-
-                            * **group** : name of the group being granted the permissions
-                            * **admin** : whether the group can administer the project
-                            * **read** : whether the group can see the published project and deployments of bundles of this project                        
-                            * **write** : whether the group can upload new bundles in this published project      
-                            * **deploy** : whether the group can create deployments from bundles of this project
-
-                        * **basicImageInfo** : information about the image associated to the project (in project lists, on the project's home, etc...)
-
+        :return: the settings, as a dict.
         :rtype: dict
         """
         return self.settings
@@ -826,17 +715,7 @@ class DSSProjectDeployerProjectStatus(object):
 
         Each bundle is a dict that contains at least a "id" field, which is the version identifier
 
-        :returns: a list of bundles, each one a dict of:
-
-                    * **id** : the bundle id
-                    * **publishedOn** : timestamp of when the bundle was added to the published project
-                    * **publishedBy** : login of the user who added the bundle to the published project
-                    * **designNodeInfo** : extra information on the node from which the bundle came, as a dict of
-
-                        * **projectKey** : the key of the project on the source node
-                        * **nodeId** : node name in the fleet (if the design node is part of a fleet)
-                        * **url** : node url in the fleet (if the design node is part of a fleet)
-
+        :returns: a list of bundles, each one a dict. Each bundle has an **id** field holding its identifier.
         :rtype: list[dict]
         """
         return self.light_status["packages"]
@@ -845,14 +724,7 @@ class DSSProjectDeployerProjectStatus(object):
         """
         Get the infrastructures that deployments of this project use.
 
-        :returns: list of summaries of infrastructures, each a dict of:
-
-                    * **id** : unique identifier of the infrastructure
-                    * **stage** : name of the stage of the infrastructure
-                    * **governCheckPolicy** : what actions with Govern the deployer will take when bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
-                    * **automationNodeUrl** : URL of the automation node that this infrastructure points to
-                    * **automationNodeExternalUrl** : externally-accessible URL of the automation node that this infrastructure points to
-
+        :returns: list of summaries of infrastructures, each a dict.
         :rtype: list[dict]
         """
         return self.light_status["infras"]
@@ -861,30 +733,7 @@ class DSSProjectDeployerProjectStatus(object):
         """
         Gets the raw status information. 
 
-        :return: the status, as a dict with fields:
-
-                    * **projectBasicInfo** : summary of the published project, as a dict of:
-
-                        * **id** : key of the project
-                        * **name** : name of the project
-
-                    * **isAdmin** : whether the user can administer the published project
-                    * **canDeploy** : whether the user can deploy the published project
-                    * **canWrite** : whether the user can upload bundles to the published project
-                    * **packages** : list of bundles in the published project (see :meth:`get_bundles()`)
-                    * **deployments** : list of summaries of the deployments of bundles of the published project, as a list of dict with fields:
-
-                        * **id** : identifier of the deployment
-                        * **infraId** : identifier of the infrastructure
-                        * **tags** : list of tags, each a string
-                        * **createdByDisplayName** : login of the user who created the deployment
-                        * **lastModifiedByDisplayName** : login of the user who last modified the deployment
-                        * **publishedProjectKey** : key of the published project of the deployment
-                        * **bundleId** : identifier of the bundle of the published project that the deployment pushes onto the automation node
-                        * **deployedProjectKey** : key of the remote project that this deployment is pushed to
-
-                    * **infras** : list of summaries of infrastructures, for infrastructures appearing in **deployments** (see :meth:`get_infras()`)
-
+        :return: the status, as a dict. A  **deployments** sub-field contains a list of the deployments of bundles of this projects.
         :rtype: dict
         """
         return self.light_status

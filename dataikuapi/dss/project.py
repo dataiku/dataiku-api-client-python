@@ -7,12 +7,15 @@ from .apiservice import DSSAPIService, DSSAPIServiceListItem
 from .app import DSSAppManifest
 from .codestudio import DSSCodeStudioObject, DSSCodeStudioObjectListItem
 from .continuousactivity import DSSContinuousActivity
+from .dashboard import DSSDashboard, DSSDashboardListItem, DASHBOARDS_URI_FORMAT
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .discussion import DSSObjectDiscussions
 from .flow import DSSProjectFlow
 from .future import DSSFuture
+from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
 from .job import DSSJob, DSSJobWaiter
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
+from .labeling_task import DSSLabelingTask
 from .macro import DSSMacro
 from .managedfolder import DSSManagedFolder
 from .ml import DSSMLTask, DSSMLTaskQueues
@@ -28,6 +31,8 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
     DSSManagedStreamingEndpointCreationHelper
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
+from .llm import DSSLLM, DSSLLMListItem
+from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from ..dss_plugin_mlflow import MLflowHandle
 
 class DSSProject(object):
@@ -128,17 +133,17 @@ class DSSProject(object):
         :param dict options: Dictionary of export options (defaults to **{}**).
             The following options are available:
 
-                - **exportUploads** (boolean): Exports the data of Uploaded datasets (default to **False**)
-                - **exportManagedFS** (boolean): Exports the data of managed Filesystem datasets (default to **False**)
-                - **exportAnalysisModels** (boolean): Exports the models trained in analysis (default to **False**)
-                - **exportSavedModels** (boolean): Exports the models trained in saved models (default to **False**)
-                - **exportManagedFolders** (boolean): Exports the data of managed folders (default to **False**)
-                - **exportAllInputDatasets** (boolean): Exports the data of all input datasets (default to **False**)
-                - **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
-                - **exportAllInputManagedFolders** (boolean): \
-                    Exports the data of all input managed folders (default to **False**)
-                - **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
-                - **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
+            - **exportUploads** (boolean): Exports the data of Uploaded datasets (default to **False**)
+            - **exportManagedFS** (boolean): Exports the data of managed Filesystem datasets (default to **False**)
+            - **exportAnalysisModels** (boolean): Exports the models trained in analysis (default to **False**)
+            - **exportSavedModels** (boolean): Exports the models trained in saved models (default to **False**)
+            - **exportManagedFolders** (boolean): Exports the data of managed folders (default to **False**)
+            - **exportAllInputDatasets** (boolean): Exports the data of all input datasets (default to **False**)
+            - **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
+            - **exportAllInputManagedFolders** (boolean):
+              Exports the data of all input managed folders (default to **False**)
+            - **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
+            - **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
 
 
         :returns: a stream of the export archive
@@ -157,18 +162,18 @@ class DSSProject(object):
         :param dict options: Dictionary of export options (defaults to **{}**).
             The following options are available:
 
-                * **exportUploads** (boolean): Exports the data of Uploaded datasets (default to **False**)
-                * **exportManagedFS** (boolean): Exports the data of managed Filesystem datasets (default to **False**)
-                * **exportAnalysisModels** (boolean): Exports the models trained in analysis (default to **False**)
-                * **exportSavedModels** (boolean): Exports the models trained in saved models (default to **False**)
-                * **exportModelEvaluationStores** (boolean): Exports the evaluation stores (default to **False**)
-                * **exportManagedFolders** (boolean): Exports the data of managed folders (default to **False**)
-                * **exportAllInputDatasets** (boolean): Exports the data of all input datasets (default to **False**)
-                * **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
-                * **exportAllInputManagedFolders** (boolean): \
-                    Exports the data of all input managed folders (default to **False**)
-                * **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
-                * **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
+            * **exportUploads** (boolean): Exports the data of Uploaded datasets (default to **False**)
+            * **exportManagedFS** (boolean): Exports the data of managed Filesystem datasets (default to **False**)
+            * **exportAnalysisModels** (boolean): Exports the models trained in analysis (default to **False**)
+            * **exportSavedModels** (boolean): Exports the models trained in saved models (default to **False**)
+            * **exportModelEvaluationStores** (boolean): Exports the evaluation stores (default to **False**)
+            * **exportManagedFolders** (boolean): Exports the data of managed folders (default to **False**)
+            * **exportAllInputDatasets** (boolean): Exports the data of all input datasets (default to **False**)
+            * **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
+            * **exportAllInputManagedFolders** (boolean): \
+                Exports the data of all input managed folders (default to **False**)
+            * **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
+            * **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
 
         """
         if options is None:
@@ -238,7 +243,7 @@ class DSSProject(object):
         checklists, tags and custom metadata of the project.
 
         .. note::
-            For more information on available metadata, please see https://doc.dataiku.com/dss/api/6.0/rest/
+            For more information on available metadata, please see https://doc.dataiku.com/dss/api/latest/rest/
 
         :returns: the project metadata.
         :rtype: dict
@@ -467,6 +472,48 @@ class DSSProject(object):
             extra_params["bucket"] = bucket
         return self.create_fslike_dataset(dataset_name, "S3", connection, path_in_connection, extra_params)
 
+    def create_gcs_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
+        """
+        Creates a new external GCS dataset in the project and returns a :class:`dataikuapi.dss.dataset.DSSDataset` to
+        interact with it.
+
+        The created dataset does not have its format and schema initialized, it is recommended to use
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str connection: the name of the connection
+        :param str path_in_connection: the path of the dataset in the connection
+        :param str bucket: the name of the GCS bucket (defaults to **None**)
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if bucket is not None:
+            extra_params["bucket"] = bucket
+        return self.create_fslike_dataset(dataset_name, "GCS", connection, path_in_connection, extra_params)
+
+    def create_azure_blob_dataset(self, dataset_name, connection, path_in_connection, container=None):
+        """
+        Creates a new external Azure dataset in the project and returns a :class:`dataikuapi.dss.dataset.DSSDataset` to
+        interact with it.
+
+        The created dataset does not have its format and schema initialized, it is recommended to use
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str connection: the name of the connection
+        :param str path_in_connection: the path of the dataset in the connection
+        :param str container: the name of the storage account container (defaults to **None**)
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if container is not None:
+            extra_params["container"] = container
+        return self.create_fslike_dataset(dataset_name, "Azure", connection, path_in_connection, extra_params)
+
     def create_fslike_dataset(self, dataset_name, dataset_type, connection, path_in_connection, extra_params=None):
         """
         Create a new file-based dataset in the project, and return a handle to interact with it.
@@ -495,7 +542,7 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key, body=body)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
-    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
+    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema, catalog=None):
         """
         Create a new SQL table dataset in the project, and return a handle to interact with it.
 
@@ -504,7 +551,7 @@ class DSSProject(object):
         :param str connection: the name of the connection
         :param str table: the name of the table in the connection
         :param str schema: the schema of the table
-
+        :param str catalog: [optional] the catalog of the table
 
         :returns: A dataset handle
         :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
@@ -517,7 +564,8 @@ class DSSProject(object):
                 "connection": connection,
                 "mode": "table",
                 "table": table,
-                "schema": schema
+                "schema": schema,
+                "catalog": catalog
             }
         }
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
@@ -553,6 +601,20 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.dss.dataset.DSSManagedDatasetCreationHelper`
         """
         return DSSManagedDatasetCreationHelper(self, dataset_name)
+
+    ################
+    # Labeling tasks
+    ################
+    def get_labeling_task(self, labeling_task_id):
+        """
+        Get a handle to interact with a specific labeling task
+
+        :param str labeling_task_id: the id of the desired labeling task
+
+        :returns: A labeling task handle
+        :rtype: :class:`dataikuapi.dss.labeling_task.DSSLabelingTask`
+        """
+        return DSSLabelingTask(self.client, self.project_key, labeling_task_id)
 
     ########################################################
     # Streaming endpoints
@@ -786,7 +848,7 @@ class DSSProject(object):
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
-        :return :class dataiku.dss.ml.DSSMLTask
+        :return: :class:`dataiku.dss.ml.DSSMLTask`
         """
         obj = {
             "inputDataset": input_dataset,
@@ -797,6 +859,43 @@ class DSSProject(object):
             "backendType": "PY_MEMORY",
             "guessPolicy":  guess_policy,
             "predictionType": "TIMESERIES_FORECAST"
+        }
+
+        ref = self.client._perform_json(
+            "POST",
+            "/projects/{project_key}/models/lab/".format(project_key=self.project_key),
+            body=obj
+        )
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
+
+    def create_causal_prediction_ml_task(self, input_dataset, outcome_variable,
+                                              treatment_variable,
+                                              prediction_type=None,
+                                              wait_guess_complete=True):
+        """Creates a new causal prediction task in a new visual analysis lab for a dataset.
+
+        :param string input_dataset: The dataset to use for training/testing the model
+        :param string outcome_variable: The outcome to predict.
+        :param string treatment_variable:  Column to be used as treatment variable.
+        :param string or None prediction_type: Valid values are: "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION" or None (in this case prediction_type will be set by the Guesser)
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return: :class:`dataiku.dss.ml.DSSMLTask`
+        """
+        obj = {
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariable": outcome_variable,
+            "treatmentVariable": treatment_variable,
+            "backendType": "PY_MEMORY",
+            "guessPolicy":  "CAUSAL_PREDICTION",
+            "predictionType": prediction_type  # If None, predictionType will be set by the Guesser
         }
 
         ref = self.client._perform_json(
@@ -925,18 +1024,103 @@ class DSSProject(object):
         id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
         return self.get_saved_model(id)
 
-    def create_proxy_model(self, name, prediction_type):
+    def create_external_model(self, name, prediction_type, configuration):
         """
-        EXPERIMENTAL. Creates a new external saved model that can contain proxy model as versions.
+        EXPERIMENTAL. Creates a new Saved model that can contain external remote endpoints as versions.
 
-        This is an experimental API, subject to change.
-        :param string name: Human readable name for the new saved model in the flow
+        :param string name: Human-readable name for the new saved model in the flow
         :param string prediction_type: One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
+        :param dict configuration: A dictionary containing the desired external saved model configuration.
+
+          - For SageMaker, the syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "sagemaker",
+                    "region": "<region-name>"
+                    "connection": "<connection-name>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``region``: The AWS region of the endpoint, e.g. ``eu-west-1``
+            - ``connection``: (optional) The DSS SageMaker connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+
+          - For AzureML, syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "azure-ml",
+                    "connection": "<connection-name>",
+                    "subscription_id": "<id>",
+                    "resource_group": "<rg>",
+                    "workspace": "<workspace>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``connection``: (optional) The DSS Azure ML connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+            - ``subscription_id``: The Azure subscription ID
+            - ``resource_group``: The Azure resource group
+            - ``workspace``: The Azure ML workspace
+
+          - For Vertex AI, syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "vertex-ai",
+                    "region": "<region-name>"
+                    "connection": "<connection-name>",
+                    "project_id": "<name> or <id>"
+                }
+
+            Where the parameters have the following meaning:
+
+            - ``region``: The GCP region of the endpoint, e.g. ``europe-west-1``
+            - ``connection``: (optional) The DSS Vertex AI connection to use for authentication. If not defined,
+              credentials will be derived from environment. See the reference documentation for details.
+            - ``project_id``: The ID or name of the GCP project
+
+        - Example: create a saved model for SageMaker endpoints serving binary classification models in region eu-west-1
+
+          .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+            configuration = {
+                "protocol": "sagemaker",
+                "region": "eu-west-1"
+            }
+            sm = project.create_external_model("SaveMaker Proxy Model", "BINARY_CLASSIFICATION", configuration)
+
+        - Example: create a saved model for Vertex AI endpoints serving regression models in region eu-west-1, on
+          project "my-project", performing authentication using DSS connection "vertex_conn" of type "Vertex AI".
+
+          .. code-block:: python
+
+            import dataiku
+            client = dataiku.api_client()
+            project = client.get_default_project()
+            configuration = {
+                "protocol": "vertex-ai",
+                "region": "europe-west1",
+                "connection": "vertex_conn"
+                "project_id": "my-project"
+            }
+            sm = project.create_external_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", configuration)
+
         """
         model = {
             "savedModelType": "PROXY_MODEL",
             "predictionType": prediction_type,
-            "name": name
+            "name": name,
+            "proxyModelConfiguration": configuration
         }
 
         saved_model_id = self.client._perform_json("POST", "/projects/%s/savedmodels/" % self.project_key, body=model)["id"]
@@ -1065,7 +1249,8 @@ class DSSProject(object):
         Create a new model comparison in the project, and return a handle to interact with it.
 
         :param str name: the name for the new model comparison
-        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, and TIMESERIES_FORECAST
+        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, TIMESERIES_FORECAST,
+                                    CAUSAL_BINARY_CLASSIFICATION, CAUSAL_REGRESSION
 
         :returns: A new model comparison handle
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
@@ -1375,6 +1560,13 @@ class DSSProject(object):
         :param str bundle_id: bundle id tag
         """
         return self.client._perform_json("PUT", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
+    
+    def delete_exported_bundle(self, bundle_id):
+        """
+        Deletes a project bundle from the Design node
+        :param str bundle_id: bundle id tag
+        """
+        return self.client._perform_json("DELETE", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
 
     def get_exported_bundle_archive_stream(self, bundle_id):
         """
@@ -1648,7 +1840,9 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         """
 
-        if type == "grouping":
+        if type == "generate_features":
+            return recipe.GenerateFeaturesRecipeCreator(name, self)
+        elif type == "grouping":
             return recipe.GroupingRecipeCreator(name, self)
         elif type == "window":
             return recipe.WindowRecipeCreator(name, self)
@@ -1999,6 +2193,51 @@ class DSSProject(object):
         return DSSLibrary(self.client, self.project_key)
 
     ########################################################
+    # LLM
+    ########################################################
+
+    def list_llms(self, purpose="GENERIC_COMPLETION", as_type="listitems"):
+        """
+        List the LLM usable in this project
+
+        :param str purpose: Usage purpose of the LLM. Main values are GENERIC_COMPLETION and TEXT_EMBEDDING_EXTRACTION
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`llm.DSSLLMListItem`.
+                  If "as_type" is "objects", each one as a :class:`llm.DSSLLM`
+        :rtype: list
+        """
+        llms = self.client._perform_json("GET", "/projects/%s/llms?purpose=%s" % (self.project_key, purpose))
+        if as_type == "listitems":
+            return [DSSLLMListItem(self.client, self.project_key, item) for item in llms]
+        elif as_type == "objects":
+            return [DSSLLM(self.client, self.project_key, item["id"]) for item in llms]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_llm(self, llm_id):
+        return DSSLLM(self.client, self.project_key, llm_id)
+
+    def list_knowledge_banks(self, as_type="listitems"):
+        """
+        List the knowledge banks of this project
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`knowledgebank.DSSKnowledgeBankListItem`.
+                  If "as_type" is "objects", each one as a :class:`knowledgebank.DSSKnowledgeBank`
+        :rtype: list
+        """
+        kbs = self.client._perform_json("GET", "/projects/%s/knowledge-banks" % (self.project_key))
+        if as_type == "listitems":
+            return [DSSKnowledgeBankListItem(self.client, item) for item in kbs]
+        elif as_type == "objects":
+            return [DSSKnowledgeBank(self.client, self.project_key, item["id"]) for item in kbs]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_knowledge_bank(self, id):
+        return DSSKnowledgeBank(self.client, self.project_key, id)
+
+    ########################################################
     # Webapps
     ########################################################
 
@@ -2026,6 +2265,95 @@ class DSSProject(object):
         :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
         """
         return DSSWebApp(self.client, self.project_key, webapp_id)
+
+
+    ########################################################
+    # Dashboards
+    ########################################################
+    def list_dashboards(self, as_type="listitems"):
+        """
+        List the Dashboards in this project.
+
+        :returns: The list of the dashboards.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", DASHBOARDS_URI_FORMAT % self.project_key)
+        if as_type == "listitems":
+            return [DSSDashboardListItem(self.client, item) for item in items]
+        elif as_type == "objects":
+            return [DSSDashboard(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+
+    def get_dashboard(self, dashboard_id):
+        """
+        Get a handle to interact with a specific dashboard object
+
+        :param str dashboard_id: the identifier of the desired dashboard object
+
+        :returns: A :class:`dataikuapi.dss.dashboard.DSSDashboard` dashboard object handle
+        """
+        return DSSDashboard(self.client, self.project_key, dashboard_id)
+
+    def create_dashboard(self, dashboard_name, settings=None):
+        """
+        Create a new dashboard in the project, and return a handle to interact with it
+
+        :param str dashboard_name: The name for the new dashboard. This does not need to be unique
+                                (although this is strongly recommended)
+        :param dict settings: the JSON definition of the dashboard. Use ``get_settings()`` on an
+                existing ``DSSDashboard`` object in order to get a sample settings object (defaults to `{'pages': []}`)
+
+        :returns: a :class:`.dashboard.DSSDashboard` handle to interact with the newly-created dashboard
+        """
+        if settings is None:
+            settings = {'pages': []}
+        settings['name'] = dashboard_name
+        dashboard_id = self.client._perform_json("POST", DASHBOARDS_URI_FORMAT % self.project_key,
+                       body = settings)['id']
+        return DSSDashboard(self.client, self.project_key, dashboard_id)
+
+    ########################################################
+    # Insights
+    ########################################################
+    def list_insights(self, as_type="listitems"):
+        """
+        List the Insights in this project.
+
+        :returns: The list of the insights.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", INSIGHTS_URI_FORMAT % self.project_key)
+        if as_type == "listitems":
+            return [DSSInsightListItem(self.client, item) for item in items]
+        elif as_type == "objects":
+            return [DSSInsight(self.client, self.project_key, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_insight(self, insight_id):
+        """
+        Get a handle to interact with a specific insight object
+
+        :param str insight_id: the identifier of the desired insight object
+
+        :returns: A :class:`dataikuapi.dss.insight.DSSInsight` insight object handle
+        """
+        return DSSInsight(self.client, self.project_key, insight_id)
+
+    def create_insight(self, creation_info):
+        """
+        Create a new insight in the project, and return a handle to interact with it
+
+        :param dict creation_info: the JSON definition of the insight creation. Use ``get_settings()`` on an
+                existing ``DSSInsight`` object in order to get a sample settings object
+
+        :returns: a :class:`.insight.DSSInsight` handle to interact with the newly-created insight
+        """
+        insight_id = self.client._perform_json("POST", INSIGHTS_URI_FORMAT % self.project_key,
+                       body = {"insightPrototype": creation_info})['id']
+        return DSSInsight(self.client, self.project_key, insight_id)
 
 
 class TablesImportDefinition(object):
@@ -2280,7 +2608,7 @@ class JobDefinitionBuilder(object):
 
     def start(self):
         """
-        Starts the job, and return a :doc:`dataikuapi.dss.job.DSSJob` handle to interact with it.
+        Starts the job, and return a :class:`dataikuapi.dss.job.DSSJob` handle to interact with it.
 
         You need to wait for the returned job to complete
         
@@ -2294,7 +2622,7 @@ class JobDefinitionBuilder(object):
 
     def start_and_wait(self, no_fail=False):
         """
-        Starts the job, waits for it to complete and returns a :doc:`dataikuapi.dss.job.DSSJob` handle to interact
+        Starts the job, waits for it to complete and returns a :class:`dataikuapi.dss.job.DSSJob` handle to interact
         with it
 
         Raises if the job failed.

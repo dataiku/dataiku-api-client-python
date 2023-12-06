@@ -1,8 +1,9 @@
 import json
 import time
 from datetime import datetime
-from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
+
 from dataikuapi.dss.savedmodel import ExternalModelVersionHandler
+from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 
 class DSSMLflowExtension(object):
     """
@@ -41,8 +42,9 @@ class DSSMLflowExtension(object):
         :rtype: dict
         """
         response = self.client._perform_http(
-            "GET", "/api/2.0/mlflow/experiments/list?view_type={view_type}&max_results={max_results}".format(view_type=view_type, max_results=max_results),
-            headers={"x-dku-mlflow-project-key": self.project_key}
+            "POST", "/api/2.0/mlflow/experiments/search",
+            headers={"x-dku-mlflow-project-key": self.project_key},
+            body={"view_type": view_type, "max_results": max_results}
         )
         return response.json()
 
@@ -143,6 +145,7 @@ class DSSMLflowExtension(object):
         Sets the type of the model, and optionally other information useful to deploy or evaluate it.
 
         prediction_type must be one of:
+
         - REGRESSION
         - BINARY_CLASSIFICATION
         - MULTICLASS
@@ -206,7 +209,7 @@ class DSSMLflowExtension(object):
 
     def deploy_run_model(self, run_id, sm_id, version_id=None, use_inference_info=True, code_env_name=None, evaluation_dataset=None,
                          target_column_name=None, class_labels=None, model_sub_folder=None, selection=None, activate=True,
-                         binary_classification_threshold=0.5, use_optimal_threshold=True):
+                         binary_classification_threshold=0.5, use_optimal_threshold=True, skip_expensive_reports=False):
         """
         Deploys a model from an experiment run, with lineage.
 
@@ -224,7 +227,7 @@ class DSSMLflowExtension(object):
         :type run_id: str
         :param sm_id: The id of the saved model to deploy the run to
         :type sm_id: str
-        :param version_id: [optional] Unique identifier of a Saved Model Version. If id already exists, existing version is overwritten.
+        :param version_id: [optional] Unique identifier of a Saved Model Version. If it already exists, existing version is overwritten.
             Whitespaces or dashes are not allowed. If not set, a timestamp will be used as version_id.
         :type version_id: str
         :param use_inference_info: [optional] default to True. if set, uses the :meth:`set_inference_info` previously done
@@ -242,17 +245,20 @@ class DSSMLflowExtension(object):
         :param model_sub_folder: [optional] The name of the subfolder containing the model. Optional if it is unique.
             Existing values can be retrieved with `project.get_mlflow_extension().list_models(run_id)`
         :type model_sub_folder: str
-        :param str selection: [optional] will default to HEAD_SEQUENTIAL with a maxRecords of 10_000.
+        :param selection: [optional] will default to HEAD_SEQUENTIAL with a maxRecords of 10_000. e.g.
+
+            * Example 1: ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
+            * Example 2: ``{"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}``
+
         :type selection: :class:`DSSDatasetSelectionBuilder` optional sampling parameter for the evaluation or dict
-                                e.g.
-                                    DSSDatasetSelectionBuilder().with_head_sampling(100)
-                                    {"samplingMethod": "HEAD_SEQUENTIAL", "maxRecords": 100}
         :param activate: [optional] True by default. Activate or not the version after deployment
         :type activate: bool
         :param binary_classification_threshold: [optional] Threshold (or cut-off) value to override if the model is a binary classification
         :type binary_classification_threshold: float
         :param use_optimal_threshold: [optional] Use or not the optimal threshold for the saved model metric computed at evaluation
         :type use_optimal_threshold: bool
+        :param skip_expensive_reports: [optional] Don't compute expensive report screens (e.g. feature importance).
+        :type skip_expensive_reports: bool
         :return: a handler in order to interact with the new MLFlow model version
         :rtype: :class:`dataikuapi.dss.savedmodel.ExternalModelVersionHandler`
         """
@@ -293,7 +299,44 @@ class DSSMLflowExtension(object):
                                           "activate": activate,
                                           "binaryClassificationThreshold": binary_classification_threshold,
                                           "useOptimalThreshold": use_optimal_threshold,
+                                          "skipExpensiveReports": skip_expensive_reports,
                                           "useInferenceInfo": use_inference_info
                                           }
-                                      )
+                                  )
         return ExternalModelVersionHandler(sm_id, version_id)
+
+    def import_analyses_models_into_experiment(self, model_ids, experiment_id):
+        """
+        Import models from a visual ML analysis into an existing experiment.
+        import dataiku
+
+        Usage example
+
+        .. code-block:: python
+
+            # Retrieve all the trained model ids of the first task of the first analysis of a project
+            project = client.get_project("YOUR_PROJECT_ID")
+            first_analysis_id = project.list_analyses()[0]['analysisId']
+            first_analysis = project.get_analysis(first_analysis_id)
+            first_task_id = first_analysis.list_ml_tasks()['mlTasks'][0]['mlTaskId']
+            first_task = first_analysis.get_ml_task(first_task_id)
+            full_model_ids = first_task.get_trained_models_ids()
+            # Create a new experiment
+            with project.setup_mlflow(project.create_managed_folder("mlflow")) as mlflow:
+                experiment_id = mlflow.create_experiment("Sample export of DSS visual analysis models")
+            # Export the retrieved model ids to the created experiment
+            project.get_mlflow_extension().import_analyses_models_into_experiment(full_model_ids, experiment_id)
+
+
+        :param model_ids: IDs of models from a Visual Analysis.
+        :type model_ids: list of str
+        :param experiment_id: ID of the experiment into which the visual analysis models will be imported.
+        :type experiment_id: str
+        """
+        self.client._perform_http("POST", "/api/2.0/mlflow/import-analysis-models-into-experiment-tracking",
+                                  headers={"x-dku-mlflow-project-key": self.project_key},
+                                  params={"projectKey": self.project_key,
+                                          "fullModelIds": model_ids,
+                                          "experimentId": experiment_id
+                                          }
+                                  )

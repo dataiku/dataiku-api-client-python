@@ -13,8 +13,11 @@ class DSSLibrary(object):
     A handle to manage the library of a project
     It saves locally a copy of taxonomy to help navigate in the library
     All modifications done through this object and related library items are done locally and on remote.
-    Note: Taxonomy modifications done outside this library are not reflected locally.
-          You should reload the library in this case.
+
+    .. note::
+        Taxonomy modifications done outside this library are not reflected locally.
+        You should reload the library in this case.
+
     """
     def __init__(self, client, project_key):
         """Do not call directly, use :meth:`dataikuapi.dss.project.DSSProject.get_library`"""
@@ -25,9 +28,11 @@ class DSSLibrary(object):
     def _build_node_(self, name, parent, children):
         """
         Helper that builds the tree recursively
-        :param: str name: the name of the library item
-        :param: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder` parent: the parent of the library item
-        :param: list children: the children of the library item
+
+        :param str name: the name of the library item
+        :param parent: the parent of the library item
+        :type parent: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
+        :param list children: the children of the library item
         :returns: a new node corresponding to an item in the library
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryItem`
         """
@@ -42,7 +47,8 @@ class DSSLibrary(object):
     def list(self, folder_path="/"):
         """
         Lists the contents in the given library folder or on the root if no folder is given.
-        :param: str folder_path: the folder path (optional). If no path is given, it is defaulted to the root path.
+
+        :param str folder_path: the folder path (optional). If no path is given, it is defaulted to the root path.
         :returns: the list of contents in the library folder
         :rtype: list of :class:`dataikuapi.dss.projectlibrary.DSSLibraryItem`
         """
@@ -51,7 +57,8 @@ class DSSLibrary(object):
     def get_file(self, path):
         """
         Retrieves a file in the library
-        :param: str path: the file path
+
+        :param str path: the file path
         :returns: the file in the given path
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFile`
         """
@@ -60,7 +67,8 @@ class DSSLibrary(object):
     def get_folder(self, path):
         """
         Retrieves a folder in the library
-        :param: str path: the folder path
+
+        :param str path: the folder path
         :returns: the folder in the given path
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """
@@ -70,7 +78,8 @@ class DSSLibrary(object):
     def add_file(self, file_name):
         """
         Create a file in the library root folder
-        :param: str file_name: the file name
+
+        :param str file_name: the file name
         :returns: the new file
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFile`
         """
@@ -79,7 +88,8 @@ class DSSLibrary(object):
     def add_folder(self, folder_name):
         """
         Create a folder in the library root folder
-        :param: str file_name: the file name
+
+        :param str file_name: the file name
         :returns: the new folder
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """
@@ -125,7 +135,8 @@ class DSSLibraryItem(object):
     def rename(self, new_name):
         """
         Rename the folder
-        :param: str new_name: the new name of the item
+
+        :param str new_name: the new name of the item
         """
         if self.is_root():
             raise Exception("Cannot rename root folder")
@@ -136,7 +147,9 @@ class DSSLibraryItem(object):
     def move_to(self, destination_folder):
         """
         Move a library item to another folder
-        :param: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder` destination_folder: the folder where we want to move the current item
+
+        :param destination_folder: the folder where we want to move the current item
+        :type destination_folder:  :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """
         if self.is_root():
             raise DataikuException("Cannot move root folder")
@@ -155,6 +168,9 @@ class DSSLibraryItem(object):
 class DSSLibraryFolder(DSSLibraryItem):
     """
     A handle to manage a library folder
+
+    .. warning::
+            Do not call directly, use :class:`dataikuapi.dss.projectlibrary.DSSLibrary.get_folder`
     """
     def __init__(self, client, project_key, name, parent, children):
         """Do not call directly, use :class:`dataikuapi.dss.projectlibrary.DSSLibrary.get_folder`"""
@@ -163,7 +179,8 @@ class DSSLibraryFolder(DSSLibraryItem):
     def get_child(self, name):
         """
         Retrieve the sub item by its name
-        :param: str name: the name of the sub item
+
+        :param str name: the name of the sub item
         :returns: the sub item
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryItem`
         """
@@ -175,7 +192,8 @@ class DSSLibraryFolder(DSSLibraryItem):
     def add_file(self, file_name):
         """
         Create a new file in the library folder
-        :param: str file_name: the file name
+
+        :param str file_name: the file name
         :returns: the new file
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFile`
         """
@@ -197,7 +215,8 @@ class DSSLibraryFolder(DSSLibraryItem):
     def add_folder(self, folder_name):
         """
         Create a folder in the library
-        :param: str folder_name: the name of the folder to add
+
+        :param str folder_name: the name of the folder to add
         :returns: the new folder
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """
@@ -243,6 +262,7 @@ class DSSLibraryFolder(DSSLibraryItem):
     def list(self):
         """
         Gets the contents of this folder sorted by name
+
         :returns: a sorted list of items
         :rtype: list of :class:`dataikuapi.dss.projectlibrary.DSSLibraryItem`
         """
@@ -263,7 +283,8 @@ class DSSLibraryFolder(DSSLibraryItem):
     def get_file(self, path):
         """
         Retrieves a file in the library
-        :param: str path: the file path
+
+        :param str path: the file path
         :returns: the file in the given path
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFile`
         """
@@ -278,7 +299,8 @@ class DSSLibraryFolder(DSSLibraryItem):
     def get_folder(self, path):
         """
         Retrieves a folder in the library
-        :param: str path: the folder path
+
+        :param str path: the folder path
         :returns: the folder in the given path
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """
@@ -328,6 +350,9 @@ class DSSLibraryFolder(DSSLibraryItem):
 class DSSLibraryFile(DSSLibraryItem):
     """
     A handle to manage a library file
+
+    .. warning::
+        Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_file`
     """
     def __init__(self, client, project_key, name, parent):
         """Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_file`"""
@@ -336,12 +361,13 @@ class DSSLibraryFile(DSSLibraryItem):
     def read(self):
         """
         Get the file contents from DSS
+
         :returns: the contents of the file
         """
         return self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, dku_quote_fn(self.path)))["data"]
 
     def write(self, data):
         """
-        Updates the the contents of the file with the given data
+        Updates the contents of the file with the given data
         """
         self.client._perform_empty("POST", "/projects/%s/libraries/contents/%s" % (self.project_key, dku_quote_fn(self.path)), raw_body=data)

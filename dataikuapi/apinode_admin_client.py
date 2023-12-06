@@ -17,28 +17,72 @@ class APINodeAdminClient(DSSBaseClient):
     ########################################################
 
     def create_service(self, service_id):
+        """
+        Creates a new API service
+
+        :param service_id: id of the created API service
+        """
         self._perform_empty("POST", "services/", body = {
             "serviceId" : service_id
         })
 
     def list_services(self):
+        """
+        Lists the currently declared services and their enabled/disabled state
+
+        :return: a dict of services containing their id and state, as a JSON object
+        :rtype: dict
+        """
         return self._perform_json("GET", "services")
 
     def service(self, service_id):
         """
         Gets a handle to interact with a service
+
+        :param service_id: id of requested service
+        :rtype: :class: `dataikuapi.apinode_admin.service.APINodeService`
         """
         return APINodeService(self, service_id)
 
     def auth(self):
-        """Returns a handle to interact with authentication"""
+        """
+        Returns a handle to interact with authentication
+
+        :rtype: :class: `dataikuapi.apinode_admin.auth.APINodeAuth`
+        """
         return APINodeAuth(self)
 
     def get_metrics(self):
+        """
+        Get the metrics for this API Node
+
+        :return: the metrics, as a JSON object
+        :rtype: dict
+        """
         return self._perform_json("GET", "metrics")
 
     def import_code_env_in_cache(self, file_dir, language):
-        self._perform_empty("POST", "cached-code-envs", params={
+        """
+        Import a code env in global cache from an exported code env base folder
+
+        :param file_dir: path of an exported code env base folder
+        :param language: language of the code env (`python` or `R`)
+        """
+        return self._perform_json("POST", "cached-code-envs", params={
             "fileDir": file_dir,
+            "language": language
+        })
+
+    def register_code_env_in_cache(self, exported_env_dir, built_env_dir, language):
+        """
+        Import a code env in global cache from an exported code env base folder
+
+        :param exported_env_dir: path of an exported code env base folder
+        :param built_env_dir: path where the code env was built and is available
+        :param language: language of the code env (`python` or `R`)
+        """
+        return self._perform_json("POST", "register-global-code-env", params={
+            "exportedEnvDir": exported_env_dir,
+            "builtEnvDir": built_env_dir,
             "language": language
         })

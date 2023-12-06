@@ -24,24 +24,8 @@ class DSSMacro(object):
 
             The **adminParams** field is empty unless the authentication of the API client covers admin rights.
 
-        :return: the definition (read-only), as a dict with fields:
-
-                    * **runnableType** : identifier of the macro
-                    * **ownerPluginId** : identifier of the plugin where the macro is defined
-                    * **meta** : display information about the macro, as a dict of:
-
-                        * **category** : (optional) name of a category, used to group macros in the list
-                        * **label** : display name
-                        * **description** : short description of the macro
-                        * **icon** : icon used for the macro in the UI
-
-                    * **longDescription** : (optional) longer description. Can use Markdown
-                    * **resultType** : type of result produced by the macro. Possible values: NONE, RESULT_TABLE, FILE, FOLDER_FILE, HTML, JSON_OBJECT, URL
-                    * **resultLabel** : name for the result
-                    * **mimeType** : (optional) MIME type of the result
-                    * **extension** : (optional) extension of the result, used when **resultType** is FILE or FOLDER_FILE
-                    * **params** : the list of parameters to pass in order to start a run. Each parameter is a dict with at least **name** and **type** fields. See `the doc <https://doc.dataiku.com/dss/latest/plugins/reference/params.html>`_ for available parameter definitions.
-                    * **adminParams** : parameters only visible (and usable) by admins 
+        :return: the definition (read-only), as a dict. The fields mimic the contents of the `runnable.json` file
+                 of the macro.
 
         :rtype: dict
         """
@@ -108,14 +92,8 @@ class DSSMacro(object):
         
         :param string run_id: a run identifier, as returned by :meth:`run()`
 
-        :return: the status, as a dict of:
-
-                    * **exists** : whether there is a run with this identifier
-                    * **running** : whether the run is still ongoing
-                    * **progress** : when **running** is True, a dict of the progress of the run
-                    * **empty** : for runs that don't run anymore, whether there is no result 
-                    * **type** : type of result, when there's one. Possible values: NONE, RESULT_TABLE, FILE, FOLDER_FILE, HTML, JSON_OBJECT, URL
-                    * **storedError** : dict of the error, when some error failed the run
+        :return: the status, as a dict. Whether the run is still ongoing can be assessed with the
+                 **running** field.
 
         :rtype: dict
         """

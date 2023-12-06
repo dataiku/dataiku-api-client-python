@@ -1,4 +1,4 @@
-from ..utils import DataikuException
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime
 import json
 from datetime import datetime
 from .future import DSSFuture
@@ -213,6 +213,17 @@ class DSSCodeStudioObject(object):
         """
         return self.client._perform_json("GET", "/projects/%s/code-studios/%s/push/%s" % (self.project_key, self.code_studio_id, zone))
 
+    def change_owner(self, new_owner):
+        """
+        Allows to change the owner of the Code Studio
+         .. note::
+
+        only admins are allowed to change the owner of a code studio.
+
+        :param str new_owner: the id of the new owner
+        """
+        self.client._perform_json("POST", "/projects/%s/code-studios/%s/change-owner?newOwner=%s"  % (self.project_key, self.code_studio_id, new_owner))
+
 class DSSCodeStudioObjectConflicts(dict):
     """
     Summary of the conflicts on zones of a code studio.
@@ -231,14 +242,9 @@ class DSSCodeStudioObjectConflicts(dict):
         """
         Get the raw conflicts summary.
 
-        :return: a summary of the conflicts that were found, as a dict. The top-level field is the zone checked, or 'error' if it wasn't found. The value of the field is a dict of changes:
-
-                    * **commitFrom** : hashes of the commit of the files on the DSS instance at the time of the last sync to the code studio pod
-                    * **commitTo** : hashes of the commit of the files on the DSS instance now
-                    * **authors** : if **commitTo** is different from **commitFrom**, list of names of the uses who made changes on the DSS instance files
-                    * **added** : list of relative paths of files added in the code studio that conflict with changes on the DSS instances
-                    * **modified** : list of relative paths of files modified in the code studio that conflict with changes on the DSS instances
-                    * **deleted** : list of relative paths of files deleted in the code studio that conflict with changes on the DSS instances
+        :return: a summary of the conflicts that were found, as a dict. The top-level field is the zone checked, or 'error' if it wasn't found. The dict should
+                 contain summary information about the count of changes, and **commitFrom** and **commitTo** hashes to identify the state of the files
+                 on the DSS instance at the time of the last sync to the code studio pod and now.
 
         :rtype: dict
         """
@@ -316,14 +322,8 @@ class DSSCodeStudioObjectSettings(object):
         """
         Gets all settings as a raw dictionary. 
 
-        :return: the settings, as a dict. Fields are:
-
-                    * **projectKey** and **id** : identify the code studio
-                    * **name** : name (label) of the code studio
-                    * **templateId** : identifier of the template of the code studio
-                    * **libName** : name of the folder for the code studio resources
-                    * **owner** : login of the owner of the code studio
-                    * **versionTag**, **creationTag**, **checklists**, **tags**, **customFields** : common fields on DSS objects
+        :return: the settings, as a dict. The dict contains a **templateId** field indicating which code studio template
+                 was used to create this code studio.
 
         :rtype: dict
         """
@@ -358,7 +358,7 @@ class DSSCodeStudioObjectSettings(object):
     @property
     def template_id(self):
         """
-        Get the identifier of the template that the code studio was create from.
+        Get the identifier of the template that the code studio was created from.
 
         :rtype: string
         """
@@ -411,27 +411,9 @@ class DSSCodeStudioObjectStatus(object):
             Some fields are only defined when the code studio is running. For instance, **exposed** and **syncedZones**
             are empty when the code studio is not running.
 
-        :return: top-level fields are
-
-                    * **state** : the current state of the code studio (possible values: STOPPED, STARTING, RUNNING, STOPPING)
-                    * **lastStateChange** : timestamp in milliseconds of the last change to **state**
-                    * **lastTemplateBuilt** : timestamp in milliseconds of the last build of the template of this code studio
-                    * **jobId** : identifier of the future that runs the code studio
-                    * **runAsUser** : login of the DSS user that this code studio currently uses
-                    * **exposableCount** : number of ports exposed in the pod of this code studio
-                    * **exposed** : list of ports exposed by this code studio. Each tab is a dict of
-
-                        * **label** : label of the tab
-                        * **exposedHtml** : if True the tab is shown in the UI
-                        * **exposedPort** : port exposed in the pod
-                        * **url** : path (relative to DSS base href) to the HTTP server that the pod exposes
-
-                    * **syncedZones** : list of files zones in the pod that are synchronized with the DSS instance. Each zone is a dict of
-
-                        * **id** : identifier of the zone in this code studio (note: changes at each restart of the code studio)
-                        * **zone** : type of the zone
-                        * **pathInContainer** : location of the zone inside the pod
-                        * **oneWay** : if True, the zone is read-only w.r.t. the DSS instance
+        :return: the dict contains a **state** field indicating whether the code studio is STOPPED, STARTING, RUNNING or STOPPING.
+                 If RUNNING, then the dict holds additional information about the zones that can be synchronized inside the pod, and
+                 the ports of the pod that are exposed.
 
         :rtype: dict
         """
@@ -457,10 +439,7 @@ class DSSCodeStudioObjectStatus(object):
         :rtype: `datetime.datetime`
         """
         ts = self.status.get("lastStateChange", 0)
-        if ts > 0:
-            return datetime.fromtimestamp(ts / 1000)
-        else:
-            return None
+        return _timestamp_ms_to_zoned_datetime(ts)
 
     def get_zones(self, as_type="names"):
         """
@@ -469,12 +448,7 @@ class DSSCodeStudioObjectStatus(object):
         :param string as_type: if set to "names", then return a list of zone identifiers; if set to "objects", then return
                                a list of zone definitions
 
-        :return: the list of zones, each one either a string (if `as_type` is "names), or a dict of: 
-
-                        * **id** : identifier of the zone in this code studio (note: changes at each restart of the code studio)
-                        * **zone** : type of the zone
-                        * **pathInContainer** : location of the zone inside the pod
-                        * **oneWay** : if True, the zone is read-only w.r.t. the DSS instance
+        :return: the list of zones, each one either a string (if `as_type` is "names), or a dict of with a **id** field.
         :rtype: list
         """
         zones = self.status.get("syncedZones", [])

@@ -83,11 +83,13 @@ class FMInstanceCreator(object):
         :param int data_volume_size: Optional, data volume initial size
         :param int data_volume_size_max: Optional, data volume maximum size
         :param int data_volume_IOPS: Optional, data volume IOPS
-        :param  data_volume_encryption: Optional, encryption mode of the data volume
+        :param data_volume_encryption: Optional, encryption mode of the data volume
         :type data_volume_encryption: :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode`
         :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
+        if not data_volume_encryption:
+            data_volume_encryption = FMInstanceEncryptionMode.NONE
         if type(data_volume_encryption) is not FMInstanceEncryptionMode:
             raise TypeError(
                 "data_volume encryption needs to be of type FMInstanceEncryptionMode"

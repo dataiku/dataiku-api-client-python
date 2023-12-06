@@ -8,6 +8,7 @@ from requests import utils
 from .metrics import ComputedMetrics
 from .future import DSSFuture
 from .discussion import DSSObjectDiscussions
+from .dataset import DSSDataset
 
 try:
     basestring
@@ -313,17 +314,7 @@ class DSSManagedFolder(object):
         :param string metric: identifier of the metric to get values of
         
         :returns: an object containing the values of the metric, cast to the appropriate type (double, 
-                  boolean,...). Top-level fields are:
-
-                     * **metricId** : identifier of the metric
-                     * **metric** : dict of the metric's definition
-                     * **valueType** : type of the metric values in the **values** array
-                     * **lastValue** : most recent value, as a dict of
-
-                        - **time** : timestamp of the value computation
-                        - **value** : value of the metric at **time**
-
-                     * **values** : list of values, each one a dict of the same structure as **lastValue**
+                  boolean,...). The identifier of the metric is in a **metricId** field.
 
         :rtype: dict
         """
@@ -427,6 +418,31 @@ class DSSManagedFolder(object):
         future_resp = self.client._perform_json("POST", "/projects/%s/managedfolders/%s/actions/copyTo" % (self.project_key, self.odb_id), body=dqr)
         return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
 
+    def create_dataset_from_files(self, dataset_name):
+        """
+        Create a new dataset of type 'FilesInFolder', taking its files from this managed folder, and 
+        return a handle to interact with it.
+
+        The created dataset does not have its format and schema initialized, it is recommended to use
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        obj = {
+            "name": dataset_name,
+            "projectKey": self.project_key,
+            "type": "FilesInFolder",
+            "params": {
+                "folderSmartId": self.odb_id
+            }
+        }
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key, body=obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+
 
 class DSSManagedFolderSettings(DSSTaggableObjectSettings):
     """
@@ -443,19 +459,10 @@ class DSSManagedFolderSettings(DSSTaggableObjectSettings):
 
     def get_raw(self):
         """
-        Get the managef folder settings as a dict
+        Get the managed folder settings.
 
-        :returns: the settings. Top-level fields are:
-
-                    * **name** : the label of the managed folder
-                    * **type** : the type of the filesystem underlying the managed folder (S3, HDFS, GCS, ...)
-                    * **params** : the type-specific parameters, like the connection to use or the root path of the managed folder inside the connection
-                    * **contentType** : an optional semantic type describing the files in the folder
-                    * **partitioning** : definition of the partitioning of the managed folder
-                    * **selection** : when partitioned, the partitions to show when viewing the managed folder
-                    * **flowOptions** : build options
-                    * **metrics** : probes for computing metrics on the managed folder
-                    * **checks** : definitions of the checks on the managed folder
+        :returns: the settings, as a dict. The definition of the actual location of the files in the 
+                  managed folder is a **params** sub-dict.
 
         :rtype: dict
         """

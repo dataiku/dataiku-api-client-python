@@ -23,20 +23,27 @@ def parse_dss_managed_folder_uri(uri):
 class PluginDSSManagedFolderArtifactRepository:
 
     def __init__(self, artifact_uri):
-        if os.environ.get("DSS_MLFLOW_APIKEY") is not None:
-            self.client = DSSClient(
-                os.environ.get("DSS_MLFLOW_HOST"),
-                api_key=os.environ.get("DSS_MLFLOW_APIKEY")
-            )
-        else:
-            self.client = DSSClient(
-                os.environ.get("DSS_MLFLOW_HOST"),
-                internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET")
-            )
+        self.client = DSSClient(
+            os.environ.get("DSS_MLFLOW_HOST"),
+            api_key=os.environ.get("DSS_MLFLOW_APIKEY"),
+            internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET"),
+            insecure_tls= self._should_use_insecure_tls
+        )
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
         parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
         self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
         self.base_artifact_path = PurePosixPath(parsed_uri.path)
+
+    @property
+    def _should_use_insecure_tls(self):
+        insecure_tls = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS")
+        # this env variable is documented in MLFlow, it's not ours, we must parse it similarly to how MLflow does it.
+        # https://github.com/mlflow/mlflow/blob/dde5d79f57eada1820da1cafe4d58eeff476a022/mlflow/environment_variables.py#L70
+        if insecure_tls is not None:
+            insecure_tls = insecure_tls.lower()
+            return insecure_tls in ["true", "1"]
+        else:
+            return False
 
     def __get_managed_folder(self, managed_folder_smart_id):
         chunks = managed_folder_smart_id.split('.')
@@ -86,9 +93,25 @@ class PluginDSSManagedFolderArtifactRepository:
 
         :return: List of artifacts as FileInfo listed directly under path.
         """
-        path = self.base_artifact_path / path
-        files = [PurePosixPath(x["path"]) for x in self.managed_folder.list_contents().get("items", [])]
-        return [file.relative_to(path) for file in files if path in file.parents]
+        from mlflow.entities import FileInfo
+        param_path = path
+        if path:
+            if isinstance(path, FileInfo):
+                path = self.base_artifact_path / path.path
+            else:
+                path = self.base_artifact_path / path
+        else:
+            path = self.base_artifact_path
+        files = self.managed_folder.list_contents().get("items", [])
+        ret = []
+        for file in files:
+            if path == self.base_artifact_path / file["path"]:
+                # Exact match, there can be only one
+                return [FileInfo(param_path, False, file.get("size"))]
+            candidate = PurePosixPath(file["path"])
+            if path in candidate.parents and self.base_artifact_path in candidate.parents:
+                ret.append(FileInfo(candidate.relative_to(self.base_artifact_path).as_posix(), False, file.get("size")))
+        return ret
 
     def download_artifacts(self, artifact_path, dst_path=None):
         """
@@ -124,13 +147,11 @@ class PluginDSSManagedFolderArtifactRepository:
                          " Destination path: {dst_path}".format(dst_path=dst_path)),
                 error_code=INVALID_PARAMETER_VALUE,
             )
-
         for path in self.list_artifacts(artifact_path):
-            local_path = dst_path / path
-            local_path.parent.mkdir(exist_ok=True)
-            self._download_file(artifact_path / path, local_path)
-
-        return dst_path
+            local_path = dst_path / path.path
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            self._download_file(path.path, local_path)
+        return dst_path / artifact_path
 
     def _download_file(self, artifact_path, local_path):
         """

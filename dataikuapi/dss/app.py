@@ -172,30 +172,10 @@ class DSSAppManifest(object):
                 if manifest.get_raw()["instantiationPermission"] == 'EVERYBODY':
                     print(app.app_id)            
 
-        :return: the definition of the manifest, as a dict. Top-level fields are:
-
-                    * **label**, **shortDesc** and **tags** : metadata of the app
-                    * **imgColo** and **imgPattern** : definition of the app's vignette (if not a manually added image)
-                    * **instantiationPermission** : define which users can use the app: one of 'EVERYBODY' or 'USE_APP_MASTER_PERMISSIONS' (ie limit to bearers of the "execute app" permission on the template project) 
-                    * **limitedVisibilityEnabled** and **accessRequestsEnabled** : access settings
-                    * **projectExportManifest** : settings for which data the of app template project are copied to the app instances                    
-                    * **instanceFeatures** : show/hide part of the DSS UI in the app instances
-                    * **homepageSections** : definition of the actions of the app instances. This is a list of sections, each as a dict of:
-
-                        * **sectionTitle** and **sectionText** : metadata for the section
-                        * **tiles** : list of actions in the section, as a list of dict:
-
-                            * **type** : the type of the action
-                            * **prompt** : label of the action in the form
-                            * **help** and **helpTitle** : metadata for showing a help button on the action
-                            * ... and additional fields depending on the type, to hold the action's setup
-
-                    * **useAsRecipeSettings** : if defined, the app is actually an app-as-recipe. This field holds the settings of the app-as-recipe, as a dict of:
-
-                        * **icon** and **category** : metadata for display in the recipe menu
-                        * **inputRoles** and **outputRoles** : definitions of the inputs and outputs of the recipe
-                        * **variablesEditionTile** : definition of the form of the app-as-recipe that's shown in recipe instances
-                        * **runScenarioTile** : definition of the scenario to run in the app instance, that does the actual recipe computations
+        :return: the definition of the manifest, as a dict. The definitions of the tiles of the app are inside
+                 the **homepageSections** field, which is a list of the sections displayed in the app. When the 
+                 app is an app-as-recipe, the field **useAsRecipeSettings** is defined and contains the recipe-specific
+                 settings.
 
         :rtype: dict
         """

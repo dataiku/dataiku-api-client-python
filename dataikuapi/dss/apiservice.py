@@ -93,21 +93,8 @@ class DSSAPIServiceSettings(object):
         This returns a reference to the raw settings, not a copy, so changes made 
         to the returned object will be reflected when saving.
 
-        :return: the settings of the API service, as a dict. Notable fields are:
-
-                    * **projectKey** and **id** : identifier of the API service
-                    * **name** : name of API service in UI
-                    * **tags** : list of tags (each a string)
-                    * **authMethod** : method used to authenticate calls on the service. Possible values: PUBLIC, API_KEYS, OAUTH2
-                    * **authRealm** : dict of API keys settings, used when **authMethod** is API_KEYS. This dict has a sub-field:
-
-                        * **queryKeys** : list of API keys allowed on queries, each key being a string
-
-                    * **oauth2Config** : dict of OAuth2 settings, used when **authMethod** is OAUTH2
-                    * **endpoints** : list of endpoints, each one a dict. Endpoint have different fields depending on their type, but always have at least:
-
-                        * **id** : identifier of the endpoint
-                        * **type** : type of endpoint. Possible values: STD_PREDICTION, STD_CLUSTERING, STD_FORECAST, STD_CAUSAL_PREDICTION, CUSTOM_PREDICTION, CUSTOM_R_PREDICTION, R_FUNCTION, PY_FUNCTION, DATASETS_LOOKUP, SQL_QUERY
+        :return: the settings of the API service, as a dict. The definitions of the endpoints are inside
+                 the **endpoints** field, itself a list of dict.
 
         :rtype: dict
         """
@@ -136,7 +123,6 @@ class DSSAPIServiceSettings(object):
         :rtype: list[dict]
         """
         return self.settings["endpoints"]
-    
 
     def add_prediction_endpoint(self, endpoint_id, saved_model_id):
         """
@@ -175,6 +161,22 @@ class DSSAPIServiceSettings(object):
             "id" : endpoint_id,
             "type" : "STD_FORECAST",
             "modelRef": saved_model_id
+        })
+
+    def add_causal_prediction_endpoint(self, endpoint_id, saved_model_id, compute_propensity=False):
+        """
+        Add a new "visual causal prediction" endpoint to this API service.
+
+        :param string endpoint_id: identifier of the new endpoint to create
+        :param string saved_model_id: identifier of the saved model (that is currently deployed to the Flow) to use
+        :param bool compute_propensity: whether propensity should be computed, if True, the model must have a trained propensity model
+        """
+        self.settings["endpoints"].append({
+            "id": endpoint_id,
+            "type": "STD_CAUSAL_PREDICTION",
+            "modelRef": saved_model_id,
+            "computePropensity": compute_propensity,
+            "useJava": False  # Not supported for causal predictions
         })
 
     def save(self):

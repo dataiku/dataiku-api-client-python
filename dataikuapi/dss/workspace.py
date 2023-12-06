@@ -150,27 +150,20 @@ class DSSWorkspaceSettings:
         """
         Get or set the permissions controlling who is a member, contributor or admin of the workspace
 
-        :rtype: list of :class:`.DSSWorkspacePermissionItem`
+        If user is not workspace admin, the permissions field is redacted to None.
+
+        :rtype: list of :class:`dict` or :class:`None`
         """
-        return [DSSWorkspacePermissionItem(permission) for permission in self.settings['permissions']]
+        return self.settings['permissions'] if 'permissions' in self.settings else None
 
     @permissions.setter
     def permissions(self, value):
         self.settings['permissions'] = value
 
-    @property
-    def current_user_permissions(self):
-        """
-        Permissions of the current user (read-only)
-
-        :rtype: :class:`.DSSWorkspacePermissionItem`
-        """
-        return DSSWorkspacePermissionItem(self.settings['currentUserPermissions'])
-
     def save(self):
         """
         Save the changes made on the settings
-        
+
         This call requires Administrator rights on the workspace.
         """
         self.workspace.client._perform_empty(
@@ -178,75 +171,27 @@ class DSSWorkspaceSettings:
             body=self.settings)
 
 
-class DSSWorkspacePermissionItem(dict):
-    def __init__(self, data):
-        super(DSSWorkspacePermissionItem, self).__init__(data)
-
+class DSSWorkspacePermissionItem:
     @classmethod
     def admin_group(cls, group):
-        return cls({"group": group, "admin": True, "write": True, "read": True})
+        return {"group": group, "admin": True, "write": True, "read": True}
 
     @classmethod
     def contributor_group(cls, group):
-        return cls({"group": group, "admin": False, "write": True, "read": True})
+        return {"group": group, "admin": False, "write": True, "read": True}
 
     @classmethod
     def member_group(cls, group):
-        return cls({"group": group, "admin": False, "write": False, "read": True})
+        return {"group": group, "admin": False, "write": False, "read": True}
 
     @classmethod
     def admin_user(cls, user):
-        return cls({"user": user, "admin": True, "write": True, "read": True})
+        return {"user": user, "admin": True, "write": True, "read": True}
 
     @classmethod
     def contributor_user(cls, user):
-        return cls({"user": user, "admin": False, "write": True, "read": True})
+        return {"user": user, "admin": False, "write": True, "read": True}
 
     @classmethod
     def member_user(cls, user):
-        return cls({"user": user, "admin": False, "write": False, "read": True})
-
-    @property
-    def user(self):
-        """
-        Get user login
-
-        :rtype: :class:`str`
-        """
-        return self['user']
-
-    @property
-    def group(self):
-        """
-        Get group name
-
-        :rtype: :class:`str`
-        """
-        return self['group']
-
-    @property
-    def admin(self):
-        """
-        Get admin permission
-
-        :rtype: :class:`boolean`
-        """
-        return self['admin']
-
-    @property
-    def write(self):
-        """
-        Get write permission
-
-        :rtype: :class:`boolean`
-        """
-        return self['write']
-
-    @property
-    def read(self):
-        """
-        Get read permission
-
-        :rtype: :class:`boolean`
-        """
-        return self['read']
+        return {"user": user, "admin": False, "write": False, "read": True}

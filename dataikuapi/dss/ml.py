@@ -17,30 +17,40 @@ logger.setLevel(logging.INFO)
 
 
 class PredictionSplitParamsHandler(object):
-    """Object to modify the train/test splitting params."""
+    """
+    Object to modify the train/test dataset splitting params.
+
+    .. important::
+        Do not create this class directly, use :meth:`DSSMLTaskSettings.get_split_params()`
+
+    """
 
     SPLIT_PARAMS_KEY = 'splitParams'
 
     def __init__(self, mltask_settings):
-        """Do not call directly, use :meth:`DSSMLTaskSettings.get_split_params`"""
         self.mltask_settings = mltask_settings
 
     def get_raw(self):
-        """Gets the raw settings of the prediction split configuration. This returns a reference to the raw settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        """
+        Gets the raw settings of the prediction split configuration.
 
+        This returns a reference to the raw settings, rather than a copy, so any changes made to the returned object will be reflected when saving.
+
+        :return: The raw prediction split parameter settings
         :rtype: dict
         """
         return self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
 
-
-    def set_split_random(self, train_ratio = 0.8, selection = None, dataset_name=None):
+    def set_split_random(self, train_ratio=0.8, selection=None, dataset_name=None):
         """
-        Sets the train/test split to random splitting of an extract of a single dataset
+        Sets the train/test split mode to random splitting over an extract from a single dataset
 
-        :param float train_ratio: Ratio of rows to use for train set. Must be between 0 and 1
-        :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
-        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
+        :param float train_ratio: Ratio of rows to use for the train set. Must be between 0 and 1 (defaults to **0.8**)
+        :param selection: Optional builder or dict defining the settings of the extract from the dataset (defaults to **None**).
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSDatasetSelectionBuilder.build()`
+        :type selection: Union[:class:`dataikuapi.dss.utils.DSSDatasetSelectionBuilder`, dict], optional
+        :param dataset_name: Name of the dataset to split on. If None (default), uses the main dataset used to create the visual analysis
+        :type dataset_name: str, optional
         """
         sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
@@ -58,13 +68,16 @@ class PredictionSplitParamsHandler(object):
 
         return self
 
-    def set_split_kfold(self, n_folds = 5, selection = None, dataset_name=None):
+    def set_split_kfold(self, n_folds=5, selection=None, dataset_name=None):
         """
-        Sets the train/test split to k-fold splitting of an extract of a single dataset
+        Sets the train/test split mode to k-fold splitting over an extract from a single dataset
 
-        :param int n_folds: number of folds. Must be greater than 0
-        :param object selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the dataset. May be None (won't be changed)
-        :param str dataset_name: Name of dataset to split. If None, the main dataset used to create the visual analysis will be used.
+        :param int n_folds: number of folds. Must be greater than 0 (defaults to **5**)
+        :param selection: Optional builder or dict defining the settings of the extract from the dataset (defaults to **None**)
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSDatasetSelectionBuilder.build()`
+        :type selection: Union[:class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder`, dict], optional
+        :param dataset_name: Name of the dataset to split on. If None (default), uses the main dataset used to create the visual analysis
+        :type dataset_name: str, optional
         """
         sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         sp["ttPolicy"] = "SPLIT_SINGLE_DATASET"
@@ -84,14 +97,24 @@ class PredictionSplitParamsHandler(object):
 
     def set_split_explicit(self, train_selection, test_selection, dataset_name=None, test_dataset_name=None, train_filter=None, test_filter=None):
         """
-        Sets the train/test split to explicit extract of one or two dataset(s)
+        Sets the train/test split to an explicit extract from one or two dataset(s)
 
-        :param object train_selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the train dataset. May be None (won't be changed)
-        :param object test_selection: A :class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder` to build the settings of the extract of the test dataset. May be None (won't be changed)
-        :param str dataset_name: Name of dataset to use for the extracts. If None, the main dataset used to create the ML Task will be used.
-        :param str test_dataset_name: Name of a second dataset to use for the test data extract. If None, both extracts are done from dataset_name
-        :param object train_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the train dataset. May be None (won't be changed)
-        :param object test_filter: A :class:`~dataikuapi.dss.utils.DSSFilterBuilder` to build the settings of the filter of the test dataset. May be None (won't be changed)
+        :param train_selection: Builder or dict defining the settings of the extract for the train dataset. May be None (won't be changed).
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSDatasetSelectionBuilder.build()`
+        :type train_selection: Union[:class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder`, dict]
+        :param test_selection: Builder or dict defining the settings of the extract for the test dataset. May be None (won't be changed).
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSDatasetSelectionBuilder.build()`
+        :type test_selection: Union[:class:`~dataikuapi.dss.utils.DSSDatasetSelectionBuilder`, dict]
+        :param dataset_name: Name of the dataset to split on. If None (default), uses the main dataset used to create the visual analysis
+        :type dataset_name: str, optional
+        :param test_dataset_name: Optional name of a second dataset to use for the test data extract. If None (default), both extracts are done from dataset_name
+        :type test_dataset_name: str, optional
+        :param train_filter: Builder or dict defining the settings of the filter for the train dataset. Defaults to None (won't be changed).
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSFilterBuilder.build()`
+        :type train_filter: Union[:class:`~dataikuapi.dss.utils.DSSFilterBuilder`, dict], optional
+        :param test_filter: Builder or dict defining the settings of the filter for the test dataset. Defaults to None (won't be changed).
+            A dict with the appropriate schema can be generated via :meth:`dataikuapi.dss.utils.DSSFilterBuilder.build()`
+        :type test_filter: Union[:class:`~dataikuapi.dss.utils.DSSFilterBuilder`, dict], optional
         """
         sp = self.mltask_settings[PredictionSplitParamsHandler.SPLIT_PARAMS_KEY]
         if dataset_name is None:
@@ -136,10 +159,11 @@ class PredictionSplitParamsHandler(object):
 
     def set_time_ordering(self, feature_name, ascending=True):
         """
-        Uses a variable to sort the data for train/test split and hyperparameter optimization by time
+        Enables time based ordering and sets the feature upon which to sort the train/test split and hyperparameter optimization data by time.
 
-        :param str feature_name: Name of the variable to use
-        :param bool ascending: True iff the test set is expected to have larger time values than the train set
+        :param str feature_name: The name of the feature column to use. This feature must be present in the output of the preparation steps of the analysis.
+            When there are no preparation steps, it means this feature must be present in the analyzed dataset.
+        :param bool ascending: True (default) means the test set is expected to have larger time values than the train set
         """
         self.unset_time_ordering()
         if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
@@ -160,7 +184,7 @@ class PredictionSplitParamsHandler(object):
 
     def unset_time_ordering(self):
         """
-        Remove time-based ordering for train/test split and hyperparameter optimization
+        Disables time-based ordering for train/test split and hyperparameter optimization
         """
         self.mltask_settings['time']['enabled'] = False
         self.mltask_settings['time']['timeVariable'] = None
@@ -176,15 +200,16 @@ class PredictionSplitParamsHandler(object):
 
     def has_time_ordering(self):
         """
-        :return: whether the splitting uses time ordering
+        :return: True if the split uses time-based ordering
         :rtype: bool
         """
         return 'time' in self.mltask_settings and self.mltask_settings['time']['enabled']
 
     def get_time_ordering_variable(self):
         """
-        :return: the name of the variable
-        :rtype: str
+        :return: If enabled, the name of the ordering variable for time based ordering (the feature name).
+            Returns None if time based ordering is not enabled.
+        :rtype: Union[str, None]
         """
         if self.has_time_ordering():
             return self.mltask_settings['time']['timeVariable']
@@ -193,8 +218,9 @@ class PredictionSplitParamsHandler(object):
 
     def is_time_ordering_ascending(self):
         """
-        :return: True if the ordering is set to be ascending with respect to the time-ordering variable
-        :rtype: bool
+        :return: True if the time-ordering is set to sort in ascending order.
+            Returns None if time based ordering is not enabled.
+        :rtype: Union[bool, None]
         """
         if self.has_time_ordering():
             return self.mltask_settings['time']['ascending']
@@ -204,9 +230,23 @@ class PredictionSplitParamsHandler(object):
 
 class DSSMLTaskSettings(object):
     """
-    Object to read and modify the settings of a ML task.
+    Object to read and modify the settings of an existing ML task.
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_settings()` instead
+    .. important::
+        Do not create this class directly, use :meth:`DSSMLTask.get_settings()` instead
+
+    Usage example:
+
+    .. code-block:: python
+
+        project_key = 'DKU_CHURN'
+        fmi = 'A-DKU_CHURN-RADgquHe-5nJtl88L-s1-pp1-m1'
+
+        client = dataiku.api_client()
+        task = dataikuapi.dss.ml.DSSMLTask.from_full_model_id(client, fmi, project_key)
+        task_settings = task.get_settings()
+        task_settings.set_diagnostics_enabled(False)
+        task_settings.save()
     """
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
         self.client = client
@@ -217,29 +257,39 @@ class DSSMLTaskSettings(object):
 
     def get_raw(self):
         """
-        Gets the raw settings of this ML Task. This returns a reference to the raw settings, not a copy,
-        so changes made to the returned object will be reflected when saving.
+        Gets the raw settings of this ML Task.
 
+        This returns a reference to the raw settings, rather than a copy, so any changes made to the returned object will be reflected when saving.
+
+        :return: The raw settings of this ML Task
         :rtype: dict
         """
         return self.mltask_settings
 
     def get_feature_preprocessing(self, feature_name):
         """
-        Gets the feature preprocessing params for a particular feature. This returns a reference to the
-        feature's settings, not a copy, so changes made to the returned object will be reflected when saving
+        Gets the feature preprocessing parameters for a particular feature.
 
+        This returns a reference to the selected features' settings, rather than a copy,
+            so any changes made to the returned object will be reflected when saving.
+
+        :param str feature_name: Name of the feature whose parameters will be returned
         :return: A dict of the preprocessing settings for a feature
-        :rtype: dict 
+        :rtype: dict
         """
         return self.mltask_settings["preprocessing"]["per_feature"][feature_name]
 
-    def foreach_feature(self, fn, only_of_type = None):
+    def foreach_feature(self, fn, only_of_type=None):
         """
-        Applies a function to all features (except target)
+        Applies a function to all features, including REJECTED features, except for the target feature
 
-        :param function fn: Function that takes 2 parameters: feature_name and feature_params and returns modified feature_params
-        :param str only_of_type: if not None, only applies to feature of the given type. Can be one of ``CATEGORY``, ``NUMERIC``, ``TEXT`` or ``VECTOR``
+        :param fn: Function handle of the form
+            ``fn(feature_name, feature_params) -> dict``, where `feature_name` is the feature name as a `str`, and feature_params is a `dict` containing the
+            specific feature params. The function should return a dict of edited parameters for the feature.
+        :type fn: function
+        :param only_of_type: If set, only applies the function to features matching the given type.
+            Must be one of ``CATEGORY``, ``NUMERIC``, ``TEXT`` or ``VECTOR``.
+        :type only_of_type: Union[str, None], optional
         """
         import copy
         new_per_feature = {}
@@ -252,7 +302,8 @@ class DSSMLTaskSettings(object):
 
     def reject_feature(self, feature_name):
         """
-        Marks a feature as rejected and not used for training
+        Marks a feature as 'rejected', disabling it from being used as an input when training.
+        This reverses the effect of the :meth:`use_feature` method.
 
         :param str feature_name: Name of the feature to reject
         """
@@ -260,13 +311,19 @@ class DSSMLTaskSettings(object):
 
     def use_feature(self, feature_name):
         """
-        Marks a feature as input for training
+        Marks a feature to be used (enabled) as an input when training.
+        This reverses the effect of the :meth:`reject_feature` method.
 
-        :param str feature_name: Name of the feature to reject
+        :param str feature_name: Name of the feature to use/enable
         """
         self.get_feature_preprocessing(feature_name)["role"] = "INPUT"
 
     def get_algorithm_settings(self, algorithm_name):
+        """
+        .. caution::
+            Not Implemented, throws `NotImplementedError`
+
+        """
         raise NotImplementedError()
 
     def _get_custom_algorithm_settings(self, algorithm_name):
@@ -281,14 +338,18 @@ class DSSMLTaskSettings(object):
 
     def get_diagnostics_settings(self):
         """
-        Gets the diagnostics settings for a mltask. This returns a reference to the
-        diagnostics' settings, not a copy, so changes made to the returned object will be reflected when saving.
+        Gets the ML Tasks diagnostics' settings.
+
+        This returns a reference to the diagnostics' settings, rather than a copy, so changes made to the returned object will be reflected when saving.
 
         This method returns a dictionary of the settings with:
-        - 'enabled': indicates if the diagnostics are enabled globally, if False, all diagnostics will be disabled
-        - 'settings': a list of dict comprised of:
-          - 'type': the diagnostic type
-          - 'enabled': indicates if the diagnostic type is enabled, if False, all diagnostics of that type will be disabled
+
+        * **enabled** (boolean): Indicates if the diagnostics are enabled globally, if False, all diagnostics will be disabled
+        * **settings** (List[dict]): A list of dicts.
+            Each dict will contain the following:
+
+            * **type** (str): The diagnostic type name, in uppercase
+            * **enabled** (boolean): Indicates if the diagnostic type is enabled. If False, all diagnostics of that type will be disabled
 
         Please refer to the documentation for details on available diagnostics.
 
@@ -299,21 +360,36 @@ class DSSMLTaskSettings(object):
 
     def set_diagnostics_enabled(self, enabled):
         """
-        Globally enables or disables all diagnostics.
+        Globally enables or disables the calculation of all diagnostics
 
-        :param bool enabled: if the diagnostics should be enabled or not
+        :param bool enabled: True if the diagnostics should be enabled, False otherwise
         """
         settings = self.get_diagnostics_settings()
         settings["enabled"] = enabled
 
     def set_diagnostic_type_enabled(self, diagnostic_type, enabled):
         """
-        Enables or disables a diagnostic based on its type.
+        Enables or disables the calculation of a set of diagnostics given their type.
+
+        .. attention::
+            This is overridden by whether diagnostics are enabled globally; If diagnostics are disabled globally, nothing will be calculated.
+
+            Diagnostics can be enabled/disabled globally via the :meth:`.set_diagnostics_enabled()` method.
+
+        Usage example:
+
+        .. code-block:: python
+
+            mltask_settings = task.get_settings()
+            mltask_settings.set_diagnostics_enabled(True)
+            mltask_settings.set_diagnostic_type_enabled("ML_DIAGNOSTICS_DATASET_SANITY_CHECKS", False)
+            mltask_settings.set_diagnostic_type_enabled("ML_DIAGNOSTICS_LEAKAGE_DETECTION", False)
+            mltask_settings.save()
 
         Please refer to the documentation for details on available diagnostics.
 
-        :param str diagnostic_type: Name (in capitals) of the diagnostic type.
-        :param bool enabled: if the diagnostic should be enabled or not
+        :param str diagnostic_type: Name of the diagnostic type, in uppercase.
+        :param bool enabled: True if the diagnostic should be enabled, False otherwise
         """
         settings = self.get_diagnostics_settings()["settings"]
         diagnostic = [h for h in settings if h["type"] == diagnostic_type]
@@ -325,16 +401,21 @@ class DSSMLTaskSettings(object):
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
         """
-        Enables or disables an algorithm based on its name.
+        Enables or disables an algorithm given its name.
 
-        Please refer to the documentation for details on available algorithms.
+        Exact algorithm names can be found using the :meth:`.get_all_possible_algorithm_names()` method.
 
-        :param str algorithm_name: Name (in capitals) of the algorithm.
+        Please refer to the documentation for further information on available algorithms.
+
+        :param str algorithm_name: Name of the algorithm, in uppercase.
+        :param bool enabled: True if the algorithm should be enabled, False otherwise
         """
         self.get_algorithm_settings(algorithm_name)["enabled"] = enabled
 
     def disable_all_algorithms(self):
-        """Disables all algorithms"""
+        """
+        Disables all algorithms
+        """
         for algorithm_key in self.__class__._algorithm_remap.keys():
             algorithm_meta = self.__class__._algorithm_remap[algorithm_key]
             if isinstance(algorithm_meta, PredictionAlgorithmMeta):
@@ -353,63 +434,125 @@ class DSSMLTaskSettings(object):
 
     def get_all_possible_algorithm_names(self):
         """
-        Returns the list of possible algorithm names, i.e. the list of valid
-        identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
+        Gets the list of possible algorithm names
 
-        This includes all possible algorithms, regardless of the prediction kind (regression/classification)
-        or engine, so some algorithms may be irrelevant
+        This can be used to find the list of valid identifiers for the :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings` methods.
 
-        :returns: the list of algorithm names as a list of strings
-        :rtype: list of string
+        This includes all possible algorithms, regardless of the prediction kind (regression/classification etc) or engine,
+        so some algorithms may be irrelevant to the current task.
+
+        :returns: The list of algorithm names as a list of strings
+        :rtype: list[str]
         """
+        # this returns all possible alg names, but only the custom algorithm names for defined custom algorithms on the MLTask engine (python/mlflow)
         return list(self.__class__._algorithm_remap.keys()) + self._get_custom_algorithm_names()
 
     def _get_custom_algorithm_names(self):
         """
-        Returns the list of names of defined custom models (Python & MLlib backends)
+        Gets the list of names of any custom models.
 
-        :returns: the list of custom models names
-        :rtype: list of string
+        Depending on the engine, this will return the names of any defined custom Python or MLlib models.
+
+        :returns: The list of custom model names
+        :rtype: list[str]
         """
         return ([algo["name"] for algo in self.mltask_settings["modeling"]["custom_mllib"]]
                 + [algo["name"] for algo in self.mltask_settings["modeling"]["custom_python"]])
 
     def get_enabled_algorithm_names(self):
         """
-        :returns: the list of enabled algorithm names as a list of strings
-        :rtype: list of string
+        Gets the list of enabled algorithm names
+
+        :returns: The list of enabled algorithm names
+        :rtype: list[str]
         """
         return [algo_name for algo_name in self.get_all_possible_algorithm_names() if self.get_algorithm_settings(algo_name).get("enabled", False)]
 
     def get_enabled_algorithm_settings(self):
         """
-        :returns: the map of enabled algorithm names with their settings
+        Gets the settings for each enabled algorithm
+
+        Returns a dictionary where:
+
+        * Each key is the name of an enabled algorithm
+        * Each value is the result of calling :meth:`.get_algorithm_settings()` with the key as the parameter
+
+        :returns: The dict of enabled algorithm names with their settings
         :rtype: dict
         """
         return {key: self.get_algorithm_settings(key) for key in self.get_enabled_algorithm_names()}
 
-    def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
+    def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False, custom_metric_name=None):
         """
         Sets the score metric to optimize for a prediction ML Task
 
-        :param str metric: metric to use. Leave empty to use a custom metric. You need to set the ``custom_metric`` value in that case
-        :param str custom_metric: code of the custom metric
-        :param bool custom_metric_greater_is_better: whether the custom metric is a score or a loss
-        :param bool custom_metric_use_probas: whether to use the classes' probas or the predicted value (for classification)
+        When using a custom optimisation metric, the `metric` parameter must be kept as `None`, and a string containing the metric code should be
+        passed to the `custom_metric` parameter.
+
+        :param metric: Name of the metric to use.
+            Must be left empty to use a custom metric (defaults to **None**).
+        :type metric: str, optional
+        :param custom_metric: Code for the custom optimisation metric (defaults to **None**)
+        :type custom_metric: str, optional
+        :param custom_metric_greater_is_better: Whether the custom metric function returns a score (True, default) or a loss (False).
+            Score functions return higher values as the model improves, whereas loss functions return lower values.
+        :type custom_metric_greater_is_better: bool, optional
+        :param bool custom_metric_use_probas: If True, will use the classes' probas or the predicted value (for classification) (defaults to **False**)
+        :type custom_metric_use_probas: bool, optional
+        :param custom_metric_name: Name of your custom metric. If not set, it will generate one.
+        :type custom_metric_name: str, optional
         """
+        def get_evaluation_metric_default_name():
+            custom_evaluation_name_base_str = "Custom score #"
+            custom_metrics = set(map(lambda cm: cm["name"], self.mltask_settings["modeling"]["metrics"]["customMetrics"]))
+            i = 1
+            while custom_evaluation_name_base_str + str(i) in custom_metrics:
+                i += 1
+            return custom_evaluation_name_base_str + str(i)
+
         if custom_metric is None and metric is None:
             raise ValueError("Either metric or custom_metric must be defined")
+
         self.mltask_settings["modeling"]["metrics"]["evaluationMetric"] = metric if custom_metric is None else 'CUSTOM'
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricCode"] = custom_metric
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
+        if custom_metric:
+            new_custom_metric = {
+                "name": custom_metric_name or get_evaluation_metric_default_name(),
+                "metricCode": custom_metric,
+                "greaterIsBetter": custom_metric_greater_is_better,
+                "needsProbability": custom_metric_use_probas,
+                "description": "Custom scoring function"
+            }
+            self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricName"] = new_custom_metric["name"]
+            self.mltask_settings["modeling"]["metrics"]["customMetrics"].append(new_custom_metric)
 
     def add_custom_python_model(self, name="Custom Python Model", code=""):
         """
-        Adds a new custom python model
+        Adds a new custom python model and enables it.
 
-        :param str name: name of the custom model
-        :param str code: code of the custom model
+        Your code must create a 'clf' variable. This clf must be a scikit-learn compatible estimator, ie, it should:
+
+        1. have at least `fit(X,y)` and `predict(X)` methods
+        2. inherit `sklearn.base.BaseEstimator`
+        3. handle the attributes in the `__init__` function
+        4. have a `classes_` attribute (for classification tasks)
+        5. have a `predict_proba` method (optional)
+
+        Example:
+
+        .. code-block:: python
+
+            mltask_settings = task.get_settings()
+            code = \"""
+            from sklearn.ensemble import AdaBoostClassifier
+            clf = AdaBoostClassifier(n_estimators=20)
+            \"""
+            mltask_settings.add_custom_python_model(name="sklearn adaboost custom", code=code)
+            mltask_settings.save()
+
+        See: https://doc.dataiku.com/dss/latest/machine-learning/custom-models.html
+
+        :param str name: The name of the custom model (defaults to **"Custom Python Model"**)
+        :param str code: The code for the custom model (defaults to **""**)
         """
         self.mltask_settings["modeling"]["custom_python"].append({
             "name": name,
@@ -419,10 +562,31 @@ class DSSMLTaskSettings(object):
 
     def add_custom_mllib_model(self, name="Custom MLlib Model", code=""):
         """
-        Adds a new custom MLlib model
+        Adds a new custom MLlib model and enables it
 
-        :param str name: name of the custom model
-        :param str code: code of the custom model
+        This example has sample code that uses a standard MLlib algorithm, the RandomForestClassifier:
+
+        .. code-block:: scala
+
+            mltask_settings = task.get_settings()
+
+            code = \"""
+            // import the Estimator from spark.ml
+            import org.apache.spark.ml.classification.RandomForestClassifier
+
+            // instantiate the Estimator
+            new RandomForestClassifier()
+              .setLabelCol("Survived")  // Must be the target column
+              .setFeaturesCol("__dku_features")  // Must always be __dku_features
+              .setPredictionCol("prediction")    // Must always be prediction
+              .setNumTrees(50)
+              .setMaxDepth(8)
+            \"""
+            mltask_settings.add_custom_mllib_model(name="spark random forest custom", code=code)
+            mltask_settings.save()
+
+        :param str name: The name of the custom model (defaults to **"Custom MLlib Model"**)
+        :param str code: The code for the custom model (defaults to **""**)
         """
         self.mltask_settings["modeling"]["custom_mllib"].append({
             "name": name,
@@ -431,7 +595,9 @@ class DSSMLTaskSettings(object):
         })
 
     def save(self):
-        """Saves back these settings to the ML Task"""
+        """
+        Saves the settings back to the ML Task
+        """
 
         self.client._perform_empty(
                 "POST", "/projects/%s/models/lab/%s/%s/settings" % (self.project_key, self.analysis_id, self.mltask_id),
@@ -439,6 +605,15 @@ class DSSMLTaskSettings(object):
 
 
 class HyperparameterSearchSettings(object):
+    """
+    Object to read and modify hyperparameter search settings.
+
+    This is available for all non-clustering ML Tasks.
+
+    .. important::
+        Do not create this class directly, use :meth:`AbstractTabularPredictionMLTaskSettings.get_hyperparameter_search_settings()`
+
+    """
 
     def __init__(self, raw_settings):
         self._raw_settings = raw_settings
@@ -510,7 +685,7 @@ class HyperparameterSearchSettings(object):
     @property
     def strategy(self):
         """
-        :return: strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :return: The hyperparameter search strategy. Will be one of "GRID" | "RANDOM" | "BAYESIAN".
         :rtype: str
         """
         return self._raw_settings["strategy"]
@@ -518,7 +693,7 @@ class HyperparameterSearchSettings(object):
     @strategy.setter
     def strategy(self, strategy):
         """
-        :param strategy: "GRID" | "RANDOM" | "BAYESIAN"
+        :param strategy: The hyperparameter search strategy. Must be one of "GRID" | "RANDOM" | "BAYESIAN".
         :type strategy: str
         """
         assert strategy in {"GRID", "RANDOM", "BAYESIAN"}
@@ -526,12 +701,12 @@ class HyperparameterSearchSettings(object):
 
     def set_grid_search(self, shuffle=True, seed=1337):
         """
-        Sets the search strategy to "GRID" to perform a grid-search on the hyperparameters.
+        Sets the search strategy to "GRID", to perform a grid-search over the hyperparameters.
 
-        :param shuffle: if True, iterate over a shuffled grid as opposed to the lexicographical
-        iteration over the cartesian product of the hyperparameters.
+        :param shuffle: if True (default), iterate over a shuffled grid as opposed to lexicographical
+            iteration over the cartesian product of the hyperparameters
         :type shuffle: bool
-        :param seed:
+        :param seed: Seed value used to ensure reproducible results (defaults to **1337**)
         :type seed: int
         """
         self._raw_settings["strategy"] = "GRID"
@@ -545,9 +720,9 @@ class HyperparameterSearchSettings(object):
 
     def set_random_search(self, seed=1337):
         """
-        Sets the search strategy to "RANDOM" to perform a random search on the hyperparameters.
+        Sets the search strategy to "RANDOM", to perform a random search over the hyperparameters.
 
-        :param seed: defaults to 0
+        :param seed: Seed value used to ensure reproducible results (defaults to **1337**)
         :type seed: int
         """
         self._raw_settings["strategy"] = "RANDOM"
@@ -555,9 +730,9 @@ class HyperparameterSearchSettings(object):
 
     def set_bayesian_search(self, seed=1337):
         """
-        Sets the search strategy to "BAYESIAN" to perform a Bayesian search on the hyperparameters.
+        Sets the search strategy to "BAYESIAN", to perform a Bayesian search over the hyperparameters.
 
-        :param seed: defaults to 0
+        :param seed: Seed value used to ensure reproducible results (defaults to **1337**)
         :type seed: int
         """
         self._raw_settings["strategy"] = "BAYESIAN"
@@ -566,7 +741,7 @@ class HyperparameterSearchSettings(object):
     @property
     def validation_mode(self):
         """
-        :return: mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :return: The cross-validation strategy. Will be one of "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM".
         :rtype: str
         """
         return self._raw_settings["mode"]
@@ -574,7 +749,7 @@ class HyperparameterSearchSettings(object):
     @validation_mode.setter
     def validation_mode(self, mode):
         """
-        :param mode: "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM"
+        :param mode: The cross-validation strategy. Must be one of "KFOLD" | "SHUFFLE" | "TIME_SERIES_KFOLD" | "TIME_SERIES_SINGLE_SPLIT" | "CUSTOM".
         :type mode: str
         """
         assert mode in {"KFOLD", "SHUFFLE", "TIME_SERIES_KFOLD", "TIME_SERIES_SINGLE_SPLIT", "CUSTOM"}
@@ -619,13 +794,16 @@ class HyperparameterSearchSettings(object):
 
     def set_kfold_validation(self, n_folds=5, stratified=True, cv_seed=1337):
         """
-        Sets the validation mode to k-fold cross-validation (either "KFOLD" or "TIME_SERIES_KFOLD" if time-based ordering
-        is enabled).
+        Sets the validation mode to k-fold cross-validation.
 
-        :param n_folds: the number of folds used for the hyperparameter search, defaults to 5
+        The mode will be set to either "KFOLD" or "TIME_SERIES_KFOLD", depending on whether time-based ordering is enabled.
+
+        :param n_folds: The number of folds used for the hyperparameter search (defaults to **5**)
         :type n_folds: int
-        :param stratified: if True, keep the same proportion of each target classes in all folds, defaults to True
+        :param stratified: If True, keep the same proportion of each target classes in all folds (defaults to **True**)
         :type stratified: bool
+        :param cv_seed: Seed for cross-validation (defaults to **1337**)
+        :type cv_seed: int
         """
         if self._raw_settings["mode"] == "TIME_SERIES_SINGLE_SPLIT":
             self._raw_settings["mode"] = "TIME_SERIES_KFOLD"
@@ -647,13 +825,16 @@ class HyperparameterSearchSettings(object):
 
     def set_single_split_validation(self, split_ratio=0.8, stratified=True, cv_seed=1337):
         """
-        Sets the validation mode to single split (either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT" if time-based ordering
-        is enabled).
+        Sets the validation mode to single split.
 
-        :param split_ratio: ratio of the data used for the train during hyperparameter search, defaults to 0.8
+        The mode will be set to either "SHUFFLE" or "TIME_SERIES_SINGLE_SPLIT", depending on whether time-based ordering is enabled.
+
+        :param split_ratio: The ratio of the data used for training during hyperparameter search (defaults to **0.8**)
         :type split_ratio: float
-        :param stratified: if True, keep the same proportion of each target classes in both splits, defaults to True
+        :param stratified: If True, keep the same proportion of each target classes in both splits (defaults to **True**)
         :type stratified: bool
+        :param cv_seed: Seed for cross-validation (defaults to **1337**)
+        :type cv_seed: int
         """
         if self._raw_settings["mode"] == "TIME_SERIES_KFOLD":
             self._raw_settings["mode"] = "TIME_SERIES_SINGLE_SPLIT"
@@ -675,7 +856,21 @@ class HyperparameterSearchSettings(object):
 
     def set_custom_validation(self, code=None):
         """
-        Sets the validation mode to "CUSTOM".
+        Sets the validation mode to "CUSTOM", and sets the custom validation code.
+
+        Your code must create a 'cv' variable. This 'cv' must be compatible with the scikit-learn 'CV splitter class family.
+
+        Example splitter classes can be found here: https://scikit-learn.org/stable/modules/classes.html#splitter-classes
+
+        See also: https://scikit-learn.org/stable/glossary.html#term-CV-splitter
+
+        This example code uses the 'repeated K-fold' splitter of scikit-learn:
+
+        .. code-block:: python
+
+            from sklearn.model_selection import RepeatedKFold
+            cv = RepeatedKFold(n_splits=3, n_repeats=5)
+
 
         :param code: definition of the validation
         :type code: str
@@ -693,9 +888,9 @@ class HyperparameterSearchSettings(object):
         Sets the distribution parameters for the hyperparameter search execution.
 
         :param distributed: if True, distribute search in the Kubernetes cluster selected
-        in the runtime environment's containerized execution configuration, defaults to False
+            in the runtime environment's containerized execution configuration (defaults to **False**)
         :type distributed: bool
-        :param n_containers: number of containers to use for the distributed search, defaults to 4
+        :param n_containers: number of containers to use for the distributed search (defaults to **4**)
         :type n_containers: int
         """
         assert isinstance(distributed, bool)
@@ -706,24 +901,44 @@ class HyperparameterSearchSettings(object):
 
     @property
     def distributed(self):
+        """
+        :return: Whether the search is set to distributed
+        :rtype: bool
+        """
         return self._raw_settings["distributed"]
 
     @distributed.setter
     def distributed(self, distributed):
+        """
+        :param distributed: Whether the search will be distributed
+        :type distributed: bool
+        """
         assert isinstance(distributed, bool)
         self._raw_settings["distributed"] = distributed
 
     @property
     def timeout(self):
+        """
+        :return: The search timeout
+        :rtype: int
+        """
         return self._raw_settings["timeout"]
 
     @timeout.setter
     def timeout(self, timeout):
+        """
+        :param timeout: The search timeout
+        :type timeout: int
+        """
         assert isinstance(timeout, int)
         self._raw_settings["timeout"] = timeout
 
     @property
     def n_iter(self):
+        """
+        :return: The number of search iterations
+        :rtype: int
+        """
         if self._raw_settings["strategy"] == "GRID":
             return self._raw_settings["nIter"]
         else:
@@ -732,6 +947,10 @@ class HyperparameterSearchSettings(object):
 
     @n_iter.setter
     def n_iter(self, n_iter):
+        """
+        :param n_iter: The number of search iterations
+        :type n_iter: int
+        """
         assert isinstance(n_iter, int)
         if self._raw_settings["strategy"] == "GRID":
             self._raw_settings["nIter"] = n_iter
@@ -740,10 +959,18 @@ class HyperparameterSearchSettings(object):
 
     @property
     def parallelism(self):
+        """
+        :return: The number of threads used for the search
+        :rtype: int
+        """
         return self._raw_settings["nJobs"]
 
     @parallelism.setter
     def parallelism(self, n_jobs):
+        """
+        :param n_jobs: The number of threads used for the search
+        :type n_jobs: int
+        """
         assert isinstance(n_jobs, int)
         self._raw_settings["nJobs"] = n_jobs
 
@@ -1120,7 +1347,8 @@ class PredictionAlgorithmSettings(dict):
     """
     Object to read and modify the settings of a prediction ML algorithm.
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLTask.get_algorithm_settings` instead
     """
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -1307,12 +1535,44 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.base_score = self._register_single_value_hyperparameter("base_score", accepted_types=[int, float])
         self.impute_missing = self._register_single_value_hyperparameter("impute_missing", accepted_types=[bool])
         self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
-        self.cpu_tree_method = self._register_single_category_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
-        self.gpu_tree_method = self._register_single_category_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
-        self.enable_cuda = self._register_simple_parameter("enable_cuda")
+        self.tree_method = self._register_single_category_hyperparameter("tree_method", accepted_values=["auto", "exact", "approx", "hist"])
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
         self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+
+    @property
+    def enable_cuda(self):
+        raise AttributeError("The XGBoost enable_cuda parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @enable_cuda.setter
+    def enable_cuda(self, value):
+        raise AttributeError("The XGBoost enable_cuda parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @property
+    def cpu_tree_method(self):
+        warnings.warn("cpu_tree_method parameter is deprecated, please use tree_method instead")
+        return self.tree_method
+
+    @cpu_tree_method.setter
+    def cpu_tree_method(self, value):
+        warnings.warn("cpu_tree_method parameter is deprecated, please use tree_method instead")
+        self.tree_method.set_value(value)
+
+    @property
+    def gpu_tree_method(self):
+        warnings.warn("gpu_tree_method parameter is deprecated, please use tree_method instead")
+        return self.tree_method
+
+    @gpu_tree_method.setter
+    def gpu_tree_method(self, value):
+        warnings.warn("gpu_tree_method parameter is deprecated, please use tree_method instead")
+        if value == "gpu_exact":
+            self.tree_method.set_value("exact")
+        elif value == "gpu_hist":
+            self.tree_method.set_value("hist")
+        else:
+            logger.warning("Unexpected value for tree_method")
+            self.tree_method.set_value(value)
 
 
 class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
@@ -1451,11 +1711,17 @@ class DeepNeuralNetworkSettings(PredictionAlgorithmSettings):
         self.units = self._register_numerical_hyperparameter("units")
         self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
         self.max_epochs = self._register_single_value_hyperparameter("max_epochs", accepted_types=[int])
-        self.device = self._register_single_category_hyperparameter("device", accepted_values=["cpu", "cuda"])
         self.early_stopping_enabled = self._register_single_value_hyperparameter("early_stopping_enabled", accepted_types=[bool])
         self.early_stopping_patience = self._register_single_value_hyperparameter("early_stopping_patience", accepted_types=[int])
         self.early_stopping_threshold = self._register_single_value_hyperparameter("early_stopping_threshold", accepted_types=[float])
 
+    @property
+    def device(self):
+        raise AttributeError("The Deep Neural Network device parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @device.setter
+    def device(self, value):
+        raise AttributeError("The Deep Neural Network device parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
 
 class MLLibLogitSettings(PredictionAlgorithmSettings):
 
@@ -1579,6 +1845,25 @@ class SeasonalLoessSettings(PredictionAlgorithmSettings):
         self.auto_low_pass = self._register_single_value_hyperparameter("auto_low_pass", accepted_types=[bool])
 
 
+class ProphetSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(ProphetSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.growth = self._register_single_category_hyperparameter("growth", accepted_values=["linear", "logistic", "flat"])
+        self.floor = self._register_single_value_hyperparameter("floor", accepted_types=[float])
+        self.cap = self._register_single_value_hyperparameter("cap", accepted_types=[float])
+        self.n_changepoints = self._register_single_value_hyperparameter("n_changepoints", accepted_types=[int])
+        self.changepoint_range = self._register_single_value_hyperparameter("changepoint_range", accepted_types=[float])
+        self.yearly_seasonality = self._register_single_category_hyperparameter("yearly_seasonality", accepted_values=["auto", "always", "never"])
+        self.weekly_seasonality = self._register_single_category_hyperparameter("weekly_seasonality", accepted_values=["auto", "always", "never"])
+        self.daily_seasonality = self._register_single_category_hyperparameter("daily_seasonality", accepted_values=["auto", "always", "never"])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+        self.seasonality_mode = self._register_categorical_hyperparameter("seasonality_mode")
+        self.seasonality_prior_scale = self._register_numerical_hyperparameter("seasonality_prior_scale")
+        self.changepoint_prior_scale = self._register_numerical_hyperparameter("changepoint_prior_scale")
+        self.holidays_prior_scale = self._register_numerical_hyperparameter("holidays_prior_scale")
+
+
 class GluonTSNPTSForecasterSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -1672,6 +1957,21 @@ class GluonTSMQCNNSettings(PredictionAlgorithmSettings):
         self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
 
 
+class CausalForestSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(CausalForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.criterion = self._register_categorical_hyperparameter("criterion")
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.honest = self._register_single_value_hyperparameter("honest", accepted_types=[bool])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
+
+
 class PredictionAlgorithmMeta:
     def __init__(self, algorithm_name, algorithm_settings_class=PredictionAlgorithmSettings):
         self.algorithm_name = algorithm_name
@@ -1698,7 +1998,7 @@ class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
 
         Please refer to the documentation for details on available algorithms.
 
-        :param algorithm_name: Name (in capitals) of the algorithm.
+        :param algorithm_name: Name of the algorithm, in uppercase.
         :type algorithm_name: str
         :return: A PredictionAlgorithmSettings (extended dict) for one of the built-in prediction algorithms
         :rtype: PredictionAlgorithmSettings
@@ -1734,9 +2034,7 @@ class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
     @property
     def split_params(self):
         """
-        Gets a handle to modify train/test splitting params.
-
-        :rtype: :class:`PredictionSplitParamsHandler`
+        Deprecated. Use get_split_params()
         """
         return self.get_split_params()
 
@@ -1804,6 +2102,9 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         }
 
     class PredictionTypes:
+        """
+        Possible prediction types
+        """
         BINARY = "BINARY_CLASSIFICATION"
         REGRESSION = "REGRESSION"
         MULTICLASS = "MULTICLASS"
@@ -1819,14 +2120,17 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
 
     def get_all_possible_algorithm_names(self):
         """
-        Returns the list of possible algorithm names, i.e. the list of valid
-        identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`
+        Returns the list of possible algorithm names.
 
-        This includes all possible algorithms, regardless of the prediction kind (regression/classification)
-        or engine, so some algorithms may be irrelevant
+        This includes the names of algorithms from installed plugins.
 
-        :returns: the list of algorithm names as a list of strings
-        :rtype: list of string
+        This can be used as the list of valid identifiers for :meth:`set_algorithm_enabled` and :meth:`get_algorithm_settings`.
+
+        This includes all possible algorithms, regardless of the prediction kind (regression/classification) or the engine,
+        so some algorithms may be irrelevant to the current task.
+
+        :returns: The list of algorithm names
+        :rtype: list[str]
         """
         return super(DSSPredictionMLTaskSettings, self).get_all_possible_algorithm_names() + self._get_plugin_algorithm_names()
 
@@ -1839,10 +2143,6 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         raise ValueError("Unknown algorithm: {}".format(algorithm_name))
 
     def get_enabled_algorithm_names(self):
-        """
-        :returns: the list of enabled algorithm names as a list of strings
-        :rtype: list of string
-        """
         algo_names = super(DSSPredictionMLTaskSettings, self).get_enabled_algorithm_names()
 
         # Hide either "XGBOOST_CLASSIFICATION" or "XGBOOST_REGRESSION" which point to the same key "xgboost"
@@ -1886,13 +2186,14 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
 
     def set_weighting(self, method, feature_name=None):
         """
-        Sets the method to weight samples. 
+        Sets the method for weighting samples.
 
         If there was a WEIGHT feature declared previously, it will be set back as an INPUT feature first.
 
-        :param str method: Method to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (must give a feature name),
-                        CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (must give a feature name)
-        :param str feature_name: Name of the feature to use as sample weight
+        :param str method: Weighting nethod to use. One of NO_WEIGHTING, SAMPLE_WEIGHT (requires a feature name),
+                        CLASS_WEIGHT or CLASS_AND_SAMPLE_WEIGHT (requires a feature name)
+        :param feature_name: Name of the feature to use as sample weight
+        :type feature_name: str, optional
         """
 
         # First, if there was a WEIGHT feature, restore it as INPUT
@@ -1922,7 +2223,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
                 raise ValueError("Weighting method: {} not compatible with prediction type: {}, should be in {}".format(method, self.get_prediction_type(), self.classification_prediction_types))
             if not feature_name in self.mltask_settings["preprocessing"]["per_feature"]:
                 raise ValueError("Feature %s doesn't exist in this ML task, can't use as weight" % feature_name)
-            
+
             self.mltask_settings['weight']['weightMethod'] = method
             self.mltask_settings['weight']['sampleWeightVariable'] = feature_name
             self.mltask_settings['preprocessing']['per_feature'][feature_name]['role'] = 'WEIGHT'
@@ -1941,8 +2242,9 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
 
     def get_assertions_params(self):
         """
-        Retrieves the assertions parameters for this ml task
+        Retrieves the ML Task assertion parameters
 
+        :return: The assertions parameters for this ML task
         :rtype: :class:`DSSMLAssertionsParams`
         """
         return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
@@ -1966,22 +2268,22 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
 
     def get_algorithm_settings(self, algorithm_name):
         """
-        Gets the training settings for a particular algorithm. This returns a reference to the
-        algorithm's settings, not a copy, so changes made to the returned object will be reflected when saving.
+        Gets the training settings of a particular algorithm.
+
+        This returns a reference to the algorithm's settings, rather than a copy, so any changes made to the returned object will be reflected when saving.
 
         This method returns a dictionary of the settings for this algorithm.
-        All algorithm dicts have at least an "enabled" key in the dictionary.
-        The 'enabled' key indicates whether this algorithm will be trained
+        All algorithm dicts contain an "enabled" key, which indicates whether this algorithm will be trained
 
-        Other settings are algorithm-dependent and are the various hyperparameters of the
+        Other settings are algorithm-dependent and include the various hyperparameters of the
         algorithm. The precise keys for each algorithm are not all documented. You can print
-        the returned dictionary to learn more about the settings of each particular algorithm
+        the returned dictionary to learn more about the settings of each particular algorithm.
 
         Please refer to the documentation for details on available algorithms.
 
-        :param: algorithm_name: Name of the algorithm (uppercase).
-        :type: algorithm_name: str
-        :return: A dict of the settings for an algorithm
+        :param algorithm_name: Name of the algorithm, in uppercase.
+        :type algorithm_name: str
+        :return: A dict containing the settings for the algorithm
         :rtype: dict
         """
         if algorithm_name in self.__class__._algorithm_remap:
@@ -2000,6 +2302,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         "SEASONAL_NAIVE": PredictionAlgorithmMeta("seasonal_naive_timeseries", SeasonalNaiveSettings),
         "AUTO_ARIMA": PredictionAlgorithmMeta("autoarima_timeseries", AutoArimaSettings),
         "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
+        "PROPHET": PredictionAlgorithmMeta("prophet_timeseries", ProphetSettings),
         "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
         "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
         "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
@@ -2014,6 +2317,9 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
     _DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
 
     class PredictionTypes:
+        """
+        Possible prediction types
+        """
         TIMESERIES_FORECAST = "TIMESERIES_FORECAST"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
@@ -2025,8 +2331,9 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
 
     def get_time_step_params(self):
         """
-        Gets the time step parameters for the time series forecasting task. This returns a reference to the
-        time step parameters, not a copy, so changes made to the returned object will be reflected when saving
+        Gets the time step parameters for the time series forecasting task.
+
+        This returns a reference to the time step parameters, rather than a copy, so any changes made to the returned object will be reflected when saving.
 
         :return: A dict of the time step parameters
         :rtype: dict
@@ -2038,18 +2345,18 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         Sets the time step parameters for the time series forecasting task.
 
         :param time_unit: time unit for forecasting step. Valid values are: MILLISECOND, SECOND, MINUTE, HOUR, DAY,
-                         BUSINESS_DAY, WEEK, MONTH, QUARTER, HALF_YEAR, YEAR
-        :type time_unit: str
-        :param n_time_units: number of time units within a time step
-        :type n_time_units: int
-        :param end_of_week_day: only useful for the WEEK time unit. Valid values are: 1 (Sunday), 2 (Monday), ..., 7 (Saturday)
-        :type end_of_week_day: int
-        :param reguess: Defaults to true. Whether to reguess the ML task settings after changing the time step params
+                         BUSINESS_DAY, WEEK, MONTH, QUARTER, HALF_YEAR, YEAR (defaults to **None**, i.e. don't change)
+        :type time_unit: str, optional
+        :param n_time_units: number of time units within a time step (defaults to **None**, i.e. don't change)
+        :type n_time_units: int, optional
+        :param end_of_week_day: only useful for the WEEK time unit. Valid values are: 1 (Sunday), 2 (Monday), ..., 7 (Saturday) (defaults to **None**, i.e. don't change)
+        :type end_of_week_day: int, optional
+        :param reguess: Whether to reguess the ML task settings after changing the time step params (defaults to **True**)
         :type reguess: bool
-        :param update_algorithm_settings: Defaults to true. Whether the algorithm settings should be reguessed after changing time step parameters.
+        :param update_algorithm_settings: Whether the algorithm settings should also be reguessed if reguessing the ML Task (defaults to **True**)
         :type update_algorithm_settings: bool
-        :return:
         """
+
         time_step_params = self.get_time_step_params()
         if time_unit is not None:
             assert time_unit in self._TIME_UNITS, "Invalid time unit, should be in {}".format(self._TIME_UNITS)
@@ -2063,20 +2370,22 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
             if time_step_params["timeunit"] != "WEEK":
                 logger.warning("Changing end of week day, but time unit is not WEEK")
             time_step_params["endOfWeekDay"] = end_of_week_day
-            if reguess:
-                logger.info("Reguessing ML task settings after changing time step params")
-                self.client._perform_empty(
-                    "POST",
-                    "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/reguess-with-forecasting-params".format(
-                        project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
-                    ),
-                    body={"timestepParams": time_step_params, "updateAlgorithmSettings": update_algorithm_settings},
-                )
+        if reguess:
+            logger.info("Reguessing ML task settings after changing time step params")
+            self.client._perform_empty(
+                "POST",
+                "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/reguess-with-forecasting-params".format(
+                    project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
+                ),
+                body={"timestepParams": time_step_params, "updateAlgorithmSettings": update_algorithm_settings},
+            )
 
     def get_resampling_params(self):
         """
-        Gets the time series resampling parameters for the time series forecasting task. This returns a reference to the
-        time series resampling parameters, not a copy, so changes made to the returned object will be reflected when saving
+        Gets the time series resampling parameters for the time series forecasting task.
+
+        This returns a reference to the time series resampling parameters, rather than a copy, so any changes made to the returned object will be reflected
+        when saving.
 
         :return: A dict of the resampling parameters
         :rtype: dict
@@ -2087,11 +2396,11 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         Sets the time series resampling numerical interpolation parameters
 
-        :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC, CUBIC, CONSTANT
-        :type method: str
-        :param constant: Value for the CONSTANT interpolation method
-        :type constant: float
-        :return:
+        :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC,
+            CUBIC, CONSTANT (defaults to **None**, i.e. don't change)
+        :type method: str, optional
+        :param constant: Value for the CONSTANT interpolation method (defaults to **None**, i.e. don't change)
+        :type constant: float, optional
         """
         resampling_params = self.get_resampling_params()
         if method is not None:
@@ -2107,11 +2416,11 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         Sets the time series resampling numerical extrapolation parameters
 
-        :param method: Extrapolation method. Valid values are: PREVIOUS_NEXT, NO_EXTRAPOLATION, CONSTANT, LINEAR, QUADRATIC, CUBIC
-        :type method: str
-        :param constant: Value for the CONSTANT extrapolation method
-        :type constant: float
-        :return:
+        :param method: Extrapolation method. Valid values are: PREVIOUS_NEXT, NO_EXTRAPOLATION, CONSTANT,
+            LINEAR, QUADRATIC, CUBIC (defaults to **None**, i.e. don't change)
+        :type method: str, optional
+        :param constant: Value for the CONSTANT extrapolation method (defaults to **None**)
+        :type constant: float, optional
         """
         resampling_params = self.get_resampling_params()
         if method is not None:
@@ -2127,11 +2436,10 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         Sets the time series resampling categorical imputation parameters
 
-        :param method: Imputation method. Valid values are: MOST_COMMON, NULL, CONSTANT, PREVIOUS_NEXT, PREVIOUS, NEXT
-        :type method: str
-        :param constant: Value for the CONSTANT imputation method
-        :type constant: str
-        :return:
+        :param method: Imputation method. Valid values are: MOST_COMMON, NULL, CONSTANT, PREVIOUS_NEXT, PREVIOUS, NEXT (defaults to **None**, i.e. don't change)
+        :type method: str, optional
+        :param constant: Value for the CONSTANT imputation method (defaults to **None**, i.e. don't change)
+        :type constant: str, optional
         """
         resampling_params = self.get_resampling_params()
         if method is not None:
@@ -2145,9 +2453,9 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
 
     def set_duplicate_timestamp_handling(self, method):
         """
-        Sets the time series duplicate timestamp handling
+        Sets the time series duplicate timestamp handling method
 
-        :param method: Duplicate timestamp handling method. Valid values are: FAIL_IF_CONFLICTING, DROP_IF_CONFLICTING, MEAN_MODE
+        :param method: Duplicate timestamp handling method. Valid values are: FAIL_IF_CONFLICTING, DROP_IF_CONFLICTING, MEAN_MODE.
         :type method: str
         """
         resampling_params = self.get_resampling_params()
@@ -2166,11 +2474,13 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
 
     def set_forecast_horizon(self, forecast_horizon, reguess=True, update_algorithm_settings=True):
         """
+        Sets the time series forecast horizon
+
         :param forecast_horizon: Number of time steps to be forecast
         :type forecast_horizon: int
-        :param reguess: Defaults to true. Whether to reguess the ML task settings after changing the forecast horizon
+        :param reguess: Whether to reguess the ML task settings after changing the forecast horizon (defaults to **True**)
         :type reguess: bool
-        :param update_algorithm_settings: Defaults to true. Whether the algorithm settings should be reguessed after the forecast horizon.
+        :param update_algorithm_settings: Whether the algorithm settings should be reguessed after the forecast horizon (defaults to **True**)
         :type update_algorithm_settings: bool
         """
         assert isinstance(forecast_horizon, int)
@@ -2184,7 +2494,6 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
                 ),
                 body={"forecastHorizon": forecast_horizon, "updateAlgorithmSettings": update_algorithm_settings},
             )
-
 
     @property
     def evaluation_gap(self):
@@ -2241,6 +2550,156 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         assert isinstance(values, list)
         self.mltask_settings["quantilesToForecast"] = sorted(set(values))
 
+    @property
+    def skip_too_short_timeseries_for_training(self):
+        """
+        :return: Whether we skip too short time series during training, or fail the whole training when only one time series is too short.
+        :rtype: bool
+        """
+        return self.mltask_settings.get("skipTooShortTimeseriesForTraining")
+
+    @skip_too_short_timeseries_for_training.setter
+    def skip_too_short_timeseries_for_training(self, value):
+        self.mltask_settings["skipTooShortTimeseriesForTraining"] = value
+
+
+class DSSCausalPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
+    """
+    Object to read and modify the settings of a causal prediction ML task.
+    """
+
+    _algorithm_remap = {
+         "CAUSAL_FOREST": PredictionAlgorithmMeta("causal_forest", CausalForestSettings),
+
+         # Base learners
+         "RANDOM_FOREST_CLASSIFICATION": PredictionAlgorithmMeta("random_forest_classification", RandomForestSettings),
+         "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
+         "EXTRA_TREES": PredictionAlgorithmMeta("extra_trees", RandomForestSettings),
+         "GBT_CLASSIFICATION": PredictionAlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
+         "GBT_REGRESSION": PredictionAlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
+         "DECISION_TREE_CLASSIFICATION": PredictionAlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
+         "DECISION_TREE_REGRESSION": PredictionAlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
+         "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+         "LASSO_REGRESSION": PredictionAlgorithmMeta("lasso_regression", LassoRegressionSettings),
+         "LEASTSQUARE_REGRESSION": PredictionAlgorithmMeta("leastsquare_regression", OLSSettings),
+         "SGD_REGRESSION": PredictionAlgorithmMeta("sgd_regression", SGDSettings),
+         "KNN": PredictionAlgorithmMeta("knn", KNNSettings),
+         "LOGISTIC_REGRESSION": PredictionAlgorithmMeta("logistic_regression", LogitSettings),
+         "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", SingleLayerPerceptronSettings),
+         "DEEP_NEURAL_NETWORK_REGRESSION": PredictionAlgorithmMeta("deep_neural_network_regression", DeepNeuralNetworkSettings),
+         "DEEP_NEURAL_NETWORK_CLASSIFICATION": PredictionAlgorithmMeta("deep_neural_network_classification", DeepNeuralNetworkSettings),
+         "SVC_CLASSIFICATION": PredictionAlgorithmMeta("svc_classifier", SVMSettings),
+         "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
+         "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
+         "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
+         "LIGHTGBM_CLASSIFICATION": PredictionAlgorithmMeta("lightgbm_classification", LightGBMSettings),
+         "LIGHTGBM_REGRESSION": PredictionAlgorithmMeta("lightgbm_regression", LightGBMSettings),
+         "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+         "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+    }
+
+    class PredictionTypes:
+        CAUSAL_REGRESSION = "CAUSAL_REGRESSION"
+        CAUSAL_BINARY_CLASSIFICATION = "CAUSAL_BINARY_CLASSIFICATION"
+
+    class MetaLearners:
+        S_LEARNER = "S_LEARNER"
+        T_LEARNER = "T_LEARNER"
+        X_LEARNER = "X_LEARNER"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        super(DSSCausalPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        prediction_type = self.get_prediction_type()
+        if prediction_type not in [self.PredictionTypes.CAUSAL_REGRESSION, self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION]:
+            raise ValueError("Unknown prediction type: {}".format(prediction_type))
+
+    @property
+    def positive_outcome_class(self):
+        if self.get_prediction_type() != self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION:
+            raise ValueError("Positive outcome class is only defined for causal binary classifications")
+        return self.mltask_settings["positiveClass"]
+
+    @positive_outcome_class.setter
+    def positive_outcome_class(self, outcome_class):
+        if self.get_prediction_type() != self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION:
+            raise ValueError("Positive outcome class is only defined for causal binary classifications")
+        outcome_classes = [x['sourceValue'] for x in self.mltask_settings["preprocessing"]["target_remapping"]]
+        if outcome_class not in outcome_classes:
+            raise ValueError("Unknown value for outcome variable: '{}'\nMust be in {}".format(outcome_class, str(outcome_classes)))
+        self.mltask_settings["positiveClass"] = outcome_class
+
+    @property
+    def control_value(self):
+        return self.mltask_settings["controlValue"]
+
+    @control_value.setter
+    def control_value(self, control_value):
+        if control_value not in self.mltask_settings["treatmentValues"]:
+            raise ValueError("Unknown value for treatment variable: {}\nMust be in {}".format(control_value, str(self.mltask_settings["treatmentValues"])))
+        self.mltask_settings["controlValue"] = control_value
+
+    @property
+    def enable_multi_valued_treatment(self):
+        return self.mltask_settings["enableMultiTreatment"]
+
+    @enable_multi_valued_treatment.setter
+    def enable_multi_valued_treatment(self, enabled):
+        self.mltask_settings["enableMultiTreatment"] = enabled
+        if enabled and len(self.mltask_settings["treatmentValues"]) <= 2:
+            logger.warning("Multi-valued treatment requires at least 3 values for the treatment variable")
+
+    def _check_algorithm(self, algorithm_name):
+        if algorithm_name != "CAUSAL_FOREST" and len(self.meta_learners) == 0:
+            logger.warning("No meta-learner enabled for selected base learner: {}".format(algorithm_name))
+
+    def _check_meta_learner(self, meta_leaner_name):
+        m = DSSCausalPredictionMLTaskSettings.MetaLearners
+        all_meta_learners = [m.S_LEARNER, m.T_LEARNER, m.X_LEARNER]
+        if meta_leaner_name not in all_meta_learners:
+            raise ValueError('Invalid meta-learner name: {}\nMust be in {}'.format(meta_leaner_name, all_meta_learners))
+        enabled_base_learners = [a for a in self.get_enabled_algorithm_names() if a != "CAUSAL_FOREST"]
+        if len(enabled_base_learners) == 0:
+            logger.warning("No base-learner enabled, meta-learner {} will be ignored under current settings".format(meta_leaner_name))
+
+    def get_algorithm_settings(self, algorithm_name):
+        self._check_algorithm(algorithm_name)
+        return super(DSSCausalPredictionMLTaskSettings, self).get_algorithm_settings(algorithm_name)
+
+    def set_algorithm_enabled(self, algorithm_name, enabled):
+        if enabled:
+            self._check_algorithm(algorithm_name)
+        super(DSSCausalPredictionMLTaskSettings, self).set_algorithm_enabled(algorithm_name, enabled)
+
+    def get_enabled_algorithm_names(self):
+        enabled_algo_names = super(DSSCausalPredictionMLTaskSettings, self).get_enabled_algorithm_names()
+        for algo_name in enabled_algo_names:
+            self._check_algorithm(algo_name)
+        return enabled_algo_names
+
+    @property
+    def meta_learners(self):
+        return self.mltask_settings["modeling"]["meta_learners"]
+
+    @meta_learners.setter
+    def meta_learners(self, meta_learners):
+        if type(meta_learners) != list or any([type(x) != str for x in meta_learners]):
+            raise ValueError("Meta-learners must be specified as a list of str")
+        for meta_leaner in meta_learners:
+            self._check_meta_learner(meta_leaner)
+        self.mltask_settings["modeling"]["meta_learners"] = meta_learners
+
+    def get_treatment_analysis_settings(self):
+        return self.mltask_settings["modeling"]["propensityModeling"]
+
+    def set_treatment_analysis_enabled(self, enabled, calibrate_propensity=False, calibration_data_ratio=0.1):
+        self.mltask_settings["modeling"]["propensityModeling"]["enabled"] = enabled
+        self.mltask_settings["modeling"]["propensityModeling"]["calibrateProbabilities"] = calibrate_propensity
+        self.mltask_settings["modeling"]["propensityModeling"]["calibrationDataRatio"] = calibration_data_ratio
+
+    def add_custom_mllib_model(self, name="Custom MLlib Model", code=""):
+        raise NotImplementedError("MLLib backend is not supported for causal predictions.")
+
 
 class DSSTrainedModelDetails(object):
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
@@ -2270,7 +2729,7 @@ class DSSTrainedModelDetails(object):
 
     def get_train_info(self):
         """
-        Returns various information about the train process (size of the train set, quick description, timing information)
+        Returns various information about the training process (size of the train set, quick description, timing information)
 
         :rtype: dict
         """
@@ -2402,7 +2861,8 @@ class DSSMLDiagnostic(object):
     """
     Object that represents a computed Diagnostic on a trained model
 
-    Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_diagnostics()` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSTrainedModelDetails.get_diagnostics()` instead
     """
 
     def __init__(self, data):
@@ -2449,7 +2909,9 @@ class DSSMLDiagnostic(object):
 class DSSMLAssertionsParams(object):
     """
     Object that represents parameters for all assertions of a ml task
-    Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params` instead
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSPredictionMLTaskSettings.get_assertions_params` instead
     """
 
     def __init__(self, data):
@@ -2516,8 +2978,10 @@ class DSSMLAssertionsParams(object):
 class DSSMLAssertionParams(object):
     """
     Object that represents parameters for one assertion
-    Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion` or
-    :meth:`from_params` instead
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLAssertionsParams.get_assertion` or
+        :meth:`from_params` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -2596,8 +3060,10 @@ class DSSMLAssertionParams(object):
 class DSSMLAssertionCondition(object):
     """
     Object that represents an assertion condition
-    Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`,
-    :meth:`DSSMLAssertionCondition.from_expected_class` or :meth:`DSSMLAssertionCondition.from_expected_range` instead
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLAssertionParams.condition`,
+        :meth:`DSSMLAssertionCondition.from_expected_class` or :meth:`DSSMLAssertionCondition.from_expected_range` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -2716,7 +3182,8 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the assertions metrics for all assertions on a trained model
-    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -2760,7 +3227,9 @@ class DSSMLAssertionsMetrics(object):
 class DSSMLAssertionMetrics(object):
     """
     Object that represents the result of an assertion on a trained model
-    Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics` instead
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLAssertionMetrics.get_metrics` instead
     """
     def __init__(self, data):
         self._internal_dict = data
@@ -2940,14 +3409,20 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained prediction model
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
         super(DSSTrainedPredictionModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
     def get_roc_curve_data(self):
-        roc = self.details.get("perf", {}).get("rocVizData",{})
+        """
+        Gets the data used to plot the ROC curve for the model, if it exists.
+
+        :return: A dictionary containing ROC curve data
+        """
+        roc = self.details.get("perf", {}).get("rocVizData", {})
         if roc is None:
             raise ValueError("This model does not have ROC visualization data")
 
@@ -3002,7 +3477,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         For each point, the dict contains at least:
             - "score": the average value of the optimization metric over all the folds at this point
             - "params": a dict of the parameters at this point. This dict has the same structure 
-               as the params of the best parameters
+              as the params of the best parameters
         """
 
         if not "gridCells" in self.details["iperf"]:
@@ -3021,8 +3496,9 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Gets the modeling (algorithms) settings that were used to train this model.
 
-        Note: the structure of this dict is not the same as the modeling params on the ML Task
-        (which may contain several algorithm)
+        .. note::
+
+            The structure of this dict is not the same as the modeling params on the ML Task (which may contain several algorithms).
 
         :rtype: dict
         """
@@ -3068,8 +3544,9 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_jar_stream(self, model_class="model.Model", include_libs=False):
         """
-        Get a scoring jar for this trained model,
-        provided that you have the license to do so and that the model is compatible with optimized scoring.
+        Returns a stream of a scoring jar for this trained model.
+
+        This works provided that you have the license to do so and that the model is compatible with optimized scoring.
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
         :param str  model_class: fully-qualified class name, e.g. "com.company.project.Model"
@@ -3092,8 +3569,9 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_pmml_stream(self):
         """
-        Get a scoring PMML for this trained model,
-        provided that you have the license to do so and that the model is compatible with PMML scoring
+        Returns a stream of a scoring PMML for this trained model.
+
+        This works provided that you have the license to do so and that the model is compatible with PMML scoring.
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
         :returns: a PMML file, as a stream
@@ -3110,9 +3588,12 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_python_stream(self):
         """
-        Download the zip containing data to use for this trained model, provided that you have the license to do so and that the model
-        is compatible with Python scoring. You need to close the stream after download. Failure to do so will
-        result in the DSSClient becoming unusable.
+        Returns a stream of a zip file containing the required data to use this trained model in external python code.
+
+        See: https://doc.dataiku.com/dss/latest/python-api/ml.html
+
+        This works provided that you have the license to do so and that the model is compatible with Python scoring.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
         :returns: an archive file, as a stream
         :rtype: file-like
@@ -3128,8 +3609,11 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_python(self, filename):
         """
-        Download the zip containing data to use Python scoring for this trained model in filename,
-        provided that you have the license to do so and that the model is compatible with Python scoring.
+        Downloads a zip file containing the required data to use this trained model in external python code.
+
+        See: https://doc.dataiku.com/dss/latest/python-api/ml.html
+
+        This works provided that you have the license to do so and that the model is compatible with Python scoring.
 
         :param str filename: filename of the resulting downloaded file
         """
@@ -3138,9 +3622,10 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_mlflow_stream(self):
         """
-        Download the zip containing this trained model using MLflow Model format, provided that you have the license to
-        do so and that the model is compatible with MLflow scoring. You need to close the stream after download.
-        Failure to do so will result in the DSSClient becoming unusable.
+        Returns a stream of a zip containing this trained model using the MLflow Model format.
+
+        This works provided that you have the license to do so and that the model is compatible with MLflow scoring.
+        You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
         :returns: an archive file, as a stream
         :rtype: file-like
@@ -3156,8 +3641,9 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     def get_scoring_mlflow(self, filename):
         """
-        Download the zip containing data for this trained model, using MLflow Model format,
-        provided that you have the license to do so and that the model is compatible with MLflow scoring
+        Downloads a zip containing data for this trained model, using the MLflow Model format.
+
+        This works provided that you have the license to do so and that the model is compatible with MLflow scoring.
 
         :param str filename: filename to the resulting MLflow Model zip
         """
@@ -3165,6 +3651,27 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             f.write(self.get_scoring_mlflow_stream().content)
 
     ## Post-train computations
+
+    def compute_shapley_feature_importance(self):
+        """
+        Launches computation of Shapley feature importance for this trained model
+
+        :returns: A future for the computation task
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/shapley-feature-importance" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/shapley-feature-importance" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        return future
 
     def compute_subpopulation_analyses(self, split_by, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
         """
@@ -3178,7 +3685,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param bool debug_mode: if True, output all logs (slower)
 
         :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
-        :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses` or :class:`dataikuapi.dss.future.DSSFuture`
+        :rtype: Union[:class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses`, :class:`dataikuapi.dss.future.DSSFuture`]
         """
         body = {
             "features": split_by if isinstance(split_by, list) else [split_by],
@@ -3208,15 +3715,14 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         else:
             return future
 
-
     def get_subpopulation_analyses(self):
         """
         Retrieve all subpopulation analyses computed for this trained model
         
-        :returns: the subpopulation analyses
+        :returns: The subpopulation analyses
         :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationAnalyses`
         """
-        
+
         if self.mltask is not None:
             data = self.mltask.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/models/%s/subpopulation-analyses" %
@@ -3242,7 +3748,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param bool debug_mode: if True, output all logs (slower)
 
         :returns: if wait is True, an object containing the Partial dependencies, else a future to wait on the result
-        :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies` or :class:`dataikuapi.dss.future.DSSFuture`
+        :rtype: Union[:class:`dataikuapi.dss.ml.DSSPartialDependencies`, :class:`dataikuapi.dss.future.DSSFuture`]
         """
 
         body = {
@@ -3268,7 +3774,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         if wait:
-            return DSSPartialDependencies(future.wait_for_result()) 
+            return DSSPartialDependencies(future.wait_for_result())
         else:
             return future
 
@@ -3276,7 +3782,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         Retrieve all partial dependencies computed for this trained model
 
-        :returns: the partial dependencies
+        :returns: The partial dependencies
         :rtype: :class:`dataikuapi.dss.ml.DSSPartialDependencies`
         """
 
@@ -3297,7 +3803,8 @@ class DSSSubpopulationGlobal(object):
     """
     Object to read details of performance on global population used for subpopulation analyses.
 
-    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_global()` instead
     """
 
     def __init__(self, data, prediction_type):
@@ -3346,7 +3853,8 @@ class DSSSubpopulationModality(object):
     """
     Object to read details of a subpopulation analysis modality
 
-    Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSSubpopulationAnalysis.get_modality_data(definition)` instead
     """
 
     def __init__(self, feature_name, computed_as_type, data, prediction_type):
@@ -3381,7 +3889,7 @@ class DSSSubpopulationModality(object):
         :rtype: :class:`dataikuapi.dss.ml.DSSSubpopulationModalityDefinition`
         """
         return self.definition
-    
+
     def is_excluded(self):
         """
         Whether modality has been excluded from analysis (e.g. too few rows in the subpopulation)
@@ -3427,25 +3935,25 @@ class DSSSubpopulationModalityDefinition(object):
         self.missing_values = data.get("missing_values", False)
         self.index = data.get("index")
         self.feature_name = feature_name
-    
+
     def is_missing_values(self):
         return self.missing_values
 
 
 class DSSSubpopulationNumericModalityDefinition(DSSSubpopulationModalityDefinition):
-    
+
     def __init__(self, feature_name, data):
         super(DSSSubpopulationNumericModalityDefinition, self).__init__(feature_name, data)
         self.lte = data.get("lte", None)
         self.gt = data.get("gt", None)
         self.gte = data.get("gte", None)
-    
+
     def contains(self, value):
         lte = self.lte if self.lte is not None else float("inf")
         gt = self.gt if self.gt is not None else float("-inf")
         gte = self.gte if self.gte is not None else float("-inf")
         return not self.missing_values and gt < value and gte <= value and lte >= value
-    
+
     def __repr__(self):
         if self.missing_values:
             return "DSSSubpopulationNumericModalityDefinition(missing_values)"
@@ -3469,7 +3977,7 @@ class DSSSubpopulationCategoryModalityDefinition(DSSSubpopulationModalityDefinit
     def __init__(self, feature_name, data):
         super(DSSSubpopulationCategoryModalityDefinition, self).__init__(feature_name, data)
         self.value = data.get("value", None)
-    
+
     def contains(self, value):
         return value == self.value
 
@@ -3484,7 +3992,8 @@ class DSSSubpopulationAnalysis(object):
     """
     Object to read details of a subpopulation analysis of a trained model
 
-    Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSSubpopulationAnalyses.get_analysis(feature)` instead
     """
 
     def __init__(self, analysis, prediction_type):
@@ -3516,7 +4025,7 @@ class DSSSubpopulationAnalysis(object):
             "randomState":  self._internal_dict["randomState"],
             "onSample":  self._internal_dict["onSample"]
         }
-    
+
     def list_modalities(self):
         """
         List definitions of modalities
@@ -3549,7 +4058,7 @@ class DSSSubpopulationAnalysis(object):
             if len(modality_candidates) == 0:
                 raise ValueError("Modality with index '%s' not found" % definition.index)
             return modality_candidates[0]
-        
+
         for m in self.modalities:
             if m.definition.contains(definition):
                 return m
@@ -3560,7 +4069,8 @@ class DSSSubpopulationAnalyses(object):
     """
     Object to read details of subpopulation analyses of a trained model
 
-    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_subpopulation_analyses()` instead
     """
 
     def __init__(self, data, prediction_type):
@@ -3593,7 +4103,7 @@ class DSSSubpopulationAnalyses(object):
         Lists all features on which subpopulation analyses have been computed
         """
         return [analysis.get_raw()["feature"] for analysis in self.analyses]
-    
+
     def get_analysis(self, feature):
         """
         Retrieves the subpopulation analysis for a particular feature
@@ -3608,7 +4118,8 @@ class DSSPartialDependence(object):
     """
     Object to read details of partial dependence of a trained model
 
-    Do not create this object directly, use :meth:`DSSPartialDependencies.get_partial_dependence(feature)` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSPartialDependencies.get_partial_dependence(feature)` instead
     """
 
     def __init__(self, data):
@@ -3640,7 +4151,8 @@ class DSSPartialDependencies(object):
     """
     Object to read details of partial dependencies of a trained model
 
-    Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_partial_dependencies()` instead
+    .. important::
+        Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_partial_dependencies()` instead
     """
 
     def __init__(self, data):
@@ -3709,31 +4221,40 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
     """
     Object to read details of a trained clustering model
 
-    Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
+    .. important::
+        Do not create this class directly, use :meth:`DSSMLTask.get_trained_model_details()`
     """
 
     def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
         super(DSSTrainedClusteringModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
 
-
     def get_raw(self):
         """
         Gets the raw dictionary of trained model details
+
+        :returns: A dictionary containing the trained model details
+        :rtype: dict
         """
         return self.details
 
     def get_train_info(self):
         """
-        Returns various information about the train process (size of the train set, quick description, timing information)
+        Gets various information about the training process.
 
+        This includes information such as the size of the train set, the quick description and timing information etc.
+
+        :returns: A dictionary containing the models training information
         :rtype: dict
         """
         return self.details["trainInfo"]
 
     def get_facts(self):
         """
-        Gets the 'cluster facts' data, i.e. the structure behind the screen "for cluster X, average of Y is Z times higher than average
+        Gets the 'cluster facts' data.
 
+        The cluster facts data is the structure behind the screen "for cluster X, average of Y is Z times higher than average".
+
+        :returns: The clustering facts data
         :rtype: :class:`DSSClustersFacts`
         """
         return DSSClustersFacts(self.details["facts"])
@@ -3742,7 +4263,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
         """
         Returns all performance metrics for this clustering model.
 
-        :returns: a dict of performance metrics values
+        :returns: A dict of performance metrics values
         :rtype: dict
         """
         import copy
@@ -3756,6 +4277,7 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
         """
         Gets the preprocessing settings that were used to train this model
 
+        :returns: The model preprocessing settings
         :rtype: dict
         """
         return self.details["preprocessing"]
@@ -3764,9 +4286,11 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
         """
         Gets the modeling (algorithms) settings that were used to train this model.
 
-        Note: the structure of this dict is not the same as the modeling params on the ML Task
-        (which may contain several algorithm)
+        .. note::
 
+            The structure of this dict is not the same as the modeling params on the ML Task (which may contain several algorithms).
+
+        :returns: The model modeling settings
         :rtype: dict
         """
         return self.details["modeling"]
@@ -3793,9 +4317,28 @@ class DSSTrainedClusteringModelDetails(DSSTrainedModelDetails):
 
 
 class DSSMLTask(object):
+    """
+    A handle to interact with a ML Task for prediction or clustering in a DSS visual analysis.
+
+    .. important::
+        To create a new ML Task, use one of the following methods: :meth:`dataikuapi.dss.project.DSSProject.create_prediction_ml_task`,
+        :meth:`dataikuapi.dss.project.DSSProject.create_clustering_ml_task` or :meth:`dataikuapi.dss.project.DSSProject.create_timeseries_forecasting_ml_task`.
+    """
 
     @staticmethod
     def from_full_model_id(client, fmi, project_key=None):
+        """
+        Static method returning a DSSMLTask object representing a pre-existing ML Task
+
+        :param client: An instantiated DSSClient
+        :type client: :class:`~dataikuapi.dssclient.DSSClient`
+        :param fmi: The Full Model ID of the ML Task
+        :type fmi: str
+        :param project_key: The project key of the project containing the ML Task (defaults to **None**)
+        :type project_key: str, optional
+        :return: The DSSMLTask
+        :rtype: :class:`DSSMLTask`
+        """
         match = re.match(r"^A-(\w+)-(\w+)-(\w+)-(s[0-9]+)-(pp[0-9]+(-part-(\w+)|-base)?)-(m[0-9]+)$", fmi)
         if match is None:
             return DataikuException("Invalid model id: {}".format(fmi))
@@ -3804,7 +4347,6 @@ class DSSMLTask(object):
                 project_key = match.group(1)
             return DSSMLTask(client, project_key, match.group(2), match.group(3))
 
-    """A handle to interact with a MLTask for prediction or clustering in a DSS visual analysis"""
     def __init__(self, client, project_key, analysis_id, mltask_id):
         self.client = client
         self.project_key = project_key
@@ -3813,17 +4355,17 @@ class DSSMLTask(object):
 
     def delete(self):
         """
-        Delete the present ML task
+        Deletes the ML task
         """
         return self.client._perform_json(
                 "DELETE", "/projects/%s/models/lab/%s/%s/" % (self.project_key, self.analysis_id, self.mltask_id))
 
-
     def wait_guess_complete(self):
         """
-        Waits for guess to be complete. This should be called immediately after the creation of a new ML Task
-        (if the ML Task was created with wait_guess_complete=False),
-        before calling ``get_settings`` or ``train``
+        Waits for the ML Task guessing to be complete.
+
+        This should be called immediately after the creation of a new ML Task if the ML Task was created with ``wait_guess_complete = False``,
+        before calling :meth:`get_settings` or :meth:`train`.
         """
         while True:
             status = self.get_status()
@@ -3831,22 +4373,23 @@ class DSSMLTask(object):
                 break
             time.sleep(0.2)
 
-
     def get_status(self):
         """
         Gets the status of this ML Task
 
-        :return: a dict
+        :return: A dictionary containing the ML Task status
+        :rtype: dict
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/models/lab/%s/%s/status" % (self.project_key, self.analysis_id, self.mltask_id))
 
-
     def get_settings(self):
         """
-        Gets the settings of this ML Tasks
+        Gets the settings of this ML Task.
 
-        :return: a DSSMLTaskSettings object to interact with the settings
+        This should be used whenever you need to modify the settings of an existing ML Task.
+
+        :return: A DSSMLTaskSettings object.
         :rtype: :class:`dataikuapi.dss.ml.DSSMLTaskSettings`
         """
         settings =  self.client._perform_json(
@@ -3855,6 +4398,9 @@ class DSSMLTask(object):
         if settings["taskType"] == "PREDICTION":
             if settings["predictionType"] == DSSTimeseriesForecastingMLTaskSettings.PredictionTypes.TIMESERIES_FORECAST:
                 return DSSTimeseriesForecastingMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            elif settings["predictionType"] in [DSSCausalPredictionMLTaskSettings.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION,
+                     DSSCausalPredictionMLTaskSettings.PredictionTypes.CAUSAL_REGRESSION]:
+                return DSSCausalPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
             else:
                 return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
         else:
@@ -3862,21 +4408,24 @@ class DSSMLTask(object):
 
     def train(self, session_name=None, session_description=None, run_queue=False):
         """
-        Trains models for this ML Task
-        
-        :param str session_name: name for the session
-        :param str session_description: description for the session
+        Trains models for this ML Task.
 
-        This method waits for train to complete. If you want to train asynchronously, use :meth:`start_train` and :meth:`wait_train_complete`
+        This method waits for training to complete. If you instead want to train asynchronously, use :meth:`start_train` and :meth:`wait_train_complete`.
 
-        This method returns the list of trained model identifiers. It returns models that have been trained  for this train
-        session, not all trained models for this ML task. To get all identifiers for all models trained across all training sessions,
-        use :meth:`get_trained_models_ids`
+        This method returns a list of trained model identifiers. These refer to models that have been trained during this specific training
+        session, rather than all of the trained models available on this ML task. To get all identifiers for all models trained across all training sessions,
+        use :meth:`get_trained_models_ids`.
 
-        These identifiers can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`
+        These identifiers can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`.
+
+        :param session_name: Optional name for the session (defaults to **None**)
+        :type session_name: str, optional
+        :param session_description: Optional description for the session (defaults to **None**)
+        :type session_description: str, optional
+        :param bool run_queue: Whether to run any queued sessions after the training completes (defaults to **False**)
 
         :return: A list of model identifiers
-        :rtype: list of strings
+        :rtype: list[str]
         """
         train_ret = self.start_train(session_name, session_description, run_queue)
         self.wait_train_complete()
@@ -3884,21 +4433,23 @@ class DSSMLTask(object):
 
     def ensemble(self, model_ids=None, method=None):
         """
-        Create an ensemble model of a set of models
-        
-        :param list model_ids: A list of model identifiers (defaults to `[]`)
-        :param str method: the ensembling method. One of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
+        Creates an ensemble model from a set of models.
 
-        This method waits for the ensemble train to complete. If you want to train asynchronously, use :meth:`start_ensembling` and :meth:`wait_train_complete`
+        This method waits for the ensemble training to complete. If you want to train asynchronously, use :meth:`start_ensembling` and
+        :meth:`wait_train_complete`.
 
         This method returns the identifier of the trained ensemble.
-        To get all identifiers for all models trained across all training sessions,
-        use :meth:`get_trained_models_ids`
+        To get all identifiers for all models trained across all training sessions, use :meth:`get_trained_models_ids`.
 
-        This identifier can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`
+        This returned identifier can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`.
 
-        :return: A model identifier
-        :rtype: string
+        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :type model_ids: list[str]
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :type method: str
+
+        :return: The model identifier of the resulting ensemble model
+        :rtype: str
         """
         if model_ids is None:
             model_ids = []
@@ -3906,37 +4457,40 @@ class DSSMLTask(object):
         self.wait_train_complete()
         return train_ret
 
-
     def start_train(self, session_name=None, session_description=None, run_queue=False):
         """
-        Starts asynchronously a new train session for this ML Task.
+        Starts asynchronously a new training session for this ML Task.
 
-        :param str session_name: name for the session
-        :param str session_description: description for the session
+        This returns immediately, before training is complete. To wait for training to complete, use :meth:`wait_train_complete`.
 
-        This returns immediately, before train is complete. To wait for train to complete, use ``wait_train_complete()``
+        :param session_name: Optional name for the session (defaults to **None**)
+        :type session_name: str, optional
+        :param session_description: Optional description for the session (defaults to **None**)
+        :type session_description: str, optional
+        :param bool run_queue: Whether to run any queued sessions after the training completes (defaults to **False**)
         """
         session_info = {
-                            "sessionName" : session_name,
-                            "sessionDescription" : session_description,
+                            "sessionName": session_name,
+                            "sessionDescription": session_description,
                             "runQueue": run_queue
                         }
 
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
-
     def start_ensembling(self, model_ids=None, method=None):
         """
-        Creates asynchronously a new ensemble models of a set of models.
+        Creates asynchronously an ensemble model from a set of models
 
-        :param list model_ids: A list of model identifiers (defaults to `[]`)
-        :param str method: the ensembling method (AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL)
+        This returns immediately, before training is complete. To wait for training to complete, use :meth:`wait_train_complete`
 
-        This returns immediately, before train is complete. To wait for train to complete, use :meth:`wait_train_complete`
+        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :type model_ids: list[str]
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :type method: str
 
-        :return: the model identifier of the ensemble
-        :rtype: string
+        :return: The model identifier of the ensemble
+        :rtype: str
         """
         if model_ids is None:
             model_ids = []
@@ -3948,10 +4502,11 @@ class DSSMLTask(object):
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/ensemble" % (self.project_key, self.analysis_id, self.mltask_id), body=ensembling_request)['id']
 
-
     def wait_train_complete(self):
         """
-        Waits for train to be complete (if started with :meth:`start_train`)
+        Waits for training to be completed
+
+        To be used following any asynchronous training started with :meth:`start_train` or :meth:`start_ensembling`
         """
         while True:
             status = self.get_status()
@@ -3959,15 +4514,21 @@ class DSSMLTask(object):
                 break
             time.sleep(2)
 
-
     def get_trained_models_ids(self, session_id=None, algorithm=None):
         """
         Gets the list of trained model identifiers for this ML task.
 
-        These identifiers can be used for :meth:`get_trained_model_snippet` and :meth:`deploy_to_flow`
+        These identifiers can be used for :meth:`get_trained_model_snippet` and :meth:`deploy_to_flow`.
+
+        The two optional filter params can be used together.
+
+        :param session_id: Optional filter to return only IDs of models from a specific session.
+        :type session_id: str, optional
+        :param algorithm: Optional filter to return only IDs of models with a specific algorithm.
+        :type algorithm: str, optional
 
         :return: A list of model identifiers
-        :rtype: list of strings
+        :rtype: list[str]
         """
         full_model_ids = self.get_status()["fullModelIds"]
         if session_id is not None:
@@ -3978,15 +4539,21 @@ class DSSMLTask(object):
             model_ids = [fmi for fmi, s in self.get_trained_model_snippet(ids=model_ids).iteritems() if s.get("algorithm", "") == algorithm]
         return model_ids
 
-
     def get_trained_model_snippet(self, id=None, ids=None):
         """
-        Gets a quick summary of a trained model, as a dict. For complete information and a structured object, use :meth:`get_trained_model_detail`
+        Gets a quick summary of a trained model, as a dict.
 
-        :param str id: a model id
-        :param list ids: a list of model ids
+        This method can either be given a single model id, via the `id` param, or a list of model ids, via the `ids` param.
 
-        :rtype: dict
+        For complete model information and a structured object, use :meth:`get_trained_model_details`.
+
+        :param id: A model id (defaults to **None**)
+        :type id: str, optional
+        :param ids: A list of model ids (defaults to **None**)
+        :type ids: list[str]
+
+        :return: Either a quick summary of one trained model as a dict, or a list of model summary dicts
+        :rtype: Union[dict, list[dict]]
         """
         if id is not None:
             obj = {
@@ -4009,12 +4576,12 @@ class DSSMLTask(object):
 
     def get_trained_model_details(self, id):
         """
-        Gets details for a trained model
+        Gets details for a trained model.
         
         :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
 
-        :return: A :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails` representing the details of this trained model id
-        :rtype: :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails`
+        :return: A :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails` representing the details of this trained model.
+        :rtype: Union[:class:`DSSTrainedPredictionModelDetails`, :class:`DSSTrainedClusteringModelDetails`]
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
@@ -4029,30 +4596,35 @@ class DSSMLTask(object):
         """
         Deletes a trained model
 
-        :param str model_id: Model identifier, as returend by :meth:`get_trained_models_ids`
+        :param str model_id: Model identifier, as returned by :meth:`get_trained_models_ids`.
         """
         self.client._perform_empty(
             "DELETE", "/projects/%s/models/lab/%s/%s/models/%s" % (self.project_key, self.analysis_id, self.mltask_id, model_id))
 
     def train_queue(self):
         """
-        Trains this MLTask's queue
+        Trains each session in this ML Task's queue, or until the queue is paused.
 
         :return: A dict including the next sessionID to be trained in the queue
-        :rtype dict
+        :rtype: dict
         """
         return self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/actions/train-queue" % (self.project_key, self.analysis_id, self.mltask_id))
 
     def deploy_to_flow(self, model_id, model_name, train_dataset, test_dataset=None, redo_optimization=True):
         """
-        Deploys a trained model from this ML Task to a saved model + train recipe in the Flow.
+        Deploys a trained model from this ML Task to the flow.
+
+        Creates a new saved model and its parent training recipe in the Flow.
 
         :param str model_id: Model identifier, as returned by :meth:`get_trained_models_ids`
-        :param str model_name: Name of the saved model to deploy in the Flow
-        :param str train_dataset: Name of the dataset to use as train set. May either be a short name or a PROJECT.name long name (when using a shared dataset)
-        :param str test_dataset: Name of the dataset to use as test set. If null, split will be applied to the train set. May either be a short name or a PROJECT.name long name (when using a shared dataset). Only for PREDICTION tasks
-        :param bool redo_optimization: Should the hyperparameters optimization phase be done ? Defaults to True. Only for PREDICTION tasks
+        :param str model_name: Name of the saved model when deployed to the Flow
+        :param str train_dataset: Name of the dataset to use as train set.
+            May either be a short name or a PROJECT.name long name (when using a shared dataset)
+        :param test_dataset: Name of the dataset to use as test set. If None (default), the train/test split will be applied over the train set.
+            Only for PREDICTION tasks. May either be a short name or a PROJECT.name long name (when using a shared dataset).
+        :type test_dataset: str, optional
+        :param bool redo_optimization: Whether to redo the hyperparameter optimization phase (defaults to **True**). Only for PREDICTION tasks.
         :return: A dict containing: "savedModelId" and "trainRecipeName" - Both can be used to obtain further handles
         :rtype: dict
         """
@@ -4064,19 +4636,21 @@ class DSSMLTask(object):
         }
         return self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/deployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
-            body = obj)
-
+            body=obj)
 
     def redeploy_to_flow(self, model_id, recipe_name=None, saved_model_id=None, activate=True):
         """
-        Redeploys a trained model from this ML Task to a saved model + train recipe in the Flow. Either 
-        recipe_name of saved_model_id need to be specified
+        Redeploys a trained model from this ML Task to an existing saved model and training recipe in the flow.
+
+        Either the training recipe `recipe_name` or the `saved_model_id` needs to be specified.
 
         :param str model_id: Model identifier, as returned by :meth:`get_trained_models_ids`
-        :param str recipe_name: Name of the training recipe to update
-        :param str saved_model_id: Name of the saved model to update
-        :param bool activate: Should the deployed model version become the active version 
-        :return: A dict containing: "impactsDownstream" - whether the active version changed and downstream recipes are impacted 
+        :param recipe_name: Name of the training recipe to update (defaults to **None**)
+        :type recipe_name: str, optional
+        :param saved_model_id: Name of the saved model to update (defaults to **None**)
+        :type saved_model_id: str, optional
+        :param bool activate: If True (default), make the newly deployed model version become the active version
+        :return: A dict containing: "impactsDownstream" - whether the active saved mode version changed and downstream recipes are impacted
         :rtype: dict
         """
         obj = {
@@ -4090,18 +4664,21 @@ class DSSMLTask(object):
 
     def remove_unused_splits(self):
         """
-        Deletes all stored splits data that are not anymore in use for this ML Task.
+        Deletes all stored split data that is no longer in use for this ML Task.
 
-        It is generally not needed to call this method
+        You should generally not need to call this method.
         """
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeUnusedSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
     def remove_all_splits(self):
         """
-        Deletes all stored splits data for this ML Task. This operation saves disk space.
+        Deletes all stored split data for this ML Task.
+
+        This operation saves disk space.
 
         After performing this operation, it will not be possible anymore to:
+
         * Ensemble already trained models
         * View the "predicted data" or "charts" for already trained models
         * Resume training of models for which optimization had been previously interrupted
@@ -4113,31 +4690,40 @@ class DSSMLTask(object):
 
     def guess(self, prediction_type=None, reguess_level=None, target_variable=None, timeseries_identifiers=None, time_variable=None, full_reguess=None):
         """
-        Reguess all the settings of the ML task when no optional parameter are given.
-        For prediction ML tasks only, set a new value for a core parameter of the task (target variable or prediction
-        type) and subsequently reguess the impacted settings.
+        Reguess the settings of the ML Task.
 
-        :param string prediction_type: Only valid for prediction tasks of either `BINARY_CLASSIFICATION`, `MULTICLASS`
-               or `REGRESSION` type, ignored otherwise. The prediction type to set.
-               Cannot be set if target_variable, time_variable, or timeseries_identifiers is also specified.
-        :param string target_variable: Only valid for prediction tasks, ignored for clustering. The target variable to
-               set. Cannot be set if prediction_type, time_variable, or timeseries_identifiers is also specified.
-        :param list timeseries_identifiers: Only valid for time series forecasting tasks. List of columns to be used as
-               time series identifiers.
-               Cannot be set if prediction_type, target_variable, or time_variable is also specified.
-        :param string time_variable: Only valid for time series forecasting tasks. Column to be used as time variable.
-               Cannot be set if prediction_type, target_variable, or timeseries_identifiers is also specified.
-        :param bool full_reguess: Only valid for prediction tasks, ignored for clustering. Scope of the reguess process:
-               whether it should reguess all the settings after changing a core parameter, or only reguess impacted
-               settings (e.g. target remapping when changing the target, metrics when changing the prediction type...).
-               Ignored if no core parameter is given. Defaults to true.
-        :param string reguess_level: Deprecated, use `full_reguess` instead. Only valid for prediction tasks. Can be
-               one of the following values:
-               - TARGET_CHANGE: Change the target if target_variable is specified, reguess the target remapping, and
-                                clear the model's assertions if any.
-                                Equivalent to `full_reguess`=False (recommended usage)
-               - FULL_REGUESS:  All the settings of the ML task are reguessed.
-                                Equivalent to `full_reguess`=True (recommended usage)
+        When no optional parameters are given, this will reguess all the settings of the ML Task.
+
+        For prediction ML tasks only, a new target variable or prediction type can be passed, and this will subsequently reguess the impacted settings.
+
+        :param prediction_type: The desired prediction type. Only valid for prediction tasks of either `BINARY_CLASSIFICATION`, `MULTICLASS`
+            or `REGRESSION` type, ignored otherwise.
+            Cannot be set if either target_variable, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+        :type prediction_type: str, optional
+        :param target_variable: The desired target variable. Only valid for prediction tasks, ignored for clustering.
+            Cannot be set if either prediction_type, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+        :type target_variable: str, optional
+        :param timeseries_identifiers: Only valid for time series forecasting tasks. List of columns to be used as
+            time series identifiers.
+            Cannot be set if either prediction_type, target_variable, or time_variable is also specified. (defaults to **None**)
+        :type timeseries_identifiers: list[str], optional
+        :param time_variable: The desired time variable column. Only valid for time series forecasting tasks.
+            Cannot be set if either prediction_type, target_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+        :type time_variable: str, optional
+        :param full_reguess: Scope of the reguess process:
+            whether it should reguess all the settings after changing a core parameter, or only reguess impacted
+            settings (e.g. target remapping when changing the target, metrics when changing the prediction type...).
+            Ignored if no core parameter is given. Only valid for prediction tasks and therefore also ignored for clustering.
+            (defaults to **True**)
+        :type full_reguess: bool, optional
+        :param reguess_level: Deprecated, use `full_reguess` instead. Only valid for prediction tasks. Can be
+            one of the following values:
+
+            - TARGET_CHANGE: Change the target if target_variable is specified, reguess the target remapping, and
+              clear the model's assertions if any. Equivalent to ``full_reguess=False`` (recommended usage)
+            - FULL_REGUESS:  All the settings of the ML task are reguessed.
+              Equivalent to ``full_reguess=True`` (recommended usage)
+        :type reguess_level: str, optional
         """
         obj = {}
         if prediction_type is not None:
@@ -4178,7 +4764,7 @@ class DSSMLTask(object):
 
 class DSSMLTaskQueues(object):
     """
-    Iterable listing of MLTask queues
+    Iterable listing of ML Task queues
     """
     def __init__(self, data):
         self.data = data

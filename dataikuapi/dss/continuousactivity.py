@@ -55,24 +55,8 @@ class DSSContinuousActivity(object):
             # this is equivalent to simply stop()
             activity.stop()
         
-        :returns: the state of the continuous activity. Top-level fields are:
-
-                    * **projectKey** and **recipeId** : identify the continuous recipe
-                    * **recipeType** : type of continuous recipe ('csync', cpython', 'ksql' or 'streaming_spark_scala')
-                    * **desiredState** : whether the recipe should be running or not (values: 'STARTED' or 'STOPPED')
-                    * **loopParams** : parameters for the restarting of the recipe upon failure. Sub-fields are:
-
-                        * **abortAfterCrashes** : when reaching this number of failures, the recipe isn't restarted anymore. Use -1 as 'no limit on number of failures'
-                        * **initialRestartDelayMS** : initial delay to wait before restarting after a failure
-                        * **restartDelayIncMS** : increase to the delay before restarting upon subsequent failures
-                        * **maxRestartDelayMS** : max delay before restarting after failure
-
-                    * **mainLoopState** : state of the current run of the recipe. Sub-fields are:
-
-                        * **runId** : identifier of the run of the recipe (equivalent to a call or action to start)
-                        * **attemptId** : identifier of the (re)start of the recipe within the run
-                        * **lastCrashLogTail** and **lastError** : information about the last failure
-                        * **futureInfo** and **futureId** : information about the current run
+        :return: the state of the continuous activity. The state as requested by the use is stored in a **desiredState** 
+                  field (values: 'STARTED' or 'STOPPED'), and the current effective state in a **mainLoopState** sub-dict.
 
         :rtype: dict
         """

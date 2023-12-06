@@ -1,6 +1,6 @@
 from datetime import datetime
 import time, warnings
-from ..utils import DataikuException
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
 from dateutil.tz import tzlocal
@@ -362,35 +362,11 @@ class DSSScenarioStatus(object):
         """
         Get the raw status data.
 
-        :return: the status, as a dict with fields:
+        :return: the status, as a dict. Notable fields are:
 
-                    * **projectKey** and **id** : identifiers of the scenario
-                    * **name** : name of the scenario, can be distinct from **id**
-                    * **shortDesc** : short description of the scenario
-                    * **description** : longer description of the scenario, can use markdown
-                    * **tags** : list of tags, each one a string
-                    * **type** : type of scenario. Possible values are 'custom_python' and 'step_based'
                     * **active** : whether the scenario runs its automatic triggers
-                    * **automationLocal** : on automation nodes, flag indicating that the scenario was created on the automation node, as opposed to having been imported via a bundle.
-                    * **runAsUser** : login of the user that the scenario runs as. If empty, runs as the last user who modified the scenario
-                    * **interest** : watches and stars on the scenario, as a dict
-                    * **createdBy** : user who created the scenario, as a dict with fields **login** and **displayName**
-                    * **createdOn** : timestamp of creation of the scenario, in milliseconds
-                    * **lastModifiedBy** : user who last modified the scenario, as a dict with fields **login** and **displayName**
-                    * **lastModifiedOn** : timestamp of last modification of the scenario, in milliseconds
-                    * **triggerDigestItems** : list of summaries of the triggers, each one a dict:
-
-                        * **name** : name of the trigger
-                        * **description** : description of the trigger
-                        * **active** : whether the trigger is active
-                        * **nextRun** : for active time-based triggers, the expected timestamp of the next scenario run it will initiate
-
-                    * **triggerDigest** : friendly display of the concatenation of the contents of **triggerDigestItems**
-                    * **nextRun** : expected timestamp of the next scenario run that active time-based triggers will initiate
                     * **running** : whether the scenario is currently running
                     * **start** : if the scenario is running, the timestamp of the beginning of the run
-                    * **futureId** : identifier of the thread running the scenario in the DSS backend. Can be used to instantiate a :class:`dataikuapi.dss.future.DSSFuture`
-                    * **trigger** : if the scenario is running, the trigger fire that initiated it, as a dict (see :meth:DSSTriggerFire.get_raw()`)
 
         :rtype: dict
         """
@@ -421,7 +397,7 @@ class DSSScenarioStatus(object):
         """
         if not "nextRun" in self.data or self.data["nextRun"] == 0:
             return None
-        return datetime.fromtimestamp(self.data["nextRun"] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self.data["nextRun"])
 
 
 class DSSScenarioSettings(object):
@@ -444,28 +420,9 @@ class DSSScenarioSettings(object):
         This method returns a reference to the settings, not a copy. Modifying the settings then
         calling :meth:`save()` saves the changes made.
 
-        :return: the scenario, as a dict with fields:
-
-                    * **projectKey** and **id** : identifiers of the scenario
-                    * **name** : name of the scenario, can be distinct from **id**
-                    * **type** : type of scenario. Possible values are 'custom_python' and 'step_based'
-                    * **shortDesc** : short description of the scenario
-                    * **description** : longer description of the scenario, can use markdown
-                    * **tags** : list of tags, each one a string
-                    * **checklists** : definition of checklists on the scenario, as a dict
-                    * **params** : type-specific parameters of the scenario, as dict
-                    * **active** : whether the scenario runs its automatic triggers
-                    * **automationLocal** : on automation nodes, flag indicating that the scenario was created on the automation node, as opposed to having been imported via a bundle.
-                    * **runAsUser** : login of the user that the scenario runs as. If empty, runs as the last user who modified the scenario
-                    * **delayedTriggersBehavior** : settings for the behavior of triggers firing while the scenario is running, as a dict of:
-
-                        * **delayWhileRunning** : if True, run the scenario again after the current run is done. If False, dismiss the trigger fire
-                        * **squashDelayedTriggers** : if True, when several triggers fire during a scenario run, run of the scenario only once afterwards. If False, run as many times as there were trigger fires.
-                        * **suppressTriggersWhileRunning** : if True, triggers simply don't evaluate while the scenario runs
-
-                    * **triggers** : list of the automatic triggers, see :meth:`raw_triggers()`
-                    * **reporters** : list of reporters on the scenario, see :meth:`raw_reporters()`
-
+        :return: the scenario, as a dict. The type-specific parameters of the scenario are in
+                 a **params** sub-dict. For step-based scenarios, the **params** will contain the
+                 definitions of the steps as a **steps** list of dict.
         :rtype: dict
         """
         return self.data
@@ -530,20 +487,8 @@ class DSSScenarioSettings(object):
         This method returns a reference to the settings, not a copy. Modifying the settings then
         calling :meth:`save()` saves the changes made.
 
-        :return: list of the automatic triggers, each one a dict of:
-
-                        * **id** : identifier of the trigger within the scenario
-                        * **type** : type of the trigger
-                        * **name** : label of the trigger, distinct from **id** (which is often auto-generated)
-                        * **description** : description of the trigger
-                        * **active** : if False, the trigger is disabled
-                        * **delay** : (deprecated) delay between the time when the trigger fires, and the time a scenario run is requested
-                        * **graceDelaySettings** : additional settings for the delaying of the scenario run w.r.t. the trigger fire, as a dict of:
-
-                            * **delay** : delay between the time when the trigger fires, and the time a scenario run is requested
-                            * **checkAgainAfterGraceDelay** : if True, the trigger is evaluated again after the delay, and if the trigger fires again, the delay is reset
-
-                        * **params** : type-specific parameters of the trigger
+        :return: list of the automatic triggers, each one a dict. An **active** boolean field indicates
+                 whether the trigger is running automatically.
         :rtype: list[dict]
         """
         return self.data["triggers"]
@@ -556,19 +501,7 @@ class DSSScenarioSettings(object):
         This method returns a reference to the settings, not a copy. Modifying the settings then
         calling :meth:`save()` saves the changes made.
 
-        :return: list of reporters on the scenario, each one a dict of:
-
-                        * **id** : identifier of the reporter
-                        * **name** : label of the reporter
-                        * **description** : description of the reporter
-                        * **active** : if False, the reporter is disabled and will not send messages
-                        * **runConditionEnabled** : if True, the reporter only runs if the **runCondition** evaluates to True
-                        * **runCondition** : a condition to check to send the message
-                        * **phase** : when the reporter is run. Possible values are START and END (of the scenario run)
-                        * **messaging** : definition of how to send the message as a dict of:
-
-                            * **type** : type of message to send, for example 'mail-scenario' or 'slack-scenario'
-                            * **configuration** : type-specific parameters for how to produce and send the message, as a dict
+        :return: list of reporters on the scenario, each one a dict.
         :rtype: list[dict]
         """
         return self.data["reporters"]
@@ -689,25 +622,12 @@ class StepBasedScenarioSettings(DSSScenarioSettings):
         This method returns a reference to the settings, not a copy. Modifying the settings then
         calling :meth:`save()` saves the changes made.
 
-        :return: a list of scenario steps, each one a dict with fields:
+        :return: a list of scenario steps, each one a dict. Notable fields are:
 
                     * **id** : identifier of the step (unique in the scenario)
                     * **name** : label of the step
-                    * **description** : description of the step
                     * **type** : type of the step. There are many types, commonly used ones are build_flowitem, custom_python or exec_sql
                     * **params** : type-specific parameters for the step, as a dict
-                    * **runConditionType** : type of condition for the step to run. Possible values are:
-
-                        * DISABLED : never run the step
-                        * RUN_ALWAYS : always run the step, regardless of the current state of the scenario run (even FAILED)
-                        * RUN_IF_STATUS_MATCH : run the step if the scenario run's current state is in **runConditionStatuses**
-                        * RUN_CONDITIONALLY : run the step if **runConditionExpression** evaluates to True 
-
-                    * **runConditionStatuses** : list of scenario run states. Possible states are SUCCESS, WARNING, FAILED, ABORTED
-                    * **runConditionExpression** : a `GREL formula <https://doc.dataiku.com/dss/latest/formula/index.html>`_ . Can use variables, notably the current run state as '${outcome}'
-                    * **maxRetriesOnFail** : how many times to retry the step if it ends in FAILED
-                    * **delayBetweenRetries** : delay between retries, in seconds
-                    * **resetScenarioStatus** : if True, the state of the scenario run before this step is ignored when computing the state post-step
 
         :rtype: list[dict]
         """
@@ -837,51 +757,9 @@ class DSSScenarioRun(object):
         """
         Get the raw information of the scenario run.
 
-        :return: the scenario run, as a dict with fields:
-
-                    * **scenario** : the scenario of this run, as a dict with the same fields as :meth:`DSSScenarioSettings.get_raw()`. In particular, the dict has fields:
-
-                        * **projectKey** and **id** : identifiers of the scenario
-                        * **name** : label of the scenario (can be distinct from **id**)
-                        * **active** : whether the automatic triggers of this scenario run
-                        * **runAsUser** : user that the scenario is configured to run as. If None, le last user that modified the scenario
-                        * **type** : type of scenario (step_based or custom_python)
-
-                    * **runId** : identifier of the run of the scenario
-                    * **start** : timestamp of the scenario run beginning, in milliseconds
-                    * **end** : timestamp of the scenario run end, in milliseconds. Will be 0 if the scenario run is still ongoing
-                    * **trigger** : definition of the trigger fire that initiated the scenario run (see :meth:`DSSTriggerFire.get_raw()`)
-                    * **result** : if the scenario run is finished, the detailed outcome of the run, as a dict of:
-
-                        * **type** : type of result (should be SCENARIO_DONE in this context)
-                        * **outcome** : one of  SUCCESS, WARNING, FAILED, or ABORTED
-                        * **target** : definition of which object the result applies to, as a dict. A sub-field **type** indicates which kind of object the **target** is, and additional type-specific fields hold identifiers of the object
-                        * **start** : timestamp of the beginning of the operation that produced the result, in milliseconds (the scenario run in this context)
-                        * **end** : timestamp of the end of the operation that produced the result, in milliseconds (the scenario run in this context)
-                        * **thrown** : if the **outcome** is FAILED, the error that caused the failure, as a dict (see :meth:`DSSStepRunDetails.first_error_details()`)
-                        * **logTail** : if the **outcome** is FAILED, the last lines of the log of the operation that produced the result, as a dict of:
-
-                            * **totalLines** : number of lines in the full log (not just in this log tail)
-                            * **lines** : list of lines, each a string
-                            * **status** : detected log level of each line, as a list of int
-
-                    * **runAsUser** : information about the user that the scenario run effectively runs as, as a dict of:
-
-                        * **authSource** : type of user in DSS. One of USER_FROM_UI, PERSONAL_API_KEY, CONFIGURABLE_API_KEY_GLOBAL, CONFIGURABLE_API_KEY_PROJECT
-                        * **apiKey** : for API_KEY authentication sources, the API key as a dict, with at least a **key** field
-                        * **realUserLogin** : when **authSource** is USER_FROM_UI, the login of the user
-
-                    * **variables** : variables passed from parent scenario, in situations where a scenario A runs a sub-scenario B, as a dict
-                    * **clustersUsed** : list of clusters created by start or attach cluster steps, as a list of dicts with **key** (for the cluster id) and **value** (for the name of the variable in which the cluster id is stored) fields
-                    * **reportersStates** : the results of running the reporters of the scenario, as a list of dict. Only reporters that have completed are listed. Sub-fields are:
-
-                        * **reporterName** : label of the reporter
-                        * **messagingType** : type of reporter
-                        * **activated** : if False, the reporter's run condition prevented it from executing
-                        * **error** : if the reporter failed, a dict with the error details.
-                        * **messages** : messages outputted while executing the reporter, as a dict with a **messages** field which is a list of messages
-                        * **started** : when the reporter started executing, in milliseconds
-                        * **ended** : when the reporter was done executing, in milliseconds
+        :return: the scenario run, as a dict. The identifier of the run is a **runId** field. If the scenario run
+                 is finished, the detailed outcome of the run is a **result** sub-dict, with notably an **outcome**
+                 field (SUCCESS, WARNING, FAILED, or ABORTED)
 
         :rtype: dict
         """
@@ -921,7 +799,7 @@ class DSSScenarioRun(object):
 
         :rtype: :class:`datetime.datetime`
         """
-        return datetime.fromtimestamp(self.run['start'] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self.run['start'])
     start_time = property(get_start_time)
 
     def get_end_time(self):
@@ -931,7 +809,7 @@ class DSSScenarioRun(object):
         :rtype: :class:`datetime.datetime`
         """
         if "end" in self.run and self.run["end"] > 0:
-            return datetime.fromtimestamp(self.run['end'] / 1000)
+            return _timestamp_ms_to_zoned_datetime(self.run['end'])
         else:
             raise ValueError("Scenario run has not completed")
     end_time = property(get_end_time)
@@ -946,7 +824,7 @@ class DSSScenarioRun(object):
         """
         end_time = datetime.now()
         if self.run['end'] > 0:
-            end_time = datetime.fromtimestamp(self.run['end'] / 1000)
+            end_time = _timestamp_ms_to_zoned_datetime(self.run['end'])
         duration = (end_time - self.get_start_time()).total_seconds()
         return duration
 
@@ -975,29 +853,8 @@ class DSSScenarioRunDetails(dict):
             When the instance of :class:`DSSScenarioRunDetails` was obtained via :meth:`DSSScenarioRun.get_details()`,
             then the returned list is made of instances of :class:`DSSStepRunDetails`.
 
-        :return: a list of step runs, each as a dict with fields:
-
-            * **scenarioRun** : the scenario run to which this step run belongs (see :meth:`DSSScenarioRun.get_info()`)
-            * **step** : definition of the step that is running, as a dict (see :meth:`StepBasedScenarioSettings.raw_steps()`)
-            * **runId** : unique identifier of the step run within the scenario run
-            * **retryIndex** : how many times the step was retried before this step run
-            * **start** : timestamp of the step run beginning, in milliseconds
-            * **end** : timestamp of the step run end, in milliseconds. Will be 0 if the scenario run is still ongoing
-            * **result** : result of the step itself, as a dict:
-
-                * **type** : type of result (should be SCENARIO_DONE in this context)
-                * **outcome** : one of  SUCCESS, WARNING, FAILED, or ABORTED
-                * **target** : definition of which object the result applies to, as a dict. A sub-field **type** indicates which kind of object the **target** is, and additional type-specific fields hold identifiers of the object
-                * **start** : timestamp of the beginning of the operation that produced the result, in milliseconds (the scenario run in this context)
-                * **end** : timestamp of the end of the operation that produced the result, in milliseconds (the scenario run in this context)
-                * **thrown** : if the **outcome** is FAILED, the error that caused the failure, as a dict (see :meth:`DSSStepRunDetails.first_error_details()`)
-                * **logTail** : if the **outcome** is FAILED, the last lines of the log of the operation that produced the result, as a dict of:
-
-                    * **totalLines** : number of lines in the full log (not just in this log tail)
-                    * **lines** : list of lines, each a string
-                    * **status** : detected log level of each line, as a list of int
-
-            * **additionalReportItems** : additional results that the step can produce, as a list of dict with the structure of **result**. Can be datasets built, jobs runs, ...
+        :return: a list of step runs, each as a dict. The **runId** in the dict is the identifier of the step run,
+                 not of the overall scenario run. A **result** sub-dict contains the outcome of the step.
 
         :rtype: list[dict]
         """
@@ -1135,15 +992,9 @@ class DSSTriggerFire(object):
         """
         Get the definition of the trigger fire event.
 
-        :return: the trigger fire, as a dict of:
-
-                    * **trigger** : definition of the trigger which fired, as a dict (see :meth:`DSSScenarioSettings.raw_triggers()`)
-                    * **runId** : identifier of the trigger fire. Can be used with :meth:`get_trigger_fire()`
-                    * **timestamp** : when the trigger fired (precedes the scenario run start)
-                    * **triggerState** : current internal state of the trigger, as a string
-                    * **params** : parameters passed by the trigger to the scenario (depend on trigger type), as a dict
-                    * **triggerAuthCtx** : for manual runs, identity of the user who started the scenario, as a dict
-
+        :return: the trigger fire, as a dict. The **runId** field in the dict is not an identifier 
+                 of a scenario run, but of a run of the trigger.
+        :rtype: dict
         """
 
 
@@ -1253,7 +1104,4 @@ class DSSScenarioListItem(DSSTaggableObjectListItem):
         :return: timestap of the scenario run start, or None if it's not running at the moment.
         :rtype: :class:`datetime.datetime`
         """
-        if self._data['start'] <= 0:
-            return None
-        else:
-            return datetime.fromtimestamp(self._data['start'] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self._data['start'])

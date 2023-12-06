@@ -3,7 +3,8 @@ import json
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
-from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings
+from dataikuapi.govern.future import GovernFuture
+from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings, GovernUserActivity, GovernAuthorizationMatrix
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
 from dataikuapi.govern.admin_custom_pages_handler import GovernAdminCustomPagesHandler
 from dataikuapi.govern.admin_roles_permissions_handler import GovernAdminRolesPermissionsHandler
@@ -53,11 +54,11 @@ class GovernClient(object):
 
         try:
             http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    params=params, data=body,
-                    files=files,
-                    stream=stream,
-                    headers=headers)
+                method, "%s/dip/publicapi%s" % (self.host, path),
+                params=params, data=body,
+                files=files,
+                stream=stream,
+                headers=headers)
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -67,23 +68,23 @@ class GovernClient(object):
                 ex = {"message": http_res.text}
             raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
 
-    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
+    def _perform_empty(self, method, path, params=None, body=None, files=None, raw_body=None):
         self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
 
-    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_text(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body).text
 
-    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_json(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
 
-    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None):
+    def _perform_raw(self, method, path, params=None, body=None, files=None, raw_body=None):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
 
     def _perform_json_upload(self, method, path, name, f):
         try:
             http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    files = {'file': (name, f, {'Expires': '0'})} )
+                method, "%s/dip/publicapi%s" % (self.host, path),
+                files={'file': (name, f, {'Expires': '0'})})
             http_res.raise_for_status()
             return http_res
         except exceptions.HTTPError:
@@ -97,7 +98,7 @@ class GovernClient(object):
     def get_blueprint_designer(self):
         """
         Return a handle to interact with the blueprint designer
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
@@ -110,7 +111,7 @@ class GovernClient(object):
     def get_roles_permissions_handler(self):
         """
         Return a handler to manage the roles and permissions of the Govern instance
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_roles_permissions_handler.GovernAdminRolesPermissionsHandler`
         """
@@ -123,7 +124,7 @@ class GovernClient(object):
     def get_custom_pages_handler(self):
         """
         Return a handler to manage custom pages
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_custom_pages_handler.GovernAdminCustomPagesHandler`
         """
@@ -216,6 +217,19 @@ class GovernClient(object):
     # Time Series
     ########################################################
 
+    def create_time_series(self, datapoints=None):
+        """
+        Create a new time series and push a list of values inside it.
+
+        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timeSeriesId", "timestamp" (an epoch in milliseconds), and "value" (an object)
+        :return: the created time-series object
+        :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
+        """
+        if datapoints is None:
+            datapoints = []
+        result = self._perform_json("POST", "/time-series", body=datapoints)
+        return GovernTimeSeries(self, result["id"])
+
     def get_time_series(self, time_series_id):
         """
         Return a handle to interact with the time series
@@ -280,15 +294,6 @@ class GovernClient(object):
         """
         return GovernUser(self, login)
 
-    def get_own_user(self):
-
-        """
-        Get a handle to interact with the current user
-
-        :return: A :class:`~dataikuapi.govern.admin.GovernOwnUser` user handle
-        """
-        return GovernOwnUser(self)
-
     def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST'):
         """
         Create a user, and return a handle to interact with it
@@ -316,6 +321,102 @@ class GovernClient(object):
             "userProfile": profile
         })
         return GovernUser(self, login)
+
+    def get_own_user(self):
+        """
+        Get a handle to interact with the current user
+
+        :return: A :class:`~dataikuapi.govern.admin.GovernOwnUser` user handle
+        """
+        return GovernOwnUser(self)
+
+    def list_users_activity(self, enabled_users_only=False):
+        """
+        List all users activity
+
+        Note: this call requires an API key with admin rights
+
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.govern.admin.GovernUserActivity`
+        :rtype: list of :class:`dataikuapi.govern.admin.GovernUserActivity`
+        """
+        params = {
+            "enabledUsersOnly": enabled_users_only
+        }
+        all_activity = self._perform_json("GET", "/admin/users-activity", params=params)
+
+        return [GovernUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
+
+    def get_authorization_matrix(self):
+        """
+        Get the authorization matrix for all enabled users and groups
+
+        Note: this call requires an API key with admin rights
+
+        :return: The authorization matrix
+        :rtype: A :class:`dataikuapi.govern.admin.GovernAuthorizationMatrix` authorization matrix handle
+        """
+        resp = self._perform_json("GET", "/admin/authorization-matrix")
+        return GovernAuthorizationMatrix(resp)
+
+    def start_resync_users_from_supplier(self, logins):
+        """
+        Starts a resync of multiple users from an external supplier (LDAP, Azure AD or custom auth)
+        
+        :param list logins: list of logins to resync
+        :return: a :class:`dataikuapi.govern.future.GovernFuture` representing the sync process
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi", body=logins)
+        return GovernFuture.from_resp(self, future_resp)
+
+    def start_resync_all_users_from_supplier(self):
+        """
+        Starts a resync of all users from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.govern.future.GovernFuture` representing the sync process
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/resync-multi")
+        return GovernFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_groups(self, user_source_type):
+        """
+        Fetch groups from external source
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        :return: a GovernFuture containing a list of group names
+        """
+        future_resp = self._perform_json("GET", "/admin/external-groups", params={'userSourceType': user_source_type})
+        return GovernFuture.from_resp(self, future_resp)
+
+    def start_fetch_external_users(self, user_source_type, login=None, group_name=None):
+        """
+        Fetch users from external source filtered by login or group name:
+         - if login is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
+         - else,
+            - if group_name is provided, will search for members of the group in the external source
+            - else will search for all users
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param login: optional - the login of the user in the external source
+        :param group_name: optional - the group name of the group in the external source
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        :return: a GovernFuture containing a list of ExternalUser
+        """
+        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'groupName': group_name})
+        return GovernFuture.from_resp(self, future_resp)
+
+    def start_provision_users(self, user_source_type, users):
+        """
+        Provision users of given source type
+
+        :param string user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param list users: list of user attributes coming form the external source
+        :rtype: :class:`dataikuapi.govern.future.GovernFuture`
+        """
+        future_resp = self._perform_json("POST", "/admin/users/actions/provision", body={'userSourceType': user_source_type, 'users': users})
+        return GovernFuture.from_resp(self, future_resp)
 
     ########################################################
     # Groups
@@ -500,3 +601,47 @@ class GovernClient(object):
         :return: None
         """
         self._perform_empty("POST", "/admin/licensing/license", body=json.loads(license))
+
+    ########################################################
+    # Global Instance Info
+    ########################################################
+
+    def get_instance_info(self):
+        """
+        Get global information about the Govern instance
+
+        :returns: a :class:`GovernInstanceInfo`
+        """
+        resp = self._perform_json("GET", "/instance-info")
+        return GovernInstanceInfo(resp)
+
+
+class GovernInstanceInfo(object):
+    """Global information about the Govern instance"""
+
+    def __init__(self, data):
+        """Do not call this directly, use :meth:`GovernClient.get_instance_info`"""
+        self._data = data
+
+    @property
+    def raw(self):
+        """Returns all data as a Python dictionary"""
+        return self._data
+
+    @property
+    def node_id(self):
+        """Returns the node id (as defined in Cloud Stacks or in install.ini)"""
+        return self._data["nodeId"]
+
+    @property
+    def node_name(self):
+        """Returns the node name as it appears in the navigation bar"""
+        return self._data["nodeName"]
+
+    @property
+    def node_type(self):
+        """
+        Returns the node type
+        :return: GOVERN
+        """
+        return self._data["nodeType"]

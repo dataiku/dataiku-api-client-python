@@ -1,9 +1,8 @@
 import datetime
 
-from ..utils import DataikuException
-from ..utils import DataikuUTF8CSVReader
+from ..utils import DataikuException, DataikuValueCaster
 from ..utils import DataikuStreamedHttpUTF8CSVReader
-from .future import DSSFuture
+from ..utils import _timestamp_ms_to_zoned_datetime
 import json, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 from .future import DSSFuture
@@ -45,6 +44,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["name"]
+    
     @property
     def id(self):
         """
@@ -53,6 +53,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["name"]
+    
     @property
     def type(self):
         """
@@ -61,13 +62,14 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["type"]
+    
     @property
     def schema(self):
         """
-        Get the schema of the dataset.
+        Get the dataset schema as a dict.
         
-        :returns: a list of column definitions. See :meth:`DSSDataset.get_schema()`
-        :rtype: list[dict]
+        :returns: a dict object of the schema, with the list of columns. See :meth:`DSSDataset.get_schema()`
+        :rtype: dict
         """
         return self._data["schema"]
 
@@ -84,7 +86,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
 
     def get_column(self, column):
         """
-        Get the a given column in the schema of the dataset, by its name.
+        Get a given column in the dataset schema by its name.
         
         :param str column: name of the column to find
         
@@ -106,10 +108,20 @@ class DSSDataset(object):
 
     @property
     def id(self):
+        """
+        Get the dataset identifier.
+        
+        :rtype: string
+        """
         return self.dataset_name
 
     @property
     def name(self):
+        """
+        Get the dataset name.
+        
+        :rtype: string
+        """
         return self.dataset_name
     
     ########################################################
@@ -118,7 +130,7 @@ class DSSDataset(object):
 
     def delete(self, drop_data=False):
         """
-        Delete the dataset
+        Delete the dataset.
 
         :param bool drop_data: Should the data of the dataset be dropped, defaults to False
         """
@@ -164,7 +176,7 @@ class DSSDataset(object):
 
     def get_definition(self):
         """
-        Get the raw settings of the dataset as a dict
+        Get the raw settings of the dataset as a dict.
 
         .. caution:: Deprecated. Use :meth:`get_settings`
         
@@ -180,8 +192,8 @@ class DSSDataset(object):
         
         .. caution:: Deprecated. Use :meth:`get_settings` and :meth:`DSSDatasetSettings.save`
         
-        :param definition: the definition, as a dict. You should only set a definition object 
-                            that has been retrieved using the get_definition call.
+        :param dict definition: the definition, as a dict. You should only set a definition object 
+                            that has been retrieved using the :meth:`get_definition` call.
         """
         warnings.warn("Dataset.set_definition is deprecated, please use get_settings", DeprecationWarning)
         return self.client._perform_json(
@@ -207,19 +219,20 @@ class DSSDataset(object):
 
     def get_schema(self):
         """
-        Get the schema of the dataset
+        Get the dataset schema.
         
-        :returns: a JSON object of the schema, with the list of columns
+        :returns: a dict object of the schema, with the list of columns.
+        :rtype: dict
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/schema" % (self.project_key, self.dataset_name))
 
     def set_schema(self, schema):
         """
-        Set the schema of the dataset
+        Set the dataset schema.
         
-        :param schema: the desired schema for the dataset, as a JSON object. 
-                       All columns have to provide their name and type
+        :param dict schema: the desired schema for the dataset, as a dict. 
+                       All columns have to provide their name and type.
         """
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s/schema" % (self.project_key, self.dataset_name),
@@ -231,7 +244,8 @@ class DSSDataset(object):
         checklists, tags and custom metadata of the dataset
         
         :returns: a dict object. For more information on available metadata, please see
-                  https://doc.dataiku.com/dss/api/11.0/rest/
+                  https://doc.dataiku.com/dss/api/latest/rest/
+        :rtype: dict
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name))
@@ -240,8 +254,8 @@ class DSSDataset(object):
         """
         Set the metadata on this dataset.
         
-        :param metadata: the new state of the metadata for the dataset. You should only set a metadata object 
-                         that has been retrieved using the get_metadata call.
+        :param dict metadata: the new state of the metadata for the dataset. You should only set a metadata object 
+                         that has been retrieved using the :meth:`get_metadata` call.
         """
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name),
@@ -254,10 +268,13 @@ class DSSDataset(object):
 
     def iter_rows(self, partitions=None):
         """
-        Get the dataset's data
-        
-        :returns: an iterator over the rows, each row being a tuple of values. The order of values
-                  in the tuples is the same as the order of columns in the schema returned by get_schema
+        Get the dataset data as a row-by-row iterator.
+
+        :param partitions: (optional) partition identifier, or list of partitions to include, if applicable.
+        :type partitions: Union[string, list[string]]
+        :returns: an iterator over the rows, each row being a list of values. The order of values
+                  in the list is the same as the order of columns in the schema returned by :meth:`get_schema`
+        :rtype: generator[list]
         """
         csv_stream = self.client._perform_raw(
                 "GET" , "/projects/%s/datasets/%s/data/" %(self.project_key, self.dataset_name),
@@ -271,9 +288,10 @@ class DSSDataset(object):
 
     def list_partitions(self):
         """
-        Get the list of all partitions of this dataset
+        Get the list of all partitions of this dataset.
         
-        :returns: the list of partitions, as a list of strings
+        :returns: the list of partitions, as a list of strings.
+        :rtype: list[string]
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/partitions" % (self.project_key, self.dataset_name))
@@ -281,10 +299,14 @@ class DSSDataset(object):
 
     def clear(self, partitions=None):
         """
-        Clear all data in this dataset
+        Clear data in this dataset.
         
-        :param partitions: (optional) a list of partitions to clear. When not provided, the entire dataset
-                           is cleared
+        :param partitions: (optional) partition identifier, or list of partitions to clear. When not provided, the entire dataset
+                           is cleared.
+        :type partitions: Union[string, list[string]]
+
+        :returns: a dict containing the method call status.
+        :rtype: dict
         """
         return self.client._perform_json(
                 "DELETE", "/projects/%s/datasets/%s/data" % (self.project_key, self.dataset_name),
@@ -292,10 +314,14 @@ class DSSDataset(object):
 
     def copy_to(self, target, sync_schema=True, write_mode="OVERWRITE"):
         """
-        Copy the data of this dataset to another dataset
+        Copy the data of this dataset to another dataset.
 
-        :param target Dataset: a :class:`dataikuapi.dss.dataset.DSSDataset` representing the target of this copy
-        :returns: a DSSFuture representing the operation
+        :param target: an object representing the target of this copy.
+        :type target: :class:`dataikuapi.dss.dataset.DSSDataset`
+        :param bool sync_schema: (optional) update the target dataset schema to make it match the sourece dataset schema.
+        :param string write_mode: (optional) OVERWRITE (default) or APPEND. If OVERWRITE, the output dataset is cleared prior to writing the data.
+        :returns: a DSSFuture representing the operation.
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         dqr = {
              "targetProjectKey" : target.project_key,
@@ -305,6 +331,33 @@ class DSSDataset(object):
         }
         future_resp = self.client._perform_json("POST", "/projects/%s/datasets/%s/actions/copyTo" % (self.project_key, self.dataset_name), body=dqr)
         return DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
+
+    def search_data_elastic(self, query_string, start=0, size=128, sort_columns=None, partitions=None):
+        """
+        .. caution::
+            Only for datasets on Elasticsearch connections
+
+        Query the service with a search string to directly fetch data
+        :param str query_string: Elasticsearch compatible query string
+        :param int start: row to start fetching the data
+        :param int size: number of results to return
+        :param list sort_columns: list of {"column", "order"} dict, which is the order to fetch data. "order" is "asc" for ascending, "desc" for descending
+        :param list partitions: if the dataset is partitioned, a list of partition ids to search
+        :return: a dict containing "columns", "rows", "warnings", "found" (when start == 0)
+        :rtype: dict
+        """
+        params = {
+            "queryString": query_string,
+            "start": start,
+            "size": size,
+            "sortColumns": json.dumps(sort_columns),
+            "partitions": json.dumps(partitions),
+        }
+        future_resp = self.client._perform_json("GET", "/projects/%s/datasets/%s/search-data-elastic" % (self.project_key, self.dataset_name), params=params)
+        result = DSSFuture(self.client, future_resp.get("jobId", None), future_resp).wait_for_result()
+        value_caster = DataikuValueCaster(result["columns"])
+        result["rows"] = [value_caster.cast_values(row) for row in result["rows"]]
+        return result
 
     ########################################################
     # Dataset actions
@@ -320,8 +373,9 @@ class DSSDataset(object):
             job = dataset.build()
             print("Job %s done" % job.id)
 
-        :param job_type: The job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
-        :param partitions: If the dataset is partitioned, a list of partition ids to build
+        :param job_type: the job type. One of RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD or RECURSIVE_FORCED_BUILD
+        :param partitions: if the dataset is partitioned, a list of partition ids to build
+        :param bool wait: whether to wait for the job completion before returning the job handle, defaults to True
         :param no_fail: if True, does not raise if the job failed.
         :returns: the :class:`dataikuapi.dss.job.DSSJob` job handle corresponding to the built job
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
@@ -354,6 +408,13 @@ class DSSDataset(object):
         
         If neither metric ids nor custom probes set are specified, the metrics
         setup on the dataset are used.
+
+        :param partition: (optional) partition identifier, use ALL to compute metrics on all data.
+        :type partition: string
+        :param list[string] metric_ids: (optional) ids of the metrics to build
+
+        :returns: a metric computation report, as a dict
+        :rtype: dict
         """
         url = "/projects/%s/datasets/%s/actions" % (self.project_key, self.dataset_name)
         if metric_ids is not None:
@@ -375,6 +436,12 @@ class DSSDataset(object):
         
         If the checks are not specified, the checks
         setup on the dataset are used.
+
+        :param str partition: (optional) partition identifier, use ALL to run checks on all data.
+        :param list[string] checks: (optional) ids of the checks to run.
+
+        :returns: a checks computation report, as a dict.
+        :rtype: dict
         """
         if checks is None:
             return self.client._perform_json(
@@ -397,7 +464,10 @@ class DSSDataset(object):
 
     def uploaded_list_files(self):
         """
-        List the files in an "uploaded files" dataset
+        List the files in an "uploaded files" dataset.
+
+        :returns: uploaded files metadata as a list of dicts, with one dict per file.
+        :rtype: list[dict]
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/uploaded/files" % (self.project_key, self.dataset_name))
 
@@ -412,19 +482,22 @@ class DSSDataset(object):
                                   prediction_type=None,
                                   wait_guess_complete=True):
 
-        """
-        Create a new prediction task in a new visual analysis lab
+        """Creates a new prediction task in a new visual analysis lab
         for a dataset.
 
-        :param string input_dataset: the dataset to use for training/testing the model
-        :param string target_variable: the variable to predict
-        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
-        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT, SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE
-        :param string prediction_type: The type of prediction problem this is. If not provided the prediction type will be guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS
-        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
-                                            You should wait for the guessing to be completed by calling
-                                            ``wait_guess_complete`` on the returned object before doing anything
-                                            else (in particular calling ``train`` or ``get_settings``)
+        :param str target_variable: the variable to predict
+        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O (defaults to **PY_MEMORY**)
+        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: DEFAULT,
+            SIMPLE_FORMULA, DECISION_TREE, EXPLANATORY and PERFORMANCE (defaults to **DEFAULT**)
+        :param str prediction_type: The type of prediction problem this is. If not provided the prediction type will be
+            guessed. Valid values are: BINARY_CLASSIFICATION, REGRESSION, MULTICLASS (defaults to **None**)
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing
+            the input dataset to determine feature handling and algorithms (defaults to **True**). You should wait for
+            the guessing to be completed by calling **wait_guess_complete** on the returned object before doing anything
+            else (in particular calling **train** or **get_settings**)
+
+        :returns: A ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         return self.project.create_prediction_ml_task(self.dataset_name, 
              target_variable = target_variable, ml_backend_type = ml_backend_type,
@@ -434,24 +507,26 @@ class DSSDataset(object):
                                   ml_backend_type="PY_MEMORY",
                                   guess_policy="KMEANS",
                                   wait_guess_complete=True):
-        """
-        Create a new clustering task in a new visual analysis lab
-        for a dataset.
-
+        """Creates a new clustering task in a new visual analysis lab for a dataset.
 
         The returned ML task will be in 'guessing' state, i.e. analyzing
         the input dataset to determine feature handling and algorithms.
 
         You should wait for the guessing to be completed by calling
-        ``wait_guess_complete`` on the returned object before doing anything
-        else (in particular calling ``train`` or ``get_settings``)
+        **wait_guess_complete** on the returned object before doing anything
+        else (in particular calling **train** or **get_settings**)
 
-        :param string ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O
-        :param string guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and ANOMALY_DETECTION
-        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
-                                            You should wait for the guessing to be completed by calling
-                                            ``wait_guess_complete`` on the returned object before doing anything
-                                            else (in particular calling ``train`` or ``get_settings``)
+        :param string input_dataset: The dataset to use for training/testing the model
+        :param str ml_backend_type: ML backend to use, one of PY_MEMORY, MLLIB or H2O (defaults to **PY_MEMORY**)
+        :param str guess_policy: Policy to use for setting the default parameters.  Valid values are: KMEANS and
+            ANOMALY_DETECTION (defaults to **KMEANS**)
+        :param boolean wait_guess_complete: if False, the returned ML task will be in 'guessing' state, i.e. analyzing
+            the input dataset to determine feature handling and algorithms (defaults to **True**). You should wait for
+            the guessing to be completed by calling **wait_guess_complete** on the returned object before doing anything
+            else (in particular calling **train** or **get_settings**)
+
+        :returns: A ML task handle of type 'CLUSTERING'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         return self.project.create_clustering_ml_task(self.dataset_name, ml_backend_type=ml_backend_type, guess_policy=guess_policy,
                                                       wait_guess_complete=wait_guess_complete)
@@ -461,8 +536,7 @@ class DSSDataset(object):
                                               timeseries_identifiers=None,
                                               guess_policy="TIMESERIES_DEFAULT",
                                               wait_guess_complete=True):
-        """
-        Create a new time series forecasting task in a new visual analysis lab for a dataset.
+        """Creates a new time series forecasting task in a new visual analysis lab for a dataset.
 
         :param string target_variable: The variable to forecast
         :param string time_variable:  Column to be used as time variable. Should be a Date (parsed) column.
@@ -473,16 +547,41 @@ class DSSDataset(object):
                                             You should wait for the guessing to be completed by calling
                                             ``wait_guess_complete`` on the returned object before doing anything
                                             else (in particular calling ``train`` or ``get_settings``)
+        :returns: A ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
         return self.project.create_timeseries_forecasting_ml_task(self.dataset_name, target_variable=target_variable,
                                                                   time_variable=time_variable, timeseries_identifiers=timeseries_identifiers,
                                                                   guess_policy=guess_policy, wait_guess_complete=wait_guess_complete)
 
+    def create_causal_prediction_ml_task(self, outcome_variable,
+                                         treatment_variable,
+                                         prediction_type=None,
+                                         wait_guess_complete=True):
+        """Creates a new causal prediction task in a new visual analysis lab for a dataset.
+
+        :param string outcome_variable: The outcome variable to predict.
+        :param string treatment_variable: The treatment variable.
+        :param string or None prediction_type: Valid values are: "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION" or None (in this case prediction_type will be set by the Guesser)
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :returns: A ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
+        """
+        return self.project.create_causal_prediction_ml_task(self.dataset_name, outcome_variable=outcome_variable,
+                                                             treatment_variable=treatment_variable, prediction_type=prediction_type,
+                                                             wait_guess_complete=wait_guess_complete)
+
     def create_analysis(self):
         """
-        Create a new visual analysis lab
+        Create a new visual analysis lab for the dataset.
+
+        :returns: A visual analysis handle
+        :rtype: :class:`dataikuapi.dss.analysis.DSSAnalysis`
         """
-        return self.project_create_analysis(self.dataset_name)
+        return self.project.create_analysis(self.dataset_name)
  
     def list_analyses(self, as_type="listitems"):
         """
@@ -520,6 +619,8 @@ class DSSDataset(object):
         """
         List the statistics worksheets associated to this dataset.
 
+        :param bool as_objects: if true, returns the statistics worksheets as :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet`, else as a list of dicts
+
         :rtype: list of :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet`
         """
         worksheets = self.client._perform_json(
@@ -533,8 +634,7 @@ class DSSDataset(object):
         """
         Create a new worksheet in the dataset, and return a handle to interact with it.
 
-        :param string input_dataset: input dataset of the worksheet
-        :param string worksheet_name: name of the worksheet
+        :param string name: name of the worksheet
 
         :returns: a statistic worksheet handle
         :rtype: :class:`dataikuapi.dss.statistics.DSSStatisticsWorksheet`
@@ -577,7 +677,11 @@ class DSSDataset(object):
         """
         Get the last values of the metrics on this dataset
 
+        :param partition: (optional) partition identifier, use ALL to retrieve metric values on all data.
+        :type partition: string
+
         :returns: a list of metric objects and their value
+        :rtype: :class:`dataikuapi.dss.metrics.ComputedMetrics`
         """
         return ComputedMetrics(self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/last/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition)))
@@ -586,7 +690,12 @@ class DSSDataset(object):
         """
         Get the history of the values of the metric on this dataset
 
-        :returns: an object containing the values of the metric, cast to the appropriate type (double, boolean,...)
+        :param string metric: id of the metric to get
+        :param partition: (optional) partition identifier, use ALL to retrieve metric history on all data.
+        :type partition: string
+
+        :returns: a dict containing the values of the metric, cast to the appropriate type (double, boolean,...)
+        :rtype: dict
         """
         return self.client._perform_json(
                 "GET", "/projects/%s/datasets/%s/metrics/history/%s" % (self.project_key, self.dataset_name, 'NP' if len(partition) == 0 else partition),
@@ -649,6 +758,7 @@ class DSSDataset(object):
         Get the recipes or analyses referencing this dataset
 
         :returns: a list of usages
+        :rtype: list[dict]
         """
         return self.client._perform_json("GET", "/projects/%s/datasets/%s/usages" % (self.project_key, self.dataset_name))
 
@@ -657,7 +767,7 @@ class DSSDataset(object):
         Get a handle to manage discussions on the dataset
 
         :returns: the handle to manage discussions
-        :rtype: :class:`dataikuapi.discussion.DSSObjectDiscussions`
+        :rtype: :class:`dataikuapi.dss.discussion.DSSObjectDiscussions`
         """
         return DSSObjectDiscussions(self.client, self.project_key, "DATASET", self.dataset_name)
 
@@ -674,7 +784,10 @@ class DSSDataset(object):
                 "BigQuery", "Athena", "hiveserver2", "Synapse", "Databricks"]
 
     def test_and_detect(self, infer_storage_types=False):
-        """Used internally by autodetect_settings. It is not usually required to call this method"""
+        """Used internally by :meth:`autodetect_settings` It is not usually required to call this method
+        
+        :param bool infer_storage_types: whether to infer storage types
+        """
         settings = self.get_settings()
 
         if settings.type in self.__class__._FS_TYPES:
@@ -697,6 +810,8 @@ class DSSDataset(object):
     def autodetect_settings(self, infer_storage_types=False):
         """
         Detect appropriate settings for this dataset using Dataiku detection engine
+
+        :param bool infer_storage_types: whether to infer storage types
 
         :returns: new suggested settings that you can :meth:`DSSDatasetSettings.save`
         :rtype: :class:`DSSDatasetSettings` or a subclass
@@ -740,6 +855,8 @@ class DSSDataset(object):
     def get_as_core_dataset(self):
         """
         Get the :class:`dataiku.Dataset` object corresponding to this dataset
+
+        :rtype: :class:`dataiku.Dataset`
         """
         import dataiku
         return dataiku.Dataset("%s.%s" % (self.project_key, self.dataset_name))
@@ -750,10 +867,14 @@ class DSSDataset(object):
 
     def new_code_recipe(self, type, code=None, recipe_name=None):
         """
-        Start the creation of a new code recipe taking this dataset as input
+        Start the creation of a new code recipe taking this dataset as input.
         
-        :param str type: Type of the recipe ('python', 'r', 'pyspark', 'sparkr', 'sql', 'sparksql', 'hive', ...)
-        :param str code: The code of the recipe
+        :param str type: type of the recipe ('python', 'r', 'pyspark', 'sparkr', 'sql', 'sparksql', 'hive', ...).
+        :param str code: the code of the recipe.
+        :param str recipe_name: (optional) base name for the new recipe.
+
+        :returns: a handle to the new recipe's creator object.
+        :rtype: Union[:class:`dataikuapi.dss.recipe.CodeRecipeCreator`, :class:`dataikuapi.dss.recipe.PythonRecipeCreator`]
         """
 
         if type == "python":
@@ -770,7 +891,8 @@ class DSSDataset(object):
         Start the creation of a new recipe taking this dataset as input.
         For more details, please see :meth:`dataikuapi.dss.project.DSSProject.new_recipe`
 
-        :param str type: Type of the recipe
+        :param str type: type of the recipe ('python', 'r', 'pyspark', 'sparkr', 'sql', 'sparksql', 'hive', ...).
+        :param str recipe_name: (optional) base name for the new recipe.
         """
         builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
@@ -791,31 +913,66 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
         self.settings = settings
 
     def get_raw(self):
-        """Get the raw dataset settings as a dict"""
+        """Get the raw dataset settings as a dict.
+        
+        :rtype: dict
+        """
         return self.settings
 
     def get_raw_params(self):
-        """Get the type-specific params, as a raw dict"""
+        """Get the type-specific params, as a raw dict.
+        
+        :rtype: dict
+        """
         return self.settings["params"]
 
     @property
     def type(self):
+        """Returns the settings type as a string.
+
+        :rtype: string
+        """
         return self.settings["type"]
 
     @property
     def schema_columns(self):
+        """
+        Get the schema columns settings.
+        
+        :returns: a list of dicts with column settings.
+        :rtype: list[dict]
+        """
         return self.settings["schema"]["columns"]
 
     def remove_partitioning(self):
+        """
+        Reset partitioning settings to those of a non-partitionned dataset.
+        """
         self.settings["partitioning"] = {"dimensions" : []}
 
     def add_discrete_partitioning_dimension(self, dim_name):
+        """
+        Add a discrete partitioning dimension to settings.
+
+        :param string dim_name: name of the partition to add.
+        """
         self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "value"})
 
     def add_time_partitioning_dimension(self, dim_name, period="DAY"):
+        """
+        Add a time partitioning dimension to settings.
+
+        :param string dim_name: name of the partition to add.
+        :param string period: (optional) time granularity of the created partition. Can be YEAR, MONTH, DAY, HOUR.
+        """
         self.settings["partitioning"]["dimensions"].append({"name": dim_name, "type": "time", "params":{"period": period}})
 
     def add_raw_schema_column(self, column):
+        """
+        Add a column to the schema settings.
+
+        :param dict column: column settings to add.
+        """
         self.settings["schema"]["columns"].append(column)
 
     @property
@@ -838,6 +995,9 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
         self.settings["featureGroup"] = status
 
     def save(self):
+        """
+        Save settings.
+        """
         self.dataset.client._perform_empty(
                 "PUT", "/projects/%s/datasets/%s" % (self.dataset.project_key, self.dataset.dataset_name),
                 body=self.settings)
@@ -855,20 +1015,45 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
         super(FSLikeDatasetSettings, self).__init__(dataset, settings)
 
     def set_connection_and_path(self, connection, path):
+        """
+        Set connection and path parameters.
+
+        :param string connection: connection to use.
+        :param string path: path to use.
+        """
         self.settings["params"]["connection"] = connection
         self.settings["params"]["path"] = path
 
     def get_raw_format_params(self):
-        """Get the raw format parameters as a dict""" 
+        """
+        Get the raw format parameters as a dict.
+        
+        :rtype: dict
+        """ 
         return self.settings["formatParams"]
 
     def set_format(self, format_type, format_params = None):
+        """
+        Set format parameters.
+
+        :param string format_type: format type to use.
+        :param dict format_params: dict of parameters to assign to the formatParams settings section.
+        """
         if format_params is None:
             format_params = {}
         self.settings["formatType"] = format_type
         self.settings["formatParams"] = format_params
 
     def set_csv_format(self, separator=",", style="excel", skip_rows_before=0, header_row=True, skip_rows_after=0):
+        """
+        Set format parameters for a csv-based dataset.
+
+        :param string separator: (optional) separator to use, default is ','".
+        :param string style: (optional) style to use, default is 'excel'.
+        :param int skip_rows_before: (optional) number of rows to skip before header, default is 0.
+        :param bool header_row: (optional) wheter or not the header row is parsed, default is true.
+        :param int skip_rows_after: (optional) number of rows to skip before header, default is 0.
+        """
         format_params = {
             "style" : style,
             "separator":  separator,
@@ -879,6 +1064,11 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
         self.set_format("csv", format_params)
 
     def set_partitioning_file_pattern(self, pattern):
+        """
+        Set the dataset partitionning file pattern.
+
+        :param str pattern: pattern to set.
+        """
         self.settings["partitioning"]["filePathPattern"] = pattern
 
 class SQLDatasetSettings(DSSDatasetSettings):
@@ -934,7 +1124,7 @@ class DSSManagedDatasetCreationHelper(object):
             for idx, val in enumerate(data):
                 writer.write_row_array((idx, val))
     
-    .. caution:: do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_managed_dataset`
+    .. caution:: Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_managed_dataset`
     """
 
 
@@ -944,6 +1134,11 @@ class DSSManagedDatasetCreationHelper(object):
         self.creation_settings = { "specificSettings" : {} }
 
     def get_creation_settings(self):
+        """
+        Get the dataset creation settings as a dict.
+
+        :rtype: dict
+        """
         return self.creation_settings
 
     def with_store_into(self, connection, type_option_id = None, format_option_id = None):
@@ -965,9 +1160,11 @@ class DSSManagedDatasetCreationHelper(object):
 
     def with_copy_partitioning_from(self, dataset_ref, object_type='DATASET'):
         """
-        Sets the new managed dataset to use the same partitioning as an existing dataset_name
+        Sets the new managed dataset to use the same partitioning as an existing dataset
 
         :param str dataset_ref: Name of the dataset to copy partitioning from
+        :param str object_type: Type of the object to copy partitioning from, values can be DATASET or FOLDER
+
         :returns: self
         """
         code = 'dataset' if object_type == 'DATASET' else 'folder'
@@ -996,6 +1193,8 @@ class DSSManagedDatasetCreationHelper(object):
 
     def already_exists(self):
         """
+        Check if dataset already exists.
+
         :returns: whether this managed dataset already exists
         :rtype: bool
         """
@@ -1037,7 +1236,7 @@ class DSSDatasetInfo(object):
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildStartTime", None)
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_build_end_time(self):
@@ -1049,7 +1248,7 @@ class DSSDatasetInfo(object):
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildEndTime", None)
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def is_last_build_successful(self):

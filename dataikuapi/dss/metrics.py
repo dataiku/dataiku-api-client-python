@@ -37,22 +37,8 @@ class ComputedMetrics(object):
 
         :param string metric_id: identifier of the metric
 
-        :return: information about the metric and its values. Top-level fields are
-
-                    * **metric** : definition of the metric
-                    * **meta** : display metadata, as a dict of **name** and **fullName**
-                    * **computingProbe** : name of the probe that computes the metric
-                    * **displayedAsMetric** : whether the metric is among the metrics displayed on the "Status" tab of the object
-                    * **notExistingViews** : list of the possible types of metrics datasets not yet created on the object
-                    * **partitionsWithValue** : list of the partition identifiers for which some value of the metric exists
-                    * **lastValues** : list of the last computed value, per partition. Each list element has
-
-                            * **partition** : the partition identifier, as a string.
-                            * **value** : the metric value, as a string
-                            * **dataType** : expected type of **value** (one of BIGINT, DOUBLE, STRING, BOOLEAN)
-                            * **computed** : timestamp of computation, in milliseconds since epoch
-
-
+        :return: information about the metric and its values. Since the last value of the metric depends on
+                 the partition considered, the last values of the metric are given in a sub-list of the dict. 
         :rtype: dict
         """
         all_ids = []
@@ -71,12 +57,7 @@ class ComputedMetrics(object):
         
         :param string metric_id: identifier of the metric
 
-        :returns: the metric data, as a dict. Fields are
-
-                    * **partition** : the partition identifier, as a string.
-                    * **value** : the metric value, as a string
-                    * **dataType** : expected type of **value** (one of BIGINT, DOUBLE, STRING, BOOLEAN)
-                    * **computed** : timestamp of computation, in milliseconds since epoch
+        :returns: the metric data, as a dict. The value itself is a **value** string field.
         :rtype: dict        
         """
         for partition_data in self.get_metric_by_id(metric_id)["lastValues"]:
@@ -113,12 +94,7 @@ class ComputedMetrics(object):
         :param string metric_id: identifier of the metric
         :param string partition: partition identifier
 
-        :returns: the metric data, as a dict. Fields are
-
-                    * **partition** : the partition identifier, as a string.
-                    * **value** : the metric value, as a string
-                    * **dataType** : expected type of **value** (one of BIGINT, DOUBLE, STRING, BOOLEAN)
-                    * **computed** : timestamp of computation, in milliseconds since epoch
+        :returns: the metric data, as a dict. The value itself is a **value** string field.
         :rtype: dict        
         """
         for partition_data in self.get_metric_by_id(metric_id)["lastValues"]:
@@ -143,12 +119,7 @@ class ComputedMetrics(object):
         
         :param string metric_id: identifier of the metric
 
-        :returns: the metric data, as a dict. Fields are
-
-                    * **partition** : the partition identifier, as a string.
-                    * **value** : the metric value, as a string
-                    * **dataType** : expected type of **value** (one of BIGINT, DOUBLE, STRING, BOOLEAN)
-                    * **computed** : timestamp of computation, in milliseconds since epoch
+        :returns: the metric data, as a dict. The value itself is a **value** string field.
         :rtype: dict        
         """
         for partition_data in self.get_metric_by_id(metric_id)["lastValues"]:
