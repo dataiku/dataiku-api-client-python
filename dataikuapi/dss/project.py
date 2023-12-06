@@ -31,7 +31,8 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
     DSSManagedStreamingEndpointCreationHelper
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
-from .llm import DSSLLM
+from .llm import DSSLLM, DSSLLMListItem
+from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from ..dss_plugin_mlflow import MLflowHandle
 
 class DSSProject(object):
@@ -471,6 +472,48 @@ class DSSProject(object):
             extra_params["bucket"] = bucket
         return self.create_fslike_dataset(dataset_name, "S3", connection, path_in_connection, extra_params)
 
+    def create_gcs_dataset(self, dataset_name, connection, path_in_connection, bucket=None):
+        """
+        Creates a new external GCS dataset in the project and returns a :class:`dataikuapi.dss.dataset.DSSDataset` to
+        interact with it.
+
+        The created dataset does not have its format and schema initialized, it is recommended to use
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str connection: the name of the connection
+        :param str path_in_connection: the path of the dataset in the connection
+        :param str bucket: the name of the GCS bucket (defaults to **None**)
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if bucket is not None:
+            extra_params["bucket"] = bucket
+        return self.create_fslike_dataset(dataset_name, "GCS", connection, path_in_connection, extra_params)
+
+    def create_azure_blob_dataset(self, dataset_name, connection, path_in_connection, container=None):
+        """
+        Creates a new external Azure dataset in the project and returns a :class:`dataikuapi.dss.dataset.DSSDataset` to
+        interact with it.
+
+        The created dataset does not have its format and schema initialized, it is recommended to use
+        :meth:`~dataikuapi.dss.dataset.DSSDataset.autodetect_settings` on the returned object
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str connection: the name of the connection
+        :param str path_in_connection: the path of the dataset in the connection
+        :param str container: the name of the storage account container (defaults to **None**)
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        extra_params = {}
+        if container is not None:
+            extra_params["container"] = container
+        return self.create_fslike_dataset(dataset_name, "Azure", connection, path_in_connection, extra_params)
+
     def create_fslike_dataset(self, dataset_name, dataset_type, connection, path_in_connection, extra_params=None):
         """
         Create a new file-based dataset in the project, and return a handle to interact with it.
@@ -499,7 +542,7 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key, body=body)
         return DSSDataset(self.client, self.project_key, dataset_name)
 
-    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema):
+    def create_sql_table_dataset(self, dataset_name, type, connection, table, schema, catalog=None):
         """
         Create a new SQL table dataset in the project, and return a handle to interact with it.
 
@@ -508,7 +551,7 @@ class DSSProject(object):
         :param str connection: the name of the connection
         :param str table: the name of the table in the connection
         :param str schema: the schema of the table
-
+        :param str catalog: [optional] the catalog of the table
 
         :returns: A dataset handle
         :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
@@ -521,7 +564,8 @@ class DSSProject(object):
                 "connection": connection,
                 "mode": "table",
                 "table": table,
-                "schema": schema
+                "schema": schema,
+                "catalog": catalog
             }
         }
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
@@ -815,6 +859,43 @@ class DSSProject(object):
             "backendType": "PY_MEMORY",
             "guessPolicy":  guess_policy,
             "predictionType": "TIMESERIES_FORECAST"
+        }
+
+        ref = self.client._perform_json(
+            "POST",
+            "/projects/{project_key}/models/lab/".format(project_key=self.project_key),
+            body=obj
+        )
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
+
+    def create_causal_prediction_ml_task(self, input_dataset, outcome_variable,
+                                              treatment_variable,
+                                              prediction_type=None,
+                                              wait_guess_complete=True):
+        """Creates a new causal prediction task in a new visual analysis lab for a dataset.
+
+        :param string input_dataset: The dataset to use for training/testing the model
+        :param string outcome_variable: The outcome to predict.
+        :param string treatment_variable:  Column to be used as treatment variable.
+        :param string or None prediction_type: Valid values are: "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION" or None (in this case prediction_type will be set by the Guesser)
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return: :class:`dataiku.dss.ml.DSSMLTask`
+        """
+        obj = {
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariable": outcome_variable,
+            "treatmentVariable": treatment_variable,
+            "backendType": "PY_MEMORY",
+            "guessPolicy":  "CAUSAL_PREDICTION",
+            "predictionType": prediction_type  # If None, predictionType will be set by the Guesser
         }
 
         ref = self.client._perform_json(
@@ -1168,7 +1249,8 @@ class DSSProject(object):
         Create a new model comparison in the project, and return a handle to interact with it.
 
         :param str name: the name for the new model comparison
-        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, and TIMESERIES_FORECAST
+        :param str prediction_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, TIMESERIES_FORECAST,
+                                    CAUSAL_BINARY_CLASSIFICATION, CAUSAL_REGRESSION
 
         :returns: A new model comparison handle
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
@@ -2113,8 +2195,47 @@ class DSSProject(object):
     ########################################################
     # LLM
     ########################################################
+
+    def list_llms(self, purpose="GENERIC_COMPLETION", as_type="listitems"):
+        """
+        List the LLM usable in this project
+
+        :param str purpose: Usage purpose of the LLM. Main values are GENERIC_COMPLETION and TEXT_EMBEDDING_EXTRACTION
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`llm.DSSLLMListItem`.
+                  If "as_type" is "objects", each one as a :class:`llm.DSSLLM`
+        :rtype: list
+        """
+        llms = self.client._perform_json("GET", "/projects/%s/llms?purpose=%s" % (self.project_key, purpose))
+        if as_type == "listitems":
+            return [DSSLLMListItem(self.client, self.project_key, item) for item in llms]
+        elif as_type == "objects":
+            return [DSSLLM(self.client, self.project_key, item["id"]) for item in llms]
+        else:
+            raise ValueError("Unknown as_type")
+
     def get_llm(self, llm_id):
         return DSSLLM(self.client, self.project_key, llm_id)
+
+    def list_knowledge_banks(self, as_type="listitems"):
+        """
+        List the knowledge banks of this project
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects".
+        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`knowledgebank.DSSKnowledgeBankListItem`.
+                  If "as_type" is "objects", each one as a :class:`knowledgebank.DSSKnowledgeBank`
+        :rtype: list
+        """
+        kbs = self.client._perform_json("GET", "/projects/%s/knowledge-banks" % (self.project_key))
+        if as_type == "listitems":
+            return [DSSKnowledgeBankListItem(self.client, item) for item in kbs]
+        elif as_type == "objects":
+            return [DSSKnowledgeBank(self.client, self.project_key, item["id"]) for item in kbs]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_knowledge_bank(self, id):
+        return DSSKnowledgeBank(self.client, self.project_key, id)
 
     ########################################################
     # Webapps

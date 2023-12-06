@@ -1,6 +1,6 @@
 from datetime import datetime
 import time, warnings
-from ..utils import DataikuException
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
 from dateutil.tz import tzlocal
@@ -397,7 +397,7 @@ class DSSScenarioStatus(object):
         """
         if not "nextRun" in self.data or self.data["nextRun"] == 0:
             return None
-        return datetime.fromtimestamp(self.data["nextRun"] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self.data["nextRun"])
 
 
 class DSSScenarioSettings(object):
@@ -799,7 +799,7 @@ class DSSScenarioRun(object):
 
         :rtype: :class:`datetime.datetime`
         """
-        return datetime.fromtimestamp(self.run['start'] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self.run['start'])
     start_time = property(get_start_time)
 
     def get_end_time(self):
@@ -809,7 +809,7 @@ class DSSScenarioRun(object):
         :rtype: :class:`datetime.datetime`
         """
         if "end" in self.run and self.run["end"] > 0:
-            return datetime.fromtimestamp(self.run['end'] / 1000)
+            return _timestamp_ms_to_zoned_datetime(self.run['end'])
         else:
             raise ValueError("Scenario run has not completed")
     end_time = property(get_end_time)
@@ -824,7 +824,7 @@ class DSSScenarioRun(object):
         """
         end_time = datetime.now()
         if self.run['end'] > 0:
-            end_time = datetime.fromtimestamp(self.run['end'] / 1000)
+            end_time = _timestamp_ms_to_zoned_datetime(self.run['end'])
         duration = (end_time - self.get_start_time()).total_seconds()
         return duration
 
@@ -1104,7 +1104,4 @@ class DSSScenarioListItem(DSSTaggableObjectListItem):
         :return: timestap of the scenario run start, or None if it's not running at the moment.
         :rtype: :class:`datetime.datetime`
         """
-        if self._data['start'] <= 0:
-            return None
-        else:
-            return datetime.fromtimestamp(self._data['start'] / 1000)
+        return _timestamp_ms_to_zoned_datetime(self._data['start'])

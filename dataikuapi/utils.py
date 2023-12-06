@@ -4,6 +4,8 @@ from contextlib import closing
 import os
 import zipfile
 import itertools
+import sys
+from datetime import datetime
 
 if sys.version_info > (3,0):
     import codecs
@@ -132,3 +134,13 @@ def _write_response_content_to_file(response, path):
             if chunk:
                 f.write(chunk)
                 f.flush()
+
+if sys.version_info >= (3,3):
+    _local_timezone = datetime.now().astimezone().tzinfo
+else:
+    _local_timezone = None
+def _timestamp_ms_to_zoned_datetime(timestamp_ms):
+    if timestamp_ms and timestamp_ms > 0:
+        return datetime.fromtimestamp(timestamp_ms / 1000, tz=_local_timezone)
+    else:
+        return None

@@ -39,6 +39,26 @@ class GovernAdminCustomPagesHandler(object):
         result = self.client._perform_json("POST", "/admin/custom-pages", params={"newIdentifier": new_identifier}, body=custom_page)
         return GovernAdminCustomPage(self.client, result["id"])
 
+    def get_custom_pages_order(self):
+        """
+        Retrieves the order of display of the custom pages by their id
+
+        :return: the order of the pages
+        :rtype: list[string]
+        """
+        order = self.client._perform_json("GET", "/admin/custom-pages/order")
+        return order
+
+    def save_custom_pages_order(self, custom_pages_order):
+        """
+        Update the order of display of the custom pages.
+
+        :param custom_pages_order: list[string] new custom pages order. Must contain ids of all the custom pages
+        :return: updated custom pages order
+        :rtype: list[string]
+        """
+        order = self.client._perform_json("PUT", "/admin/custom-pages/order", body=custom_pages_order)
+        return order
 
 class GovernAdminCustomPageListItem(object):
     """

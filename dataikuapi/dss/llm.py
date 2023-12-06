@@ -1,3 +1,50 @@
+from .utils import DSSTaggableObjectListItem
+
+class DSSLLMListItem(DSSTaggableObjectListItem):
+    """
+    An item in a list of llms
+
+    .. important::
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.project.DSSProject.list_llms`.
+    """
+    def __init__(self, client, project_key, data):
+        super(DSSLLMListItem, self).__init__(data)
+        self.project_key = project_key
+        self.client = client
+
+    def to_llm(self):
+        """
+        Convert the current item.
+
+        :returns: A handle for the llm.
+        :rtype: :class:`dataikuapi.dss.llm.DSSLLM`
+        """
+        return DSSLLM(self.client, self.project_key, self._data["id"])
+
+    @property
+    def id(self):
+        """
+        :returns: The id of the llm.
+        :rtype: string
+        """
+        return self._data["id"]
+
+    @property
+    def type(self):
+        """
+        :returns: The type of the LLM
+        :rtype: string
+        """
+        return self._data["type"]
+
+    @property
+    def description(self):
+        """
+        :returns: The description of the LLM
+        :rtype: string
+        """
+        return self._data["friendlyName"]
+
 class DSSLLM(object):
     """
     A handle to interact with a DSS-managed LLM.

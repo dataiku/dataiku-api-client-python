@@ -123,7 +123,6 @@ class DSSAPIServiceSettings(object):
         :rtype: list[dict]
         """
         return self.settings["endpoints"]
-    
 
     def add_prediction_endpoint(self, endpoint_id, saved_model_id):
         """
@@ -162,6 +161,22 @@ class DSSAPIServiceSettings(object):
             "id" : endpoint_id,
             "type" : "STD_FORECAST",
             "modelRef": saved_model_id
+        })
+
+    def add_causal_prediction_endpoint(self, endpoint_id, saved_model_id, compute_propensity=False):
+        """
+        Add a new "visual causal prediction" endpoint to this API service.
+
+        :param string endpoint_id: identifier of the new endpoint to create
+        :param string saved_model_id: identifier of the saved model (that is currently deployed to the Flow) to use
+        :param bool compute_propensity: whether propensity should be computed, if True, the model must have a trained propensity model
+        """
+        self.settings["endpoints"].append({
+            "id": endpoint_id,
+            "type": "STD_CAUSAL_PREDICTION",
+            "modelRef": saved_model_id,
+            "computePropensity": compute_propensity,
+            "useJava": False  # Not supported for causal predictions
         })
 
     def save(self):

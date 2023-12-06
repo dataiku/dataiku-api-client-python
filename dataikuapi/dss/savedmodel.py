@@ -1,3 +1,5 @@
+import os
+import shutil
 import tempfile
 
 from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
@@ -14,6 +16,71 @@ try:
 except NameError:
     basestring = str
 
+
+class DatabricksRepositoryContextManager(object):
+    def __init__(self, connection_info, use_unity_catalog):
+        self.connection_info = connection_info
+        self.use_unity_catalog = use_unity_catalog
+
+    def __enter__(self):
+        self._setup_mlflow_for_databricks_registry()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._restore_previous_mlflow_setup()
+
+    def _setup_mlflow_for_databricks_registry(self):
+        params = self.connection_info.get("params")
+        auth_type = params.get("authType")
+        if auth_type == "OAUTH2_APP":
+            token = self.connection_info.get("resolvedOAuth2Credential").get("accessToken")
+        elif auth_type == "PERSONAL_ACCESS_TOKEN":
+            token = params.get("personalAccessToken")
+        else:
+            raise Exception("Unhandled auth method: " + auth_type)
+        databricks_host = "https://" if params.get("ssl") else "http://"
+        host = params.get("host")
+        port = params.get("port")
+        if not host:
+            raise Exception("Host undefined for Databricks connection")
+        if not port:
+            raise Exception("Port undefined for Databricks connection")
+        databricks_host += host + ":" + str(port)
+        http_path = params.get("httpPath")
+        if http_path:
+            if http_path.endswith("/"):
+                http_path = http_path[:-1]
+            if not http_path.startswith("/"):
+                http_path = "/" + http_path
+            databricks_host += http_path
+        self.previous_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", None)
+        self.previous_databricks_host = os.environ.get("DATABRICKS_HOST", None)
+        self.previous_databricks_token = os.environ.get("DATABRICKS_TOKEN", None)
+        import mlflow
+        self.previous_registry_uri = mlflow.get_registry_uri()
+        if self.use_unity_catalog:
+            mlflow.set_registry_uri("databricks-uc")
+        else:
+            mlflow.set_registry_uri(None)
+
+        os.environ["MLFLOW_TRACKING_URI"] = "databricks"
+        os.environ["DATABRICKS_HOST"] = databricks_host
+        os.environ["DATABRICKS_TOKEN"] = token
+
+    def _restore_previous_mlflow_setup(self):
+        if self.previous_tracking_uri:
+            os.environ["MLFLOW_TRACKING_URI"] = self.previous_tracking_uri
+        else:
+            os.environ.pop("MLFLOW_TRACKING_URI")
+        if self.previous_databricks_host:
+            os.environ["DATABRICKS_HOST"] = self.previous_databricks_host
+        else:
+            os.environ.pop("DATABRICKS_HOST")
+        if self.previous_databricks_token:
+            os.environ["DATABRICKS_TOKEN"] = self.previous_databricks_token
+        else:
+            os.environ.pop("DATABRICKS_TOKEN")
+        import mlflow
+        mlflow.set_registry_uri(self.previous_registry_uri)
 
 class DSSSavedModel(object):
     """
@@ -250,11 +317,42 @@ class DSSSavedModel(object):
         )
         return self.get_external_model_version_handler(version_id)
 
+    def import_mlflow_version_from_databricks(self, version_id, connection_name, use_unity_catalog, model_name,
+                                              model_version, code_env_name="INHERIT",
+                                              container_exec_config_name="INHERIT",
+                                              set_active=True, binary_classification_threshold=0.5):
+        connection = self.client.get_connection(connection_name)
+        connection_info = connection.get_info(self.project_key)
+        if connection_info is None or connection_info["type"] != "DatabricksModelDeployment":
+            raise ValueError("The connection " + connection_name + " is not a Databricks connection")
+        if "params" not in connection_info:
+            raise Exception("Permission to view details of the connection " + connection_name + "required")
+        temp_folder = tempfile.mktemp()
+        os.mkdir(temp_folder)
+        try:
+            with DatabricksRepositoryContextManager(connection_info, use_unity_catalog):
+                self._download_from_databricks_registry(model_name, model_version, temp_folder)
+            return self.import_mlflow_version_from_path(version_id, os.path.join(temp_folder),
+                                                        code_env_name=code_env_name,
+                                                        container_exec_config_name=container_exec_config_name,
+                                                        set_active=set_active,
+                                                        binary_classification_threshold=binary_classification_threshold)
+        finally:
+            if os.path.exists(temp_folder):
+                shutil.rmtree(temp_folder)
+
+    @staticmethod
+    def _download_from_databricks_registry(model_name, model_version, target_directory):
+        from mlflow.store.artifact.models_artifact_repo import ModelsArtifactRepository
+        mar = ModelsArtifactRepository("models:/{model_name}/{model_version}".format(model_name=model_name,
+                                                                                     model_version=model_version))
+        mar.download_artifacts("", dst_path=target_directory)
+
     def create_external_model_version(self, version_id, configuration, target_column_name=None,
-                                   class_labels=None, set_active=True, binary_classification_threshold=0.5,
-                                   input_dataset=None, selection=None, use_optimal_threshold=True,
-                                   skip_expensive_reports=True, features_list=None, container_exec_config_name="NONE",
-                                   input_format="GUESS", output_format="GUESS", evaluate=True):
+                                      class_labels=None, set_active=True, binary_classification_threshold=0.5,
+                                      input_dataset=None, selection=None, use_optimal_threshold=True,
+                                      skip_expensive_reports=True, features_list=None, container_exec_config_name="NONE",
+                                      input_format="GUESS", output_format="GUESS", evaluate=True):
         """
         EXPERIMENTAL. Creates a new version of an external model.
 
@@ -343,6 +441,9 @@ class DSSSavedModel(object):
             * For Amazon SageMaker:
                 - INPUT_SAGEMAKER_CSV
                 - INPUT_SAGEMAKER_JSON
+                - INPUT_SAGEMAKER_JSON_EXTENDED
+                - INPUT_SAGEMAKER_JSONLINES
+                - INPUT_DEPLOY_ANYWHERE_ROW_ORIENTED_JSON
 
             * For Vertex AI:
                 - INPUT_VERTEX_DEFAULT
@@ -351,6 +452,7 @@ class DSSSavedModel(object):
                 - INPUT_AZUREML_JSON_INPUTDATA
                 - INPUT_AZUREML_JSON_WRITER
                 - INPUT_AZUREML_JSON_INPUTDATA_DATA
+                - INPUT_DEPLOY_ANYWHERE_ROW_ORIENTED_JSON
         :type input_format: str
 
         :param output_format: (optional) Output format to use to parse the underlying endpoint's response.
@@ -364,6 +466,7 @@ class DSSSavedModel(object):
                 - OUTPUT_SAGEMAKER_CSV
                 - OUTPUT_SAGEMAKER_ARRAY_AS_STRING
                 - OUTPUT_SAGEMAKER_JSON
+                - OUTPUT_DEPLOY_ANYWHERE_JSON
 
             * For Vertex AI:
                 - OUTPUT_VERTEX_DEFAULT
@@ -371,6 +474,7 @@ class DSSSavedModel(object):
             * For Azure Machine Learning:
                 - OUTPUT_AZUREML_JSON_OBJECT
                 - OUTPUT_AZUREML_JSON_ARRAY
+                - OUTPUT_DEPLOY_ANYWHERE_JSON
         :type output_format: str
 
         :param evaluate: (optional) True (default) if this model should be evaluated using input_dataset, False to disable evaluation.
@@ -760,8 +864,10 @@ class ExternalModelVersionHandler:
                 project_key=self.saved_model.project_key,
                 sm_id=self.saved_model.sm_id,
                 version_id=self.version_id,
-                container_exec_config_name=container_exec_config_name),
-            body=model_version_info)
+                container_exec_config_name=container_exec_config_name
+            ),
+            body=model_version_info
+        )
 
     def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None, use_optimal_threshold=True,
                  skip_expensive_reports=True):

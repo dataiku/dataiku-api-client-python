@@ -384,6 +384,16 @@ class FMSetupAction(dict):
         :param str datadir_subdirectory: Optional, Some drivers are shipped with a high number of JAR files along with them. In that case, you might want to install them under an additional level in the DSS data directory. Set the name of this subdirectory here. Not required for most drivers.
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
         """
+        if paths_in_archive:
+            if not isinstance(paths_in_archive, list) and not isinstance(paths_in_archive, tuple):
+                raise ValueError(
+                    "paths_in_archive is expected to be a list"
+                )
+        if http_headers:
+            if not isinstance(http_headers, dict):
+                raise ValueError(
+                    "http_headers is expected to be a dict"
+                )
         return FMSetupAction(
             FMSetupActionType.INSTALL_JDBC_DRIVER,
             {
