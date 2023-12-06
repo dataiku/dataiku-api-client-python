@@ -2,6 +2,7 @@ import datetime
 
 from ..utils import DataikuException, DataikuValueCaster
 from ..utils import DataikuStreamedHttpUTF8CSVReader
+from ..utils import _timestamp_ms_to_zoned_datetime
 import json, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 from .future import DSSFuture
@@ -552,6 +553,26 @@ class DSSDataset(object):
         return self.project.create_timeseries_forecasting_ml_task(self.dataset_name, target_variable=target_variable,
                                                                   time_variable=time_variable, timeseries_identifiers=timeseries_identifiers,
                                                                   guess_policy=guess_policy, wait_guess_complete=wait_guess_complete)
+
+    def create_causal_prediction_ml_task(self, outcome_variable,
+                                         treatment_variable,
+                                         prediction_type=None,
+                                         wait_guess_complete=True):
+        """Creates a new causal prediction task in a new visual analysis lab for a dataset.
+
+        :param string outcome_variable: The outcome variable to predict.
+        :param string treatment_variable: The treatment variable.
+        :param string or None prediction_type: Valid values are: "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION" or None (in this case prediction_type will be set by the Guesser)
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :returns: A ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
+        """
+        return self.project.create_causal_prediction_ml_task(self.dataset_name, outcome_variable=outcome_variable,
+                                                             treatment_variable=treatment_variable, prediction_type=prediction_type,
+                                                             wait_guess_complete=wait_guess_complete)
 
     def create_analysis(self):
         """
@@ -1215,7 +1236,7 @@ class DSSDatasetInfo(object):
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildStartTime", None)
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_build_end_time(self):
@@ -1227,7 +1248,7 @@ class DSSDatasetInfo(object):
         """
         last_build_info = self.info.get("lastBuild", dict())
         timestamp = last_build_info.get("buildEndTime", None)
-        return datetime.datetime.fromtimestamp(timestamp / 1000) if timestamp is not None else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def is_last_build_successful(self):

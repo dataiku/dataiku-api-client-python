@@ -1,6 +1,7 @@
 from .utils import DataikuException
 from .base_client import DSSBaseClient
 
+
 class APINodeClient(DSSBaseClient):
     """Entry point for the DSS API Node client
     This is an API client for the user-facing API of DSS API Node server (user facing API)
@@ -16,6 +17,13 @@ class APINodeClient(DSSBaseClient):
         :param str bearer_token: Optional, The bearer token. Only required if the service has its authorization setup to OAuth2/JWT
         """
         DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token)
+
+    @staticmethod
+    def _set_dispatch(obj, forced_generation, dispatch_key):
+        if forced_generation is not None:
+            obj["dispatch"] = {"forcedGeneration": forced_generation}
+        elif dispatch_key is not None:
+            obj["dispatch"] = {"dispatchKey": dispatch_key}
 
     def predict_record(self, endpoint_id, features, forced_generation=None, dispatch_key=None, context=None,
                        with_explanations=None, explanation_method=None, n_explanations=None, n_explanations_mc_steps=None):
@@ -45,12 +53,9 @@ class APINodeClient(DSSBaseClient):
             }
         }
 
+        self._set_dispatch(obj, forced_generation, dispatch_key)
         if context is not None:
             obj["context"] = context
-        if forced_generation is not None:
-            obj["dispatch"] = {"forcedGeneration" : forced_generation }
-        elif dispatch_key is not None:
-            obj["dispatch"] = {"dispatchKey" : dispatch_key }
 
         return self._perform_json("POST", "%s/predict" % endpoint_id, body = obj)
 
@@ -86,10 +91,7 @@ class APINodeClient(DSSBaseClient):
             }
         }
 
-        if forced_generation is not None:
-            obj["dispatch"] = {"forcedGeneration" : forced_generation }
-        elif dispatch_key is not None:
-            obj["dispatch"] = {"dispatchKey" : dispatch_key }
+        self._set_dispatch(obj, forced_generation, dispatch_key)
 
         return self._perform_json("POST", "%s/predict-multi" % endpoint_id, body = obj)
 
@@ -145,12 +147,51 @@ class APINodeClient(DSSBaseClient):
 
         obj = {"items": records}
 
-        if forced_generation is not None:
-            obj["dispatch"] = {"forcedGeneration": forced_generation}
-        elif dispatch_key is not None:
-            obj["dispatch"] = {"dispatchKey": dispatch_key}
+        self._set_dispatch(obj, forced_generation, dispatch_key)
 
         return self._perform_json("POST", "{}/forecast".format(endpoint_id), body=obj)
+
+
+    def predict_effect(self, endpoint_id, features, forced_generation=None, dispatch_key=None):
+        """
+        Predicts the treatment effect of a single record on a DSS API node endpoint (standard causal prediction)
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param features: Python dictionary of features of the record
+        :param forced_generation: See documentation about multi-version prediction
+        :param dispatch_key: See documentation about multi-version prediction
+
+        :return: a Python dict of the API answer. The answer contains a "result" key (itself a dict)
+        """
+        obj = {
+            "features": features,
+        }
+        self._set_dispatch(obj, forced_generation, dispatch_key)
+
+        return self._perform_json("POST", "%s/predict-effect" % endpoint_id, body=obj)
+
+    def predict_effects(self, endpoint_id, records, forced_generation=None, dispatch_key=None):
+        """
+        Predicts the treatment effects on a batch of records on a DSS API node endpoint (standard causal prediction)
+
+        :param str endpoint_id: Identifier of the endpoint to query
+        :param records: Python list of records. Each record must be a Python dict. Each record must contain a "features" dict (see predict_record) and optionally a "context" dict.
+        :param dispatch_key: See documentation about multi-version prediction
+
+        :return: a Python dict of the API answer. The answer contains a "results" key (which is an array of result objects)
+        """
+
+        for record in records:
+            if not "features" in record:
+                raise ValueError("Each record must contain a 'features' dict")
+
+        obj = {
+            "items": records,
+        }
+
+        self._set_dispatch(obj, forced_generation, dispatch_key)
+
+        return self._perform_json("POST", "%s/predict-effect-multi" % endpoint_id, body = obj)
 
     def sql_query(self, endpoint_id, parameters):
         """

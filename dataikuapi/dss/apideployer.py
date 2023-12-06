@@ -36,7 +36,7 @@ class DSSAPIDeployer(object):
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, service_id, infra_id, version, ignore_warnings=False):
+    def create_deployment(self, deployment_id, service_id, infra_id, version, endpoint_id=None, ignore_warnings=False):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
@@ -44,15 +44,17 @@ class DSSAPIDeployer(object):
         :param str deployment_id: Identifier of the deployment to create
         :param str service_id: Identifier of the API Service to target
         :param str infra_id: Identifier of the deployment infrastructure to use
-        :param str version_id: Identifier of the API Service version to deploy
+        :param str version: Identifier of the API Service version to deploy
+        :param str endpoint_id: Identifier of the endpoint to deploy if you use a Deploy Anywhere infra. Ignored otherwise
         :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         settings = {
-            "deploymentId" : deployment_id,
-            "publishedServiceId" : service_id,
-            "infraId" : infra_id,
-            "version" : version
+            "deploymentId": deployment_id,
+            "publishedServiceId": service_id,
+            "infraId": infra_id,
+            "version": version,
+            "endpointId": endpoint_id
         }
         self.client._perform_json("POST", "/api-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
@@ -88,7 +90,7 @@ class DSSAPIDeployer(object):
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
-        :param str type: STATIC or K8S
+        :param str type: STATIC, K8S, AZURE_ML, SAGEMAKER or VERTEX_AI
         :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check whether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """

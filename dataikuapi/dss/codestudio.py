@@ -1,4 +1,4 @@
-from ..utils import DataikuException
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime
 import json
 from datetime import datetime
 from .future import DSSFuture
@@ -212,6 +212,17 @@ class DSSCodeStudioObject(object):
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/code-studios/%s/push/%s" % (self.project_key, self.code_studio_id, zone))
+
+    def change_owner(self, new_owner):
+        """
+        Allows to change the owner of the Code Studio
+         .. note::
+
+        only admins are allowed to change the owner of a code studio.
+
+        :param str new_owner: the id of the new owner
+        """
+        self.client._perform_json("POST", "/projects/%s/code-studios/%s/change-owner?newOwner=%s"  % (self.project_key, self.code_studio_id, new_owner))
 
 class DSSCodeStudioObjectConflicts(dict):
     """
@@ -428,10 +439,7 @@ class DSSCodeStudioObjectStatus(object):
         :rtype: `datetime.datetime`
         """
         ts = self.status.get("lastStateChange", 0)
-        if ts > 0:
-            return datetime.fromtimestamp(ts / 1000)
-        else:
-            return None
+        return _timestamp_ms_to_zoned_datetime(ts)
 
     def get_zones(self, as_type="names"):
         """

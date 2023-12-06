@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from ..utils import _timestamp_ms_to_zoned_datetime
 from dataikuapi.dss.dataset import DSSDataset
 
 
@@ -48,10 +48,7 @@ class DSSDataCollectionListItem(object):
     @property
     def last_modified_on(self):
         ts = self._data.get("lastModifiedOn", 0)
-        if ts > 0:
-            return datetime.fromtimestamp(ts / 1000)
-        else:
-            return None
+        return _timestamp_ms_to_zoned_datetime(ts)
 
     def to_data_collection(self):
         """
@@ -148,7 +145,7 @@ class DSSDataCollectionItem:
         """
         return self.data
 
-    def get_as_dataset():
+    def get_as_dataset(self):
         """
         Gets a handle on the corresponding dataset.
 
@@ -158,7 +155,7 @@ class DSSDataCollectionItem:
         :returns: a handle on a dataset
         :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
         """
-        return DSSDataset(self.client, self._data["projectKey"], self._data["name"])
+        return DSSDataset(self.data_collection.client, self.data["projectKey"], self.data["id"])
 
     def remove(self):
         """

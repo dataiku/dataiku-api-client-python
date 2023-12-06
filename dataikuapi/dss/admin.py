@@ -1,6 +1,7 @@
 from .future import DSSFuture
 import json, warnings
 from datetime import datetime
+from ..utils import _timestamp_ms_to_zoned_datetime
 
 
 class DSSConnectionListItem(dict):
@@ -85,6 +86,15 @@ class DSSConnectionInfo(dict):
         :rtype: dict
         """
         return self["params"]
+
+    def get_resolved_params(self):
+        """
+        Get the resolved parameters of the connection, as a dict. May be null depending on the connection type.
+
+        :return: the resolved parameters, as a dict. Each connection type has different sets of fields.
+        :rtype: dict
+        """
+        return self["resolvedParams"]
 
     def get_basic_credential(self):
         """
@@ -835,7 +845,7 @@ class DSSUserSettings(DSSUserSettingsBase):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     def save(self):
         """
@@ -902,7 +912,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_failed_login(self):
@@ -915,7 +925,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_session_activity(self):
@@ -931,7 +941,7 @@ class DSSUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSessionActivity"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
 
 class DSSAuthorizationMatrix(object):
@@ -1916,7 +1926,7 @@ class DSSGlobalApiKeyListItem(dict):
         :rtype: :class:`datetime.datetime`
         """
         timestamp = self["createdOn"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
    
     @property
     def created_by(self):
@@ -2040,7 +2050,7 @@ class DSSPersonalApiKeyListItem(dict):
         :rtype: :class:`datetime.datetime`
         """
         timestamp = self["createdOn"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
    
     @property
     def created_by(self):
@@ -2514,10 +2524,7 @@ class DSSCodeStudioTemplateListItem(object):
         :rtype: :class:`datetime.datetime`
         """
         ts = self._data.get("lastBuilt", 0)
-        if ts > 0:
-            return datetime.fromtimestamp(ts / 1000)
-        else:
-            return None
+        return _timestamp_ms_to_zoned_datetime(ts)
 
 class DSSCodeStudioTemplate(object):
     """

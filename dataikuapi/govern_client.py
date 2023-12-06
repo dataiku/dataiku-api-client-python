@@ -98,7 +98,7 @@ class GovernClient(object):
     def get_blueprint_designer(self):
         """
         Return a handle to interact with the blueprint designer
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
@@ -111,7 +111,7 @@ class GovernClient(object):
     def get_roles_permissions_handler(self):
         """
         Return a handler to manage the roles and permissions of the Govern instance
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_roles_permissions_handler.GovernAdminRolesPermissionsHandler`
         """
@@ -124,7 +124,7 @@ class GovernClient(object):
     def get_custom_pages_handler(self):
         """
         Return a handler to manage custom pages
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with Govern manager rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_custom_pages_handler.GovernAdminCustomPagesHandler`
         """

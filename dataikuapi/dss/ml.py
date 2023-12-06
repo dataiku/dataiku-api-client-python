@@ -482,7 +482,7 @@ class DSSMLTaskSettings(object):
         """
         return {key: self.get_algorithm_settings(key) for key in self.get_enabled_algorithm_names()}
 
-    def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False):
+    def set_metric(self, metric=None, custom_metric=None, custom_metric_greater_is_better=True, custom_metric_use_probas=False, custom_metric_name=None):
         """
         Sets the score metric to optimize for a prediction ML Task
 
@@ -499,13 +499,31 @@ class DSSMLTaskSettings(object):
         :type custom_metric_greater_is_better: bool, optional
         :param bool custom_metric_use_probas: If True, will use the classes' probas or the predicted value (for classification) (defaults to **False**)
         :type custom_metric_use_probas: bool, optional
+        :param custom_metric_name: Name of your custom metric. If not set, it will generate one.
+        :type custom_metric_name: str, optional
         """
+        def get_evaluation_metric_default_name():
+            custom_evaluation_name_base_str = "Custom score #"
+            custom_metrics = set(map(lambda cm: cm["name"], self.mltask_settings["modeling"]["metrics"]["customMetrics"]))
+            i = 1
+            while custom_evaluation_name_base_str + str(i) in custom_metrics:
+                i += 1
+            return custom_evaluation_name_base_str + str(i)
+
         if custom_metric is None and metric is None:
             raise ValueError("Either metric or custom_metric must be defined")
+
         self.mltask_settings["modeling"]["metrics"]["evaluationMetric"] = metric if custom_metric is None else 'CUSTOM'
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricCode"] = custom_metric
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricGIB"] = custom_metric_greater_is_better
-        self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricNeedsProba"] = custom_metric_use_probas
+        if custom_metric:
+            new_custom_metric = {
+                "name": custom_metric_name or get_evaluation_metric_default_name(),
+                "metricCode": custom_metric,
+                "greaterIsBetter": custom_metric_greater_is_better,
+                "needsProbability": custom_metric_use_probas,
+                "description": "Custom scoring function"
+            }
+            self.mltask_settings["modeling"]["metrics"]["customEvaluationMetricName"] = new_custom_metric["name"]
+            self.mltask_settings["modeling"]["metrics"]["customMetrics"].append(new_custom_metric)
 
     def add_custom_python_model(self, name="Custom Python Model", code=""):
         """
@@ -1517,12 +1535,44 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.base_score = self._register_single_value_hyperparameter("base_score", accepted_types=[int, float])
         self.impute_missing = self._register_single_value_hyperparameter("impute_missing", accepted_types=[bool])
         self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
-        self.cpu_tree_method = self._register_single_category_hyperparameter("cpu_tree_method", accepted_values=["auto", "exact", "approx", "hist"])
-        self.gpu_tree_method = self._register_single_category_hyperparameter("gpu_tree_method", accepted_values=["gpu_exact", "gpu_hist"])
-        self.enable_cuda = self._register_simple_parameter("enable_cuda")
+        self.tree_method = self._register_single_category_hyperparameter("tree_method", accepted_values=["auto", "exact", "approx", "hist"])
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
         self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+
+    @property
+    def enable_cuda(self):
+        raise AttributeError("The XGBoost enable_cuda parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @enable_cuda.setter
+    def enable_cuda(self, value):
+        raise AttributeError("The XGBoost enable_cuda parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @property
+    def cpu_tree_method(self):
+        warnings.warn("cpu_tree_method parameter is deprecated, please use tree_method instead")
+        return self.tree_method
+
+    @cpu_tree_method.setter
+    def cpu_tree_method(self, value):
+        warnings.warn("cpu_tree_method parameter is deprecated, please use tree_method instead")
+        self.tree_method.set_value(value)
+
+    @property
+    def gpu_tree_method(self):
+        warnings.warn("gpu_tree_method parameter is deprecated, please use tree_method instead")
+        return self.tree_method
+
+    @gpu_tree_method.setter
+    def gpu_tree_method(self, value):
+        warnings.warn("gpu_tree_method parameter is deprecated, please use tree_method instead")
+        if value == "gpu_exact":
+            self.tree_method.set_value("exact")
+        elif value == "gpu_hist":
+            self.tree_method.set_value("hist")
+        else:
+            logger.warning("Unexpected value for tree_method")
+            self.tree_method.set_value(value)
 
 
 class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
@@ -1661,11 +1711,17 @@ class DeepNeuralNetworkSettings(PredictionAlgorithmSettings):
         self.units = self._register_numerical_hyperparameter("units")
         self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
         self.max_epochs = self._register_single_value_hyperparameter("max_epochs", accepted_types=[int])
-        self.device = self._register_single_category_hyperparameter("device", accepted_values=["cpu", "cuda"])
         self.early_stopping_enabled = self._register_single_value_hyperparameter("early_stopping_enabled", accepted_types=[bool])
         self.early_stopping_patience = self._register_single_value_hyperparameter("early_stopping_patience", accepted_types=[int])
         self.early_stopping_threshold = self._register_single_value_hyperparameter("early_stopping_threshold", accepted_types=[float])
 
+    @property
+    def device(self):
+        raise AttributeError("The Deep Neural Network device parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
+
+    @device.setter
+    def device(self, value):
+        raise AttributeError("The Deep Neural Network device parameter has been removed. To enable GPU execution, please do so in the MLTask settings.")
 
 class MLLibLogitSettings(PredictionAlgorithmSettings):
 
@@ -1899,6 +1955,21 @@ class GluonTSMQCNNSettings(PredictionAlgorithmSettings):
         self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
         self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
         self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+
+
+class CausalForestSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(CausalForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
+        self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
+        self.max_features = self._register_numerical_hyperparameter("max_features")
+        self.criterion = self._register_categorical_hyperparameter("criterion")
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.honest = self._register_single_value_hyperparameter("honest", accepted_types=[bool])
+        self.n_jobs = self._register_simple_parameter("n_jobs")
 
 
 class PredictionAlgorithmMeta:
@@ -2495,20 +2566,46 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
 class DSSCausalPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
     """
     Object to read and modify the settings of a causal prediction ML task.
-
-    Supported methods:
-        - get_raw
-        - save
-        - get_prediction_type
-        - dataset splitting helper methods: get_split_params, split_params
-        - features helper methods: get_feature_preprocessing, foreach_feature, reject_feature, use_feature
-        - set_metric
-        - get_hyperparameter_search_settings
     """
+
+    _algorithm_remap = {
+         "CAUSAL_FOREST": PredictionAlgorithmMeta("causal_forest", CausalForestSettings),
+
+         # Base learners
+         "RANDOM_FOREST_CLASSIFICATION": PredictionAlgorithmMeta("random_forest_classification", RandomForestSettings),
+         "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
+         "EXTRA_TREES": PredictionAlgorithmMeta("extra_trees", RandomForestSettings),
+         "GBT_CLASSIFICATION": PredictionAlgorithmMeta("gbt_classification", GradientBoostedTreesSettings),
+         "GBT_REGRESSION": PredictionAlgorithmMeta("gbt_regression", GradientBoostedTreesSettings),
+         "DECISION_TREE_CLASSIFICATION": PredictionAlgorithmMeta("decision_tree_classification", DecisionTreeSettings),
+         "DECISION_TREE_REGRESSION": PredictionAlgorithmMeta("decision_tree_regression", DecisionTreeSettings),
+         "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+         "LASSO_REGRESSION": PredictionAlgorithmMeta("lasso_regression", LassoRegressionSettings),
+         "LEASTSQUARE_REGRESSION": PredictionAlgorithmMeta("leastsquare_regression", OLSSettings),
+         "SGD_REGRESSION": PredictionAlgorithmMeta("sgd_regression", SGDSettings),
+         "KNN": PredictionAlgorithmMeta("knn", KNNSettings),
+         "LOGISTIC_REGRESSION": PredictionAlgorithmMeta("logistic_regression", LogitSettings),
+         "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", SingleLayerPerceptronSettings),
+         "DEEP_NEURAL_NETWORK_REGRESSION": PredictionAlgorithmMeta("deep_neural_network_regression", DeepNeuralNetworkSettings),
+         "DEEP_NEURAL_NETWORK_CLASSIFICATION": PredictionAlgorithmMeta("deep_neural_network_classification", DeepNeuralNetworkSettings),
+         "SVC_CLASSIFICATION": PredictionAlgorithmMeta("svc_classifier", SVMSettings),
+         "SVM_REGRESSION": PredictionAlgorithmMeta("svm_regression", SVMSettings),
+         "SGD_CLASSIFICATION": PredictionAlgorithmMeta("sgd_classifier", SGDSettings),
+         "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
+         "LIGHTGBM_CLASSIFICATION": PredictionAlgorithmMeta("lightgbm_classification", LightGBMSettings),
+         "LIGHTGBM_REGRESSION": PredictionAlgorithmMeta("lightgbm_regression", LightGBMSettings),
+         "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+         "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
+    }
 
     class PredictionTypes:
         CAUSAL_REGRESSION = "CAUSAL_REGRESSION"
         CAUSAL_BINARY_CLASSIFICATION = "CAUSAL_BINARY_CLASSIFICATION"
+
+    class MetaLearners:
+        S_LEARNER = "S_LEARNER"
+        T_LEARNER = "T_LEARNER"
+        X_LEARNER = "X_LEARNER"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
         super(DSSCausalPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
@@ -2517,41 +2614,91 @@ class DSSCausalPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings)
         if prediction_type not in [self.PredictionTypes.CAUSAL_REGRESSION, self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION]:
             raise ValueError("Unknown prediction type: {}".format(prediction_type))
 
+    @property
+    def positive_outcome_class(self):
+        if self.get_prediction_type() != self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION:
+            raise ValueError("Positive outcome class is only defined for causal binary classifications")
+        return self.mltask_settings["positiveClass"]
+
+    @positive_outcome_class.setter
+    def positive_outcome_class(self, outcome_class):
+        if self.get_prediction_type() != self.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION:
+            raise ValueError("Positive outcome class is only defined for causal binary classifications")
+        outcome_classes = [x['sourceValue'] for x in self.mltask_settings["preprocessing"]["target_remapping"]]
+        if outcome_class not in outcome_classes:
+            raise ValueError("Unknown value for outcome variable: '{}'\nMust be in {}".format(outcome_class, str(outcome_classes)))
+        self.mltask_settings["positiveClass"] = outcome_class
+
+    @property
+    def control_value(self):
+        return self.mltask_settings["controlValue"]
+
+    @control_value.setter
+    def control_value(self, control_value):
+        if control_value not in self.mltask_settings["treatmentValues"]:
+            raise ValueError("Unknown value for treatment variable: {}\nMust be in {}".format(control_value, str(self.mltask_settings["treatmentValues"])))
+        self.mltask_settings["controlValue"] = control_value
+
+    @property
+    def enable_multi_valued_treatment(self):
+        return self.mltask_settings["enableMultiTreatment"]
+
+    @enable_multi_valued_treatment.setter
+    def enable_multi_valued_treatment(self, enabled):
+        self.mltask_settings["enableMultiTreatment"] = enabled
+        if enabled and len(self.mltask_settings["treatmentValues"]) <= 2:
+            logger.warning("Multi-valued treatment requires at least 3 values for the treatment variable")
+
+    def _check_algorithm(self, algorithm_name):
+        if algorithm_name != "CAUSAL_FOREST" and len(self.meta_learners) == 0:
+            logger.warning("No meta-learner enabled for selected base learner: {}".format(algorithm_name))
+
+    def _check_meta_learner(self, meta_leaner_name):
+        m = DSSCausalPredictionMLTaskSettings.MetaLearners
+        all_meta_learners = [m.S_LEARNER, m.T_LEARNER, m.X_LEARNER]
+        if meta_leaner_name not in all_meta_learners:
+            raise ValueError('Invalid meta-learner name: {}\nMust be in {}'.format(meta_leaner_name, all_meta_learners))
+        enabled_base_learners = [a for a in self.get_enabled_algorithm_names() if a != "CAUSAL_FOREST"]
+        if len(enabled_base_learners) == 0:
+            logger.warning("No base-learner enabled, meta-learner {} will be ignored under current settings".format(meta_leaner_name))
+
     def get_algorithm_settings(self, algorithm_name):
-        raise NotImplementedError("The `get_algorithm_settings` method is not supported for causal predictions."
-                                  "\nEdit algorithm settings through the dict returned from the `get_raw` method.")
+        self._check_algorithm(algorithm_name)
+        return super(DSSCausalPredictionMLTaskSettings, self).get_algorithm_settings(algorithm_name)
 
     def set_algorithm_enabled(self, algorithm_name, enabled):
-        raise NotImplementedError("The `set_algorithm_enabled` method is not supported for causal predictions."
-                                  "\nEdit algorithm settings through the dict returned from the `get_raw` method.")
+        if enabled:
+            self._check_algorithm(algorithm_name)
+        super(DSSCausalPredictionMLTaskSettings, self).set_algorithm_enabled(algorithm_name, enabled)
 
     def get_enabled_algorithm_names(self):
-        raise NotImplementedError("The `get_enabled_algorithm_names` method is not supported for causal predictions."
-                                  "\nInspect algorithm settings through the dict returned from the `get_raw` method.")
+        enabled_algo_names = super(DSSCausalPredictionMLTaskSettings, self).get_enabled_algorithm_names()
+        for algo_name in enabled_algo_names:
+            self._check_algorithm(algo_name)
+        return enabled_algo_names
 
-    def get_enabled_algorithm_settings(self):
-        raise NotImplementedError("The `get_enabled_algorithm_settings` method is not supported for causal predictions."
-                                  "\nEdit algorithm settings through the dict returned from the `get_raw` method.")
+    @property
+    def meta_learners(self):
+        return self.mltask_settings["modeling"]["meta_learners"]
 
-    def get_all_possible_algorithm_names(self):
-        raise NotImplementedError("The `get_all_possible_algorithm_names` method is not supported for causal predictions."
-                                  "\nInspect algorithm settings through the dict returned from the `get_raw` method.")
+    @meta_learners.setter
+    def meta_learners(self, meta_learners):
+        if type(meta_learners) != list or any([type(x) != str for x in meta_learners]):
+            raise ValueError("Meta-learners must be specified as a list of str")
+        for meta_leaner in meta_learners:
+            self._check_meta_learner(meta_leaner)
+        self.mltask_settings["modeling"]["meta_learners"] = meta_learners
 
-    def disable_all_algorithms(self):
-        raise NotImplementedError("The `disable_all_algorithms` method is not supported for causal predictions."
-                                  "\nEdit algorithm settings through the dict returned from the `get_raw` method.")
+    def get_treatment_analysis_settings(self):
+        return self.mltask_settings["modeling"]["propensityModeling"]
+
+    def set_treatment_analysis_enabled(self, enabled, calibrate_propensity=False, calibration_data_ratio=0.1):
+        self.mltask_settings["modeling"]["propensityModeling"]["enabled"] = enabled
+        self.mltask_settings["modeling"]["propensityModeling"]["calibrateProbabilities"] = calibrate_propensity
+        self.mltask_settings["modeling"]["propensityModeling"]["calibrationDataRatio"] = calibration_data_ratio
 
     def add_custom_mllib_model(self, name="Custom MLlib Model", code=""):
         raise NotImplementedError("MLLib backend is not supported for causal predictions.")
-
-    def get_diagnostics_settings(self):
-        raise NotImplementedError("Diagnostics are not supported for causal predictions.")
-
-    def set_diagnostics_enabled(self, enabled):
-        raise NotImplementedError("Diagnostics are not supported for causal predictions.")
-
-    def set_diagnostic_type_enabled(self, diagnostic_type, enabled):
-        raise NotImplementedError("Diagnostics are not supported for causal predictions.")
 
 
 class DSSTrainedModelDetails(object):

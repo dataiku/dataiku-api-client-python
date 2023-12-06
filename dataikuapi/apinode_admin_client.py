@@ -72,3 +72,17 @@ class APINodeAdminClient(DSSBaseClient):
             "fileDir": file_dir,
             "language": language
         })
+
+    def register_code_env_in_cache(self, exported_env_dir, built_env_dir, language):
+        """
+        Import a code env in global cache from an exported code env base folder
+
+        :param exported_env_dir: path of an exported code env base folder
+        :param built_env_dir: path where the code env was built and is available
+        :param language: language of the code env (`python` or `R`)
+        """
+        return self._perform_json("POST", "register-global-code-env", params={
+            "exportedEnvDir": exported_env_dir,
+            "builtEnvDir": built_env_dir,
+            "language": language
+        })

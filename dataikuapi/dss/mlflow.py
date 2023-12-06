@@ -302,5 +302,41 @@ class DSSMLflowExtension(object):
                                           "skipExpensiveReports": skip_expensive_reports,
                                           "useInferenceInfo": use_inference_info
                                           }
-                                      )
+                                  )
         return ExternalModelVersionHandler(sm_id, version_id)
+
+    def import_analyses_models_into_experiment(self, model_ids, experiment_id):
+        """
+        Import models from a visual ML analysis into an existing experiment.
+        import dataiku
+
+        Usage example
+
+        .. code-block:: python
+
+            # Retrieve all the trained model ids of the first task of the first analysis of a project
+            project = client.get_project("YOUR_PROJECT_ID")
+            first_analysis_id = project.list_analyses()[0]['analysisId']
+            first_analysis = project.get_analysis(first_analysis_id)
+            first_task_id = first_analysis.list_ml_tasks()['mlTasks'][0]['mlTaskId']
+            first_task = first_analysis.get_ml_task(first_task_id)
+            full_model_ids = first_task.get_trained_models_ids()
+            # Create a new experiment
+            with project.setup_mlflow(project.create_managed_folder("mlflow")) as mlflow:
+                experiment_id = mlflow.create_experiment("Sample export of DSS visual analysis models")
+            # Export the retrieved model ids to the created experiment
+            project.get_mlflow_extension().import_analyses_models_into_experiment(full_model_ids, experiment_id)
+
+
+        :param model_ids: IDs of models from a Visual Analysis.
+        :type model_ids: list of str
+        :param experiment_id: ID of the experiment into which the visual analysis models will be imported.
+        :type experiment_id: str
+        """
+        self.client._perform_http("POST", "/api/2.0/mlflow/import-analysis-models-into-experiment-tracking",
+                                  headers={"x-dku-mlflow-project-key": self.project_key},
+                                  params={"projectKey": self.project_key,
+                                          "fullModelIds": model_ids,
+                                          "experimentId": experiment_id
+                                          }
+                                  )

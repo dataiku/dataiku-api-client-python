@@ -1318,6 +1318,23 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
+    def build_base_image(self, build_type, build_options=None):
+        """
+        Build the base image for containerized execution.
+        
+        :param string build_type: either EXEC, SPARK or STREAM_ENGINE
+        :param dict build_options: options for the build. Notable fields are:
+                                     
+                                    * **distrib** (optional) : desired distribution to use in the image, either 'centos7' or 'almalinux8'
+                                    * **R** : install R binaries in the image. Either YES, NO or DEFAULT
+                                    * **py37**, **py38**, **py39**, **py310**, **py311** : install Python 3.7 (resp. 3.8, 3.9, ...) binaries in the image. Either YES, NO or DEFAULT
+                                    * **cudaVersion** : if set, install CUDA in the image. Possible versions are ["9.0", "10.0", "10.1", "10.2", "11.0", "11.2"]
+                                    * **extraOptions** : additional build command parameters, as a list of string
+        """
+        build_options = build_options or {}
+        resp = self._perform_json("POST", "/admin/container-exec/actions/build-base-image", params={'type': build_type}, body=build_options)
+        return DSSFuture.from_resp(self, resp)
+        
     ########################################################
     # Global Instance Info
     ########################################################

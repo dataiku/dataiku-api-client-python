@@ -340,7 +340,11 @@ class GovernArtifactFilterBlueprintVersions(GovernArtifactFilter):
     An artifact filter definition based on a list of specific blueprint versions.
 
     :param blueprint_version_ids: (Optional) the list of blueprint version IDs to use to filter the artifacts.
-        Use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersionId.build` to build a blueprint version ID definition.
+        A blueprint version ID definition is a dict composed of the blueprint ID and the version ID like the following dict:
+        `{"blueprintId": "bp.my_blueprint", "versionId": "bv.my_version"}`.
+        You can use :meth:`~dataikuapi.govern.blueprint.GovernBlueprintVersionId.build` to build a blueprint version ID definition directly.
+        At the end, the `blueprint_version_ids` parameter expects a value looking like this:
+        `[{"blueprintId": "bp.my_blueprint", "versionId": "bv.my_version"}, {"blueprintId": "bp.my_blueprint", "versionId": "bv.my_version2"}`.
     :type blueprint_version_ids: list of dict
     """
 

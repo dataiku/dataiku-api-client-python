@@ -1,5 +1,7 @@
 from datetime import datetime
 from dataikuapi.govern.future import GovernFuture
+from ..utils import _timestamp_ms_to_zoned_datetime
+
 
 class GovernUser(object):
     """
@@ -137,7 +139,7 @@ class GovernUserSettings(GovernUserSettingsBase):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     def save(self):
         """Saves the settings"""
@@ -198,7 +200,7 @@ class GovernUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSuccessfulLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_failed_login(self):
@@ -211,7 +213,7 @@ class GovernUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastFailedLogin"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
     @property
     def last_session_activity(self):
@@ -227,7 +229,7 @@ class GovernUserActivity(object):
         :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.activity["lastSessionActivity"]
-        return datetime.fromtimestamp(timestamp / 1000) if timestamp > 0 else None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
 
 
 class GovernAuthorizationMatrix(object):

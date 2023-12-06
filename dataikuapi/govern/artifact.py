@@ -323,7 +323,13 @@ class GovernArtifactSignoffRecurrenceConfiguration(object):
         """
         Save the recurrence configuration back to the sign-off.
         The recurrence configuration must have the following properties:
-          activated (boolean), days (int), weeks (int), months (int), years (int), reloadConf (boolean)
+
+        * ``activated`` (boolean)
+        * ``days`` (int)
+        * ``weeks`` (int)
+        * ``months`` (int)
+        * ``years`` (int)
+        * ``reloadConf`` (boolean)
 
         :return: None
         """
