@@ -1151,9 +1151,11 @@ class DSSClient(object):
         :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
         :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
         """
+        if isinstance(permissions_propagation_policy, DSSClient.PermissionsPropagationPolicy):
+            permissions_propagation_policy = permissions_propagation_policy.value
         params = {
             "archivePath": osp.abspath(archive_path),
-            "permissionsPropagationPolicy": permissions_propagation_policy
+            "permissionsPropagationPolicy": permissions_propagation_policy,
         }
         if project_folder is not None:
             params["projectFolderId"] = project_folder.project_folder_id

@@ -67,6 +67,15 @@ class DSSLLM(object):
         """
         return DSSLLMCompletionQuery(self)
 
+    def new_completions(self):
+        """
+        Create a new multi-completion query.
+
+        :returns: A handle on the generated multi-completion query.
+        :rtype: :class:`DSSLLMCompletionsQuery`
+        """
+        return DSSLLMCompletionsQuery(self)
+
     def new_embeddings(self):
         """
         Create a new embedding query.
@@ -98,6 +107,7 @@ class DSSLLMEmbeddingsQuery(object):
         :param str text: Text to add to the query.
         """
         self.eq["queries"].append({"text": text})
+        return self
 
     def execute(self):
         """
@@ -145,7 +155,8 @@ class DSSLLMCompletionQuery(object):
     """
     def __init__(self, llm):
         self.llm = llm
-        self.cq = {"messages": [], "settings": {}}
+        self.cq = {"messages": []}
+        self._settings = {}
 
     @property
     def settings(self):
@@ -153,8 +164,7 @@ class DSSLLMCompletionQuery(object):
         :return: The completion query settings.
         :rtype: dict
         """
-
-        return self.cq["settings"]
+        return self._settings
 
     def with_message(self, message, role="user"):
         """
@@ -174,10 +184,65 @@ class DSSLLMCompletionQuery(object):
         :returns: The LLM response.
         :rtype: :class:`DSSLLMCompletionResponse`
         """
-        queries = {"queries": [self.cq], "llmId": self.llm.llm_id}
+        queries = {"queries": [self.cq], "settings": self._settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
         
         return DSSLLMCompletionResponse(ret["responses"][0])
+
+
+class DSSLLMCompletionsQuerySingleQuery(object):
+    def __init__(self):
+        self.cq = {"messages": []}
+
+    def with_message(self, message, role="user"):
+        """
+        Add a message to the completion query.
+
+        :param str message: The message text.
+        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
+         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
+        """
+        self.cq["messages"].append({"content": message, "role": role})
+        return self
+
+class DSSLLMCompletionsQuery(object):
+    """
+    A handle to interact with a multi-completion query.
+    Completion queries allow you to send a prompt to a DSS-managed LLM and
+    retrieve its response.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_completion` instead.
+    """
+    def __init__(self, llm):
+        self.llm = llm
+        self.queries = []
+        self._settings = {}
+
+    @property
+    def settings(self):
+        """
+        :return: The completion query settings.
+        :rtype: dict
+        """
+        return self._settings
+
+    def new_completion(self):
+        ret = DSSLLMCompletionsQuerySingleQuery()
+        self.queries.append(ret)
+        return ret
+
+    def execute(self):
+        """
+        Run the completions query and retrieve the LLM response.
+
+        :returns: The LLM response.
+        :rtype: :class:`DSSLLMCompletionsResponse`
+        """
+        queries = {"queries": [q.cq for q in self.queries], "settings": self._settings, "llmId": self.llm.llm_id}
+        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
+        
+        return DSSLLMCompletionsResponse(ret["responses"])
 
 class DSSLLMCompletionResponse(object):
     """
@@ -204,3 +269,19 @@ class DSSLLMCompletionResponse(object):
         :rtype: str
         """
         return self._raw["text"]
+
+class DSSLLMCompletionsResponse(object):
+    """
+    A handle to interact with a multi-completion response.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuery.execute` instead.
+    """
+    def __init__(self, raw_resp):
+        self._raw = raw_resp
+
+    @property
+    def responses(self):
+        """The array of responses"""
+        return [DSSLLMCompletionResponse(x) for x in self._raw]
+    
