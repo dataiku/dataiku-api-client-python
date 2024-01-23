@@ -2355,6 +2355,19 @@ class DSSProject(object):
                        body = {"insightPrototype": creation_info})['id']
         return DSSInsight(self.client, self.project_key, insight_id)
 
+    ########################################################
+    # Git
+    ########################################################
+
+    def get_project_git(self):
+        """
+        Gets an handle to perform operations on the project's git repository.
+
+        :returns: a handle to perform git operations on project.
+        :rtype: :class:`dataikuapi.dss.project.DSSProjectGit`
+        """
+        return DSSProjectGit(self.client, self.project_key)
+
 
 class TablesImportDefinition(object):
     """
@@ -2557,6 +2570,249 @@ class DSSProjectSettings(object):
 
         self.client._perform_empty("PUT", "/projects/%s/settings" % (self.project_key),
                                    body=self.settings)
+
+
+class DSSProjectGit(object):
+    """Handle to manage the git repository of a DSS project (fetch, push, pull, ...)"""
+
+    def __init__(self, client, project_key):
+        """Do not call directly, use :meth:`DSSProject.get_project_git`"""
+        self.client = client
+        self.project_key = project_key
+
+    def get_status(self):
+        """
+        Get the current state of the project's git repository
+
+        :return: A dict containing the following keys: 'currentBranch', 'remotes', 'trackingCount', 'clean', 'hasUncommittedChanges',
+        'added', 'changed', 'removed', 'missing', 'modified', 'conflicting', 'untracked' and 'untrackedFolders'
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/status" % self.project_key)
+
+    def get_remote(self, name="origin"):
+        """
+        Get the URL of the remote repository.
+
+        :param: str name: The name of the remote. Defaults to "origin".
+        :return: The URL of the remote origin if set, None otherwise.
+        :rtype: str or None
+        """
+        resp = self.client._perform_json("GET", "/projects/%s/git/remotes/%s" % (self.project_key, name))
+        return resp["url"] if "url" in resp else None
+
+    def set_remote(self, url, name="origin"):
+        """
+        Set the URL of the remote repository.
+
+        :param: str name: The name of the remote to set. Defaults to "origin".
+        :param str url: The URL of the remote repository (git@github.com:user/repo.git).
+        """
+        self.client._perform_json("POST", "/projects/%s/git/remotes/%s" % (self.project_key, name), body={"url": url})
+
+    def remove_remote(self, name="origin"):
+        """
+        Remove the remote origin of the project's git repository.
+
+        :param: str name: The name of the remote to remove. Defaults to "origin".
+        """
+        self.client._perform_json("DELETE", "/projects/%s/git/remotes/%s" % (self.project_key, name))
+
+    def list_branches(self, remote=False):
+        """
+        List all branches (local only or local & remote) of the project's git repository.
+
+        :param bool remote: Whether to include remote branches.
+        :return: A list of branch names.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/branches" % self.project_key, params={"remote": remote})
+
+    def create_branch(self, branch_name, commit=None):
+        """
+        Create a new local branch on the project's git repository and switches to it.
+
+        :param str branch_name: The name of the branch to create.
+        :param str commit: Hash of a commit to create the branch from (optional).
+        :return: A dict containing keys 'success' and 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/branches/" % self.project_key, body={"name": branch_name, "commit": commit})
+
+    def delete_branch(self, branch_name, force_delete=False, remote=False, delete_remotely=False):
+        """
+        Delete a local or remote branch on the project's git repository.
+
+        :param str branch_name: The name of the branch to delete.
+        :param bool remote: True if the branch to delete is a remote branch; False if it's a local branch.
+        :param bool delete_remotely: True to delete a remote branch both locally and remotely; False to delete the remote branch on the local repository only.
+        :param bool force_delete: True to force the deletion even if some commits have not been pushed; False to fail in case some commits have not been pushed.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/actions/deleteBranch" % self.project_key, body={"name": branch_name, "remote": remote, "deleteRemotely": delete_remotely, "forceDelete": force_delete})
+
+    def get_current_branch(self):
+        """
+        Get the name of the current branch
+
+        :return: The name of the current branch
+        :rtype: str
+        """
+        resp = self.client._perform_json("GET", "/projects/%s/git/current-branch" % self.project_key)
+        return resp["name"] if "name" in resp else None
+
+    def list_tags(self):
+        """
+        Lists all existing tags.
+
+        :return: A list of dict objects, each one containing the following keys: 'name', 'shortName', 'commit' (hash of the commit associated with the tag),
+        'annotations' and 'readOnly'.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/tags" % self.project_key)
+
+    def create_tag(self, name, reference="HEAD", message=""):
+        """
+        Create a tag for the specified or current reference.
+
+        :param str name: The name of the tag to create.
+        :param str reference: ID of a commit to tag. Defaults to HEAD.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/tags/" % self.project_key, body={"name": name, "reference": reference, "message": message})
+
+    def delete_tag(self, name):
+        """
+        Remove a tag from the local repository
+
+        :param str name: The name of the tag to delete.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/actions/deleteTag" % self.project_key, body={"name": name})
+
+    def switch(self, branch_name):
+        """
+        Switch the current repository to the specified branch.
+
+        :param str branch_name: The name of the branch to switch to.
+        :return: A dict containing keys 'success', 'messages', 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/switchBranch" % self.project_key, params={"branchName": branch_name})
+
+    def checkout(self, branch_name):
+        """
+        Switch the current repository to the specified branch (identical to`switch`)
+
+        :param str branch_name: The name of the branch to checkout.
+        :return: A dict containing keys 'success', 'messages', 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.switch(branch_name)
+
+    def fetch(self):
+        """
+        Fetch branches and/or tags (collectively, "refs") from the remote repository to the project's git repository.
+
+        :return: A dict containing keys 'success', 'logs', 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/fetch" % self.project_key)
+
+    def pull(self, branch_name=None):
+        """
+        Incorporate changes from a remote repository into the current branch on the project's git repository.
+
+        :param str branch_name: The name of the branch to pull. If None, pull from the current branch.
+        :return: A dict containing keys 'success', 'logs', 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/pullRebase" % self.project_key, params={"branchName": branch_name})
+
+    def push(self, branch_name=None):
+        """
+        Update the remote repository with the project's local commits.
+
+        :param str branch_name: The name of the branch to push. If None, push commits from the current branch.
+        :return: A dict containing keys 'success', 'logs', 'output' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/push" % self.project_key, params={"branchName": branch_name})
+
+    def log(self, path=None, start_commit=None, count=1000):
+        """
+        List commits in the project's git repository.
+
+        :param str path: Path to filter the logs (optional). If specified, only commits impacting files located in the provided path are returned.
+        :param str start_commit: ID of the first commit to list. Use the value found in the `nextCommit` field from a previous response (optional).
+        :param int count: Maximum number of commits to return (20 by default).
+        :return: A dict containing a key `entries` and optionally a second key `nextCommit` if there are more commits.
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/actions/log" % self.project_key, params={"path": path, "startCommit": start_commit, "count": count})
+
+    def diff(self, commit_from=None, commit_to=None):
+        """
+        Show changes between the working copy and the last commit (commit_from=None, commit_to=None),
+        between two commits (commit_from=SOME_ID, commit_to=SOME_ID), or made in a given commit (commit_from=SOME_ID, commit_to=None).
+
+        :param str commit_from: ID of the first commit or None
+        :param str commit_to: ID of the second commit or None
+        :return: A containing containing the following keys: 'commitFrom' (dict), 'commitTo' (dict), 'addedLines' (int),  'removedLines' (int), 'changedFiles' (int), 'entries' (array of dict)
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/actions/diff" % self.project_key, params={"commitFrom": commit_from, "commitTo": commit_to})
+
+    def commit(self, message):
+        """
+        Commit pending changes in the project's git repository with the given message.
+
+        Note: Untracked tracked are automatically added before committing.
+
+        :param str message: The commit message.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/actions/commit" % self.project_key, body={"message": message})
+
+    def revert_to_revision(self, commit):
+        """
+        Revert the project content to the supplied revision.
+
+        :param str commit: Hash of a valid commit as returned by the log method.
+        :return: A dict containing a key 'success' and optionally a second key 'logs' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/revertToRevision" % self.project_key, params={"commit": commit})
+
+    def revert_commit(self, commit):
+        """
+        Revert the changes that the specified commit introduces
+
+        :param str commit: ID of a valid commit as returned by the log method.
+        :return: A dict containing the following keys: 'success' and optionally 'logs' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/projects/%s/git/actions/revertCommit" % self.project_key, params={"commit": commit})
+
+    def reset_to_head(self):
+        """
+        Drop uncommitted changes in the project's git repository (hard reset to HEAD).
+        """
+        self.client._perform_json("POST", "/projects/%s/git/actions/resetToLocalHeadState" % self.project_key)
+
+    def reset_to_upstream(self):
+        """
+        Drop local changes in the project's git repository and hard reset to the upstream branch.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/actions/resetToRemoteHeadState" % self.project_key)
+
+    def drop_and_rebuild(self, i_know_what_i_am_doing=False):
+        """
+        Fully drop the current git repositoty and rebuild from scratch a new one.
+        CAUTION: ALL HISTORY WILL BE LOST. ONLY CALL THIS METHOD IF YOU KNOW WHAT YOU ARE DOING.
+
+        :param bool i_know_what_i_m_doing: True if you really want to wipe out all git history for this project.
+        """
+        if i_know_what_i_am_doing:
+            self.client._perform_json("POST", "/projects/%s/git/actions/dropAndRebuild" % self.project_key, params={"iKnowWhatIAmDoing": True})
+        else:
+            raise Exception("Set argument 'i_know_what_i_am_doing' to True to confirm you really want to wipe out all git history.")
 
 
 class JobDefinitionBuilder(object):
