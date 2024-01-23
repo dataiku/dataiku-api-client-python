@@ -354,7 +354,7 @@ class DSSSavedModel(object):
                                       skip_expensive_reports=True, features_list=None, container_exec_config_name="NONE",
                                       input_format="GUESS", output_format="GUESS", evaluate=True):
         """
-        EXPERIMENTAL. Creates a new version of an external model.
+        Creates a new version of an external model.
 
         .. important::
             Requires the saved model to have been created using
@@ -817,7 +817,7 @@ class ExternalModelVersionHandler:
         if protocol == "vertex-ai":
             model_version_info["inputFormat"] = "INPUT_VERTEX_DEFAULT"
             model_version_info["outputFormat"] = "OUTPUT_VERTEX_DEFAULT"
-        elif protocol == "azure-ml" or protocol == "sagemaker":
+        elif protocol in ["azure-ml", "sagemaker", "databricks"]:
             model_version_info["inputFormat"] = input_format
             model_version_info["outputFormat"] = output_format
             if input_dataset is not None:
