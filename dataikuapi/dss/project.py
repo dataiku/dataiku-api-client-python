@@ -1026,7 +1026,7 @@ class DSSProject(object):
 
     def create_external_model(self, name, prediction_type, configuration):
         """
-        EXPERIMENTAL. Creates a new Saved model that can contain external remote endpoints as versions.
+        Creates a new Saved model that can contain external remote endpoints as versions.
 
         :param string name: Human-readable name for the new saved model in the flow
         :param string prediction_type: One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION

@@ -386,8 +386,16 @@ class DSSAPIDeployerDeployment(object):
             params = { "ignorePreDeleteErrors" : ignore_pre_delete_errors }
         )
 
-                
-            
+    def get_open_api(self):
+        """
+        Gets the OpenAPI document of this deployment if it's available or raise a 404 error.
+
+        :returns: a :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentOpenApi`
+        """
+        open_api = self.client._perform_text("GET", "/api-deployer/deployments/%s/get-open-api" % (self.deployment_id))
+
+        return DSSAPIDeployerDeploymentOpenApi(open_api)
+
 
 class DSSAPIDeployerDeploymentSettings(object):
     """
@@ -427,7 +435,7 @@ class DSSAPIDeployerDeploymentSettings(object):
             "mode": "SINGLE_GENERATION",
             "generation": version
         }
-        
+
     def save(self, ignore_warnings=False):
         """
         Saves back these settings to the deployment
@@ -501,6 +509,32 @@ class DSSAPIDeployerDeploymentStatus(object):
     def get_health_messages(self):
         """Returns messages about the health of this deployment"""
         return self.heavy_status["healthMessages"]
+
+
+class DSSAPIDeployerDeploymentOpenApi(object):
+    """
+    The OpenAPI document of an API Deployer deployment.
+
+    Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_open_api`
+    """
+    def __init__(self, open_api_doc_json):
+        self.open_api_doc_json = open_api_doc_json
+
+    def get(self):
+        """
+        Gets the OpenAPI document as dict.
+
+        :rtype: dict
+        """
+        return json.loads(self.open_api_doc_json)
+
+    def get_raw(self):
+        """
+        Gets the OpenAPI document raw.
+
+        :rtype: string
+        """
+        return self.open_api_doc_json
 
 
 ###############################################
@@ -639,7 +673,7 @@ class DSSAPIDeployerServiceStatus(object):
         :rtype: list of dicts
         """
         return self.light_status["packages"]
-        
+
     def get_raw(self):
         """
         Gets the raw status information. This returns a dictionary with various information about the service,

@@ -139,6 +139,24 @@ class DSSDataset(object):
                 "dropData" : drop_data
             })
 
+    ########################################################
+    # Dataset renaming
+    ########################################################
+
+    def rename(self, new_name):
+        """
+        Rename the dataset with the new specified name
+
+        :param str new_name: the new name of the dataset
+        """
+        if self.dataset_name == new_name:
+            raise ValueError("Dataset name is already " + new_name)
+        obj = {
+            "oldName": self.dataset_name,
+            "newName": new_name
+        }
+        self.client._perform_empty("POST", "/projects/%s/actions/renameDataset" % self.project_key, body=obj)
+        self.dataset_name = new_name
 
     ########################################################
     # Dataset definition

@@ -2108,6 +2108,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         BINARY = "BINARY_CLASSIFICATION"
         REGRESSION = "REGRESSION"
         MULTICLASS = "MULTICLASS"
+        OTHER = "OTHER"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
         super(DSSPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
@@ -4431,7 +4432,7 @@ class DSSMLTask(object):
         self.wait_train_complete()
         return self.get_trained_models_ids(session_id = train_ret["sessionId"])
 
-    def ensemble(self, model_ids=None, method=None):
+    def ensemble(self, model_ids, method):
         """
         Creates an ensemble model from a set of models.
 
@@ -4443,16 +4444,14 @@ class DSSMLTask(object):
 
         This returned identifier can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`.
 
-        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :param model_ids: A list of model identifiers to ensemble (must not be empty)
         :type model_ids: list[str]
-        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
         :type method: str
 
         :return: The model identifier of the resulting ensemble model
         :rtype: str
         """
-        if model_ids is None:
-            model_ids = []
         train_ret = self.start_ensembling(model_ids, method)
         self.wait_train_complete()
         return train_ret
@@ -4478,22 +4477,24 @@ class DSSMLTask(object):
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
-    def start_ensembling(self, model_ids=None, method=None):
+    def start_ensembling(self, model_ids, method):
         """
         Creates asynchronously an ensemble model from a set of models
 
         This returns immediately, before training is complete. To wait for training to complete, use :meth:`wait_train_complete`
 
-        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :param model_ids: A list of model identifiers to ensemble (must not be empty)
         :type model_ids: list[str]
-        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
         :type method: str
 
         :return: The model identifier of the ensemble
         :rtype: str
         """
-        if model_ids is None:
-            model_ids = []
+        if not model_ids:
+            raise ValueError("The list of models to ensemble must not be empty")
+        if method not in ["AVERAGE", "PROBA_AVERAGE", "MEDIAN", "VOTE", "LINEAR_MODEL", "LOGISTIC_MODEL"]:
+            raise ValueError("A valid ensembling method must be chosen")
         ensembling_request = {
                             "method" : method,
                             "modelsIds" : model_ids

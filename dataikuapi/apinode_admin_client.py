@@ -86,3 +86,19 @@ class APINodeAdminClient(DSSBaseClient):
             "builtEnvDir": built_env_dir,
             "language": language
         })
+
+    def import_model_archive_in_cache(self, model_archive_path):
+        """
+        Import a model in model cache from an exported model archive
+
+        :param model_archive_path: path of an exported model archive
+        """
+        return self._perform_json("POST", "model-cache", params={
+            "modelArchivePath": model_archive_path
+        })
+
+    def clear_model_cache(self):
+        """
+        Clear the model cache
+        """
+        self._perform_empty("DELETE", "model-cache")
