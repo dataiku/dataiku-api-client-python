@@ -6,6 +6,8 @@ import os.path as osp
 
 from .utils import DataikuException
 
+from .iam.settings import FMSSOSettings, FMLDAPSettings, FMAzureADSettings
+
 from .fm.tenant import FMCloudCredentials, FMCloudTags
 from .fm.virtualnetworks import (
     FMVirtualNetwork,
@@ -78,6 +80,9 @@ class FMClient(object):
     # Tenant
     ########################################################
 
+    def get_tenant_id(self):
+        return self.__tenant_id
+        
     def get_cloud_credentials(self):
         """
         Get the cloud credentials
@@ -87,7 +92,37 @@ class FMClient(object):
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
         return FMCloudCredentials(self, creds)
+    
+    def get_sso_settings(self):
+        """
+        Get the Single Sign-On (SSO) settings
 
+        :return: SSO settings
+        :rtype: :class:`dataikuapi.iam.settings.SSOSettings`
+        """
+        sso = self._perform_tenant_json("GET", "/iam/sso-settings")
+        return FMSSOSettings(self, sso)
+
+    def get_ldap_settings(self):
+        """
+        Get the LDAP settings
+
+        :return: LDAP settings
+        :rtype: :class:`dataikuapi.iam.settings.LDAPSettings`
+        """
+        ldap = self._perform_tenant_json("GET", "/iam/ldap-settings")
+        return FMLDAPSettings(self, ldap)
+
+    def get_azure_ad_settings(self):
+        """
+        Get the Azure Active Directory (aka Microsoft Entra ID) settings
+
+        :return: Azure AD settings
+        :rtype: :class:`dataikuapi.iam.settings.AzureADSettings`
+        """
+        ldap = self._perform_tenant_json("GET", "/iam/azure-ad-settings")
+        return FMAzureADSettings(self, ldap)
+    
     def get_cloud_tags(self):
         """
         Get the tenant's cloud tags
