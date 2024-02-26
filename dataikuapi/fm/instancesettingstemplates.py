@@ -308,7 +308,8 @@ class FMSetupAction(dict):
         }
         if params:
             data["params"] = params
-
+        else:
+            data["params"] = {}
         super(FMSetupAction, self).__init__(data)
 
     @staticmethod

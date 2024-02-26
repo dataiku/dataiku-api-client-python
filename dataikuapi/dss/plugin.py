@@ -1,19 +1,21 @@
 from ..utils import DataikuException
 from .future import DSSFuture
 
-class DSSPluginSettings(object):
-    """
-    The settings of a plugin.
 
+class DSSPluginSettingsBase(object):
+    """
+    Base class for plugin settings.
+    
     .. important::
 
-        Do not instantiate directly, use :meth:`DSSPlugin.get_settings`.
+        Do not instantiate directly, use either :meth:`DSSPlugin.get_settings` or :meth:`DSSPlugin.get_project_settings`.
     """
 
-    def __init__(self, client, plugin_id, settings):
+    def __init__(self, client, plugin_id, settings, project_key=None):
         self.client = client
         self.plugin_id = plugin_id
         self.settings = settings
+        self.project_key = project_key
 
     def get_raw(self):
         """
@@ -24,8 +26,9 @@ class DSSPluginSettings(object):
             This method returns a reference to the settings, not a copy. Changing values in the reference
             then calling :meth:`save()` results in these changes being saved.
 
-        :return: the settings as a dict. The settings consist of the plugin code env's name, the presets and 
-                 the permissions to use the plugin components.
+        :return: the settings as a dict. The instance-level settings consist of the plugin code env's name,
+        the presets and the permissions to use the plugin components. The project-level settings consist of the
+        presets and the parameter set descriptions.
 
         :rtype: dict
         """
@@ -39,15 +42,15 @@ class DSSPluginSettings(object):
         """
         return [d["id"] for d in self.settings.get("accessibleParameterSetDescs", [])]
 
-    def get_parameter_set(self, parameter_set_name):
-        """
-        Get a parameter set in this plugin.
+    def _list_parameter_sets(self):
+        ret = []
+        for parameter_set_name in self.list_parameter_set_names():
+            parameter_set = self.get_parameter_set(parameter_set_name)
+            if parameter_set is not None:
+                ret.append(parameter_set)
+        return ret
 
-        :param string parameter_set_name: name of the parameter set
-
-        :return: a handle on the parameter set
-        :rtype: :class:`DSSPluginParameterSet`
-        """
+    def _get_parameter_set(self, parameter_set_name):
         desc = None
         data = None
         for ps in self.settings.get("accessibleParameterSetDescs", []):
@@ -56,9 +59,37 @@ class DSSPluginSettings(object):
         for ps in self.settings.get("parameterSets", []):
             if ps["name"] == parameter_set_name:
                 data = ps
-        if desc is None or data is None:
+        if desc is None:
             return None
-        return DSSPluginParameterSet(desc, data, self.settings["presets"])
+        if data is None:
+            # make  a fake one, for example for project-level settings
+            data = {'type':desc["elementType"]}
+        presets_of_parameter_set = [p for p in self.settings["presets"] if p["type"] == data["type"]]
+        return self._make_parameter_set(desc, data, presets_of_parameter_set)
+
+    def _make_parameter_set(self, desc, data, presets_of_parameter_set):
+        return DSSPluginParameterSet(self, desc, data, presets_of_parameter_set)
+
+    def save(self):
+        """
+        Save the settings to DSS.
+        """
+        self.client._perform_empty("POST", "/plugins/%s/settings" % (self.plugin_id),
+                                   params={"projectKey": self.project_key},
+                                   body=self.settings)
+
+
+class DSSPluginSettings(DSSPluginSettingsBase):
+    """
+    The settings of a plugin.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPlugin.get_settings`.
+    """
+
+    def __init__(self, client, plugin_id, settings):
+        super().__init__(client, plugin_id, settings)
 
     def set_code_env(self, code_env_name):
         """
@@ -68,21 +99,77 @@ class DSSPluginSettings(object):
         """
         self.settings["codeEnvName"] = code_env_name
 
-    def save(self):
+    def list_parameter_sets(self):
         """
-        Save the settings to DSS.
+        List the parameter sets defined in this plugin.
+
+        :rtype: list[:class:`DSSPluginParameterSet`]
         """
-        self.client._perform_empty("POST", "/plugins/%s/settings" % (self.plugin_id), body=self.settings)
+        return self._list_parameter_sets()
+
+    def get_parameter_set(self, parameter_set_name):
+        """
+        Get a parameter set in this plugin.
+
+        :param string parameter_set_name: name of the parameter set
+
+        :return: a handle on the parameter set
+        :rtype: :class:`DSSPluginParameterSet`
+        """
+        return self._get_parameter_set(parameter_set_name)
+
+    def _make_parameter_set(self, desc, data, presets_of_parameter_set):
+        return DSSPluginParameterSet(self, desc, data, presets_of_parameter_set)
+
+class DSSPluginProjectSettings(DSSPluginSettingsBase):
+    """
+    The project-level settings of a plugin.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPlugin.get_project_settings`.
+    """
+    
+    def __init__(self, client, plugin_id, settings, project_key):
+        super().__init__(client, plugin_id, settings, project_key)
 
 
-class DSSPluginParameterSet(object):
+    def list_parameter_sets(self):
+        """
+        List the parameter sets defined in this plugin.
+
+        :rtype: list[:class:`DSSPluginProjectParameterSet`]
+        """
+        return self._list_parameter_sets()
+
+    def get_parameter_set(self, parameter_set_name):
+        """
+        Get a parameter set in this plugin.
+
+        :param string parameter_set_name: name of the parameter set
+
+        :return: a handle on the parameter set
+        :rtype: :class:`DSSPluginProjectParameterSet`
+        """
+        return self._get_parameter_set(parameter_set_name)
+
+    def _make_parameter_set(self, desc, data, presets_of_parameter_set):
+        return DSSPluginProjectParameterSet(self, desc, data, presets_of_parameter_set)
+
+class DSSPluginParameterSetBase(object):
     """
     A parameter set in a plugin.
 
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPluginSettings.get_parameter_set()` or :meth:`DSSPluginSettings.list_parameter_sets().
+        For project-level settings, use :meth:`DSSPluginProjectSettings.get_parameter_set()` or :meth:`DSSPluginProjectSettings.list_parameter_sets()`
+
     The values in this class can be modified directly, and changes will be taken into account 
-    when calling :meth:`DSSPluginSettings.save()`.
+    when calling :meth:`DSSPluginSettings.save()` (or :meth:`DSSPluginProjectSettings.save()`
     """
-    def __init__(self, desc, settings, presets):
+    def __init__(self, plugin_settings, desc, settings, presets):
+        self._plugin_settings = plugin_settings
         self._desc = desc
         self._settings = settings
         self._presets = presets
@@ -97,7 +184,7 @@ class DSSPluginParameterSet(object):
 
         :rtype: dict
         """
-        return self.desc
+        return self._desc
 
     @property
     def settings(self):
@@ -120,21 +207,28 @@ class DSSPluginParameterSet(object):
 
         :rtype: list[string]
         """
-        return [p["name"] for p in self._presets if p["type"] == self._settings["type"]]
-        
+        return [p["name"] for p in self._presets]
+
+    def list_presets(self):
+        """
+        List the presets of this parameter set.
+
+        :rtype: list[:class:`DSSPluginPreset`]
+        """
+        return [DSSPluginPreset(self._plugin_settings, p, self._desc) for p in self._presets]
+
     def get_preset(self, preset_name):
         """
         Get a preset of this parameter set.
 
         :param string preset_name: name of a preset
 
-        :return: a preset definition, as a dict. The values of the preset are in the **config** sub-dict, keyed
-                 by the names of the parameters defined in the parameter set.
-        :rtype: dict
+        :return: a handle on the preset definition, or None if the preset doesn't exist
+        :rtype: :class:`DSSPluginPreset`
         """
         for p in self._presets:
-            if p["name"] == preset_name and p["type"] == self._settings["type"]:
-                return p
+            if p["name"] == preset_name:
+                return DSSPluginPreset(self._plugin_settings, p, self._desc)
         return None
 
     def delete_preset(self, preset_name):
@@ -145,23 +239,268 @@ class DSSPluginParameterSet(object):
         """
         preset = self.get_preset(preset_name)
         if preset is not None:
-            self._presets.remove(preset)
+            # note: preset out of get_preset is a DSSPluginPreset, so it's
+            # not the object present in the lists
+            self._plugin_settings.settings["presets"].remove(preset._settings)
+            self._presets.remove(preset._settings)
+        else:
+            raise Exception("Preset '%s' not found" % preset_name)
 
-    def create_preset(self, preset_name):
+    def create_preset(self, preset_name, with_defaults=False):
         """
         Create a new preset of this parameter set in the plugin settings.
 
         :param string preset_name: name for the preset to create
+        :param bool with_defaults: if True, fill the new preset with the default value for each parameter
 
-        :return: a preset definition, as a dict (see :meth:`get_preset()`)
+        :return: a preset definition, as a :class:`DSSPluginPreset` (see :meth:`get_preset()`)
         :rtype: dict
         """
         for p in self._presets:
             if p["name"] == preset_name:
                 raise Exception("A preset of the same name already exists")
-        # since self._presets is directly the list from the plugin settings, this adds the preset to the plugin
-        self._presets.append({"name":preset_name, "type":self._settings["type"], "config":{}, "pluginConfig":{}, "defaultPermissions":{}, "permissions":[]})
+        new_preset = {"name":preset_name, "type":self._settings["type"], "config":{}, "pluginConfig":{}, "defaultPermission":{}, "permissions":[]}
+        if with_defaults:
+            for p in self._desc["desc"]["params"]:
+                v = p.get("defaultValue")
+                if v is not None:
+                    new_preset["config"][p["name"]] = v
+            for p in self._desc["desc"]["pluginParams"]:
+                v = p.get("defaultValue")
+                if v is not None:
+                    new_preset["pluginConfig"][p["name"]] = v
+        self._plugin_settings.settings["presets"].append(new_preset)
+        self._presets.append(new_preset)
         return self.get_preset(preset_name)
+
+    def save(self):
+        """
+        Save the settings to DSS.
+        """
+        self._plugin_settings.save()
+
+
+class DSSPluginParameterSet(DSSPluginParameterSetBase):
+    """
+    A parameter set in a plugin.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPluginSettings.get_parameter_set()` or :meth:`DSSPluginSettings.list_parameter_sets().
+
+    The values in this class can be modified directly, and changes will be taken into account
+    when calling :meth:`DSSPluginSettings.save()`
+    """
+    def __init__(self, plugin_settings, desc, settings, presets):
+        self._plugin_settings = plugin_settings
+        self._desc = desc
+        self._settings = settings
+        self._presets = presets
+
+    @property
+    def definable_inline(self):
+        """
+        Whether presets for this parameter set can be defined directly in the form of the datasets, recipes, ...
+
+        :rtype: bool
+        """
+        return self._settings["defaultPermission"].get("definableInline", False)
+
+    @definable_inline.setter
+    def definable_inline(self, definable):
+        self._settings["defaultPermission"]['definableInline'] = definable
+
+    @property
+    def definable_at_project_level(self):
+        """
+        Whether presets for this parameter set can be defined at the project level
+
+        :rtype: bool
+        """
+        return self._settings["defaultPermission"].get("definableAtProjectLevel", False)
+
+    @definable_at_project_level.setter
+    def definable_at_project_level(self, definable):
+        self._settings["defaultPermission"]['definableAtProjectLevel'] = definable
+
+
+class DSSPluginProjectParameterSet(DSSPluginParameterSetBase):
+    """
+    A parameter set in a plugin.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPluginProjectSettings.get_parameter_set()` or :meth:`DSSPluginProjectSettings.list_parameter_sets()`
+
+
+    The values in this class can be modified directly, and changes will be taken into account
+    when calling or :meth:`DSSPluginProjectSettings.save()`
+    """
+    def __init__(self, plugin_settings, desc, settings, presets):
+        self._plugin_settings = plugin_settings
+        self._desc = desc
+        self._settings = settings
+        self._presets = presets
+
+
+class DSSPluginPreset(dict):
+    """
+    A preset of a parameter set in a plugin.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSPluginParameterSet.get_preset()` , :meth:`DSSPluginParameterSet.list_presets()`
+        or :meth:`DSSPluginParameterSet.create_preset()`. For project-level presets, use :meth:`DSSPluginProjectParameterSet.get_preset()` ,
+        :meth:`DSSPluginProjectParameterSet.list_presets()` or :meth:`DSSPluginProjectParameterSet.create_preset()`
+
+    The values in this class can be modified directly, and changes will be taken into account
+    when calling :meth:`DSSPluginSettings.save()`.
+    """
+    def __init__(self, plugin_settings, settings, parameter_set_desc):
+        super(DSSPluginPreset, self).__init__(settings)
+        self._plugin_settings = plugin_settings
+        self._settings = settings
+        self._parameter_set_desc = parameter_set_desc
+
+    def __repr__(self):
+        return "DSSPluginPreset(name={}, plugin={}, parameter_set={})".format(
+            self._settings["name"],
+            self._plugin_settings.plugin_id,
+            self._parameter_set_desc["id"]
+        )
+
+    def get_raw(self):
+        """
+        Get the raw settings of the preset object.
+
+        .. note::
+
+            This method returns a reference to the preset, not a copy. Changing values in the reference
+            then calling :meth:`save()` results in these changes being saved.
+
+        :return: the preset's complete settings
+        :rtype: dict
+        """
+        return self._settings
+
+    @property
+    def name(self):
+        """
+        Get the name of the preset.
+
+        :return: the name of the preset
+        :rtype: string
+        """
+        return self._settings["name"]
+
+    @property
+    def config(self):
+        """
+        Get the raw config of the preset object.
+
+        .. note::
+
+            This method returns a reference to the preset, not a copy. Changing values in the reference
+            then calling :meth:`save()` results in these changes being saved.
+
+        :return: the preset's config as a dict. Each parameter of the parameter set is a field in the dict.
+        :rtype: dict
+        """
+        return self._settings["config"]
+
+    @property
+    def plugin_config(self):
+        """
+        Get the raw admin-level config of the preset object. Admin-level config parameters are not shown in
+        the UI to non-admin users.
+
+        .. note::
+
+            This method returns a reference to the preset, not a copy. Changing values in the reference
+            then calling :meth:`save()` results in these changes being saved.
+
+        :return: the preset's admin config as a dict. Each parameter of the parameter set is a field in the dict.
+        :rtype: dict
+        """
+        return self._settings["pluginConfig"]
+
+    @property
+    def owner(self):
+        """
+        The DSS user that owns this preset
+
+        :rtype: string
+        """
+        return self._settings["owner"]
+
+    @owner.setter
+    def owner(self, login):
+        self._settings["owner"] = login
+
+    @property
+    def usable_by_all(self):
+        """
+        Whether the preset is usable by any DSS user
+
+        :rtype: bool
+        """
+        return self._settings["defaultPermission"].get("use", False)
+
+    @usable_by_all.setter
+    def usable_by_all(self, use):
+        self._settings["defaultPermission"]['use'] = use
+
+    def get_permission_item(self, group):
+        """
+        Get permissions on the preset for a given group
+
+        :param string group: the name of the DSS group you want to check permissions for.
+        :return: the permissions as a dict
+        :rtype: dict
+        """
+        if group is None:
+            return self._settings["defaultPermission"]
+        else:
+            for p in self._settings["permissions"]:
+                if p["group"] == group:
+                    return p
+            return None
+
+    def is_usable_by(self, group):
+        """
+        Get whether the preset is usable by DSS users in a group
+
+        :param string group: the name of the DSS group you want to check permissions for.
+
+        :return: True if the preset can be used by DSS users belonging to *group*. If *group* is None
+                 then returns True if the preset can be used by any DSS user (like :meth:`usable_by_all`)
+        :rtype: bool
+        """
+        permission_item = self.get_permission_item(group)
+        if permission_item is None:
+            return self._settings["defaultPermission"]["use"]
+        else:
+            return permission_item["use"]
+
+    def set_usable_by(self, group, use):
+        """
+        Set whether the preset is usable by DSS users in a group
+
+        :param string group: the name of the DSS group you want to change permissions for.
+        :param bool use: whether the group should be allowed to use the preset or not
+        """
+        permission_item = self.get_permission_item(group)
+        if permission_item is None:
+            # group can't be None here
+            self._settings["permissions"].append({"group":group, "use":use})
+        else:
+            permission_item["use"] = use
+
+    def save(self):
+        """
+        Save the settings to DSS.
+        """
+        self._plugin_settings.save()
 
 class DSSPlugin(object):
     """
@@ -196,6 +535,25 @@ class DSSPlugin(object):
         """
         settings = self.client._perform_json("GET", "/plugins/%s/settings" % (self.plugin_id))
         return DSSPluginSettings(self.client, self.plugin_id, settings)
+
+    def get_project_settings(self, project_key):
+        """
+        Get the project-level settings.
+
+        .. note::
+
+            This call requires an API key with either:
+
+                * DSS admin permissions
+                * permission to develop plugins
+                * tied to a user with admin privileges on the plugin
+
+        :return: a handle on the project-level settings
+        :rtype: :class:`DSSPluginProjectSettings`
+        """
+        settings = self.client._perform_json("GET", "/plugins/%s/settings" % (self.plugin_id),
+                                             params={"projectKey": project_key})
+        return DSSPluginProjectSettings(self.client, self.plugin_id, settings, project_key)
 
     ########################################################
     # Code env

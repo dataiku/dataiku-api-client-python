@@ -1,5 +1,6 @@
-DSS_API_ENDPOINT_MONITORING_TYPE = "DSS_API_ENDPOINT"
+MANAGED_API_ENDPOINT_MONITORING_TYPE = "MANAGED_API_ENDPOINT"
 EXTERNAL_API_ENDPOINT_MONITORING_TYPE = "EXTERNAL_API_ENDPOINT"
+
 
 class DSSUnifiedMonitoring(object):
     """
@@ -12,23 +13,23 @@ class DSSUnifiedMonitoring(object):
     def __init__(self, client):
         self.client = client
 
-    def list_project_monitorings(self):
+    def list_monitored_project_deployments(self):
         """
-        Lists the deployed projects monitorings
+        Lists the monitored project deployments
 
-        :return: The list of project monitorings
-        :rtype: list of :class:`dataikuapi.dss.unifiedmonitoring.DSSProjectMonitoring`
+        :return: The list of monitored projects
+        :rtype: list of :class:`dataikuapi.dss.unifiedmonitoring.MonitoredProjectDeployment`
         """
         items = self.client._perform_json("GET", "/unified-monitoring/deployer/projects")
-        return [DSSProjectMonitoring(monitoring) for monitoring in items]
+        return [MonitoredProjectDeployment(monitoring) for monitoring in items]
 
-    def list_api_endpoint_monitorings(self, remove_duplicated_external_endpoints=True):
+    def list_monitored_api_endpoints(self, remove_duplicated_external_endpoints=True):
         """
-        Lists the API endpoints monitorings
+        Lists the monitored API endpoints
 
-        :param boolean remove_duplicated_external_endpoints: if True, an endpoint that is both in a Deploy Anywhere Infrastructure and in an External Endpoints Scope will be listed only once, under the Deploy Anywhere Infrastructure. Optional
-        :return: The list of API endpoint monitorings
-        :rtype: list of Union[:class:`dataikuapi.dss.unifiedmonitoring.DSSApiEndpointMonitoring`, :class:`dataikuapi.dss.unifiedmonitoring.ExternalApiEndpointMonitoring`]
+        :param boolean remove_duplicated_external_endpoints: if True, an endpoint that is both in a Deploy Anywhere Infrastructure and in an External endpoint scope will be listed only once, under the Deploy Anywhere Infrastructure. Optional
+        :return: The list of monitored API endpoints
+        :rtype: list of Union[:class:`dataikuapi.dss.unifiedmonitoring.MonitoredManagedApiEndpoint`, :class:`dataikuapi.dss.unifiedmonitoring.MonitoredExternalApiEndpoint`]
         """
         params = {
             'removeDuplicatedExternalEndpoints': remove_duplicated_external_endpoints
@@ -39,15 +40,15 @@ class DSSUnifiedMonitoring(object):
         monitorings = []
 
         for monitoring in items:
-            if DSS_API_ENDPOINT_MONITORING_TYPE == monitoring.get("type"):
-                monitorings.append(DSSApiEndpointMonitoring(monitoring))
+            if MANAGED_API_ENDPOINT_MONITORING_TYPE == monitoring.get("type"):
+                monitorings.append(MonitoredManagedApiEndpoint(self.client, monitoring))
             elif EXTERNAL_API_ENDPOINT_MONITORING_TYPE == monitoring.get("type"):
-                monitorings.append(ExternalApiEndpointMonitoring(monitoring))
+                monitorings.append(MonitoredExternalApiEndpoint(self.client, monitoring))
         return monitorings
 
-    def list_api_endpoint_monitorings_with_activity_metrics(self, endpoints_to_filter_on=None, remove_duplicated_external_endpoints=True):
+    def list_monitored_api_endpoint_with_activity_metrics(self, endpoints_to_filter_on=None, remove_duplicated_external_endpoints=True):
         """
-        Lists the API endpoints monitorings with their activity metrics
+        Lists the monitored API endpoints with their activity metrics
 
         :param endpoints_to_filter_on: endpoints for which monitoring and activity metrics should be retrieved. If None or empty, all endpoints are considered
         :type endpoints_to_filter_on: list of Union[:class:`dataikuapi.dss.unifiedmonitoring.DSSApiEndpointMonitoring`, :class:`dataikuapi.dss.unifiedmonitoring.ExternalApiEndpointMonitoring`]. Optional
@@ -59,9 +60,9 @@ class DSSUnifiedMonitoring(object):
         formatted_endpoint_params = []
         if endpoints_to_filter_on:
             for endpoint_monitoring in endpoints_to_filter_on:
-                if isinstance(endpoint_monitoring, DSSApiEndpointMonitoring):
+                if isinstance(endpoint_monitoring, MonitoredManagedApiEndpoint):
                     formatted_endpoint_params.append({'endpointId': endpoint_monitoring.endpoint_id, 'deploymentId': endpoint_monitoring.deployment_id})
-                elif isinstance(endpoint_monitoring, ExternalApiEndpointMonitoring):
+                elif isinstance(endpoint_monitoring, MonitoredExternalApiEndpoint):
                     formatted_endpoint_params.append({'endpointName': endpoint_monitoring.endpoint_name,
                                                       'externalEndpointsScopeName': endpoint_monitoring.external_endpoints_scope.get("name")})
                 else:
@@ -75,14 +76,14 @@ class DSSUnifiedMonitoring(object):
 
         monitorings = []
         for monitoring_with_activity_metrics in items:
-            if monitoring_with_activity_metrics.get("type") == DSS_API_ENDPOINT_MONITORING_TYPE:
-                monitorings.append(DSSApiEndpointMonitoringWithActivityMetrics(monitoring_with_activity_metrics))
+            if monitoring_with_activity_metrics.get("type") == MANAGED_API_ENDPOINT_MONITORING_TYPE:
+                monitorings.append(MonitoredManagedApiEndpointWithActivityMetrics(self.client, monitoring_with_activity_metrics))
             elif monitoring_with_activity_metrics.get("type") == EXTERNAL_API_ENDPOINT_MONITORING_TYPE:
-                monitorings.append(ExternalApiEndpointMonitoringWithActivityMetrics(monitoring_with_activity_metrics))
+                monitorings.append(MonitoredExternalApiEndpointWithActivityMetrics(self.client, monitoring_with_activity_metrics))
         return monitorings
 
 
-class AbstractDeploymentMonitoring(object):
+class AbstractMonitoredThing(object):
     def __init__(self, data):
         self.deployment_id = data.get("deploymentId")
         self.infrastructure_id = data.get("infrastructureId")
@@ -91,16 +92,16 @@ class AbstractDeploymentMonitoring(object):
         self.data = data
 
 
-class DSSProjectMonitoring(AbstractDeploymentMonitoring):
+class MonitoredProjectDeployment(AbstractMonitoredThing):
     """
-    A handle on a project monitoring
+    A handle on a monitored project deployment
 
     .. warning::
-        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_project_monitorings`
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_project_deployments`
     """
 
     def __init__(self, data):
-        super(DSSProjectMonitoring, self).__init__(data)
+        super(MonitoredProjectDeployment, self).__init__(data)
         self.deployment_id = data.get("deploymentId")
         """The deployment id"""
         self.infrastructure_id = data.get("infrastructureId")
@@ -119,22 +120,24 @@ class DSSProjectMonitoring(AbstractDeploymentMonitoring):
 
     def get_raw(self):
         """
-        Get the raw project monitoring
+        Get the raw monitored project
 
         :rtype: dict
         """
         return self.data
 
-class DSSApiEndpointMonitoring(AbstractDeploymentMonitoring):
+
+class MonitoredManagedApiEndpoint(AbstractMonitoredThing):
     """
-    A handle on a DSS API endpoint monitoring
+    A handle on a monitored managed API endpoint
 
     .. warning::
-        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings`
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoints`
     """
 
-    def __init__(self, data):
-        super(DSSApiEndpointMonitoring, self).__init__(data)
+    def __init__(self, client, data):
+        super(MonitoredManagedApiEndpoint, self).__init__(data)
+        self.client = client
         self.deployment_id = data.get("deploymentId")
         """The deployment id"""
         self.infrastructure_id = data.get("infrastructureId")
@@ -146,26 +149,43 @@ class DSSApiEndpointMonitoring(AbstractDeploymentMonitoring):
         self.endpoint_id = data.get("endpointId")
         """The endpoint id"""
         self.type = data.get("type")
-        """'DSS_API_ENDPOINT'"""
+        """'MANAGED_API_ENDPOINT'"""
+
+    def get_activity_metrics(self):
+        """
+        Get the activity metrics of the monitored managed API endpoint
+
+        :return: The activity metrics
+        :rtype: :class:`dataikuapi.dss.unifiedmonitoring.ManagedApiEndpointActivityMetrics`
+        """
+        endpoint_identifier = {
+            'deploymentId': self.deployment_id,
+            'endpointId': self.endpoint_id
+        }
+
+        raw_activity_metrics = self.client._perform_json("POST", "/unified-monitoring/deployer/activity-metrics", body=endpoint_identifier)
+        return ManagedApiEndpointActivityMetrics(raw_activity_metrics) if raw_activity_metrics else None
 
     def get_raw(self):
         """
-        Get the raw DSS API endpoint monitoring
+        Get the raw monitored managed API endpoint
 
         :rtype: dict
         """
         return self.data
 
-class ExternalApiEndpointMonitoring(AbstractDeploymentMonitoring):
+
+class MonitoredExternalApiEndpoint(AbstractMonitoredThing):
     """
-    A handle on an external endpoint monitoring
+    A handle on a monitored external API endpoint
 
     .. warning::
-        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings`
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoints`
     """
 
-    def __init__(self, data):
-        super(ExternalApiEndpointMonitoring, self).__init__(data)
+    def __init__(self, client, data):
+        super(MonitoredExternalApiEndpoint, self).__init__(data)
+        self.client = client
         self.external_endpoints_scope = data.get("externalEndpointsScope")
         """The external endpoint scope configuration"""
         self.stage = data.get("stage")
@@ -177,20 +197,36 @@ class ExternalApiEndpointMonitoring(AbstractDeploymentMonitoring):
         self.type = data.get("type")
         """'EXTERNAL_API_ENDPOINT'"""
 
+    def get_activity_metrics(self):
+        """
+        Get the activity metrics of the monitored external API endpoint
+
+        :return: The activity metrics
+        :rtype: :class:`dataikuapi.dss.unifiedmonitoring.ExternalApiEndpointActivityMetrics`
+        """
+        endpoint_identifier = {
+            'externalEndpointsScopeName': self.external_endpoints_scope.get("name"),
+            'endpointName': self.endpoint_name
+        }
+
+        raw_activity_metrics = self.client._perform_json("POST", "/unified-monitoring/deployer/activity-metrics", body=endpoint_identifier)
+        return ExternalApiEndpointActivityMetrics(raw_activity_metrics) if raw_activity_metrics else None
+
     def get_raw(self):
         """
-        Get the raw external endpoint monitoring
+        Get the raw monitored external API endpoint
 
         :rtype: dict
         """
         return self.data
 
-class DSSApiEndpointActivityMetrics(object):
+
+class ManagedApiEndpointActivityMetrics(object):
     """
-    A handle on the activity metrics of a DSS API endpoint
+    A handle on the activity metrics of a managed API endpoint
 
     .. warning::
-        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings_with_activity_metrics`
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoint_with_activity_metrics`
     """
 
     def __init__(self, data):
@@ -212,11 +248,12 @@ class DSSApiEndpointActivityMetrics(object):
 
     def get_raw(self):
         """
-        Get the raw activity metrics of a DSS API endpoint
+        Get the raw activity metrics of a managed API endpoint
 
         :rtype: dict
         """
         return self.data
+
 
 class ExternalApiEndpointActivityMetrics(object):
     """
@@ -224,11 +261,11 @@ class ExternalApiEndpointActivityMetrics(object):
 
     .. warning::
         Do not create this class directly, instead use
-        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings_with_activity_metrics`
+        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoint_with_activity_metrics`
     """
 
     def __init__(self, data):
-        self.external_endpoint_scope_name = data.get("externalEndpointScopeName")
+        self.external_endpoints_scope_name = data.get("externalEndpointsScopeName")
         """The name of the external endpoint scope"""
         self.endpoint_name = data.get("endpointName")
         """The endpoint name"""
@@ -252,44 +289,46 @@ class ExternalApiEndpointActivityMetrics(object):
         """
         return self.data
 
-class DSSApiEndpointMonitoringWithActivityMetrics(object):
+
+class MonitoredManagedApiEndpointWithActivityMetrics(object):
     """
-    A handle on a DSS API endpoint monitoring and its activity metrics
+    A handle on a monitored managed API endpoint and its activity metrics
 
     .. warning::
         Do not create this class directly, instead use
-        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings_with_activity_metrics`
+        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoint_with_activity_metrics`
     """
 
-    def __init__(self, data):
-        self.endpoint_monitoring = DSSApiEndpointMonitoring(data.get("endpointMonitoring"))
+    def __init__(self, client, data):
+        self.endpoint_monitoring = MonitoredManagedApiEndpoint(client, data.get("endpointMonitoring"))
         """The DSS API endpoint monitoring"""
         raw_activity_metrics = data.get("activityMetrics")
-        self.activity_metrics = DSSApiEndpointActivityMetrics(raw_activity_metrics) if raw_activity_metrics else None
+        self.activity_metrics = ManagedApiEndpointActivityMetrics(raw_activity_metrics) if raw_activity_metrics else None
         """The DSS API endpoint activity metrics"""
         self.type = data.get("type")
-        """'DSS_API_ENDPOINT'"""
+        """'MANAGED_API_ENDPOINT'"""
         self.data = data
 
     def get_raw(self):
         """
-        Get the raw DSS API endpoint monitoring with its activity metrics
+        Get the raw monitored managed API endpoint with its activity metrics
 
         :rtype: dict
         """
         return self.data
 
-class ExternalApiEndpointMonitoringWithActivityMetrics(object):
+
+class MonitoredExternalApiEndpointWithActivityMetrics(object):
     """
-    A handle on an external API endpoint monitoring and its activity metrics
+    A handle on a monitored external API endpoint and its activity metrics
 
     .. warning::
         Do not create this class directly, instead use
-        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_api_endpoint_monitorings_with_activity_metrics`
+        :meth:`dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring.list_monitored_api_endpoint_with_activity_metrics`
     """
 
-    def __init__(self, data):
-        self.endpoint_monitoring = ExternalApiEndpointMonitoring(data.get("endpointMonitoring"))
+    def __init__(self, client, data):
+        self.endpoint_monitoring = MonitoredExternalApiEndpoint(client, data.get("endpointMonitoring"))
         """The external API endpoint monitoring"""
         raw_activity_metrics = data.get("activityMetrics")
         self.activity_metrics = ExternalApiEndpointActivityMetrics(raw_activity_metrics) if raw_activity_metrics else None
@@ -300,7 +339,7 @@ class ExternalApiEndpointMonitoringWithActivityMetrics(object):
 
     def get_raw(self):
         """
-        Get the raw external API endpoint monitoring with its activity metrics
+        Get the raw monitored external API endpoint with its activity metrics
 
         :rtype: dict
         """

@@ -3,6 +3,7 @@ import json, warnings
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
+from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
 from .dss.feature_store import DSSFeatureStore
@@ -1609,7 +1610,42 @@ class DSSClient(object):
             "permissions": permissions
         })
         return DSSDataCollection(self, res['id'])
+    
+    ########################################################
+    # IAM
+    ########################################################
+    
+    def get_sso_settings(self):
+        """
+        Get the Single Sign-On (SSO) settings
 
+        :return: SSO settings
+        :rtype: :class:`dataikuapi.iam.settings.SSOSettings`
+        """
+        sso = self._perform_json("GET", "/admin/iam/sso-settings")
+        return DSSSSOSettings(self, sso)
+
+    def get_ldap_settings(self):
+        """
+        Get the LDAP settings
+
+        :return: LDAP settings
+        :rtype: :class:`dataikuapi.iam.settings.LDAPSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/ldap-settings")
+        return DSSLDAPSettings(self, ldap)
+
+    def get_azure_ad_settings(self):
+        """
+        Get the Azure Active Directory (aka Microsoft Entra ID) settings
+
+        :return: Azure AD settings
+        :rtype: :class:`dataikuapi.iam.settings.AzureADSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
+        return DSSAzureADSettings(self, ldap)
+
+      
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client
