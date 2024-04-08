@@ -110,6 +110,15 @@ class DSSLLMEmbeddingsQuery(object):
         self.eq["queries"].append({"text": text})
         return self
 
+    def add_image(self, image_base64):
+        """
+        Add an image to the embedding query.
+
+        :param str image_base64: Image content, as a base 64 formatted string.
+        """
+        self.eq["queries"].append({"inlineImage": image_base64})
+        return self
+
     def execute(self):
         """
         Run the embedding query.

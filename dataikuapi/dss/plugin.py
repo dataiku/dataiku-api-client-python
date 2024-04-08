@@ -133,6 +133,17 @@ class DSSPluginProjectSettings(DSSPluginSettingsBase):
     def __init__(self, client, plugin_id, settings, project_key):
         super().__init__(client, plugin_id, settings, project_key)
 
+    def start_save(self):
+        """
+        Save the settings to DSS.
+        Returns with a future representing the post actions done asynchronously (e.g. rebuild cde image for visual recipes)
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the save post process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        resp = self.client._perform_json("POST", "/plugins/%s/settings/future" % (self.plugin_id), body=self.settings)
+        return DSSFuture.from_resp(self.client, resp)
+
 
     def list_parameter_sets(self):
         """
@@ -651,6 +662,27 @@ class DSSPlugin(object):
         """
         files = {'file': fp }
         self.client._perform_json("POST", "/plugins/%s/actions/updateFromZip" % (self.plugin_id), files=files)
+
+    def start_update_from_zip(self, fp):
+        """
+        Update the plugin from a plugin archive (as a file object).
+        Returns immediately with a future representing the process done asynchronously
+
+        .. note::
+
+            This call requires an API key with either:
+
+                * DSS admin permissions
+                * permission to develop plugins
+                * tied to a user with admin privileges on the plugin
+
+        :param file-like fp: A file-like object pointing to a plugin archive zip
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the update process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        files = {'file': fp }
+        f = self.client._perform_json("POST", "/plugins/%s/actions/future/updateFromZip" % (self.plugin_id), files=files)
+        return DSSFuture.from_resp(self.client, f)
 
     def update_from_store(self):
         """
