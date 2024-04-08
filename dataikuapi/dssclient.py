@@ -1,4 +1,12 @@
 import json, warnings
+import sys
+
+if sys.version_info >= (3,0):
+    import urllib.parse
+    dku_quote_fn = urllib.parse.quote
+else:
+    import urllib
+    dku_quote_fn = urllib.quote
 
 from requests import Session
 from requests import exceptions
@@ -14,7 +22,7 @@ from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix
-
+from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -284,6 +292,19 @@ class DSSClient(object):
         """
         files = {'file': fp }
         self._perform_json("POST", "/plugins/actions/installFromZip", files=files)
+
+    def start_install_plugin_from_archive(self, fp):
+        """
+        Install a plugin from a plugin archive (as a file object)
+        Returns immediately with a future representing the process done asycnhronously
+
+        :param object fp: A file-like object pointing to a plugin archive zip
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        files = {'file': fp }
+        f = self._perform_json("POST", "/plugins/actions/future/installFromZip", files=files)
+        return DSSFuture.from_resp(self, f)
 
     def install_plugin_from_store(self, plugin_id):
         """
@@ -1348,22 +1369,14 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
-    def build_base_image(self, build_type, build_options=None):
+    def build_cde_plugins_image(self):
         """
-        Build the base image for containerized execution.
-
-        :param string build_type: either EXEC, SPARK or STREAM_ENGINE
-        :param dict build_options: options for the build. Notable fields are:
-
-                                    * **distrib** (optional) : desired distribution to use in the image, either 'centos7' or 'almalinux8'
-                                    * **R** : install R binaries in the image. Either YES, NO or DEFAULT
-                                    * **py37**, **py38**, **py39**, **py310**, **py311** : install Python 3.7 (resp. 3.8, 3.9, ...) binaries in the image. Either YES, NO or DEFAULT
-                                    * **cudaVersion** : if set, install CUDA in the image. Possible versions are ["9.0", "10.0", "10.1", "10.2", "11.0", "11.2"]
-                                    * **extraOptions** : additional build command parameters, as a list of string
+        Build and Push the image for containerized dss engine (CDE) with plugins
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
         """
-        build_options = build_options or {}
-        resp = self._perform_json("POST", "/admin/container-exec/actions/build-base-image", params={'type': build_type}, body=build_options)
+        resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
         return DSSFuture.from_resp(self, resp)
+
 
     ########################################################
     # Global Instance Info
@@ -1610,11 +1623,68 @@ class DSSClient(object):
             "permissions": permissions
         })
         return DSSDataCollection(self, res['id'])
+
+    ########################################################
+    # Integration Channels
+    ########################################################
+
+    def _map_channel_to_object_type(self, channel):
+        if 'mail' == channel.get("family", None):
+            return DSSMailMessagingChannel(self, channel)
+        else:
+            return DSSMessagingChannel(self, channel)
+
+    def get_messaging_channel(self, channel_id):
+        """
+        Get the messaging channel with the corresponding ID
+
+        :param channel_id: ID of channel as specified Notifications & Integrations UI
+        :return: A messaging channel object, such as DSSMessagingChannel, or a DSSMailMessagingChannel for mail a channel
+        """
+        channel = self._perform_json('GET', '/messaging-channels/%s' % channel_id)
+        return self._map_channel_to_object_type(channel)
+
+    def list_messaging_channels(self, as_type="listitems", channel_type=None, channel_family=None):
+        """
+        List all available messaging channels
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param str channel_type: a channel type to filter by, e.g. "smtp", "aws-ses-mail", "slack"
+        :param str channel_family: a str to filter for family of channels with a similar interface - "mail" for all channels that send email-like messages
+        :return: A list of messaging channels after the filtering specified, as listitems (DSSMessagingChannelListItem) or objects (DSSMessagingChannel / DSSMailMessagingChannel)
+        """
+        query_string = ""
+        if channel_type is not None:
+            query_string = "?channelType=" + dku_quote_fn(channel_type)
+        if channel_family is not None:
+            query_string += "?" if query_string == "" else "&"
+            query_string += "channelFamily=" + dku_quote_fn(channel_family)
+
+        channels = self._perform_json('GET', '/messaging-channels/%s' % query_string)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSMessagingChannelListItem(self, channel) for channel in channels]
+        if as_type == "objects" or as_type == "object":
+            return [self._map_channel_to_object_type(channel) for channel in channels]
+        else:
+            raise ValueError("Unknown as_type")
+
+    ########################################################
+    # Data Quality
+    ########################################################
+    
+    def get_data_quality_status(self):
+        """
+        Get the status of data-quality monitored projects, including the count of monitored datasets in Ok/Warning/Error/Empty statuses.
+
+        :returns: The dict of data quality monitored project statuses.
+        :rtype: dict with PROJECT_KEY as key
+        """
+        return self._perform_json("GET", "/data-quality/status")
     
     ########################################################
     # IAM
     ########################################################
-    
+
     def get_sso_settings(self):
         """
         Get the Single Sign-On (SSO) settings
@@ -1645,7 +1715,7 @@ class DSSClient(object):
         ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
         return DSSAzureADSettings(self, ldap)
 
-      
+
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client

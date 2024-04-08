@@ -89,7 +89,7 @@ class DSSLibrary(object):
         """
         Create a folder in the library root folder
 
-        :param str file_name: the file name
+        :param str folder_name: the folder name
         :returns: the new folder
         :rtype: :class:`dataikuapi.dss.projectlibrary.DSSLibraryFolder`
         """

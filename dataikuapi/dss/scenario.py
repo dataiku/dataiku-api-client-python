@@ -1,6 +1,6 @@
 from datetime import datetime
 import time, warnings
-from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime, _local_timezone
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
 from dateutil.tz import tzlocal
@@ -822,7 +822,7 @@ class DSSScenarioRun(object):
 
         :rtype: float
         """
-        end_time = datetime.now()
+        end_time = datetime.now(_local_timezone)
         if self.run['end'] > 0:
             end_time = _timestamp_ms_to_zoned_datetime(self.run['end'])
         duration = (end_time - self.get_start_time()).total_seconds()

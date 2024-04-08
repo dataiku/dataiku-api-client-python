@@ -705,10 +705,14 @@ class SSOSettings(dict):
         """
         Set the authorized groups.
 
-        :param str authorized_groups: Authorized groups
+        :param list[str] authorized_groups: Authorized groups
         :return: self
         :rtype: SSOSettings
         """
+        # for retro-compatibility when authorized_group was a comma-separated list in a str
+        if isinstance(authorized_groups, str):
+            authorized_groups = authorized_groups.split(',')
+
         self.sso_settings["authorizedGroups"] = authorized_groups
         return self
 
@@ -717,9 +721,9 @@ class SSOSettings(dict):
         Get the authorized groups.
 
         :return: Authorized groups
-        :rtype: str
+        :rtype: list[str]
         """
-        return self.sso_settings.get("authorizedGroups", "")
+        return self.sso_settings.get("authorizedGroups", [])
 
 
 class LDAPSettings(dict):
@@ -949,10 +953,14 @@ class LDAPSettings(dict):
         """
         Set the authorized groups in LDAP.
 
-        :param str authorized_groups: Authorized groups
+        :param list[str] authorized_groups: Authorized groups
         :return: self
         :rtype: LDAPSettings
         """
+        # for retro-compatibility when authorized_group was a comma-separated list in a str
+        if isinstance(authorized_groups, str):
+            authorized_groups = authorized_groups.split(',')
+
         self.ldap_settings["authorizedGroups"] = authorized_groups
         return self
 
@@ -961,9 +969,9 @@ class LDAPSettings(dict):
         Get the authorized groups in LDAP.
 
         :return: Authorized groups
-        :rtype: str
+        :rtype: list[str]
         """
-        return self.ldap_settings.get("authorizedGroups", "")
+        return self.ldap_settings.get("authorizedGroups", [])
 
     def set_enabled(self, enabled):
         """
@@ -1184,57 +1192,6 @@ class LDAPSettings(dict):
         :rtype: str
         """
         return self.ldap_settings.get("groupMembershipAttribute", "")
-
-    def set_authorized_groups(self, authorized_groups):
-        """
-        Set the authorized groups in LDAP.
-
-        :param str authorized_groups: Authorized groups
-        :return: self
-        :rtype: LDAPSettings
-        """
-        self.ldap_settings["authorizedGroups"] = authorized_groups
-        return self
-
-    def get_authorized_groups(self):
-        """
-        Get the authorized groups in LDAP.
-
-        :return: Authorized groups
-        :rtype: str
-        """
-        return self.ldap_settings.get("authorizedGroups", "")
-
-    def set_enabled(self, enabled):
-        """
-        Set whether LDAP is enabled.
-
-        :param bool enabled: True if LDAP is enabled, False otherwise
-        :return: self
-        :rtype: LDAPSettings
-        """
-        self.ldap_settings["enabled"] = enabled
-        return self
-
-    def get_enabled(self):
-        """
-        Get whether LDAP is enabled.
-
-        :return: True if LDAP is enabled, False otherwise
-        :rtype: bool
-        """
-        return self.ldap_settings.get("enabled", False)
-
-    def set_auto_sync_users_at_login_time(self, auto_sync_users_at_login_time):
-        """
-        Set whether auto-syncing of users is enabled at login time in LDAP.
-
-        :param bool auto_sync_users_at_login_time: True to enable auto-syncing, False otherwise
-        :return: self
-        :rtype: LDAPSettings
-        """
-        self.ldap_settings["autoSyncUsersAtLoginTime"] = auto_sync_users_at_login_time
-        return self
 
     def set_allow_on_demand_users_provisioning(self, allow_on_demand_users_provisioning):
         """
@@ -1604,10 +1561,14 @@ class AzureADSettings(dict):
         """
         Set the authorized groups in Azure AD.
 
-        :param str authorized_groups: Authorized groups
+        :param list[str] authorized_groups: Authorized groups
         :return: self
         :rtype: AzureADSettings
         """
+        # for retro-compatibility when authorized_group was a comma-separated list in a str
+        if isinstance(authorized_groups, str):
+            authorized_groups = authorized_groups.split(',')
+
         self.azuread_settings["authorizedGroups"] = authorized_groups
         return self
 
@@ -1616,9 +1577,9 @@ class AzureADSettings(dict):
         Get the authorized groups in Azure AD.
 
         :return: Authorized groups
-        :rtype: str
+        :rtype: list[str]
         """
-        return self.azuread_settings.get("authorizedGroups", "")
+        return self.azuread_settings.get("authorizedGroups", [])
 
     def set_allow_on_demand_users_provisioning(self, allow_on_demand_users_provisioning):
         """

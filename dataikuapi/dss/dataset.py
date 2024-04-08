@@ -9,6 +9,7 @@ from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
+from .data_quality import DSSDataQualityRuleSet
 from . import recipe
 try:
     basestring
@@ -454,6 +455,10 @@ class DSSDataset(object):
         
         If the checks are not specified, the checks
         setup on the dataset are used.
+
+        .. caution::
+
+            Deprecated. Use :meth:`DSSDataQualityRuleSet.compute_rules` instead
 
         :param str partition: (optional) partition identifier, use ALL to run checks on all data.
         :param list[string] checks: (optional) ids of the checks to run.
@@ -915,6 +920,19 @@ class DSSDataset(object):
         builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
         return builder
+    
+    ########################################################
+    # Data Quality
+    ########################################################
+
+    def get_data_quality_rules(self):
+        """
+        Get a DSSDataQualityRuleSet dataiku object to interact with the data quality rules of the dataset.
+
+        :returns: 
+        :rtype: :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet`
+        """
+        return DSSDataQualityRuleSet(self.project_key, self.dataset_name, self.client)
 
 class DSSDatasetSettings(DSSTaggableObjectSettings):
     """
@@ -964,7 +982,7 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
 
     def remove_partitioning(self):
         """
-        Reset partitioning settings to those of a non-partitionned dataset.
+        Reset partitioning settings to those of a non-partitioned dataset.
         """
         self.settings["partitioning"] = {"dimensions" : []}
 
