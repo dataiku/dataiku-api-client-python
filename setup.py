@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-VERSION = "12.4.2"
+VERSION = "12.6.0"
 
 long_description = (open('README').read() + '\n\n' +
                     open('HISTORY.txt').read())
@@ -11,8 +11,8 @@ setup(
     name='dataiku-api-client',
     version=VERSION,
     license="Apache Software License",
-    packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin", "dataikuapi.fm", "dataikuapi.govern",
-              "dataikuapi.dss_plugin_mlflow"],
+    packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin", "dataikuapi.fm", "dataikuapi.iam",
+              "dataikuapi.govern", "dataikuapi.dss_plugin_mlflow"],
     description="Python API client for Dataiku APIs",
     long_description=long_description,
     author="Dataiku",

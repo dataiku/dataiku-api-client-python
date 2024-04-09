@@ -33,6 +33,43 @@ class FMCloudCredentials(object):
         self.cloud_credentials["licenseMode"] = "STATIC"
         self.cloud_credentials["license"] = json.dumps(license, indent=2)
         return self
+    
+    def set_azure_keyvault(self, azure_keyvault_id, azure_key_name, azure_key_version):
+        """
+        Set the Azure Key Vault configuration
+
+        :param str azure_keyvault_id: the Azure Key Vault resource ID
+        :param str azure_key_name: the name of the key to use in the vault
+        :param str azure_key_version: the version of the key to use in the vault
+        """
+        self.cloud_credentials["azureKeyVaultId"] = azure_keyvault_id
+        self.cloud_credentials["azureKeyName"] = azure_key_name
+        self.cloud_credentials["azureKeyVersion"] = azure_key_version
+        return self
+    
+    def set_aws_cmk(self, aws_cmk_id):
+        """
+        Set AWS Customer Managed Key (CMK) configuration
+
+        :param str aws_cmk_id: the ID of the key to use
+        """
+        self.cloud_credentials["awsCMKId"] = aws_cmk_id
+        return self
+
+    def set_gcp_key(self, gcp_location_id, gcp_key_ring, gcp_crypto_key, gcp_crypto_key_version):
+        """
+        Set GCP Key Management Service (KMS) configuration
+
+        :param str gcp_location_id: the location ID of the key ring
+        :param str gcp_key_ring: the name of the key ring
+        :param str gcp_crypto_key: the name of the key to use in the key ring
+        :param str gcp_crypto_key_version: the version of the key to use in the key ring
+        """
+        self.cloud_credentials["gcpLocationId"] = gcp_location_id
+        self.cloud_credentials["gcpKeyRing"] = gcp_key_ring
+        self.cloud_credentials["gcpCryptoKey"] = gcp_crypto_key
+        self.cloud_credentials["gcpCryptoKeyVersion"] = gcp_crypto_key_version
+        return self
 
     def set_automatically_updated_license(self, license_token):
         """

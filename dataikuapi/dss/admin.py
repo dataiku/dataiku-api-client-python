@@ -2556,7 +2556,7 @@ class DSSCodeStudioTemplate(object):
     # Building
     ########################################################
     
-    def build(self):
+    def build(self, disable_docker_cache=False):
         """
         Build or rebuild the template. 
 
@@ -2564,10 +2564,14 @@ class DSSCodeStudioTemplate(object):
 
             This call needs an API key which has an user to impersonate set, or a personal API key.
 
+        :param boolean disable_docker_cache: if True, the image is build with the option **--no-cache** (optional, defaults to False)
+
         :return: a handle to the task of building the image
         :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
         """
-        future_response = self.client._perform_json("POST", "/admin/code-studios/%s/build" % (self.template_id))
+        future_response = self.client._perform_json(
+            "POST", "/admin/code-studios/%s/build" % (self.template_id),
+            params={"withNoCache": disable_docker_cache})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
 class DSSCodeStudioTemplateSettings(object):

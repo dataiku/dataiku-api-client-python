@@ -1026,7 +1026,7 @@ class DSSProject(object):
 
     def create_external_model(self, name, prediction_type, configuration):
         """
-        EXPERIMENTAL. Creates a new Saved model that can contain external remote endpoints as versions.
+        Creates a new Saved model that can contain external remote endpoints as versions.
 
         :param string name: Human-readable name for the new saved model in the flow
         :param string prediction_type: One of BINARY_CLASSIFICATION, MULTICLASS or REGRESSION
@@ -2367,7 +2367,34 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.dss.project.DSSProjectGit`
         """
         return DSSProjectGit(self.client, self.project_key)
+    
+    ########################################################
+    # Data Quality
+    ########################################################
 
+    def get_data_quality_status(self, only_monitored=True):
+        """
+        Get the aggregated quality status of a project with the list of the datasets and their associated status
+
+        :param only_monitored: boolean to retrieve only monitored dataset, default to True.
+        
+        :returns: The dict of data quality dataset statuses.
+        :rtype : dict with DATASET_NAME as key
+        """
+        return self.client._perform_json("GET", "/projects/%s/data-quality/status" % self.project_key, params={"onlyMonitored": only_monitored})
+    
+    def get_data_quality_timeline(self, min_timestamp=None, max_timestamp=None): 
+        """
+        Get the list of quality status aggregated per day during the timeframe [min_timestamp, max_timestamp]. It includes the current & worst outcome for each days and the details of the datasets runs within the period, also includes previous deleted monitored datasets with the mention "(deleted)" at the end of their id.
+        Default parameters include the timeframe for the last 14 days.
+
+        :param int min_timestamp: timestamp representing the beginning of the timeframe
+        :param int max_timestamp: timestamp representing the end of the timeframe
+
+        :returns: list of datasets per day in the timeline
+        :rtype : list of dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/data-quality/timeline" % self.project_key, params={"minTimestamp": min_timestamp, "maxTimestamp": max_timestamp})
 
 class TablesImportDefinition(object):
     """
@@ -2813,6 +2840,110 @@ class DSSProjectGit(object):
             self.client._perform_json("POST", "/projects/%s/git/actions/dropAndRebuild" % self.project_key, params={"iKnowWhatIAmDoing": True})
         else:
             raise Exception("Set argument 'i_know_what_i_am_doing' to True to confirm you really want to wipe out all git history.")
+
+    def list_libraries(self):
+        """
+        Get the list of all external libraries for this project
+
+        :return: A list of external libraries.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/projects/%s/git/lib-git-refs/" % self.project_key)
+
+    def add_library(self, repository, local_target_path, checkout,  path_in_git_repository="", add_to_python_path=True):
+        """
+        Add a new external library to the project and pull it.
+
+        :param str repository: The remote repository.
+        :param str local_target_path: The local target path (relative to root of libraries).
+        :param str checkout: The branch, commit, or tag to check out.
+        :param str path_in_git_repository: The path in the git repository.
+        :param bool add_to_python_path: Whether to add the reference to the Python path.
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the pull process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        body = {
+            "repository": repository,
+            "pathInGitRepository": path_in_git_repository,
+            "localTargetPath": local_target_path,
+            "checkout": checkout,
+            "addToPythonPath": add_to_python_path
+        }
+        return self.client._perform_json("POST", "/projects/%s/git/lib-git-refs/" % self.project_key, body=body)
+
+    def set_library(self, git_reference_path, remote, remotePath, checkout):
+        """
+        Set an existing external library.
+
+        :param str git_reference_path: The path of the external library.
+        :param str remote: The remote repository.
+        :param str remotePath: The path in the git repository.
+        :param str checkout: The branch, commit, or tag to check out.
+        :return: The path of the external library.
+        :rtype: str
+        """
+        body = {
+            "repository": remote,
+            "pathInGitRepository": remotePath,
+            "checkout": checkout,
+        }
+        return self.client._perform_json("PUT", "/projects/" + self.project_key + "/git/lib-git-refs/" + git_reference_path, body=body)
+
+    def remove_library(self, git_reference_path, delete_directory):
+        """
+        Remove an external library from the project.
+
+        :param str git_reference_path: The path of the external library.
+        :param bool delete_directory: Whether to delete the local directory associated with the reference.
+        """
+        params = {"deleteDirectory": delete_directory}
+        self.client._perform_json("DELETE", "/projects/" + self.project_key + "/git/lib-git-refs/" + git_reference_path, params=params)
+
+    def reset_library(self, git_reference_path):
+        """
+        Reset changes to HEAD from the external library.
+
+        :param str git_reference_path: The path of the external library to reset.
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the reset process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        body = {"gitRef": git_reference_path}
+        future_resp = self.client._perform_json("POST", "/projects/" + self.project_key + "/git/lib-git-refs/action/reset", body=body)
+        return DSSFuture.from_resp(self.client, future_resp)
+
+    def push_library(self, git_reference_path, commit_message):
+        """
+        Push changes to the external library
+
+        :param str git_reference_path: The path of the external library.
+        :param str commit_message: The commit message for the push.
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the push process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        body = {"gitRef": git_reference_path, "commitMessage": commit_message}
+        future_resp = self.client._perform_json("POST", "/projects/" + self.project_key + "/git/lib-git-refs/action/push", body=body)
+        return DSSFuture.from_resp(self.client, future_resp)
+
+    def push_all_libraries(self, commit_message):
+        """
+        Push changes for all libraries in the project.
+
+        :param str commit_message: The commit message for the push.
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the push process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        body = {"commitMessage": commit_message}
+        future_resp = self.client._perform_json("POST", "/projects/" + self.project_key + "/git/actions/git-refs/push-all", body=body)
+        return DSSFuture.from_resp(self.client, future_resp)
+
+    def reset_all_libraries(self):
+        """
+        Reset changes for all libraries in the project.
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the reset process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_resp = self.client._perform_json("POST", "/projects/" + self.project_key + "/git/actions/git-refs/reset-all")
+        return DSSFuture.from_resp(self.client, future_resp)
 
 
 class JobDefinitionBuilder(object):

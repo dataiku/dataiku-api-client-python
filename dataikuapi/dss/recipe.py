@@ -177,6 +177,21 @@ class DSSRecipe(object):
         """
         return self.client._perform_empty(
             "DELETE", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
+    
+    def rename(self, new_name):
+        """
+        Rename the recipe with the new specified name
+
+        :param str new_name: the new name of the recipe
+        """
+        if self.recipe_name == new_name:
+            raise ValueError("Recipe name is already " + new_name)
+        obj = {
+            "oldName": self.recipe_name,
+            "newName": new_name
+        }
+        self.client._perform_empty("POST", "/projects/%s/actions/renameRecipe" % self.project_key, body=obj)
+        self.recipe_name = new_name
 
     def get_settings(self):
         """

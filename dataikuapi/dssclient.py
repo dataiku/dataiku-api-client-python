@@ -1,8 +1,17 @@
 import json, warnings
+import sys
+
+if sys.version_info >= (3,0):
+    import urllib.parse
+    dku_quote_fn = urllib.parse.quote
+else:
+    import urllib
+    dku_quote_fn = urllib.quote
 
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
+from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
 from .dss.feature_store import DSSFeatureStore
@@ -13,12 +22,13 @@ from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix
-
+from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
+from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 import os.path as osp
@@ -186,7 +196,7 @@ class DSSClient(object):
         :param str description: a description for the project.
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
-        
+
         :returns: A :class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
         params = {}
@@ -212,7 +222,7 @@ class DSSClient(object):
 
         :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
 
-        :returns: The list of the apps. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.app.DSSAppListItem`. 
+        :returns: The list of the apps. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.app.DSSAppListItem`.
                   If "as_type" is "objects", each one as a :class:`dataikuapi.dss.app.DSSApp`
         :rtype: list
         """
@@ -283,6 +293,19 @@ class DSSClient(object):
         files = {'file': fp }
         self._perform_json("POST", "/plugins/actions/installFromZip", files=files)
 
+    def start_install_plugin_from_archive(self, fp):
+        """
+        Install a plugin from a plugin archive (as a file object)
+        Returns immediately with a future representing the process done asycnhronously
+
+        :param object fp: A file-like object pointing to a plugin archive zip
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        files = {'file': fp }
+        f = self._perform_json("POST", "/plugins/actions/future/installFromZip", files=files)
+        return DSSFuture.from_resp(self, f)
+
     def install_plugin_from_store(self, plugin_id):
         """
         Install a plugin from the Dataiku plugin store
@@ -328,10 +351,10 @@ class DSSClient(object):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
 
-        Internally, the query is run by DSS. The  database to run the query on is specified either by 
+        Internally, the query is run by DSS. The  database to run the query on is specified either by
         passing a connection name, or by passing a database name, or by passing a dataset full name
         (whose connection is then used to retrieve the database)
-        
+
         :param str query: the query to run
         :param str connection: the connection on which the query should be run (exclusive of database and dataset_full_name)
         :param str database: the database on which the query should be run (exclusive of connection and dataset_full_name)
@@ -425,6 +448,14 @@ class DSSClient(object):
 
         return [DSSUserActivity(self, user_activity["login"], user_activity) for user_activity in all_activity]
 
+    def list_expired_trial_users(self):
+        """
+        List users whose trials have expired
+        :return: A list of users
+        """
+        users = self._perform_json("GET", "/admin/list-trial-expired-users")
+        return users
+
     def get_authorization_matrix(self):
         """
         Get the authorization matrix for all enabled users and groups
@@ -440,7 +471,7 @@ class DSSClient(object):
     def start_resync_users_from_supplier(self, logins):
         """
         Starts a resync of multiple users from an external supplier (LDAP, Azure AD or custom auth)
-        
+
         :param list logins: list of logins to resync
         :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
@@ -506,7 +537,7 @@ class DSSClient(object):
         List all groups setup on the DSS instance
 
         Note: this call requires an API key with admin rights
-        
+
         :returns: A list of groups, as an list of dicts
         :rtype: list of dicts
         """
@@ -516,7 +547,7 @@ class DSSClient(object):
     def get_group(self, name):
         """
         Get a handle to interact with a specific group
-        
+
         :param str name: the name of the desired group
         :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
         """
@@ -531,7 +562,7 @@ class DSSClient(object):
         :param str name: the name of the new group
         :param str description: (optional) a description of the new group
         :param source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
-            
+
         :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
         """
         resp = self._perform_text(
@@ -553,9 +584,9 @@ class DSSClient(object):
         .. note::
 
             This call requires an API key with admin rights
-        
+
         :param string as_type: how to return the connection. Possible values are "dictitems", "listitems" and "objects"
-        
+
         :return: if **as_type** is dictitems, a dict of connection name to :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
                  if **as_type** is listitems, a list of :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
                  if **as_type** is objects, a list of :class:`dataikuapi.dss.admin.DSSConnection`.
@@ -588,7 +619,7 @@ class DSSClient(object):
     def get_connection(self, name):
         """
         Get a handle to interact with a specific connection
-        
+
         :param str name: the name of the desired connection
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
@@ -607,7 +638,7 @@ class DSSClient(object):
             or 'ALLOWED' (=access restricted to users of a list of groups)
         :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
             of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
-        
+
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
         if params is None:
@@ -633,7 +664,7 @@ class DSSClient(object):
         List all code envs setup on the DSS instance
 
         Note: this call requires an API key with admin rights
-        
+
         :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
         :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
@@ -647,7 +678,7 @@ class DSSClient(object):
     def get_code_env(self, env_lang, env_name):
         """
         Get a handle to interact with a specific code env
-        
+
         :param env_lang: the language (PYTHON or R) of the new code env
         :param env_name: the name of the new code env
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
@@ -684,6 +715,13 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/code-envs/usages")
 
+    def create_code_env_from_python_preset(self, preset_name, allow_update=True, interpreter=None, prefix=None):
+        request_params = {
+            'allowUpdate': allow_update,
+            'interpreter': interpreter,
+            'prefix': prefix
+        }
+        return self._perform_json("POST", "/admin/code-envs/from-python-preset/%s" % (preset_name), params=request_params)
 
     ########################################################
     # Clusters
@@ -702,10 +740,10 @@ class DSSClient(object):
     def get_cluster(self, cluster_id):
         """
         Get a handle to interact with a specific cluster
-        
+
         Args:
             name: the name of the desired cluster
-        
+
         Returns:
             A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
         """
@@ -721,7 +759,7 @@ class DSSClient(object):
         :param cluster_architecture: the architecture of the new cluster. 'HADOOP' or 'KUBERNETES'
 
         :returns: A :class:`dataikuapi.dss.admin.DSSCluster` cluster handle
-        
+
         """
         definition = {}
         definition['name'] = cluster_name
@@ -758,9 +796,9 @@ class DSSClient(object):
     def get_code_studio_template(self, template_id):
         """
         Get a handle to interact with a specific code studio template
-        
+
         :param str template_id: the template id of the desired code studio template
-        
+
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
         """
         return DSSCodeStudioTemplate(self, template_id)
@@ -779,7 +817,7 @@ class DSSClient(object):
             This call requires an API key with admin rights
 
         :param str as_type: How to return the global API keys. Possible values are "listitems" and "objects"
-        
+
         :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSGlobalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSGlobalApiKey`.
         """
@@ -798,7 +836,7 @@ class DSSClient(object):
         Get a handle to interact with a specific Global API key
 
         :param str key: the secret key of the desired API key
-        
+
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         return DSSGlobalApiKey(self, key)
@@ -814,7 +852,7 @@ class DSSClient(object):
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str admin: has the new API key admin rights (True or False)
-        
+
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         resp = self._perform_json(
@@ -843,7 +881,7 @@ class DSSClient(object):
         List all your personal API keys.
 
         :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
-        
+
         :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
@@ -862,7 +900,7 @@ class DSSClient(object):
         Get a handle to interact with a specific Personal API key.
 
         :param str id: the id of the desired API key
-       
+
         :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
         """
         return DSSPersonalApiKey(self, id)
@@ -870,13 +908,13 @@ class DSSClient(object):
     def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
         Create a Personal API key associated with your user.
-        
+
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
-        
+
         :return: if as_type=dict, the new personal API key is returned as a dict.
-                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "POST", "/personal-api-keys/", body={"label": label, "description": description})
@@ -894,11 +932,11 @@ class DSSClient(object):
         """
         List all personal API keys.
         Only admin can list all the keys.
-        
+
         :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
-        
+
         :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
-                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "GET", "/admin/personal-api-keys/")
@@ -913,14 +951,14 @@ class DSSClient(object):
         """
         Create a Personal API key associated on behalf of a user.
         Only admin can create a key for another user.
-        
+
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param str user: the id of the user to impersonate
         :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
-        
+
         :return: if as_type=dict, the new personal API key is returned as a dict.
-                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.        
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
         """
         resp = self._perform_json(
             "POST", "/admin/personal-api-keys/", body={"user": user, "label": label, "description": description})
@@ -1027,7 +1065,7 @@ class DSSClient(object):
         """
         Get the contents of a specific log file
         This call requires an API key with admin rights
-        
+
         :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
         :returns: The full content of the log file, as a string
         """
@@ -1037,7 +1075,7 @@ class DSSClient(object):
     def log_custom_audit(self, custom_type, custom_params=None):
         """
         Log a custom entry to the audit trail
-        
+
         :param str custom_type: value for customMsgType in audit trail item
         :param dict custom_params: value for customMsgParams in audit trail item (defaults to `{}`)
         """
@@ -1090,7 +1128,7 @@ class DSSClient(object):
 
         This call requires an API key with admin rights
 
-        It is not possible to update a single variable, you must set all of them at once. Thus, you 
+        It is not possible to update a single variable, you must set all of them at once. Thus, you
         should only use a ``variables`` parameter that has been obtained using :meth:`get_variables`.
 
         :param dict variables: the new dictionary of all variables of the instance
@@ -1213,6 +1251,17 @@ class DSSClient(object):
         return DSSProjectDeployer(self)
 
     ########################################################
+    # Unified Monitoring
+    ########################################################
+
+    def get_unified_monitoring(self):
+        """Gets a handle to work with Unified Monitoring
+
+        :rtype: :class:`~dataikuapi.dss.unifiedmonitoring.DSSUnifiedMonitoring`
+        """
+        return DSSUnifiedMonitoring(self)
+
+    ########################################################
     # Data Catalog
     ########################################################
 
@@ -1320,23 +1369,15 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/apply-kubernetes-policies")
         return DSSFuture.from_resp(self, resp)
 
-    def build_base_image(self, build_type, build_options=None):
+    def build_cde_plugins_image(self):
         """
-        Build the base image for containerized execution.
-        
-        :param string build_type: either EXEC, SPARK or STREAM_ENGINE
-        :param dict build_options: options for the build. Notable fields are:
-                                     
-                                    * **distrib** (optional) : desired distribution to use in the image, either 'centos7' or 'almalinux8'
-                                    * **R** : install R binaries in the image. Either YES, NO or DEFAULT
-                                    * **py37**, **py38**, **py39**, **py310**, **py311** : install Python 3.7 (resp. 3.8, 3.9, ...) binaries in the image. Either YES, NO or DEFAULT
-                                    * **cudaVersion** : if set, install CUDA in the image. Possible versions are ["9.0", "10.0", "10.1", "10.2", "11.0", "11.2"]
-                                    * **extraOptions** : additional build command parameters, as a list of string
+        Build and Push the image for containerized dss engine (CDE) with plugins
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
         """
-        build_options = build_options or {}
-        resp = self._perform_json("POST", "/admin/container-exec/actions/build-base-image", params={'type': build_type}, body=build_options)
+        resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
         return DSSFuture.from_resp(self, resp)
-        
+
+
     ########################################################
     # Global Instance Info
     ########################################################
@@ -1428,7 +1469,7 @@ class DSSClient(object):
                 ex = http_res.json()
             except ValueError:
                 ex = {"message": http_res.text}
-            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("detailedMessage", ex.get("message", "No message"))))
 
     def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
         self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
@@ -1582,7 +1623,99 @@ class DSSClient(object):
             "permissions": permissions
         })
         return DSSDataCollection(self, res['id'])
+
+    ########################################################
+    # Integration Channels
+    ########################################################
+
+    def _map_channel_to_object_type(self, channel):
+        if 'mail' == channel.get("family", None):
+            return DSSMailMessagingChannel(self, channel)
+        else:
+            return DSSMessagingChannel(self, channel)
+
+    def get_messaging_channel(self, channel_id):
+        """
+        Get the messaging channel with the corresponding ID
+
+        :param channel_id: ID of channel as specified Notifications & Integrations UI
+        :return: A messaging channel object, such as DSSMessagingChannel, or a DSSMailMessagingChannel for mail a channel
+        """
+        channel = self._perform_json('GET', '/messaging-channels/%s' % channel_id)
+        return self._map_channel_to_object_type(channel)
+
+    def list_messaging_channels(self, as_type="listitems", channel_type=None, channel_family=None):
+        """
+        List all available messaging channels
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param str channel_type: a channel type to filter by, e.g. "smtp", "aws-ses-mail", "slack"
+        :param str channel_family: a str to filter for family of channels with a similar interface - "mail" for all channels that send email-like messages
+        :return: A list of messaging channels after the filtering specified, as listitems (DSSMessagingChannelListItem) or objects (DSSMessagingChannel / DSSMailMessagingChannel)
+        """
+        query_string = ""
+        if channel_type is not None:
+            query_string = "?channelType=" + dku_quote_fn(channel_type)
+        if channel_family is not None:
+            query_string += "?" if query_string == "" else "&"
+            query_string += "channelFamily=" + dku_quote_fn(channel_family)
+
+        channels = self._perform_json('GET', '/messaging-channels/%s' % query_string)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSMessagingChannelListItem(self, channel) for channel in channels]
+        if as_type == "objects" or as_type == "object":
+            return [self._map_channel_to_object_type(channel) for channel in channels]
+        else:
+            raise ValueError("Unknown as_type")
+
+    ########################################################
+    # Data Quality
+    ########################################################
     
+    def get_data_quality_status(self):
+        """
+        Get the status of data-quality monitored projects, including the count of monitored datasets in Ok/Warning/Error/Empty statuses.
+
+        :returns: The dict of data quality monitored project statuses.
+        :rtype: dict with PROJECT_KEY as key
+        """
+        return self._perform_json("GET", "/data-quality/status")
+    
+    ########################################################
+    # IAM
+    ########################################################
+
+    def get_sso_settings(self):
+        """
+        Get the Single Sign-On (SSO) settings
+
+        :return: SSO settings
+        :rtype: :class:`dataikuapi.iam.settings.SSOSettings`
+        """
+        sso = self._perform_json("GET", "/admin/iam/sso-settings")
+        return DSSSSOSettings(self, sso)
+
+    def get_ldap_settings(self):
+        """
+        Get the LDAP settings
+
+        :return: LDAP settings
+        :rtype: :class:`dataikuapi.iam.settings.LDAPSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/ldap-settings")
+        return DSSLDAPSettings(self, ldap)
+
+    def get_azure_ad_settings(self):
+        """
+        Get the Azure Active Directory (aka Microsoft Entra ID) settings
+
+        :return: Azure AD settings
+        :rtype: :class:`dataikuapi.iam.settings.AzureADSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
+        return DSSAzureADSettings(self, ldap)
+
+
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
         self.client = client

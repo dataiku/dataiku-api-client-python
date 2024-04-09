@@ -1,4 +1,5 @@
 from .utils import DSSTaggableObjectListItem
+import json
 
 class DSSLLMListItem(DSSTaggableObjectListItem):
     """
@@ -109,6 +110,15 @@ class DSSLLMEmbeddingsQuery(object):
         self.eq["queries"].append({"text": text})
         return self
 
+    def add_image(self, image_base64):
+        """
+        Add an image to the embedding query.
+
+        :param str image_base64: Image content, as a base 64 formatted string.
+        """
+        self.eq["queries"].append({"inlineImage": image_base64})
+        return self
+
     def execute(self):
         """
         Run the embedding query.
@@ -118,7 +128,6 @@ class DSSLLMEmbeddingsQuery(object):
         """
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/embeddings" % (self.llm.project_key), body=self.eq)
         return DSSLLMEmbeddingsResponse(ret)
-
 
 class DSSLLMEmbeddingsResponse(object):
     """
@@ -189,6 +198,22 @@ class DSSLLMCompletionQuery(object):
         
         return DSSLLMCompletionResponse(ret["responses"][0])
 
+    def execute_streamed(self):
+        """
+        Prevent documentation as it's still preview.
+        :meta private:
+        """
+        request = {"query": self.cq, "settings": self.settings, "llmId": self.llm.llm_id}
+        ret = self.llm.client._perform_raw("POST", "/projects/%s/llms/streamed-completion" % (self.llm.project_key), body=request)
+
+        sseclient = _SSEClient(ret.raw)
+
+        for evt in sseclient.iterevents():
+            if evt.event == "completion-chunk":
+                yield DSSLLMStreamedCompletionChunk(json.loads(evt.data))
+            else:
+                yield DSSLLMStreamedCompletionFooter(json.loads(evt.data))
+
 
 class DSSLLMCompletionsQuerySingleQuery(object):
     def __init__(self):
@@ -241,8 +266,77 @@ class DSSLLMCompletionsQuery(object):
         """
         queries = {"queries": [q.cq for q in self.queries], "settings": self._settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
-        
+
         return DSSLLMCompletionsResponse(ret["responses"])
+
+
+class DSSLLMStreamedCompletionChunk(object):
+    def __init__(self, data):
+        self.data = data
+
+    def __repr__(self):
+        return "<completion-chunk: %s>" % self.data
+
+
+class DSSLLMStreamedCompletionFooter(object):
+    def __init__(self, data):
+        self.data = data
+
+    def __repr__(self):
+        return "<completion-footer: %s>" % self.data
+
+
+class _SSEEvent(object):
+    def __init__(self, id=None, event=None, data=""):
+        self.id = id
+        self.event = event
+        self.data = data
+
+class _SSEClient(object):
+    def __init__(self, raw_source):
+        self.raw_source = raw_source
+
+    def _read(self):
+        """Reads the raw source and yields events. Reassembles events
+        that may span multiple HTTP chunks"""
+
+        data = b''
+        for chunk in self.raw_source:
+            for line in chunk.splitlines(True):
+                data += line
+                if data.endswith(b'\r\r') or data.endswith(b'\n\n') or data.endswith(b'\r\n\r\n'):
+                    yield data
+                    data = b''
+        if data:
+            yield data
+
+    def iterevents(self):
+        for event_chunk in self._read():
+            evt = _SSEEvent()
+
+            for line in event_chunk.splitlines():
+                line = line.decode("utf8")
+
+                # Start with : --> comment
+                if line.startswith(":"):
+                    continue
+
+                data = line.split(":", 1)
+                field = data[0]
+
+                if len(data) > 1:
+                    value = data[1].strip()
+                else:
+                    value = ''
+
+                if field == 'data':
+                    evt.__dict__[field] += value + '\n'
+                else:
+                    evt.__dict__[field] = value
+
+            #print("Yielding event: %s" % evt.__dict__)
+            yield evt
+
 
 class DSSLLMCompletionResponse(object):
     """

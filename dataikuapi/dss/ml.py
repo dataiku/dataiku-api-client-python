@@ -777,6 +777,25 @@ class HyperparameterSearchSettings(object):
         self._raw_settings["foldOffset"] = value
 
     @property
+    def equal_duration_folds(self):
+        """
+        :return: Whether every fold in cross-test and cross-validation should be of equal duration when using k-fold.
+                 Only relevant for time series forecasting.
+        :rtype: bool
+        """
+        return self._raw_settings["equalDurationFolds"]
+
+    @equal_duration_folds.setter
+    def equal_duration_folds(self, value):
+        """
+        :param value: Whether every fold in cross-test and cross-validation should be of equal duration when using k-fold.
+                 Only relevant for time series forecasting.
+        :type value: bool
+        """
+        assert isinstance(value, bool)
+        self._raw_settings["equalDurationFolds"] = value
+
+    @property
     def cv_seed(self):
         """
         :return: cross-validation seed for splitting the data during hyperparameter search
@@ -1485,7 +1504,7 @@ class RandomForestSettings(PredictionAlgorithmSettings):
         self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
         self.max_features = self._register_numerical_hyperparameter("max_features")
         self.n_jobs = self._register_simple_parameter("n_jobs")
-        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["sqrt", "log2", "number", "prop"])
 
 
 class LightGBMSettings(PredictionAlgorithmSettings):
@@ -1539,6 +1558,7 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
         self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+        self.tweedie_variance_power = self._register_single_value_hyperparameter("tweedie_variance_power", accepted_types=[int, float])
 
     @property
     def enable_cuda(self):
@@ -1586,7 +1606,7 @@ class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
         self.max_feature_prop = self._register_numerical_hyperparameter("max_feature_prop")
         self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
         self.loss = self._register_categorical_hyperparameter("loss")
-        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["auto", "sqrt", "log2", "number", "prop"])
+        self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["sqrt", "log2", "number", "prop"])
 
 
 class DecisionTreeSettings(PredictionAlgorithmSettings):
@@ -2108,6 +2128,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         BINARY = "BINARY_CLASSIFICATION"
         REGRESSION = "REGRESSION"
         MULTICLASS = "MULTICLASS"
+        OTHER = "OTHER"
 
     def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
         super(DSSPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
@@ -2340,7 +2361,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         return self.mltask_settings["timestepParams"]
 
-    def set_time_step(self, time_unit=None, n_time_units=None, end_of_week_day=None, reguess=True, update_algorithm_settings=True):
+    def set_time_step(self, time_unit=None, n_time_units=None, end_of_week_day=None, reguess=True, update_algorithm_settings=True, unit_alignment=None):
         """
         Sets the time step parameters for the time series forecasting task.
 
@@ -2355,6 +2376,8 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         :type reguess: bool
         :param update_algorithm_settings: Whether the algorithm settings should also be reguessed if reguessing the ML Task (defaults to **True**)
         :type update_algorithm_settings: bool
+        :param unit_alignment: month for each step when time_unit is QUARTER or YEAR, between 1 and 3 for QUARTER and 1 and 12 for YEAR (defaults to **None**, i.e. don't change)
+        :type unit_alignment: int, optional
         """
 
         time_step_params = self.get_time_step_params()
@@ -2370,6 +2393,15 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
             if time_step_params["timeunit"] != "WEEK":
                 logger.warning("Changing end of week day, but time unit is not WEEK")
             time_step_params["endOfWeekDay"] = end_of_week_day
+        if unit_alignment is not None:
+            assert isinstance(unit_alignment, int), "unit_alignment should be an int"
+            max_selected_month = 12
+            if time_step_params["timeunit"] == "QUARTER":
+                max_selected_month = 3
+            assert unit_alignment >= 1 and unit_alignment <= max_selected_month, "unit_alignment should be in [1, {}]".format(max_selected_month)
+            if time_step_params["timeunit"] not in ["QUARTER", "YEAR"]:
+                logger.warning('Changing unit alignment, but time unit is not in ["QUARTER", "YEAR"]')
+            time_step_params["unitAlignment"] = unit_alignment
         if reguess:
             logger.info("Reguessing ML task settings after changing time step params")
             self.client._perform_empty(
@@ -4431,7 +4463,7 @@ class DSSMLTask(object):
         self.wait_train_complete()
         return self.get_trained_models_ids(session_id = train_ret["sessionId"])
 
-    def ensemble(self, model_ids=None, method=None):
+    def ensemble(self, model_ids, method):
         """
         Creates an ensemble model from a set of models.
 
@@ -4443,16 +4475,14 @@ class DSSMLTask(object):
 
         This returned identifier can be used for :meth:`get_trained_model_snippet`, :meth:`get_trained_model_details` and :meth:`deploy_to_flow`.
 
-        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :param model_ids: A list of model identifiers to ensemble (must not be empty)
         :type model_ids: list[str]
-        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
         :type method: str
 
         :return: The model identifier of the resulting ensemble model
         :rtype: str
         """
-        if model_ids is None:
-            model_ids = []
         train_ret = self.start_ensembling(model_ids, method)
         self.wait_train_complete()
         return train_ret
@@ -4478,22 +4508,24 @@ class DSSMLTask(object):
         return self.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/train" % (self.project_key, self.analysis_id, self.mltask_id), body=session_info)
 
-    def start_ensembling(self, model_ids=None, method=None):
+    def start_ensembling(self, model_ids, method):
         """
         Creates asynchronously an ensemble model from a set of models
 
         This returns immediately, before training is complete. To wait for training to complete, use :meth:`wait_train_complete`
 
-        :param model_ids: A list of model identifiers to ensemble (defaults to **None**)
+        :param model_ids: A list of model identifiers to ensemble (must not be empty)
         :type model_ids: list[str]
-        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL (defaults to **None**).
+        :param method: The ensembling method. Must be one of: AVERAGE, PROBA_AVERAGE, MEDIAN, VOTE, LINEAR_MODEL, LOGISTIC_MODEL
         :type method: str
 
         :return: The model identifier of the ensemble
         :rtype: str
         """
-        if model_ids is None:
-            model_ids = []
+        if not model_ids:
+            raise ValueError("The list of models to ensemble must not be empty")
+        if method not in ["AVERAGE", "PROBA_AVERAGE", "MEDIAN", "VOTE", "LINEAR_MODEL", "LOGISTIC_MODEL"]:
+            raise ValueError("A valid ensembling method must be chosen")
         ensembling_request = {
                             "method" : method,
                             "modelsIds" : model_ids

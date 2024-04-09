@@ -106,7 +106,7 @@ class DSSWiki(object):
         """
         body = {
             "paperSize": paper_size,
-            "exportAttachment": export_attachment
+            "exportAttachments": export_attachment
         }
         return self.client._perform_raw("POST", "/projects/%s/wiki/actions/export" % (self.project_key), body=body)
 
@@ -316,7 +316,7 @@ class DSSWikiArticle(object):
         body = {
             "paperSize": paper_size,
             "exportChildren": export_children,
-            "exportAttachment": export_attachment
+            "exportAttachments": export_attachment
         }
         return self.client._perform_raw("POST", "/projects/%s/wiki/%s/actions/export" % (self.project_key, self.article_id), body=body)
 
@@ -381,7 +381,7 @@ class DSSWikiArticleData(object):
 
     def get_metadata(self):
         """
-        Get the article metadata
+        Get the article and attachment metadata
 
         .. note ::
             Note that this is a direct reference, not a copy, so modifications to the returned object will be reflected when saving

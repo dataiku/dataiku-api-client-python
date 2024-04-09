@@ -9,6 +9,7 @@ from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
+from .data_quality import DSSDataQualityRuleSet
 from . import recipe
 try:
     basestring
@@ -139,6 +140,24 @@ class DSSDataset(object):
                 "dropData" : drop_data
             })
 
+    ########################################################
+    # Dataset renaming
+    ########################################################
+
+    def rename(self, new_name):
+        """
+        Rename the dataset with the new specified name
+
+        :param str new_name: the new name of the dataset
+        """
+        if self.dataset_name == new_name:
+            raise ValueError("Dataset name is already " + new_name)
+        obj = {
+            "oldName": self.dataset_name,
+            "newName": new_name
+        }
+        self.client._perform_empty("POST", "/projects/%s/actions/renameDataset" % self.project_key, body=obj)
+        self.dataset_name = new_name
 
     ########################################################
     # Dataset definition
@@ -436,6 +455,10 @@ class DSSDataset(object):
         
         If the checks are not specified, the checks
         setup on the dataset are used.
+
+        .. caution::
+
+            Deprecated. Use :meth:`DSSDataQualityRuleSet.compute_rules` instead
 
         :param str partition: (optional) partition identifier, use ALL to run checks on all data.
         :param list[string] checks: (optional) ids of the checks to run.
@@ -897,6 +920,19 @@ class DSSDataset(object):
         builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
         return builder
+    
+    ########################################################
+    # Data Quality
+    ########################################################
+
+    def get_data_quality_rules(self):
+        """
+        Get a DSSDataQualityRuleSet dataiku object to interact with the data quality rules of the dataset.
+
+        :returns: 
+        :rtype: :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet`
+        """
+        return DSSDataQualityRuleSet(self.project_key, self.dataset_name, self.client)
 
 class DSSDatasetSettings(DSSTaggableObjectSettings):
     """
@@ -946,7 +982,7 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
 
     def remove_partitioning(self):
         """
-        Reset partitioning settings to those of a non-partitionned dataset.
+        Reset partitioning settings to those of a non-partitioned dataset.
         """
         self.settings["partitioning"] = {"dimensions" : []}
 
