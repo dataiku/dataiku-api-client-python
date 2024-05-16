@@ -86,6 +86,10 @@ class DSSLLM(object):
         """
         return DSSLLMEmbeddingsQuery(self)
 
+    def new_images_generation(self):
+        return DSSLLMImageGenerationQuery(self)
+
+
 
 class DSSLLMEmbeddingsQuery(object):
     """
@@ -99,7 +103,13 @@ class DSSLLMEmbeddingsQuery(object):
     """
     def __init__(self, llm):
         self.llm = llm
-        self.eq = {"queries": [], "llmId": llm.llm_id}
+        self.eq = {
+            "queries": [],
+            "llmId": llm.llm_id,
+            "settings": {
+                # TODO: include textOverflowMode when merging into master
+            }
+        }
 
     def add_text(self, text):
         """
@@ -379,3 +389,160 @@ class DSSLLMCompletionsResponse(object):
         """The array of responses"""
         return [DSSLLMCompletionResponse(x) for x in self._raw]
     
+
+
+
+
+class DSSLLMImageGenerationQuery(object):
+    """
+    A handle to interact with an image generation query.
+    
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_images_generation` instead.
+    """
+    def __init__(self, llm):
+        self.llm = llm
+        self.gq = {
+            "prompts": [],
+            "negativePrompts": [],
+            "llmId": self.llm.llm_id
+        }
+
+    def with_prompt(self, prompt, weight=None):
+        """
+        """
+        self.gq["prompts"].append({"prompt": prompt, "weight": weight})
+        return self
+ 
+    def with_negative_prompt(self, prompt, weight=None):
+        """
+        """
+        self.gq["negativePrompts"].append({"prompt": prompt, "weight": weight})
+        return self
+
+    def with_original_image(self, image, mode=None, weight=None):
+        if isinstance(image, str):
+            self.gq["originalImage"] = image
+        elif isinstance(image, bytes):
+            import base64
+            self.gq["originalImage"] = base64.b64encode(image).decode("utf8")
+
+        if mode is not None:
+            self.gq["originalImageEditionMode"] = mode
+
+        if weight is not None:
+            self.gq["originalImageWeight"] = weight
+        return self
+
+    def with_mask(self, mode, image=None, text=None):
+        self.gq["maskMode"] = mode
+        
+        if image is not None:
+            if isinstance(image, str):
+                self.gq["maskImage"] = image
+            elif isinstance(image, bytes):
+                import base64
+                self.gq["maskImage"] = base64.b64encode(image).decode("utf8")
+        return self
+
+    @property
+    def height(self):
+        return self.gq.get("height", None)
+    @height.setter
+    def height(self, new_value):
+        self.gq["height"] = new_value
+
+    @property
+    def width(self):
+        return self.gq.get("width", None)
+    @width.setter
+    def width(self, new_value):
+        self.gq["width"] = new_value
+
+    @property
+    def fidelity(self):
+        return self.gq.get("fidelity", None)
+    @fidelity.setter
+    def fidelity(self, new_value):
+        self.gq["fidelity"] = new_value
+
+    @property
+    def quality(self):
+        return self.gq.get("quality", None)
+    @quality.setter
+    def quality(self, new_value):
+        self.gq["quality"] = new_value
+
+    @property
+    def seed(self):
+        return self.gq.get("seed", None)
+    @seed.setter
+    def seed(self, new_value):
+        self.gq["seed"] = new_value
+
+    @property
+    def style(self):
+        """Style of the image to generate. Valid values depend on the targeted model"""
+        return self.gq.get("style", None)
+    @style.setter
+    def style(self, new_value):
+        self.gq["style"] = new_value
+
+    @property
+    def images_to_generate(self):
+        return self.gq.get("nbImagesToGenerate", None)
+    @images_to_generate.setter
+    def images_to_generate(self, new_value):
+        self.gq["nbImagesToGenerate"] = new_value
+
+    def with_aspect_ratio(self, ar):
+        self.gq["height"] = 1024
+        self.gq["width"] = int(1024 * ar)
+        return self
+
+    def execute(self):
+        """
+        Executes the image generation
+
+        :rtype: :class:DSSLLMImageGenerationResponse
+        """
+
+        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq)
+        return DSSLLMImageGenerationResponse(ret)
+
+class DSSLLMImageGenerationResponse(object):
+    """
+    A handle to interact with an image generation response.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMImageGenerationQuery.execute` instead.
+    """
+    def __init__(self, raw_resp):
+        self._raw = raw_resp
+
+    @property
+    def success(self):
+        """
+        :return: The outcome of the image generation query.
+        :rtype: bool
+        """
+        return self._raw["ok"]
+
+    def first_image(self, as_type="bytes"):
+        """
+        :return: The first generated image.
+        :rtype: str
+        """
+
+        if not self.success:
+            raise Exception("Image generation did not succeed: %s" % self._raw["errorMessage"])
+
+        if len(self._raw["images"]) == 0:
+            raise Exception("Image generation succeeded but did not return any image")
+
+        if as_type == "bytes":
+            import base64
+            return base64.b64decode(self._raw["images"][0]["data"])
+
+        else:
+            return self._raw["images"][0]["data"]

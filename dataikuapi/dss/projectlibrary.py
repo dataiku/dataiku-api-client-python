@@ -1,5 +1,6 @@
 from ..utils import DataikuException
 import sys
+import base64
 
 if sys.version_info >= (3,0):
     import urllib.parse
@@ -358,13 +359,20 @@ class DSSLibraryFile(DSSLibraryItem):
         """Do not call directly, use :meth:`dataikuapi.dss.projectlibrary.DSSLibrary.get_file`"""
         super(DSSLibraryFile, self).__init__(client, project_key, name, parent, None)
 
-    def read(self):
+    def read(self, as_type="str"):
         """
         Get the file contents from DSS
 
-        :returns: the contents of the file
+        :param str as_type: specify whether you want to read the file in text mode (as_type='str') or in binary mode (as_type='bytes'). Defaults to text mode.
+        :returns: the contents of the file as a string
         """
-        return self.client._perform_json("GET", "/projects/%s/libraries/contents/%s" % (self.project_key, dku_quote_fn(self.path)))["data"]
+        url = "/projects/%s/libraries/contents/%s" % (self.project_key, dku_quote_fn(self.path))
+        if as_type == "str":
+            return self.client._perform_json("GET", url)["data"]
+        elif as_type == "bytes":
+            return base64.b64decode(self.client._perform_json("GET", url, params={"dataEncoding": "base64"})["data"])
+        else:
+            raise ValueError("Unknown as_type")
 
     def write(self, data):
         """

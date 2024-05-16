@@ -200,7 +200,7 @@ class DSSCodeStudioObject(object):
 
         :param str zone: name of the zone to pull (see :meth:`dataikuapi.dss.codestudio.DSSCodeStudioObjectStatus.get_zones`)
         """
-        return self.client._perform_json("GET", "/projects/%s/code-studios/%s/pull/%s" % (self.project_key, self.code_studio_id, zone))
+        self.client._perform_empty("GET", "/projects/%s/code-studios/%s/pull/%s" % (self.project_key, self.code_studio_id, zone))
 
     def push_to_code_studio(self, zone):
         """

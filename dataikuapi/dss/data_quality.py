@@ -5,7 +5,8 @@ class DSSDataQualityRuleSet(object):
     """
     Base settings class for dataset data quality rules.
     
-    .. caution:: Do not instantiate this class directly, use :meth:`DSSDataset.get_data_quality_rules`
+    .. caution:: 
+        Do not instantiate this class directly, use :meth:`dataikuapi.dss.dataset.DSSDataset.get_data_quality_rules`
     """
     def __init__(self, project_key, dataset_name, client):
         self.ruleset = { "checks": [] }
@@ -20,7 +21,7 @@ class DSSDataQualityRuleSet(object):
         :param str as_type: How to return the rules. Possible values are "dict" and "objects" (defaults to **objects**)
 
         :returns: The rules defined on the dataset.
-        :rtype: a list of :class:`dataikuapi.dss.data_quality.DSSDataQualityRule` if as_type is "objects",
+        :rtype: a list of :class:`DSSDataQualityRule` if as_type is "objects",
             a list of dict if as_type is "dict"
         """
         self.ruleset = self.client._perform_json("GET", "/projects/%s/datasets/%s/data-quality/rules" % (self.project_key, self.dataset_name))
@@ -38,7 +39,7 @@ class DSSDataQualityRuleSet(object):
         :param object config: The config of the rule
 
         :returns: The created data quality rule
-        :rtype: :class: `DSSDataQualityRule`
+        :rtype: :class:`DSSDataQualityRule`
         """
         if not config:
             raise ValueError("Config is required")
@@ -69,7 +70,7 @@ class DSSDataQualityRuleSet(object):
         :param str partition: If the dataset is partitioned, the name of the partition to compute (or "ALL" to compute on the whole dataset). If the dataset is not partitioned use "NP" or None.
 
         :returns: Job of the currently computed data quality rules.
-        :rtype: :class: `DSSFuture`
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         if not partition:
             partition = "NP"
@@ -103,7 +104,7 @@ class DSSDataQualityRuleSet(object):
         :param str partition: If the dataset is partitioned, the name of the partition to get the detailed rules results (or "ALL" to compute on the whole dataset). If the dataset is not partitioned use "NP" or None.
 
         :returns: The last result of each rule on the specified partition
-        :rtype: a list of :class: `dataikuapi.dss.data_quality.DSSDataQualityRuleResult`   
+        :rtype: a list of :class:`DSSDataQualityRuleResult`   
         """
         if not partition:
             partition = "NP"
@@ -121,7 +122,7 @@ class DSSDataQualityRuleSet(object):
         :param list rule_ids: A list of rule ids to get the history from. Default is all the rules on the dataset.
 
         :returns: The detailed execution of data quality rules matching the filters set
-        :rtype: a list of :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleResult` 
+        :rtype: a list of :class:`DSSDataQualityRuleResult` 
         """
         rule_results = self.client._perform_json("GET", "/projects/%s/datasets/%s/data-quality/rules-history" % (self.project_key, self.dataset_name), params={ "minTimestamp": min_timestamp, "maxTimestamp": max_timestamp, "resultsPerPage": results_per_page, "page": page, "ruleIds": rule_ids })
         return [DSSDataQualityRuleResult(result) for result in rule_results]
@@ -131,7 +132,7 @@ class DSSDataQualityRule(object):
     """
     A rule defined on a dataset.
 
-    Do not instantiate this class, use :meth:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet.get_rule`
+    .. caution:: Do not instantiate this class, use :meth:`DSSDataQualityRuleSet.list_rules`
     """
     def __init__(self, rule, dataset_name, project_key, client):
         self.rule = rule
@@ -162,7 +163,7 @@ class DSSDataQualityRule(object):
         :param str partition: If the dataset is partitioned, the name of the partition to compute (or "ALL" to compute on the whole dataset). If the dataset is not partitioned use "NP" or None.
 
         :returns: A job of the computation of the rule.
-        :rtype: DSSFuture
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         if not partition:
             partition = "NP"
@@ -192,7 +193,7 @@ class DSSDataQualityRule(object):
         :param str partition: If the dataset is partitioned, the name of the partition to get the detailed rules results (or "ALL" to refer to the whole dataset). If the dataset is not partitioned use "NP" or None.
 
         :returns: The last result of the rule on the specified partition
-        :rtype: :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleResult`
+        :rtype: :class:`DSSDataQualityRuleResult`
         """
         if not partition:
             partition = "NP"
@@ -212,7 +213,7 @@ class DSSDataQualityRule(object):
         :param int page: The page to be returned, default will be first page. 
 
         :returns: The detailed execution of data quality rule matching the timeframe set
-        :rtype: a list of :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleResult`  
+        :rtype: a list of :class:`DSSDataQualityRuleResult`  
         """
         rule_results = self.client._perform_json("GET", "/projects/%s/datasets/%s/data-quality/rules-history" % (self.project_key, self.dataset_name), params={ "minTimestamp": min_timestamp, "maxTimestamp": max_timestamp, "resultsPerPage": results_per_page, "page": page, "ruleId": self.rule["id"] })
         return [DSSDataQualityRuleResult(result) for result in rule_results]
@@ -221,7 +222,7 @@ class DSSDataQualityRuleResult(object):
     """
     The result of a rule defined on a dataset
 
-    Do not instantiate this class, use :meth:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet.get_last_rules_results`or :meth: `dataikuapi.dss.data_quality.DSSDataQualityRuleSet.get_rules_history` or :meth: `dataikuapi.dss.data_quality.DSSDataQualityRule.get_last_result` or :meth: `dataikuapi.dss.data_quality.DSSDataQualityRule.get_rule_history`
+    .. caution:: Do not instantiate this class, use: :meth:`DSSDataQualityRuleSet.get_last_rules_results` or :meth:`DSSDataQualityRuleSet.get_rules_history` or :meth:`DSSDataQualityRule.get_last_result` or :meth:`DSSDataQualityRule.get_rule_history`
     """
     def __init__(self, data):
         self.data = data
