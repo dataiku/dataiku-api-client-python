@@ -458,7 +458,7 @@ class DSSDataset(object):
 
         .. caution::
 
-            Deprecated. Use :meth:`DSSDataQualityRuleSet.compute_rules` instead
+            Deprecated. Use :meth:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet.compute_rules` instead
 
         :param str partition: (optional) partition identifier, use ALL to run checks on all data.
         :param list[string] checks: (optional) ids of the checks to run.
@@ -927,9 +927,9 @@ class DSSDataset(object):
 
     def get_data_quality_rules(self):
         """
-        Get a DSSDataQualityRuleSet dataiku object to interact with the data quality rules of the dataset.
+        Get a handle to interact with the data quality rules of the dataset.
 
-        :returns: 
+        :returns: A handle to the data quality rules of the dataset.
         :rtype: :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet`
         """
         return DSSDataQualityRuleSet(self.project_key, self.dataset_name, self.client)

@@ -20,7 +20,7 @@ class DSSInsight(object):
 
     .. important::
 
-        Do not instantiate directly, use :meth:`dataikuapi.dss.DSSProject.get_insight` instead
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.get_insight` instead
     """
     def __init__(self, client, project_key, insight_id):
         self.client = client

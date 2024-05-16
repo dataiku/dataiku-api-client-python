@@ -2379,7 +2379,7 @@ class DSSProject(object):
         :param only_monitored: boolean to retrieve only monitored dataset, default to True.
         
         :returns: The dict of data quality dataset statuses.
-        :rtype : dict with DATASET_NAME as key
+        :rtype: dict with DATASET_NAME as key
         """
         return self.client._perform_json("GET", "/projects/%s/data-quality/status" % self.project_key, params={"onlyMonitored": only_monitored})
     
@@ -2392,7 +2392,7 @@ class DSSProject(object):
         :param int max_timestamp: timestamp representing the end of the timeframe
 
         :returns: list of datasets per day in the timeline
-        :rtype : list of dict
+        :rtype: list of dict
         """
         return self.client._perform_json("GET", "/projects/%s/data-quality/timeline" % self.project_key, params={"minTimestamp": min_timestamp, "maxTimestamp": max_timestamp})
 

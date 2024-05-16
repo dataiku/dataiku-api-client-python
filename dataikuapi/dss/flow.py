@@ -6,6 +6,7 @@ from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .modelevaluationstore import DSSModelEvaluationStore
 from .recipe import DSSRecipe, DSSRecipeDefinitionAndPayload
+from .knowledgebank import DSSKnowledgeBank
 from .future import DSSFuture
 from .streaming_endpoint import DSSStreamingEndpoint
 import logging, json
@@ -238,6 +239,8 @@ class DSSProjectFlow(object):
             ot = "STREAMING_ENDPOINT"
         elif isinstance(obj, DSSLabelingTask):
             ot = "LABELING_TASK"
+        elif isinstance(obj, DSSKnowledgeBank):
+            ot = "RETRIEVABLE_KNOWLEDGE"
         else:
             raise ValueError("Cannot transform to DSS object ref: %s" % obj)
 
@@ -447,6 +450,8 @@ class DSSFlowZone(object):
             return p.get_labeling_task(zone_item["objectId"])
         elif zone_item["objectType"] == "MODEL_EVALUATION_STORE":
             return p.get_model_evaluation_store(zone_item["objectId"])
+        elif zone_item["objectType"] == "RETRIEVABLE_KNOWLEDGE":
+            return p.get_knowledge_bank(zone_item["objectId"])
         else:
             raise ValueError("Cannot transform to DSS object: %s" % zone_item)
 
@@ -733,6 +738,8 @@ class DSSProjectFlowGraph(object):
             return DSSStreamingEndpoint(self.flow.client, self.flow.project.project_key, node["ref"])
         elif node["type"] == "RUNNABLE_LABELING_TASK":
             return DSSLabelingTask(self.flow.client, self.flow.project.project_key, node["ref"])
+        elif node["type"] == "COMPUTABLE_RETRIEVABLE_KNOWLEDGE":
+            return DSSKnowledgeBank(self.flow.client, self.flow.project.project_key, node["ref"])
         else:
             # TODO add streaming elements
             raise Exception("unsupported node type: %s" % node["type"])

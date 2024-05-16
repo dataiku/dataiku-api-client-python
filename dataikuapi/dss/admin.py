@@ -622,10 +622,10 @@ class DSSUser(object):
         from dataikuapi.dssclient import DSSClient
 
         if self.client.api_key is not None:
-            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login})
+            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login}, insecure_tls=not self.client._session.verify)
         elif self.client.internal_ticket is not None:
             return DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
-                                         extra_headers={"X-DKU-ProxyUser":  self.login})
+                                         extra_headers={"X-DKU-ProxyUser":  self.login}, insecure_tls=not self.client._session.verify)
         else:
             raise ValueError("Don't know how to proxy this client")
 
