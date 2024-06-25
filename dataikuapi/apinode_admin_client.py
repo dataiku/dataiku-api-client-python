@@ -1,3 +1,5 @@
+import json
+
 from .apinode_admin.service import APINodeService
 from .apinode_admin.auth import APINodeAuth
 from .utils import DataikuException
@@ -102,3 +104,17 @@ class APINodeAdminClient(DSSBaseClient):
         Clear the model cache
         """
         self._perform_empty("DELETE", "model-cache")
+
+    def clean_unused_services_and_generations(self):
+        """
+        Deletes disabled services, unused generations and unused code environments
+        """
+        resp = self._perform_json("DELETE", "services-clean-unused")
+        print(json.dumps(resp, indent=4))
+
+    def clean_code_env_cache(self):
+        """
+        Deletes unused code envs from cache
+        """
+        resp = self._perform_json("DELETE", "cached-code-envs")
+        print(json.dumps(resp, indent=4))

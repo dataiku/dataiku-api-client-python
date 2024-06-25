@@ -55,6 +55,16 @@ class DatabricksRepositoryContextManager(object):
         self.previous_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", None)
         self.previous_databricks_host = os.environ.get("DATABRICKS_HOST", None)
         self.previous_databricks_token = os.environ.get("DATABRICKS_TOKEN", None)
+        proxy_as_string = self.connection_info.get("proxySettingsAsString")
+        if proxy_as_string:
+            self.previous_http_proxy = os.environ.get("HTTP_PROXY", None)
+            self.previous_https_proxy = os.environ.get("HTTPS_PROXY", None)
+            os.environ["http_proxy"] = "http://" + proxy_as_string
+            os.environ["https_proxy"] = "http://" + proxy_as_string
+        else:
+            self.previous_http_proxy = None
+            self.previous_https_proxy = None
+
         import mlflow
         self.previous_registry_uri = mlflow.get_registry_uri()
         if self.use_unity_catalog:
@@ -81,6 +91,11 @@ class DatabricksRepositoryContextManager(object):
             os.environ.pop("DATABRICKS_TOKEN")
         import mlflow
         mlflow.set_registry_uri(self.previous_registry_uri)
+        if self.previous_http_proxy:
+            os.environ["http_proxy"] = self.previous_http_proxy
+        if self.previous_https_proxy:
+            os.environ["https_proxy"] = self.previous_https_proxy
+
 
 class DSSSavedModel(object):
     """
