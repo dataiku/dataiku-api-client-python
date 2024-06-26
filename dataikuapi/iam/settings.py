@@ -462,7 +462,7 @@ class SPNEGOMode(Enum):
     CUSTOM_LOGIN_CONF = "CUSTOM_LOGIN_CONF"
 
 
-class SSOSettings(dict):
+class SSOSettings:
     def __init__(self, client, path, sso_settings):
         """
         A class holding SSO settings information
@@ -726,7 +726,7 @@ class SSOSettings(dict):
         return self.sso_settings.get("authorizedGroups", [])
 
 
-class LDAPSettings(dict):
+class LDAPSettings:
     def __init__(self, client, path, ldap_settings):
         """
         A class holding LDAP settings information
@@ -1254,7 +1254,7 @@ class LDAPSettings(dict):
         return self.ldap_settings.get("remappingRules", [])
 
 
-class AzureADSettings(dict):
+class AzureADSettings:
     def __init__(self, client, path, azuread_settings):
         """
         A class holding Azure AD settings information

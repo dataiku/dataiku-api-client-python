@@ -90,7 +90,7 @@ class DSSAPIDeployer(object):
 
         :param str infra_id: Unique Identifier of the infra to create
         :param str stage: Infrastructure stage. Stages are configurable on each API Deployer
-        :param str type: STATIC, K8S, AZURE_ML, SAGEMAKER or VERTEX_AI
+        :param str type: STATIC, K8S, AZURE_ML, SAGEMAKER, SNOWPARK or VERTEX_AI
         :param str govern_check_policy: PREVENT, WARN, or NO_CHECK depending if the deployer will check whether the saved model versions deployed on this infrastructure has to be managed and approved in Dataiku Govern
         :rtype: :class:`DSSAPIDeployerInfra`
         """
@@ -149,6 +149,9 @@ class DSSAPIDeployer(object):
         :rtype: :class:`DSSAPIDeployerService`
         """
         return DSSAPIDeployerService(self.client, service_id)
+
+
+
 
 ###############################################
 # Infrastructures
@@ -395,6 +398,54 @@ class DSSAPIDeployerDeployment(object):
         open_api = self.client._perform_text("GET", "/api-deployer/deployments/%s/get-open-api" % (self.deployment_id))
 
         return DSSAPIDeployerDeploymentOpenApi(open_api)
+
+
+    def run_test_queries(self, endpoint_id=None, test_queries=None):
+        """
+        Runs test queries on a deployment and returns results as a dict
+
+        :param str endpoint_id: Mandatory if the deployment has multiple endpoints
+        :param list test_queries: Queries as str, formatted as [{"q": {"features": {"feat_1": "value", ...}}, {...}, ... ].
+            If left to None, the test queries of the current version of the service will be used.
+        :rtype: dict
+
+        Usage example
+
+        .. code-block:: python
+
+            import dataiku
+
+            client = dataiku.api_client()
+            deployer = client.get_apideployer()
+            deployment = deployer.get_deployment('service14');
+
+            test_queries = [{'q': {'features': {
+                'Pclass': '200',
+                'Sex': 'male',
+                'Age': '22',
+                'Embarked': 'S'
+            }}}]
+
+            # run existing test queries on deployement endpoint (if unique, else error)
+            test_queries_result = deployment.run_test_queries()
+
+            # run specified test queries on deployement "survived" endpoint
+            test_queries_result = deployment.run_test_queries(endpoint_id="survived", test_queries=test_queries)
+
+            # run existing test queries on deployement  "survived" endpoint
+            test_queries_result = deployment.run_test_queries(endpoint_id="survived")
+
+            # run specified test queries on deployement endpoint (if unique, else error)
+            test_queries_result = deployment.run_test_queries(test_queries=test_queries)
+
+        """
+        settings = {}
+        if endpoint_id is not None:
+            settings["endpointIdParam"] = endpoint_id
+        if test_queries is not None:
+            settings["testQueriesParam"] = json.dumps(test_queries)
+
+        return self.client._perform_json("POST", "/api-deployer/deployments/%s/actions/run-test-queries" % self.deployment_id, params=settings)
 
 
 class DSSAPIDeployerDeploymentSettings(object):

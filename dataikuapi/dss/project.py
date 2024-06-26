@@ -2202,8 +2202,8 @@ class DSSProject(object):
 
         :param str purpose: Usage purpose of the LLM. Main values are GENERIC_COMPLETION and TEXT_EMBEDDING_EXTRACTION
         :param str as_type: How to return the list. Supported values are "listitems" and "objects".
-        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`llm.DSSLLMListItem`.
-                  If "as_type" is "objects", each one as a :class:`llm.DSSLLM`
+        :returns: The list of LLMs. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.llm.DSSLLMListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.llm.DSSLLM`
         :rtype: list
         """
         llms = self.client._perform_json("GET", "/projects/%s/llms?purpose=%s" % (self.project_key, purpose))
@@ -2215,6 +2215,12 @@ class DSSProject(object):
             raise ValueError("Unknown as_type")
 
     def get_llm(self, llm_id):
+        """
+        Get a handle to interact with a specific LLM
+
+        :param id: the identifier of an LLM
+        :returns: A :class:`dataikuapi.dss.llm.DSSLLM` LLM handle
+        """
         return DSSLLM(self.client, self.project_key, llm_id)
 
     def list_knowledge_banks(self, as_type="listitems"):
@@ -2222,8 +2228,8 @@ class DSSProject(object):
         List the knowledge banks of this project
 
         :param str as_type: How to return the list. Supported values are "listitems" and "objects".
-        :returns: The list of the webapps. If "as_type" is "listitems", each one as a :class:`knowledgebank.DSSKnowledgeBankListItem`.
-                  If "as_type" is "objects", each one as a :class:`knowledgebank.DSSKnowledgeBank`
+        :returns: The list of knowledge banks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBankListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank`
         :rtype: list
         """
         kbs = self.client._perform_json("GET", "/projects/%s/knowledge-banks" % (self.project_key))
@@ -2235,6 +2241,12 @@ class DSSProject(object):
             raise ValueError("Unknown as_type")
 
     def get_knowledge_bank(self, id):
+        """
+        Get a handle to interact with a specific knowledge bank
+
+        :param id: the identifier of a knowledge bank
+        :returns: A :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank` knowledge bank handle
+        """
         return DSSKnowledgeBank(self.client, self.project_key, id)
 
     ########################################################
@@ -2612,7 +2624,7 @@ class DSSProjectGit(object):
         Get the current state of the project's git repository
 
         :return: A dict containing the following keys: 'currentBranch', 'remotes', 'trackingCount', 'clean', 'hasUncommittedChanges',
-        'added', 'changed', 'removed', 'missing', 'modified', 'conflicting', 'untracked' and 'untrackedFolders'
+          'added', 'changed', 'removed', 'missing', 'modified', 'conflicting', 'untracked' and 'untrackedFolders'
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/git/status" % self.project_key)
@@ -2692,7 +2704,7 @@ class DSSProjectGit(object):
         Lists all existing tags.
 
         :return: A list of dict objects, each one containing the following keys: 'name', 'shortName', 'commit' (hash of the commit associated with the tag),
-        'annotations' and 'readOnly'.
+          'annotations' and 'readOnly'.
         :rtype: list
         """
         return self.client._perform_json("GET", "/projects/%s/git/tags" % self.project_key)

@@ -77,18 +77,38 @@ class DSSLLM(object):
         """
         return DSSLLMCompletionsQuery(self)
 
-    def new_embeddings(self):
+    def new_embeddings(self, text_overflow_mode="FAIL"):
         """
         Create a new embedding query.
 
+        :param str text_overflow_mode: How to handle longer texts than what the model supports. Either 'TRUNCATE' or 'FAIL'.
         :returns: A handle on the generated embeddings query.
         :rtype: :class:`DSSLLMEmbeddingsQuery`
         """
-        return DSSLLMEmbeddingsQuery(self)
+        return DSSLLMEmbeddingsQuery(self, text_overflow_mode)
 
     def new_images_generation(self):
         return DSSLLMImageGenerationQuery(self)
+    
+    def as_langchain_llm(self, **data):
+        """
+        Create a langchain-compatible LLM object for this LLM.
 
+        :returns: A langchain-compatible LLM object.
+        :rtype: :class:`dataikuapi.dss.langchain.llm.DKULLM`
+        """
+        from dataikuapi.dss.langchain.llm import DKULLM
+        return DKULLM(llm_handle=self, **data)
+
+    def as_langchain_chat_model(self, **data):
+        """
+        Create a langchain-compatible chat LLM object for this LLM.
+
+        :returns: A langchain-compatible LLM object.
+        :rtype: :class:`dataikuapi.dss.langchain.llm.DKUChatModel`
+        """
+        from dataikuapi.dss.langchain.llm import DKUChatModel
+        return DKUChatModel(llm_handle=self, **data)
 
 
 class DSSLLMEmbeddingsQuery(object):
@@ -101,13 +121,13 @@ class DSSLLMEmbeddingsQuery(object):
 
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_embeddings` instead.
     """
-    def __init__(self, llm):
+    def __init__(self, llm, text_overflow_mode):
         self.llm = llm
         self.eq = {
             "queries": [],
             "llmId": llm.llm_id,
             "settings": {
-                # TODO: include textOverflowMode when merging into master
+                "textOverflowMode": text_overflow_mode
             }
         }
 
@@ -205,7 +225,7 @@ class DSSLLMCompletionQuery(object):
         """
         queries = {"queries": [self.cq], "settings": self._settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
-        
+
         return DSSLLMCompletionResponse(ret["responses"][0])
 
     def execute_streamed(self):
@@ -388,9 +408,6 @@ class DSSLLMCompletionsResponse(object):
     def responses(self):
         """The array of responses"""
         return [DSSLLMCompletionResponse(x) for x in self._raw]
-    
-
-
 
 
 class DSSLLMImageGenerationQuery(object):
@@ -509,6 +526,7 @@ class DSSLLMImageGenerationQuery(object):
 
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq)
         return DSSLLMImageGenerationResponse(ret)
+
 
 class DSSLLMImageGenerationResponse(object):
     """
