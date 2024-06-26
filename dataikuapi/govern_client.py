@@ -3,6 +3,8 @@ import json
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
 
+from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
+
 from dataikuapi.govern.future import GovernFuture
 from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings, GovernUserActivity, GovernAuthorizationMatrix
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
@@ -614,6 +616,40 @@ class GovernClient(object):
         """
         resp = self._perform_json("GET", "/instance-info")
         return GovernInstanceInfo(resp)
+
+    ########################################################
+    # IAM
+    ########################################################
+
+    def get_sso_settings(self):
+        """
+        Get the Single Sign-On (SSO) settings
+
+        :return: SSO settings
+        :rtype: :class:`dataikuapi.iam.settings.SSOSettings`
+        """
+        sso = self._perform_json("GET", "/admin/iam/sso-settings")
+        return DSSSSOSettings(self, sso)
+
+    def get_ldap_settings(self):
+        """
+        Get the LDAP settings
+
+        :return: LDAP settings
+        :rtype: :class:`dataikuapi.iam.settings.LDAPSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/ldap-settings")
+        return DSSLDAPSettings(self, ldap)
+
+    def get_azure_ad_settings(self):
+        """
+        Get the Azure Active Directory (aka Microsoft Entra ID) settings
+
+        :return: Azure AD settings
+        :rtype: :class:`dataikuapi.iam.settings.AzureADSettings`
+        """
+        ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
+        return DSSAzureADSettings(self, ldap)
 
 
 class GovernInstanceInfo(object):

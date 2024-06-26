@@ -297,7 +297,7 @@ class DSSPluginParameterSet(DSSPluginParameterSetBase):
 
     .. important::
 
-        Do not instantiate directly, use :meth:`DSSPluginSettings.get_parameter_set()` or :meth:`DSSPluginSettings.list_parameter_sets().
+        Do not instantiate directly, use :meth:`DSSPluginSettings.get_parameter_set()` or :meth:`DSSPluginSettings.list_parameter_sets()`.
 
     The values in this class can be modified directly, and changes will be taken into account
     when calling :meth:`DSSPluginSettings.save()`

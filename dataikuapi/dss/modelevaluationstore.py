@@ -635,13 +635,13 @@ class DriftResult(object):
     """
     def __init__(self, data):
         self.data = data
-        self.drift_model_result = DriftModelResult(self.data["driftModelResult"])
+        self.drift_model_result = DriftModelResult(self.data["driftModelResult"]) if "driftModelResult" in self.data else None
         """Drift analysis based on drift modeling."""
-        self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"])
+        self.univariate_drift_result = UnivariateDriftResult(self.data["univariateDriftResult"]) if "univariateDriftResult" in self.data else None
         """Per-column drift analysis based on pairwise comparison of distributions."""
-        self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]]
+        self.per_column_settings = [ColumnSettings(cs) for cs in self.data["perColumnSettings"]] if "perColumnSettings" in self.data else None
         """Information about column handling that has been used (errors, types, etc)."""
-        self.prediction_drift_result = PredictionDriftResult(self.data["predictionDriftResult"])
+        self.prediction_drift_result = PredictionDriftResult(self.data["predictionDriftResult"]) if "predictionDriftResult" in self.data else None
         """Drift analysis based on the prediction column"""
 
     def get_raw(self):

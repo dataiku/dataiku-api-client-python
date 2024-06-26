@@ -12,8 +12,7 @@ from .utils import DSSFilterBuilder
 from ..utils import DataikuException
 from ..utils import _write_response_content_to_file
 
-logger = logging.getLogger("ML")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger("dataikuapi.dss.ml")
 
 
 class PredictionSplitParamsHandler(object):
@@ -2275,6 +2274,7 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
     __doc__ = []
     _algorithm_remap = {
         "DBSCAN": "db_scan_clustering",
+        "HDBSCAN": "hdb_scan_clustering",
         "SPECTRAL": "spectral_clustering",
         "WARD": "ward_clustering",
         "KMEANS": "kmeans_clustering",
@@ -3681,6 +3681,54 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         """
         with open(filename, "wb") as f:
             f.write(self.get_scoring_mlflow_stream().content)
+
+    def export_to_snowflake_function(self, connection_name, function_name, wait=True):
+        """
+        Exports the model to a Snowflake function. Only works for Saved Model Versions.
+        :param connection_name: Snowflake connection to use
+        :param function_name: Name of the function to create
+        :param wait: a flag to wait for the operation to complete (defaults to **True**)
+        :return: None if wait is True, else a future
+        """
+        if self.mltask is not None:
+            raise Exception("Only supported for Saved Model Versions")
+        future_response = self.saved_model.client._perform_json(
+            "GET", "/projects/%s/savedmodels/%s/versions/%s/export-to-snowflake-function" %
+                   (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            params={"connectionName": connection_name, "functionName": function_name}
+        )
+        future = DSSFuture.from_resp(self.saved_model.client, future_response)
+        return future.wait_for_result() if wait else future
+
+    def export_to_databricks_registry(self, connection_name, use_unity_catalog, model_name, experiment_name, wait=True):
+        """
+        Exports the model as a version of a Registered Model of a Databricks Registry. To do so, the model is exported to the MLflow format, then logged
+            in a run of an experiment, and finally registered in the selected registry.
+
+        :param connection_name: Databricks Model Deployment Infrastructure connection to use
+        :param use_unity_catalog: exports to a model in the Databricks Workspace registry or in the Databricks Unity Catalog
+        :param model_name: name of the model to add a version to. Restrictions apply on possible name ; please refer to Databricks documentation.
+            The model will be created if needed.
+        :param experiment_name: name of the experiment to use. The experiment will be created if needed.
+        :param wait: a flag to wait for the operation to complete (defaults to **True**)
+        :return: dict if wait is True, else a future
+        """
+        params = {"connectionName": connection_name, "useUnityCatalog": use_unity_catalog, "modelName": model_name, "experimentName": experiment_name}
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/export-to-databricks-registry" %
+                       (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                params=params
+            )
+            future = DSSFuture.from_resp(self.mltask.client, future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/export-to-databricks-registry" %
+                       (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                params=params
+            )
+            future = DSSFuture.from_resp(self.saved_model.client, future_response)
+        return future.wait_for_result() if wait else future
 
     ## Post-train computations
 
