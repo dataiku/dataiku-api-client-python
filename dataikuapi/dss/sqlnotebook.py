@@ -73,12 +73,30 @@ class DSSSQLNotebook(object):
                 lines = lines + cell["code"]
             print('\\n'.join(lines))
 
-        :return: A list of :class:`dataikuapi.dss.sqlnotebook.DSSNotebookContent`
-        :rtype: list
+        :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSNotebookContent`
         """
         raw_content = self.client._perform_json("GET", "/projects/%s/sql-notebooks/%s" %
                                                 (self.project_key, self.notebook_id))
         return DSSNotebookContent(self.client, self.project_key, self.notebook_id, raw_content)
+
+    def get_history(self):
+        """
+        Get the history of this SQL notebook
+
+        Usage example:
+
+        .. code-block:: python
+
+            # clear the notebook history
+            notebook_history = notebook.get_history()
+            notebook_history.get_query_runs().clear()
+            notebook_history.save()
+
+        :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory`
+        """
+        query_runs = self.client._perform_json("GET", "/projects/%s/sql-notebooks/%s/history" %
+                                               (self.project_key, self.notebook_id))
+        return DSSNotebookHistory(self.client, self.project_key, self.notebook_id, query_runs)
 
     def delete(self):
         """
@@ -148,3 +166,41 @@ class DSSNotebookContent(object):
         return self.client._perform_json("PUT",
                                          "/projects/%s/sql-notebooks/%s" % (self.project_key, self.notebook_id),
                                          body=self.content)
+
+class DSSNotebookHistory(object):
+    """
+    The history of a SQL notebook
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook.get_history`
+    """
+    def __init__(self, client, project_key, notebook_id, query_runs):
+        self.client = client
+        self.project_key = project_key
+        self.notebook_id = notebook_id
+        self.query_runs = query_runs
+
+    def get_query_runs(self):
+        """
+        Get the query runs of this SQL notebook
+
+        :return: A list of query runs. Each query run is a dict, with notable fields:
+
+            * **runOn**: timestamp of the query run
+            * **runBy**: user login of the query run
+            * **state**: state of the query run, for example 'DONE' or 'FAILED'
+            * **sql**: SQL code of the query run, with variables unexpanded
+            * **expandedSql**: SQL code of the query run, with variables expanded
+
+        :rtype: list[dict]
+        """
+        return self.query_runs
+
+    def save(self):
+        """
+        Save the history of this SQL notebook
+        """
+        return self.client._perform_json("PUT",
+                                         "/projects/%s/sql-notebooks/%s/history" % (self.project_key, self.notebook_id),
+                                         body=self.query_runs)
