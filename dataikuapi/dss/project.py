@@ -27,6 +27,7 @@ from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
 from .savedmodel import DSSSavedModel
 from .scenario import DSSScenario, DSSScenarioListItem
+from .sqlnotebook import DSSSQLNotebook, DSSSQLNotebookListItem
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, \
     DSSManagedStreamingEndpointCreationHelper
 from .webapp import DSSWebApp, DSSWebAppListItem
@@ -1413,6 +1414,57 @@ class DSSProject(object):
         self.client._perform_json("POST", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
                                   body=notebook_content)
         return self.get_jupyter_notebook(notebook_name)
+
+    ########################################################
+    # SQL Notebooks
+    ########################################################
+
+    def list_sql_notebooks(self, as_type="object"):
+        """
+        List the SQL notebooks of a project
+
+        :param bool as_type: How to return the list. Supported values are "listitems" and "object" (defaults to
+            **object**)
+
+        :returns: The list of the notebooks. If "as_type" is "listitems", each one as a
+            :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebookListItem`, if "as_type" is "objects", each one as a
+            :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook`
+        :rtype: List of :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook` or list of
+            :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebookListItem`
+        """
+        notebook_items = self.client._perform_json("GET", "/projects/%s/sql-notebooks/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSSQLNotebookListItem(self.client, notebook_item) for notebook_item in notebook_items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSSQLNotebook(self.client, self.project_key, notebook_item["id"]) for notebook_item in
+                    notebook_items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_sql_notebook(self, notebook_id):
+        """
+        Get a handle to interact with a specific SQL notebook
+
+        :param str notebook_id: The id of the SQL notebook to retrieve
+
+        :returns: A handle to interact with this SQL notebook
+        :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook` SQL notebook handle
+        """
+        return DSSSQLNotebook(self.client, self.project_key, notebook_id)
+
+    def create_sql_notebook(self, notebook_content):
+        """
+        Create a new SQL notebook and get a handle to interact with it
+
+        :param dict notebook_content: The data of the notebook to create, as a dict. The data will be converted to a
+            JSON string internally. Use :meth:`DSSSQLNotebook.get_content()` on a similar existing **DSSSQLNotebook**
+            object in order to get a sample definition object
+        :returns: A handle to interact with the newly created SQL notebook
+        :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook` SQL notebook handle
+        """
+        notebook = self.client._perform_json("POST", "/projects/%s/sql-notebooks/" % self.project_key,
+                                             body=notebook_content)
+        return self.get_sql_notebook(notebook["id"])
 
     ########################################################
     # Continuous activities

@@ -136,8 +136,7 @@ class DSSJupyterNotebook(object):
                 lines = lines + cell["source"]
             print('\\n'.join(lines))
 
-        :return: a list of :class:`dataikuapi.dss.jupyternotebook.DSSNotebookContent`
-        :rtype: list
+        :rtype: :class:`dataikuapi.dss.jupyternotebook.DSSNotebookContent`
         """
         raw_content = self.client._perform_json("GET", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
         return DSSNotebookContent(self.client, self.project_key, self.notebook_name, raw_content)
