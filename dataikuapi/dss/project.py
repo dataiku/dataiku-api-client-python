@@ -1369,7 +1369,7 @@ class DSSProject(object):
         List the jupyter notebooks of a project.
 
         :param bool active: if True, only return currently running jupyter notebooks (defaults to **active**).
-        :param bool as_type: How to return the list. Supported values are "listitems" and "object" (defaults to
+        :param string as_type: How to return the list. Supported values are "listitems" and "object" (defaults to
             **object**).
 
         :returns: The list of the notebooks. If "as_type" is "listitems", each one as a
@@ -1423,7 +1423,7 @@ class DSSProject(object):
         """
         List the SQL notebooks of a project
 
-        :param bool as_type: How to return the list. Supported values are "listitems" and "object" (defaults to
+        :param string as_type: How to return the list. Supported values are "listitems" and "object" (defaults to
             **object**)
 
         :returns: The list of the notebooks. If "as_type" is "listitems", each one as a
