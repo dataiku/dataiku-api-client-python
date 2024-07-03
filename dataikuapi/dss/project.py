@@ -1436,8 +1436,8 @@ class DSSProject(object):
         if as_type == "listitems" or as_type == "listitem":
             return [DSSSQLNotebookListItem(self.client, notebook_item) for notebook_item in notebook_items]
         elif as_type == "objects" or as_type == "object":
-            return [DSSSQLNotebook(self.client, self.project_key, notebook_item["id"]) for notebook_item in
-                    notebook_items]
+            return [DSSSQLNotebook(self.client, self.project_key, notebook_item["id"], notebook_item["connection"])
+                    for notebook_item in notebook_items]
         else:
             raise ValueError("Unknown as_type")
 
@@ -1445,7 +1445,7 @@ class DSSProject(object):
         """
         Get a handle to interact with a specific SQL notebook
 
-        :param str notebook_id: The id of the SQL notebook to retrieve
+        :param string notebook_id: The id of the SQL notebook to retrieve
 
         :returns: A handle to interact with this SQL notebook
         :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook` SQL notebook handle
@@ -1464,7 +1464,7 @@ class DSSProject(object):
         """
         notebook = self.client._perform_json("POST", "/projects/%s/sql-notebooks/" % self.project_key,
                                              body=notebook_content)
-        return self.get_sql_notebook(notebook["id"])
+        return DSSSQLNotebook(self.client, self.project_key, notebook["id"], notebook["connection"])
 
     ########################################################
     # Continuous activities

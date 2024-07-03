@@ -19,7 +19,7 @@ class DSSSQLNotebookListItem(DSSTaggableObjectListItem):
 
         :rtype: :class:`DSSSQLNotebook`
         """
-        return DSSSQLNotebook(self.client, self._data["projectKey"], self._data["id"])
+        return DSSSQLNotebook(self.client, self._data["projectKey"], self._data["id"], self._data["connection"])
 
     @property
     def id(self):
@@ -41,6 +41,15 @@ class DSSSQLNotebookListItem(DSSTaggableObjectListItem):
         """
         return self._data["language"]
 
+    @property
+    def connection(self):
+        """
+        Get the connection of the notebook
+
+        :rtype: string
+        """
+        return self._data["connection"]
+
 class DSSSQLNotebook(object):
     """
     A handle on a SQL notebook
@@ -50,10 +59,11 @@ class DSSSQLNotebook(object):
         Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.get_sql_notebook()` or
         :meth:`dataikuapi.dss.project.DSSProject.create_sql_notebook()`
     """
-    def __init__(self, client, project_key, notebook_id):
+    def __init__(self, client, project_key, notebook_id, connection=None):
        self.client = client
        self.project_key = project_key
        self.notebook_id = notebook_id
+       self.connection = connection
 
     def get_content(self):
         """
@@ -145,6 +155,24 @@ class DSSNotebookContent(object):
         :rtype: dict
         """
         return self.content
+
+    @property
+    def connection(self):
+        """
+        Get the connection of this SQL notebook
+
+        :rtype: string
+        """
+        return self.content["connection"]
+
+    @connection.setter
+    def set_connection(self, connection):
+        """
+        Set the connection of this SQL notebook
+
+        :param string connection: The new connection
+        """
+        self.content["connection"] = connection
 
     def get_cells(self):
         """
