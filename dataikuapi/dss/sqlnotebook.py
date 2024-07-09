@@ -95,19 +95,21 @@ class DSSSQLNotebook(object):
 
         :rtype: :class:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory`
         """
-        query_runs = self.client._perform_json("GET", "/projects/%s/sql-notebooks/%s/history" %
-                                               (self.project_key, self.notebook_id))
-        return DSSNotebookHistory(self.client, self.project_key, self.notebook_id, query_runs)
+        raw_history = self.client._perform_json("GET", "/projects/%s/sql-notebooks/%s/history" %
+                                                (self.project_key, self.notebook_id))
+        return DSSNotebookHistory(self.client, self.project_key, self.notebook_id, raw_history)
 
-    def clear_history(self, num_runs_to_retain=0):
+    def clear_history(self, cell_id=None, num_runs_to_retain=0):
         """
         Clear the history of this SQL notebook
 
-        :param int num_runs_to_retain: The number of the most recent runs to retain
+        :param string cell_id: The cell id for which to clear the history. Leave unspecified to clear the history for
+            all cells of this notebook
+        :param int num_runs_to_retain: The number of the most recent runs to retain for a cell (defaults to **0**)
         """
         self.client._perform_json("POST",
                                   "/projects/%s/sql-notebooks/%s/history/clear" % (self.project_key, self.notebook_id),
-                                  body={"num_runs_to_retain": num_runs_to_retain})
+                                  body={"cellId": cell_id, "numRunsToRetain": num_runs_to_retain})
 
     def delete(self):
         """
@@ -150,7 +152,7 @@ class DSSNotebookContent(object):
 
         :return: A dict containing the full content of a notebook. Notable fields are:
 
-            * **cells**: list of cells, each one a dict (see :meth:`get_cells()`)
+            * **cells**: list of cells, each one is a dict (see :meth:`get_cells()`)
 
         :rtype: dict
         """
@@ -180,6 +182,7 @@ class DSSNotebookContent(object):
 
         :return: A list of cells. Each cell is a dict, with notable fields:
 
+            * **id**: id of the cell
             * **type**: type of the cell, for example "QUERY" or "MARKDOWN"
             * **name**: name of the cell
             * **code**: content of the cell
@@ -204,32 +207,33 @@ class DSSNotebookHistory(object):
 
         Do not instantiate directly, use :meth:`dataikuapi.dss.sqlnotebook.DSSSQLNotebook.get_history`
     """
-    def __init__(self, client, project_key, notebook_id, query_runs):
+    def __init__(self, client, project_key, notebook_id, history):
         self.client = client
         self.project_key = project_key
         self.notebook_id = notebook_id
-        self.query_runs = {qr["id"]: qr for qr in query_runs}
+        self.history = {cell_id: {qr["id"]: qr for qr in query_runs} for cell_id, query_runs in history}
 
-    def get_query_runs(self, as_type="listitem"):
+    def get_query_runs(self, cell_id, as_type="listitem"):
         """
-        Get the query runs of this SQL notebook
+        Get the query runs of a cell in this SQL notebook
 
         Usage example:
 
         .. code-block:: python
 
             # delete query runs which failed
-            for query_run in notebook_history.get_query_runs():
+            for query_run in notebook_history.get_query_runs(cell_id):
                 if query_run.get_raw()["state"] == "FAILED":
                     query_run.delete()
             notebook_history.save()
 
-        :param string as_type: How to return the list. Currently the only supported (and default) value is "listitems"
+        :param string cell_id: The cell id for which to retrieve the query runs
+        :param string as_type: How to return the list. Currently the only supported (and default) value is "listitem"
         :return: The list of query runs
         :rtype: List of :class:`DSSNotebookQueryRunListItem`
         """
         if as_type == "listitem":
-            return [DSSNotebookQueryRunListItem(self, qr) for qr in self.query_runs.values()]
+            return [DSSNotebookQueryRunListItem(self.history[cell_id], qr) for qr in self.history[cell_id].values()]
         else:
             raise ValueError("Unknown as_type")
 
@@ -239,7 +243,7 @@ class DSSNotebookHistory(object):
         """
         return self.client._perform_json("PUT",
                                          "/projects/%s/sql-notebooks/%s/history" % (self.project_key, self.notebook_id),
-                                         body=self.query_runs.values())
+                                         body={cell_id: query_runs.values() for cell_id, query_runs in self.history})
 
 class DSSNotebookQueryRunListItem(object):
     """
@@ -249,8 +253,8 @@ class DSSNotebookQueryRunListItem(object):
 
         Do not instantiate directly, use :meth:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory.get_query_result`
     """
-    def __init__(self, history, query_run):
-        self.history = history
+    def __init__(self, query_runs, query_run):
+        self.query_runs = query_runs
         self.query_run = query_run
 
     def get_raw(self):
@@ -277,4 +281,4 @@ class DSSNotebookQueryRunListItem(object):
 
             The history must be then saved using :meth:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory.save`
         """
-        del self.history.query_runs[self.query_run["id"]]
+        del self.query_runs[self.query_run["id"]]
