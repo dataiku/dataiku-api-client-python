@@ -357,6 +357,7 @@ class DSSDataset(object):
             Only for datasets on Elasticsearch connections
 
         Query the service with a search string to directly fetch data
+        
         :param str query_string: Elasticsearch compatible query string
         :param int start: row to start fetching the data
         :param int size: number of results to return
