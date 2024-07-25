@@ -11,6 +11,7 @@ from .discussion import DSSObjectDiscussions
 from .statistics import DSSStatisticsWorksheet
 from .data_quality import DSSDataQualityRuleSet
 from . import recipe
+import uuid
 try:
     basestring
 except NameError:
@@ -295,14 +296,18 @@ class DSSDataset(object):
                   in the list is the same as the order of columns in the schema returned by :meth:`get_schema`
         :rtype: generator[list]
         """
+        read_session_id = str(uuid.uuid4())
         csv_stream = self.client._perform_raw(
                 "GET" , "/projects/%s/datasets/%s/data/" %(self.project_key, self.dataset_name),
                 params = {
                     "format" : "tsv-excel-noheader",
-                    "partitions" : partitions
+                    "partitions" : partitions,
+                    "readSessionId": read_session_id
                 })
 
-        return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream).iter_rows()
+        return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream, read_session_id=read_session_id,
+                                                client=self.client, project_key=self.project_key,
+                                                dataset_name=self.dataset_name).iter_rows()
 
 
     def list_partitions(self):

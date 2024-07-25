@@ -216,6 +216,18 @@ class DSSLLMCompletionQuery(object):
         self.cq["messages"].append({"content": message, "role": role})
         return self
 
+    def new_multipart_message(self, role="user"):
+        """
+        Start adding a multipart-message to the completion query.
+
+        Use this to add image parts to the message.
+
+        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
+         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
+        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
+        """
+        return DSSLLMCompletionQueryMultipartMessage(self, role)
+
     def execute(self):
         """
         Run the completion query and retrieve the LLM response.
@@ -231,6 +243,7 @@ class DSSLLMCompletionQuery(object):
     def execute_streamed(self):
         """
         Prevent documentation as it's still preview.
+
         :meta private:
         """
         request = {"query": self.cq, "settings": self.settings, "llmId": self.llm.llm_id}
@@ -259,6 +272,18 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         """
         self.cq["messages"].append({"content": message, "role": role})
         return self
+
+    def new_multipart_message(self, role="user"):
+        """
+        Start adding a multipart-message to the completion query.
+
+        Use this to add image parts to the message
+
+        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
+         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
+        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
+        """
+        return DSSLLMCompletionQueryMultipartMessage(self, role)
 
 class DSSLLMCompletionsQuery(object):
     """
@@ -298,6 +323,54 @@ class DSSLLMCompletionsQuery(object):
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
 
         return DSSLLMCompletionsResponse(ret["responses"])
+
+class DSSLLMCompletionQueryMultipartMessage(object):
+    """
+      .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or 
+        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message` or.
+
+    """
+    def __init__(self, q, role):
+        self.q = q
+        self.msg = {"role": role, "parts" : []}
+
+    def with_text(self, text):
+        """
+        Add a text part to the multipart message
+        """
+        self.msg["parts"].append({"type": "TEXT", "text": text})
+        return self
+
+    def with_inline_image(self, image, mime_type=None):
+        """
+        Add an image part to the multipart message
+
+        :param image: bytes or str (base64)
+        :param mime_type str: None for default
+        """
+        img_b64 = None
+        if isinstance(image, str):
+            img_b64 = image
+        elif isinstance(image, bytes):
+            import base64
+            img_b64 = base64.b64encode(image).decode("utf8")
+
+        part = {
+            "type": "IMAGE_INLINE",
+            "inlineImage": img_b64
+        }
+
+        if mime_type is not None:
+            part["imageMimeType"] = mime_type
+
+        self.msg["parts"].append(part)
+        return self
+
+    def add(self):
+        """Add this message to the completion query"""
+        self.q.cq["messages"].append(self.msg)
+        return self.q
 
 
 class DSSLLMStreamedCompletionChunk(object):

@@ -48,6 +48,48 @@ class DSSWebApp(object):
         return DSSWebAppSettings(self.client, self, data)
 
 
+    def get_backend_client(self):
+        return DSSWebAppBackendClient(self.client, self)
+
+
+class DSSWebAppBackendClient(object):
+    """
+    A client to interact by API with a standard webapp backend
+    """
+
+    def __init__(self, client, webapp):
+        self.client = client
+        self.webapp = webapp
+
+        # If authenticating by API key, we are already targeting the proper URL, do nothing
+        # but if we are authenticating by ticket, we are targeting the backend URL and need to target the base URL instead
+
+        if self.client.internal_ticket is not None:
+            from dataiku.base import remoterun
+
+            base_proto =  remoterun.get_env_var("DKU_BASE_PROTOCOL", "http")
+            base_port =  remoterun.get_env_var("DKU_BASE_PORT", "???")
+
+            dss_url = "%s://%s:%s" % (base_proto, remoterun.get_env_var("DKU_BACKEND_HOST", "127.0.0.1"), base_port)
+        else:
+            dss_url = self.client.host
+
+        self._base_url = "%s/web-apps-backends/%s/%s/" % (dss_url, self.webapp.project_key, self.webapp.webapp_id)
+
+    @property
+    def base_url(self):
+        return self._base_url
+
+    @property
+    def session(self):
+        return self.client._session
+
+    def url_for_path(self, path):
+        while path.startswith('/'):
+            path = path[1:]
+        return self._base_url + path
+
+
 class DSSWebAppBackendState(object):
     """
     A wrapper object holding the webapp backend state.

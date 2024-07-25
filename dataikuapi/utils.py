@@ -88,10 +88,18 @@ class DataikuValueCaster(object):
 class DataikuStreamedHttpUTF8CSVReader(object):
     """
     A CSV reader with a schema
+
+    To verify the stream after all rows have been yielded, you must pass **ALL** the optional arguments:
+    read_session_id, client, project_key, dataset_name
     """
-    def __init__(self, schema, csv_stream):
+    def __init__(self, schema, csv_stream, read_session_id=None, client=None, project_key=None, dataset_name=None):
         self.schema = schema
         self.csv_stream = csv_stream
+        # To verify a dataset streaming session
+        self.read_session_id = read_session_id
+        self.project_key = project_key
+        self.dataset_name = dataset_name
+        self.client = client
 
     def iter_rows(self):
         schema = self.schema
@@ -106,6 +114,14 @@ class DataikuStreamedHttpUTF8CSVReader(object):
                                                 quotechar='"',
                                                 doublequote=True):
                 yield value_caster.cast_values(uncasted_tuple)
+
+        if self.read_session_id:
+            # exception will be raised if there's an error while streaming
+            self.client._perform_empty(
+                "GET", "/projects/%s/datasets/%s/finish-streaming/" % (self.project_key, self.dataset_name),
+                params = {
+                    "readSessionId" : self.read_session_id
+                })
 
 
 class CallableStr(str):
