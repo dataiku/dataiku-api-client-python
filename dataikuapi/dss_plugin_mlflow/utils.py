@@ -71,7 +71,11 @@ class MLflowHandle:
         else:
             self.mlflow_env.update({"MLFLOW_TRACKING_INSECURE_TLS": "false"})
             if isinstance(client._session.verify, str):
+                # when in a notebook with encrypted RPC, client._session.verify will have the RPC server cert
+                # so we have to store it and restore it when creating again the api client (such as in the
+                # artifact repository plugin)
                 self.mlflow_env.update({"MLFLOW_TRACKING_SERVER_CERT_PATH": client._session.verify})
+                self.mlflow_env.update({"DSS_MLFLOW_VERIFY_CERT": client._session.verify})
         mf_full_id = None
         if isinstance(managed_folder, DSSManagedFolder):
             mf_full_id = managed_folder.project.project_key + "." + managed_folder.id

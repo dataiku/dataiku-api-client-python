@@ -405,6 +405,15 @@ class DSSSavedModel(object):
                     "protocol": "vertex-ai",
                     "endpoint_id": "<endpoint-id>"
                 }
+                
+          * For Databricks, syntax is:
+  
+            .. code-block:: python
+            
+                configuration = {
+                    "protocol": "databricks",
+                    "endpointName": "<endpoint-id>"
+                }
   
         :type configuration: dict
         :param target_column_name: Name of the target column. Mandatory if model performance will be evaluated
@@ -468,6 +477,13 @@ class DSSSavedModel(object):
                 - INPUT_AZUREML_JSON_WRITER
                 - INPUT_AZUREML_JSON_INPUTDATA_DATA
                 - INPUT_DEPLOY_ANYWHERE_ROW_ORIENTED_JSON
+
+            * For Databricks:
+                - INPUT_RECORD_ORIENTED_JSON
+                - INPUT_SPLIT_ORIENTED_JSON
+                - INPUT_TF_INPUTS_JSON
+                - INPUT_TF_INSTANCES_JSON
+                - INPUT_DATABRICKS_CSV
         :type input_format: str
 
         :param output_format: (optional) Output format to use to parse the underlying endpoint's response.
@@ -490,6 +506,9 @@ class DSSSavedModel(object):
                 - OUTPUT_AZUREML_JSON_OBJECT
                 - OUTPUT_AZUREML_JSON_ARRAY
                 - OUTPUT_DEPLOY_ANYWHERE_JSON
+
+            * For Databricks:
+                - OUTPUT_DATABRICKS_JSON
         :type output_format: str
 
         :param evaluate: (optional) True (default) if this model should be evaluated using input_dataset, False to disable evaluation.
@@ -503,10 +522,11 @@ class DSSSavedModel(object):
               client = dataiku.api_client()
               project = client.get_default_project()
               # create a SageMaker saved model, whose endpoints are hosted in region eu-west-1
-              sm = project.create_external_model("SaveMaker External Model", "BINARY_CLASSIFICATION", "sagemaker", "eu-west-1")
+              sm = project.create_external_model("SaveMaker External Model", "BINARY_CLASSIFICATION", {"protocol": "sagemaker", "region": "eu-west-1"})
   
               # configuration to add endpoint
               configuration = {
+                "protocol": "sagemaker",
                 "endpoint_name": "titanic-survived-endpoint"
               }
               smv = sm.create_external_model_version("v0",
@@ -527,8 +547,9 @@ class DSSSavedModel(object):
               client = dataiku.api_client()
               project = client.get_default_project()
               # create a VertexAI saved model, whose endpoints are hosted in region europe-west-1
-              sm = project.create_external_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+              sm = project.create_external_model("Vertex AI Proxy Model", "BINARY_CLASSIFICATION", {"protocol":"vertex-ai", "region":"europe-west1"})
               configuration = {
+                  "protocol":"vertex-ai",
                   "project_id": "my-project",
                   "endpoint_id": "123456789012345678"
               }
@@ -551,8 +572,9 @@ class DSSSavedModel(object):
               client = dataiku.api_client()
               project = client.get_default_project()
               # create an Azure ML saved model. No region specified, as this notion does not exist for Azure ML
-              sm = project.create_external_model("Azure ML Proxy Model", "BINARY_CLASSIFICATION")
+              sm = project.create_external_model("Azure ML Proxy Model", "BINARY_CLASSIFICATION", {"protocol": "azure-ml"})
               configuration = {
+                  "protocol": "azure-ml",
                   "subscription_id": "<subscription-id>>",
                   "resource_group": "<your.resource.group-rg>",
                   "workspace": "<your-workspace>",
@@ -579,8 +601,9 @@ class DSSSavedModel(object):
               client = dataiku.api_client()
               project = client.get_default_project()
 
-              sm = project.create_external_model("Raw Vertex AI Proxy Model", "BINARY_CLASSIFICATION", "vertex-ai", "europe-west1")
+              sm = project.create_external_model("Raw Vertex AI Proxy Model", "BINARY_CLASSIFICATION", {"protocol": "vertex-ai", "region": "europe-west1"})
               configuration = {
+                  "protocol": "vertex-ai",
                   "project_id": "my-project",
                   "endpoint_id": "123456789012345678"
               }
@@ -591,6 +614,23 @@ class DSSSavedModel(object):
 
           This model will have empty interpretation tabs and can not be evaluated later by an Evaluation Recipe, as its
           target is not defined, but it can be scored.
+
+
+        * Example: create a Databricks Saved Model
+
+          .. code-block:: python
+
+              import dataiku
+              client = dataiku.api_client()
+              project = client.get_default_project()
+
+              sm = project.create_external_model("Databricks External Model", "BINARY_CLASSIFICATION", {"protocol": "databricks","connection": "db"})
+
+              smv = sm.create_external_model_version("vX",
+                                {"protocol": "databricks", "endpointName": "<endpoint-name>"},
+                                target_column_name="Survived",
+                                class_labels=["0", "1"],
+                                input_dataset="train_titanic_prepared")
 
         """
         model_version = self._create_external_model_version(version_id, configuration, set_active,

@@ -129,9 +129,9 @@ class DSSModelEvaluationStore(object):
     def get_model_evaluation(self, evaluation_id):
         """
         Get a handle to interact with a specific model evaluation
-       
+
         :param string evaluation_id: the id of the desired model evaluation
-        
+
         :returns: A :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation` model evaluation handle
         """
         return DSSModelEvaluation(self, evaluation_id)
@@ -487,7 +487,7 @@ class DSSModelEvaluationFullInfo:
         self.prediction_variable = self.full_info["evaluation"].get("predictionVariable")  # type: str
         self.target_variable = self.full_info["evaluation"].get("targetVariable")  # type: str
         self.user_meta = self.full_info["evaluation"]["userMeta"]  # type: dict
-        self.has_model = self.full_info["evaluation"]["hasModel"]
+        self.has_model = self.full_info["evaluation"].get("hasModel")
         """The user-accessible metadata (name, labels)
         Returns the original object, not a copy. Changes to the returned object are persisted to DSS by calling :meth:`save_user_meta`."""
 

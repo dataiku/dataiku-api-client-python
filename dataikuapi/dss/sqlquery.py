@@ -94,7 +94,7 @@ class DSSSQLQuery(object):
         When using the :meth:`~iter_rows()` method, and the iterator stops returning rows, there is
         no way to tell whether there are no more rows because the query didn't return more rows, or
         because an error in the query, or in the fetching of its results, happened. You should thus
-        call :meth:`~verify()` after the iterator is done, because it will raise an Expcetion if
+        call :meth:`~verify()` after the iterator is done, because it will raise an Exception if
         an error happened.
         
         :raises: Exception

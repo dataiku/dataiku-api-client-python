@@ -969,7 +969,7 @@ class DSSProject(object):
     def get_analysis(self, analysis_id):
         """
         Get a handle to interact with a specific visual analysis
-       
+
         :param str analysis_id: the identifier of the desired visual analysis
 
         :returns: A visual analysis handle
@@ -994,7 +994,7 @@ class DSSProject(object):
     def get_saved_model(self, sm_id):
         """
         Get a handle to interact with a specific saved model
-       
+
         :param str sm_id: the identifier of the desired saved model
 
         :returns: A saved model handle
@@ -1047,6 +1047,15 @@ class DSSProject(object):
             - ``region``: The AWS region of the endpoint, e.g. ``eu-west-1``
             - ``connection``: (optional) The DSS SageMaker connection to use for authentication. If not defined,
               credentials will be derived from environment. See the reference documentation for details.
+
+          - For Databricks, the syntax is:
+
+            .. code-block:: python
+
+                configuration = {
+                    "protocol": "databricks",
+                    "connection": "<connection-name>"
+                }
 
           - For AzureML, syntax is:
 
@@ -1439,7 +1448,7 @@ class DSSProject(object):
     def get_continuous_activity(self, recipe_id):
         """
         Get a handler to interact with a specific continuous activities
-        
+
         :param str recipe_id: the identifier of the recipe controlled by the continuous activity
 
         :returns: A job handle
@@ -1560,7 +1569,7 @@ class DSSProject(object):
         :param str bundle_id: bundle id tag
         """
         return self.client._perform_json("PUT", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
-    
+
     def delete_exported_bundle(self, bundle_id):
         """
         Deletes a project bundle from the Design node
@@ -1874,6 +1883,8 @@ class DSSProject(object):
             return recipe.EvaluationRecipeCreator(name, self)
         elif type == "standalone_evaluation":
             return recipe.StandaloneEvaluationRecipeCreator(name, self)
+        elif type == "nlp_llm_evaluation":
+            return recipe.LLMEvaluationRecipeCreator(name, self)
         elif type == "clustering_scoring":
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":
@@ -2156,7 +2167,7 @@ class DSSProject(object):
         Get a handle to interact with a specific code studio object
 
         :param str code_studio_id: the identifier of the desired code studio object
-        
+
         :returns: A code studio object handle
         :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
         """
@@ -2168,7 +2179,7 @@ class DSSProject(object):
 
         :param str name: the name of the code studio object
         :param str template_id: the identifier of a code studio template
-        
+
         :returns: A code studio object handle
         :rtype: :class:`dataikuapi.dss.codestudio.DSSCodeStudioObject`
         """
@@ -2379,7 +2390,7 @@ class DSSProject(object):
         :rtype: :class:`dataikuapi.dss.project.DSSProjectGit`
         """
         return DSSProjectGit(self.client, self.project_key)
-    
+
     ########################################################
     # Data Quality
     ########################################################
@@ -2389,13 +2400,13 @@ class DSSProject(object):
         Get the aggregated quality status of a project with the list of the datasets and their associated status
 
         :param only_monitored: boolean to retrieve only monitored dataset, default to True.
-        
+
         :returns: The dict of data quality dataset statuses.
         :rtype: dict with DATASET_NAME as key
         """
         return self.client._perform_json("GET", "/projects/%s/data-quality/status" % self.project_key, params={"onlyMonitored": only_monitored})
-    
-    def get_data_quality_timeline(self, min_timestamp=None, max_timestamp=None): 
+
+    def get_data_quality_timeline(self, min_timestamp=None, max_timestamp=None):
         """
         Get the list of quality status aggregated per day during the timeframe [min_timestamp, max_timestamp]. It includes the current & worst outcome for each days and the details of the datasets runs within the period, also includes previous deleted monitored datasets with the mention "(deleted)" at the end of their id.
         Default parameters include the timeframe for the last 14 days.
@@ -2990,7 +3001,7 @@ class JobDefinitionBuilder(object):
     def with_output(self, name, object_type=None, object_project_key=None, partition=None):
         """
         Adds an item to build in this job
-        
+
         :param name: name of the output object
         :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT
             (defaults to **None**)
@@ -3010,7 +3021,7 @@ class JobDefinitionBuilder(object):
         Starts the job, and return a :class:`dataikuapi.dss.job.DSSJob` handle to interact with it.
 
         You need to wait for the returned job to complete
-        
+
         :returns: a job handle
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
         """

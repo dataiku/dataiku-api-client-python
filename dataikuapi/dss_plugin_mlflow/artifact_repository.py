@@ -29,6 +29,8 @@ class PluginDSSManagedFolderArtifactRepository:
             internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET"),
             insecure_tls= self._should_use_insecure_tls
         )
+        if 'DSS_MLFLOW_VERIFY_CERT' in os.environ:
+            self.client._session.verify = os.environ.get('DSS_MLFLOW_VERIFY_CERT')
         self.project = self.client.get_project(os.environ.get("DSS_MLFLOW_PROJECTKEY"))
         parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
         self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
