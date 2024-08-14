@@ -1,3 +1,5 @@
+import warnings
+
 from .discussion import DSSObjectDiscussions
 import re
 
@@ -155,7 +157,8 @@ class DSSModelComparisonSettings(object):
 
         :return: str
         """
-        return self.settings["predictionType"]
+        warnings.warn("prediction_type field is deprecated. Use model_task_type instead", DeprecationWarning)
+        return self.settings.get("modelTaskType", self.settings.get("predictionType"))
 
     @prediction_type.setter
     def prediction_type(self, prediction_type):
@@ -165,7 +168,27 @@ class DSSModelComparisonSettings(object):
 
         :param prediction_type:
         """
-        self.settings["predictionType"] = prediction_type
+        warnings.warn("prediction_type field is deprecated. Use model_task_type instead", DeprecationWarning)
+        self.model_task_type = prediction_type
+
+    @property
+    def model_task_type(self):
+        """
+        Get the prediction type of this comparison
+
+        :return: str
+        """
+        return self.settings.get('modelTaskType')
+
+    @model_task_type.setter
+    def model_task_type(self, model_task_type):
+        """
+        Set the initial model task type of this comparison. Must be consistent
+        with the model task types of compared items.
+
+        :param model_task_type:
+        """
+        self.settings['modelTaskType'] = model_task_type
 
     @property
     def display_name(self):

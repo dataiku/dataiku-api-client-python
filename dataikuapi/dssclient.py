@@ -10,7 +10,7 @@ else:
 
 from requests import Session
 from requests import exceptions
-from requests.auth import HTTPBasicAuth
+from .auth import HTTPBearerAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
@@ -54,7 +54,7 @@ class DSSClient(object):
             self._session.verify = False
 
         if self.api_key is not None:
-            self._session.auth = HTTPBasicAuth(self.api_key, "")
+            self._session.auth = HTTPBearerAuth(self.api_key)
         elif self.internal_ticket is not None:
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
         else:
@@ -816,18 +816,23 @@ class DSSClient(object):
 
             This call requires an API key with admin rights
 
+        .. note::
+
+            If the secure API keys feature is enabled, the secret key of the listed
+            API keys will not be present in the returned objects
+
         :param str as_type: How to return the global API keys. Possible values are "listitems" and "objects"
 
         :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSGlobalApiKeyListItem`.
                  if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSGlobalApiKey`.
         """
         resp = self._perform_json(
-            "GET", "/admin/globalAPIKeys/")
+            "GET", "/admin/global-api-keys/")
 
         if as_type == "listitems":
             return [DSSGlobalApiKeyListItem(self, item) for item in resp]
         elif as_type == 'objects':
-            return [DSSGlobalApiKey(self, item["key"]) for item in resp]
+            return [DSSGlobalApiKey(self, item["key"], item["id"]) for item in resp]
         else:
             raise ValueError("Unknown as_type")
 
@@ -835,11 +840,27 @@ class DSSClient(object):
         """
         Get a handle to interact with a specific Global API key
 
-        :param str key: the secret key of the desired API key
+        .. deprecated:: 13.0.0
+            Use :meth:`DSSClient.get_global_api_key_by_id`. Calling this method with an invalid secret key
+            will now result in an immediate error.
 
+        :param str key: the secret key of the API key
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
-        return DSSGlobalApiKey(self, key)
+        resp = self._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % key)
+        return DSSGlobalApiKey(self, key, resp['id'])
+
+    def get_global_api_key_by_id(self, id_):
+        """
+        Get a handle to interact with a specific Global API key
+
+        :param str id_: the id the API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        resp = self._perform_json(
+            "GET", "/admin/global-api-keys/%s" % id_)
+        return DSSGlobalApiKey(self, resp["key"], id_)
 
     def create_global_api_key(self, label=None, description=None, admin=False):
         """
@@ -849,16 +870,21 @@ class DSSClient(object):
 
             This call requires an API key with admin rights
 
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
         :param str label: the label of the new API key
         :param str description: the description of the new API key
-        :param str admin: has the new API key admin rights (True or False)
+        :param boolean admin: has the new API key admin rights (True or False)
 
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
         resp = self._perform_json(
-            "POST", "/admin/globalAPIKeys/", body={
-                "label" : label,
-                "description" : description,
+            "POST", "/admin/global-api-keys/", body={
+                "label": label,
+                "description": description,
                 "globalPermissions": {
                     "admin": admin
                 }
@@ -869,8 +895,7 @@ class DSSClient(object):
             raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
-        key = resp.get('key', '')
-        return DSSGlobalApiKey(self, key)
+        return DSSGlobalApiKey(self, resp.get('key', ''), resp['id'])
 
     ########################################################
     # Personal API Keys
@@ -891,7 +916,7 @@ class DSSClient(object):
         if as_type == "listitems":
             return [DSSPersonalApiKeyListItem(self, item) for item in resp]
         elif as_type == 'objects':
-            return [DSSPersonalApiKey(self, item['id']) for item in resp]
+            return [DSSPersonalApiKey(self, item.get('key', ''), item['id']) for item in resp]
         else:
             raise ValueError("Unknown as_type")
 
@@ -903,7 +928,7 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
         """
-        return DSSPersonalApiKey(self, id)
+        return DSSPersonalApiKey(self, "", id)
 
     def create_personal_api_key(self, label="", description="", as_type='dict'):
         """
@@ -924,7 +949,7 @@ class DSSClient(object):
             raise Exception('API key creation returned no key')
 
         if as_type == 'object':
-            return DSSPersonalApiKey(self, resp["id"])
+            return DSSPersonalApiKey(self, resp.get('key', ''), resp["id"])
         else:
             return resp
 
@@ -943,7 +968,7 @@ class DSSClient(object):
         if as_type == "listitems":
             return [DSSPersonalApiKeyListItem(self, item) for item in resp]
         elif as_type == 'objects':
-            return [DSSPersonalApiKey(self, item['id']) for item in resp]
+            return [DSSPersonalApiKey(self, item.get('key', ''), item['id']) for item in resp]
         else:
             raise ValueError("Unknown as_type")
 
@@ -968,7 +993,7 @@ class DSSClient(object):
             raise Exception('API key creation returned no key')
 
         if as_type == 'object':
-            return DSSPersonalApiKey(self, resp["id"])
+            return DSSPersonalApiKey(self, resp.get('key', ''), resp["id"])
         else:
             return resp
 

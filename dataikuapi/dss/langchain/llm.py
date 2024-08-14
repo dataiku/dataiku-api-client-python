@@ -1,31 +1,52 @@
 """Wrapper around Dataiku-mediated LLM"""
 
+import json
 import logging
 import re
-from typing import Any, List, Optional, Iterator, AsyncIterator
+
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    Union,
+)
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain.llms.base import BaseLLM
-from langchain_core.outputs import Generation, GenerationChunk, ChatGenerationChunk, LLMResult, ChatResult
-from langchain_core.language_models import BaseChatModel
-from langchain.schema import ChatGeneration
-from langchain.schema.messages import (
+from langchain_core.messages import (
     AIMessage,
     AIMessageChunk,
     BaseMessage,
     ChatMessage,
-    FunctionMessage,
     HumanMessage,
+    InvalidToolCall,
     SystemMessage,
+    ToolCall,
+    ToolMessage,
 )
+from langchain_core.outputs import Generation, GenerationChunk, ChatGenerationChunk, LLMResult, ChatResult
+from langchain_core.output_parsers.openai_tools import (
+    make_invalid_tool_call,
+    parse_tool_call,
+)
+from langchain_core.language_models import BaseChatModel
+from langchain_core.pydantic_v1 import BaseModel
+from langchain_core.tools import BaseTool
+from langchain_core.utils.function_calling import convert_to_openai_tool
+from langchain.schema import ChatGeneration
 from pydantic import Extra
 
-from .utils import StopSequencesAwareStreamer
+from dataikuapi.dss.tools.langchain import StopSequencesAwareStreamer
 
 logger = logging.getLogger(__name__)
 
 
-def _llm_settings(llm, stop_sequences):
+def _llm_settings(llm, stop_sequences, tools=None, tool_choice=None):
     """Returns a settings dict from a DKULLM or DKUChatLLM object"""
     settings = {
         "temperature": llm.temperature,
@@ -37,6 +58,10 @@ def _llm_settings(llm, stop_sequences):
         settings["topK"] = llm.top_k
     if stop_sequences is not None:
         settings["stopSequences"] = stop_sequences
+    if tool_choice is not None:
+        settings["toolChoice"] = tool_choice
+    if tools is not None:
+        settings["tools"] = tools
     return settings
 
 
@@ -47,21 +72,44 @@ def _completion_with_typed_messages(completion, messages):
             completion.with_message(message.content, message.role)
         elif isinstance(message, HumanMessage):
             completion.with_message(message.content, "user")
+
         elif isinstance(message, AIMessage):
-            completion.with_message(message.content, "assistant")
-            # TODO @langchain: function calls
-            # if "function_call" in message.additional_kwargs:
-            # message_dict["function_call"] = message.additional_kwargs["function_call"]
+            raw_tool_calls = message.additional_kwargs.get("tool_calls")
+            if message.tool_calls or message.invalid_tool_calls:
+                # if there is an assistant message, add it first
+                if message.content is not None and len(message.content) > 0:
+                    completion.with_message(message.content, "assistant")
+
+                all_tool_calls = [
+                    _lc_tool_call_to_dku_tool_call(tc)
+                    for tc in message.tool_calls
+                ] + [
+                    _lc_invalid_tool_call_to_dku_tool_call(tc)
+                    for tc in message.invalid_tool_calls
+                ]
+
+                completion.with_tool_calls(all_tool_calls, "assistant")
+
+            # also considering the extra kwargs to replicate the behavior from
+            # the official OpenAI wrapper. See
+            # https://github.com/langchain-ai/langchain/blob/9ef15691d62c1f9f18fe7520cce7dafa82ea517e/libs/partners/openai/langchain_openai/chat_models/base.py#L196-L211
+            elif raw_tool_calls:
+                # if there is an assistant message, add it first
+                if message.content is not None and len(message.content) > 0:
+                    completion.with_message(message.content, "assistant")
+
+                completion.with_tool_calls(raw_tool_calls, "assistant")
+
+            else:
+                # no tools, just add the assistant message, as is
+                completion.with_message(message.content, "assistant")
+
         elif isinstance(message, SystemMessage):
             completion.with_message(message.content, "system")
-        elif isinstance(message, FunctionMessage):
-            raise Exception("function calls are not supported yet")
-            # TODO @langchain: function calls
-            #message_dict = {
-            #    "role": "function",
-            #    "content": message.content,
-            #    "name": message.name,
-            #}
+
+        elif isinstance(message, ToolMessage):
+            completion.with_tool_output(message.content, message.tool_call_id, "tool")
+
         else:
             raise ValueError(f"Got unknown type {message}")
         # TODO @langchain: named messages
@@ -86,24 +134,25 @@ class DKULLM(BaseLLM):
     """
     Langchain-compatible wrapper around Dataiku-mediated LLMs
 
-    .. important::
-        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.llm.DSSLLM.as_langchain_llm`.
+    .. note::
+        Direct instantiation of this class is possible from within DSS, though it's recommended to instead use :meth:`dataikuapi.dss.llm.DSSLLM.as_langchain_llm`.
 
     Example:
-        .. code-block:: python
 
-            llm = dkullm.as_langchain_llm()
+    .. code-block:: python
 
-            # single prompt
-            print(llm.invoke("tell me a joke"))
+        llm = dkullm.as_langchain_llm()
 
-            # multiple prompts with batching
-            for response in llm.batch(["tell me a joke in English", "tell me a joke in French"]):
-                print(response)
+        # single prompt
+        print(llm.invoke("tell me a joke"))
 
-            # streaming, with stop sequence
-            for chunk in llm.stream("Explain photosynthesis in a few words in English then French", stop=["dioxyde de"]):
-                print(chunk, end="", flush=True)
+        # multiple prompts with batching
+        for response in llm.batch(["tell me a joke in English", "tell me a joke in French"]):
+            print(response)
+
+        # streaming, with stop sequence
+        for chunk in llm.stream("Explain photosynthesis in a few words in English then French", stop=["dioxyde de"]):
+            print(chunk, end="", flush=True)
     """
 
     llm_id: str
@@ -122,13 +171,24 @@ class DKULLM(BaseLLM):
     """Sample from the top tokens whose probabilities add up to p."""
 
     _llm_handle = None
+    """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
 
     class Config:
         extra = Extra.forbid
         underscore_attrs_are_private = True
 
-    def __init__(self, llm_handle, **data: Any):
-        data['llm_id'] = llm_handle.llm_id
+    def __init__(self, llm_handle=None, **data: Any):
+        if llm_handle is None:
+            if data.get("llm_id") is None:
+                raise Exception("One of llm_handle or llm_id is required")
+            try:
+                import dataiku
+            except ImportError:
+                raise Exception("llm_handle is required")
+            llm_handle = dataiku.api_client().get_default_project().get_llm(data["llm_id"])
+        else:
+            data['llm_id'] = llm_handle.llm_id
+
         super().__init__(**data)
         self._llm_handle = llm_handle
 
@@ -223,19 +283,20 @@ class DKUChatModel(BaseChatModel):
     """
     Langchain-compatible wrapper around Dataiku-mediated chat LLMs
 
-    .. important::
-        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.llm.DSSLLM.as_langchain_chat_model`.
+    .. note::
+        Direct instantiation of this class is possible from within DSS, though it's recommended to instead use :meth:`dataikuapi.dss.llm.DSSLLM.as_langchain_chat_model`.
 
     Example:
-        .. code-block:: python
 
-            from langchain_core.prompts import ChatPromptTemplate
+    .. code-block:: python
 
-            llm = dkullm.as_langchain_chat_model()
-            prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
-            chain = prompt | llm
-            for chunk in chain.stream({"topic": "parrot"}):
-                print(chunk.content, end="", flush=True)
+        from langchain_core.prompts import ChatPromptTemplate
+
+        llm = dkullm.as_langchain_chat_model()
+        prompt = ChatPromptTemplate.from_template("tell me a joke about {topic}")
+        chain = prompt | llm
+        for chunk in chain.stream({"topic": "parrot"}):
+            print(chunk.content, end="", flush=True)
     """
 
     llm_id: str
@@ -254,14 +315,24 @@ class DKUChatModel(BaseChatModel):
     """Sample from the top tokens whose probabilities add up to p."""
 
     _llm_handle = None
-    """:class:`dataikuapi.dss.llm.DKULLM` object to wrap."""
+    """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
 
     class Config:
         extra = Extra.forbid
         underscore_attrs_are_private = True
 
-    def __init__(self, llm_handle, **data: Any):
-        data['llm_id'] = llm_handle.llm_id
+    def __init__(self, llm_handle=None, **data: Any):
+        if llm_handle is None:
+            if data.get("llm_id") is None:
+                raise Exception("One of llm_handle or llm_id is required")
+            try:
+                import dataiku
+            except ImportError:
+                raise Exception("llm_handle is required")
+            llm_handle = dataiku.api_client().get_default_project().get_llm(data["llm_id"])
+        else:
+            data['llm_id'] = llm_handle.llm_id
+
         super().__init__(**data)
         self._llm_handle = llm_handle
 
@@ -277,8 +348,12 @@ class DKUChatModel(BaseChatModel):
             run_manager: Optional[CallbackManagerForLLMRun] = None,
             **kwargs: Any,
     ) -> ChatResult:
+        tools = kwargs.get("tools", None)
+        tool_choice = kwargs.get("tool_choice", None)
+        logging.debug("DKUChatModel _generate called, messages=%s tools=%s stop=%s" % (messages, tools, stop))
+
         completions = self._llm_handle.new_completions()
-        completions.settings.update(_llm_settings(self, stop))
+        completions.settings.update(_llm_settings(self, stop, tools, tool_choice))
         _completion_with_typed_messages(completions.new_completion(), messages)
 
         resp = completions.execute()
@@ -298,11 +373,45 @@ class DKUChatModel(BaseChatModel):
             total_total_tokens += prompt_resp._raw.get("totalTokens", 0)
             token_counts_are_estimated = token_counts_are_estimated or prompt_resp._raw.get("tokenCountsAreEstimated", False)
             total_estimated_cost += prompt_resp._raw.get("estimatedCost", 0)
-            # Post enforcing them because stopSequences are not supported by all of our connections/models
-            text = _enforce_stop_sequences(prompt_resp.text, stop)
-            generations.append(ChatGeneration(message=AIMessage(content=text)))
 
-        # TODO: Support for function calls or tool invocations
+            text = prompt_resp._raw.get("text")
+            if text is not None:
+                # Post enforcing them because stopSequences are not supported by all of our connections/models
+                text = _enforce_stop_sequences(text, stop)
+            else:
+                # AIMessage does not accept a None content, must be an empty string
+                text = ""
+
+            raw_resp = prompt_resp._raw
+            additional_kwargs: Dict = {}
+            tool_calls = []
+            invalid_tool_calls = []
+
+            raw_tool_calls = raw_resp.get("toolCalls")
+            if raw_tool_calls:
+                # adding the raw tool calls to the extra kwargs to replicate
+                # the behavior from the official OpenAI wrapper.
+                # https://github.com/langchain-ai/langchain/blob/9ef15691d62c1f9f18fe7520cce7dafa82ea517e/libs/partners/openai/langchain_openai/chat_models/base.py#L105-L130
+                additional_kwargs["tool_calls"] = raw_tool_calls
+
+                for raw_tool_call in raw_tool_calls:
+                    try:
+                        tool_calls.append(
+                            parse_tool_call(raw_tool_call, return_id=True)
+                        )
+                    except Exception as e:
+                        invalid_tool_calls.append(
+                            make_invalid_tool_call(raw_tool_call, str(e))
+                        )
+
+            generations.append(
+                ChatGeneration(message=AIMessage(
+                    content=text,
+                    additional_kwargs=additional_kwargs,
+                    tool_calls=tool_calls,
+                    invalid_tool_calls=invalid_tool_calls
+                ))
+            )
 
         llm_output = {
             'promptTokens': total_prompt_tokens,
@@ -321,6 +430,30 @@ class DKUChatModel(BaseChatModel):
             run_manager: Optional[CallbackManagerForLLMRun] = None,
             **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
+        # Due to internals of how Langchain calls this, "tools" and "tool_choice" must not be declared
+        # as params. Else, Langchain ends up putting them both in args and kwargs and leading to failure
+        # when using agent_executor.astream_events
+        tools = kwargs.get("tools", None)
+
+        # Streaming is not yet supported when tools are called. Emulate it
+        # TODO https://app.shortcut.com/dataiku/story/195605/langchain-support-the-streaming-path-for-tool-calls
+        if tools is not None and len(tools) > 0:
+            logging.debug("DKUChatModel _stream called, but tools are enabled, emulating streaming")
+            chat_result = self._generate(messages=messages, stop=stop, run_manager=run_manager, **kwargs)
+            generation0 = chat_result.generations[0]
+            # logging.debug("Got chat result %s" % chat_result)
+            msg = AIMessageChunk(
+                content=generation0.message.content,
+                additional_kwargs=generation0.message.additional_kwargs,
+                tool_calls=generation0.message.tool_calls,
+                invalid_tool_calls=generation0.message.invalid_tool_calls
+            )
+            logging.debug("Sending ChatGenerationChunk with message: %s" % msg)
+            yield ChatGenerationChunk(message=msg)
+            return
+
+        logging.debug("DKUChatModel _stream called, messages=%s tools=%s stop=%s" % (messages, tools, stop))
+
         completion = self._llm_handle.new_completion()
         completion = _completion_with_typed_messages(completion, messages)
         completion.settings.update(_llm_settings(self, stop))
@@ -345,3 +478,48 @@ class DKUChatModel(BaseChatModel):
         # flush any remaining chunk
         if streamer and streamer.can_yield():
             yield streamer.yield_(produce_chunk)
+
+    def bind_tools(
+            self,
+            tools: Sequence[Union[Dict[str, Any], Type[BaseModel], Callable, BaseTool]],
+            **kwargs: Any,
+    ):
+        """
+        Bind tool-like objects to this chat model.
+
+        Args:
+            tools: A list of tool definitions to bind to this chat model.
+                Can be  a dictionary, pydantic model, callable, or BaseTool. Pydantic
+                models, callables, and BaseTools will be automatically converted to
+                their schema dictionary representation.
+
+            kwargs: Any additional parameters to bind.
+        """
+        formatted_tools = [convert_to_openai_tool(tool) for tool in tools]
+        return super().bind(tools=formatted_tools, **kwargs)
+
+
+def _lc_tool_call_to_dku_tool_call(
+        tool_call: ToolCall
+) -> dict:
+    return {
+        "type": "function",
+        "id": tool_call["id"],
+        "function": {
+            "name": tool_call["name"],
+            "arguments": json.dumps(tool_call["args"]),
+        },
+    }
+
+
+def _lc_invalid_tool_call_to_dku_tool_call(
+        invalid_tool_call: InvalidToolCall,
+) -> dict:
+    return {
+        "type": "function",
+        "id": invalid_tool_call["id"],
+        "function": {
+            "name": invalid_tool_call["name"],
+            "arguments": invalid_tool_call["args"],
+        },
+    }

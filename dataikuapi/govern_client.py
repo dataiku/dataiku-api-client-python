@@ -1,12 +1,13 @@
 import json
 
 from requests import Session, exceptions
-from requests.auth import HTTPBasicAuth
 
+from .auth import HTTPBearerAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from dataikuapi.govern.future import GovernFuture
-from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings, GovernUserActivity, GovernAuthorizationMatrix
+from dataikuapi.govern.admin import GovernUser, GovernGroup, GovernOwnUser, GovernGlobalApiKey, GovernGeneralSettings, GovernUserActivity, \
+    GovernAuthorizationMatrix, GovernGlobalApiKeyListItem
 from dataikuapi.govern.admin_blueprint_designer import GovernAdminBlueprintDesigner
 from dataikuapi.govern.admin_custom_pages_handler import GovernAdminCustomPagesHandler
 from dataikuapi.govern.admin_roles_permissions_handler import GovernAdminRolesPermissionsHandler
@@ -34,7 +35,7 @@ class GovernClient(object):
         self._session = Session()
 
         if self.api_key is not None:
-            self._session.auth = HTTPBasicAuth(self.api_key, "")
+            self._session.auth = HTTPBearerAuth(self.api_key)
         elif self.internal_ticket is not None:
             self._session.headers.update(
                 {"X-DKU-APITicket": self.internal_ticket})
@@ -178,7 +179,7 @@ class GovernClient(object):
         :return: the created :class:`~dataikuapi.govern.artifact.GovernArtifact`
         """
         result = self._perform_json("POST", "/artifacts", body=artifact)
-        return GovernArtifact(self, result["artifact"]["id"])
+        return GovernArtifact(self, result["artifactId"])
 
     def new_artifact_search_request(self, artifact_search_query):
         """
@@ -468,40 +469,81 @@ class GovernClient(object):
     # Global API Keys
     ########################################################
 
-    def list_global_api_keys(self):
+    def list_global_api_keys(self, as_type='listitems'):
         """
         List all global API keys set up on the Govern instance
 
-        Note: this call requires an API key with admin rights
+        .. note::
 
-        :returns: All global API keys, as a list of dicts
+            This call requires an API key with admin rights
+
+        .. note::
+
+            If the secure API keys feature is enabled, the secret key of the listed
+            API keys will not be present in the returned objects
+
+        :param str as_type: How to return the global API keys. Possible values are "listitems" and "objects"
+
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.govern.admin.GovernGlobalApiKeyListItem`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.govern.admin.GovernGlobalApiKey`.
         """
-        return self._perform_json("GET", "/admin/globalAPIKeys/")
+        resp = self._perform_json(
+            "GET", "/admin/global-api-keys/")
+
+        if as_type == "listitems":
+            return [GovernGlobalApiKeyListItem(self, item) for item in resp]
+        elif as_type == 'objects':
+            return [GovernGlobalApiKey(self, item["key"], item["id"]) for item in resp]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_global_api_key(self, key):
         """
         Get a handle to interact with a specific Global API key
 
-        :param str key: the secret key of the desired API key
+        .. deprecated:: 13.0.0
+            Use :meth:`GovernClient.get_global_api_key_by_id`. Calling this method with an invalid secret key
+            will now result in an immediate error.
 
-        :returns: A :class:`~dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        :param str key: the secret key of the API key
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
         """
-        return GovernGlobalApiKey(self, key)
+        resp = self._perform_json(
+            "GET", "/admin/globalAPIKeys/%s" % key)
+        return GovernGlobalApiKey(self, key, resp['id'])
+
+    def get_global_api_key_by_id(self, id_):
+        """
+        Get a handle to interact with a specific Global API key
+
+        :param str id_: the id the API key
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        """
+        resp = self._perform_json(
+            "GET", "/admin/global-api-keys/%s" % id_)
+        return GovernGlobalApiKey(self, resp["key"], id_)
 
     def create_global_api_key(self, label=None, description=None, admin=False):
         """
         Create a Global API key, and return a handle to interact with it
 
-        Note: this call requires an API key with admin rights
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
 
         :param str label: the label of the new API key
         :param str description: the description of the new API key
         :param boolean admin: has the new API key admin rights (True or False)
 
-        :returns: A :class:`~dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
         """
         resp = self._perform_json(
-            "POST", "/admin/globalAPIKeys/", body={
+            "POST", "/admin/global-api-keys/", body={
                 "label": label,
                 "description": description,
                 "globalPermissions": {
@@ -514,8 +556,7 @@ class GovernClient(object):
             raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         if not resp.get('id', False):
             raise Exception('API key creation returned no key')
-        key = resp.get('key', '')
-        return GovernGlobalApiKey(self, key)
+        return GovernGlobalApiKey(self, resp.get('key', ''), resp['id'])
 
     ########################################################
     # Logs
