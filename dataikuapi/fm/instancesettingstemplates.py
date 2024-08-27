@@ -439,6 +439,7 @@ class FMSetupActionType(Enum):
     ADD_CA_TO_TRUSTSTORE = "ADD_CA_TO_TRUSTSTORE"
     SETUP_PROXY = "SETUP_PROXY"
     INSTALL_CODE_ENV_WITH_PRESET = "INSTALL_CODE_ENV_WITH_PRESET"
+    UPDATE_DSS_PORT = "UPDATE_DSS_PORT"
 
 class FMSetupActionStage(Enum):
     after_dss_startup = "after_dss_startup"

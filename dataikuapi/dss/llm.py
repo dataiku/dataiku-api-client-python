@@ -110,6 +110,16 @@ class DSSLLM(object):
         from dataikuapi.dss.langchain.llm import DKUChatModel
         return DKUChatModel(llm_handle=self, **data)
 
+    def as_langchain_embeddings(self, **data):
+        """
+        Create a langchain-compatible embeddings object for this LLM.
+
+        :returns: A langchain-compatible embeddings object.
+        :rtype: :class:`dataikuapi.dss.langchain.embeddings.DKUEmbeddings`
+        """
+        from dataikuapi.dss.langchain.embeddings import DKUEmbeddings
+        return DKUEmbeddings(llm_handle=self, **data)
+
 
 class DSSLLMEmbeddingsQuery(object):
     """
@@ -183,7 +193,75 @@ class DSSLLMEmbeddingsResponse(object):
         return [r["embedding"] for r in self._raw["responses"]]
 
 
-class DSSLLMCompletionQuery(object):
+class DSSLLMCompletionsQuerySingleQuery(object):
+    def __init__(self):
+        self.cq = {"messages": []}
+
+    def new_multipart_message(self, role="user"):
+        """
+        Start adding a multipart-message to the completion query.
+
+        Use this to add image parts to the message.
+
+        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
+          responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
+
+        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
+        """
+        return DSSLLMCompletionQueryMultipartMessage(self, role)
+
+    def with_message(self, message, role="user"):
+        """
+        Add a message to the completion query.
+
+        :param str message: The message text.
+        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
+          responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
+        """
+        role_message = {
+            "role": role,
+            "content": message,
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
+    def with_tool_calls(self, tool_calls, role="assistant"):
+        """
+        Add tool calls to the completion query.
+
+        :param list[dict] tool_calls: Calls to tools that the LLM requested to use.
+        :param str role: The message role. Defaults to ``assistant``.
+        """
+        role_message = {
+            "role": role,
+            "toolCalls": tool_calls,
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
+    def with_tool_output(self, tool_output, tool_call_id, role="tool"):
+        """
+        Add a tool message to the completion query.
+
+        :param str tool_output: The tool output, as a string.
+        :param str tool_call_id: The tool call id, as provided by the LLM in the conversation messages.
+        :param str role: The message role. Defaults to ``tool``.
+        """
+        role_message = {
+            "role": role,
+            "toolOutputs": [{
+                "callId": tool_call_id,
+                "output": tool_output,
+            }],
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
+
+class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery):
     """
     A handle to interact with a completion query.
     Completion queries allow you to send a prompt to a DSS-managed LLM and
@@ -193,8 +271,8 @@ class DSSLLMCompletionQuery(object):
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_completion` instead.
     """
     def __init__(self, llm):
+        super().__init__()
         self.llm = llm
-        self.cq = {"messages": []}
         self._settings = {}
 
     @property
@@ -204,29 +282,6 @@ class DSSLLMCompletionQuery(object):
         :rtype: dict
         """
         return self._settings
-
-    def with_message(self, message, role="user"):
-        """
-        Add  a message to the completion query.
-
-        :param str message: The message text.
-        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
-         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
-        """
-        self.cq["messages"].append({"content": message, "role": role})
-        return self
-
-    def new_multipart_message(self, role="user"):
-        """
-        Start adding a multipart-message to the completion query.
-
-        Use this to add image parts to the message.
-
-        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
-         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
-        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
-        """
-        return DSSLLMCompletionQueryMultipartMessage(self, role)
 
     def execute(self):
         """
@@ -257,33 +312,6 @@ class DSSLLMCompletionQuery(object):
             else:
                 yield DSSLLMStreamedCompletionFooter(json.loads(evt.data))
 
-
-class DSSLLMCompletionsQuerySingleQuery(object):
-    def __init__(self):
-        self.cq = {"messages": []}
-
-    def with_message(self, message, role="user"):
-        """
-        Add a message to the completion query.
-
-        :param str message: The message text.
-        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
-         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
-        """
-        self.cq["messages"].append({"content": message, "role": role})
-        return self
-
-    def new_multipart_message(self, role="user"):
-        """
-        Start adding a multipart-message to the completion query.
-
-        Use this to add image parts to the message
-
-        :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
-         responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
-        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
-        """
-        return DSSLLMCompletionQueryMultipartMessage(self, role)
 
 class DSSLLMCompletionsQuery(object):
     """
@@ -324,11 +352,12 @@ class DSSLLMCompletionsQuery(object):
 
         return DSSLLMCompletionsResponse(ret["responses"])
 
+
 class DSSLLMCompletionQueryMultipartMessage(object):
     """
       .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or 
-        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message` or.
+        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message`.
 
     """
     def __init__(self, q, role):

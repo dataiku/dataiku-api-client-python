@@ -21,3 +21,6 @@ class APINodeAuth(object):
 
     def delete_key(self, key):
         self.client._perform_empty("DELETE", "keys/%s" % key)
+
+    def delete_key_by_id(self, id):
+        self.client._perform_empty("DELETE", "keys/%s/key" % id)

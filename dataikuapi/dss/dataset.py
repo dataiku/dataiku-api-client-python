@@ -368,6 +368,7 @@ class DSSDataset(object):
         :param int size: number of results to return
         :param list sort_columns: list of {"column", "order"} dict, which is the order to fetch data. "order" is "asc" for ascending, "desc" for descending
         :param list partitions: if the dataset is partitioned, a list of partition ids to search
+
         :return: a dict containing "columns", "rows", "warnings", "found" (when start == 0)
         :rtype: dict
         """

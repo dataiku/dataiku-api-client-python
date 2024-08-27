@@ -299,10 +299,10 @@ class GovernGlobalApiKey(object):
     """
     A global API key on the Govern instance
     """
-
-    def __init__(self, client, key):
+    def __init__(self, client, key, id_):
         self.client = client
         self.key = key
+        self.id_ = id_
 
     ########################################################
     # Key deletion
@@ -312,10 +312,12 @@ class GovernGlobalApiKey(object):
         """
         Delete the api key
 
-        Note: this call requires an API key with admin rights
+        .. note::
+
+            This call requires an API key with admin rights
         """
         return self.client._perform_empty(
-            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+            "DELETE", "/admin/global-api-keys/%s" % self.id_)
 
     ########################################################
     # Key description
@@ -325,27 +327,138 @@ class GovernGlobalApiKey(object):
         """
         Get the API key's definition
 
-        Note: this call requires an API key with admin rights
+        .. note::
 
-        :return: a dict - the definition of the API key
+            This call requires an API key with admin rights
+
+        .. note::
+
+            If the secure API keys feature is enabled, the secret key of this
+            API key will not be present in the returned dict
+
+        :return: the API key definition, as a dict. The dict additionally contains the definition of the
+                 permissions attached to the key.
+
         :rtype: dict
         """
         return self.client._perform_json(
-            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+            "GET", "/admin/global-api-keys/%s" % self.id_)
 
     def set_definition(self, definition):
         """
-        Set the API key's definition.
+        Set the API key's definition
 
-        Note: this call requires an API key with admin rights
+        .. note::
 
-        :param: dict definition: the definition for the API key, as a dict
-        :return: a dict - the definition of the API key
-        :rtype: dict
+            This call requires an API key with admin rights
+
+        .. important::
+
+            You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+            not create a new dict. You may not use this method to update the 'key' field.
+
+        Usage example
+
+        .. code-block:: python
+
+            # make an API key able to create projects
+            key = client.get_global_api_key('my_api_key_secret')
+            definition = key.get_definition()
+            definition["globalPermissions"]["admin"] = True
+            key.set_definition(definition)
+
+        :param dict definition: the definition for the API key
         """
         return self.client._perform_empty(
-            "PUT", "/admin/globalAPIKeys/%s" % self.key,
-            body=definition)
+            "PUT", "/admin/global-api-keys/%s" % self.id_,
+            body = definition)
+
+
+class GovernGlobalApiKeyListItem(dict):
+    """
+    An item in a list of global API keys.
+    
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.GovernClient.list_global_api_keys` instead.
+    """
+    def __init__(self, client, data):
+        super(GovernGlobalApiKeyListItem, self).__init__(data)
+        self.client = client
+
+    def to_global_api_key(self):
+        """
+        Gets a handle corresponding to this item
+
+        :rtype: :class:`GovernGlobalApiKey`
+        """
+        return GovernGlobalApiKey(self.client, self["key"], self["id"])
+
+    @property
+    def id(self):
+        """
+        Get the identifier of the API key
+
+        :rtype: string
+        """
+        return self["id"]
+   
+    @property
+    def user_for_impersonation(self):
+        """
+        Get the user associated to the API key
+
+        :rtype: string
+        """
+        return self.get("dssUserForImpersonation")
+   
+    @property
+    def key(self):
+        """
+        Get the API key
+
+        If the secure API keys feature is enabled, this key field will not be available
+
+        :rtype: string
+        """
+        return self["key"]
+   
+    @property
+    def label(self):
+        """
+        Get the label of the API key
+
+        :rtype: string
+        """
+        return self["label"]
+   
+    @property
+    def description(self):
+        """
+        Get the description of the API key
+
+        :rtype: string
+        """
+        return self.get("description")
+   
+    @property
+    def created_on(self):
+        """
+        Get the timestamp of when the API key was created
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self["createdOn"]
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+   
+    @property
+    def created_by(self):
+        """
+        Get the login of the user who created the API key
+
+        :rtype: string
+        """
+        return self["createdBy"]
 
 
 class GovernGeneralSettings(object):
