@@ -2,6 +2,7 @@ import json
 from requests import Session, exceptions
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
+from .auth import HTTPBearerAuth
 from .utils import DataikuException
 
 class DSSBaseClient(object):
@@ -25,7 +26,7 @@ class DSSBaseClient(object):
         if self.api_key:
             auth = HTTPBasicAuth(self.api_key, "")
         elif self.bearer_token:
-            headers = {"Authorization": "Bearer " + self.bearer_token}
+            auth = HTTPBearerAuth(self.bearer_token)
 
         try:
             http_res = self._session.request(
