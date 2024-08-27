@@ -84,6 +84,7 @@ class DSSInsightListItem(DSSTaggableObjectListItem):
     def type(self):
         """
         Get the type of the insight (ex: "chart")
+
         :rtype: str
         """
         return self._data['type']
@@ -181,6 +182,7 @@ class DSSInsightSettings(DSSTaggableObjectSettings):
     def type(self):
         """
         Get the type of the insight (ex: "chart")
+
         :rtype: str
         """
         return self.settings['type']

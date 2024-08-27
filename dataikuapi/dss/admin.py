@@ -1783,9 +1783,10 @@ class DSSGlobalApiKey(object):
     """
     A global API key on the DSS instance
     """
-    def __init__(self, client, key):
+    def __init__(self, client, key, id_):
         self.client = client
         self.key = key
+        self.id_ = id_
 
     ########################################################
     # Key deletion
@@ -1800,7 +1801,7 @@ class DSSGlobalApiKey(object):
             This call requires an API key with admin rights
         """
         return self.client._perform_empty(
-            "DELETE", "/admin/globalAPIKeys/%s" % self.key)
+            "DELETE", "/admin/global-api-keys/%s" % self.id_)
 
     ########################################################
     # Key description
@@ -1814,18 +1815,22 @@ class DSSGlobalApiKey(object):
 
             This call requires an API key with admin rights
 
-        :return: the API key definition, as a dict. The API key should be in a **key** field, 
-                 distinct of the **id** field which contains an identifier of the key. The
-                 dict additionally contains the definition of the permissions attached to the key.
+        .. note::
+
+            If the secure API keys feature is enabled, the secret key of this
+            API key will not be present in the returned dict
+
+        :return: the API key definition, as a dict. The dict additionally contains the definition of the
+                 permissions attached to the key.
 
         :rtype: dict
         """
         return self.client._perform_json(
-            "GET", "/admin/globalAPIKeys/%s" % (self.key))
+            "GET", "/admin/global-api-keys/%s" % self.id_)
 
     def set_definition(self, definition):
         """
-        Set the API key's definition.
+        Set the API key's definition
 
         .. note::
 
@@ -1834,7 +1839,7 @@ class DSSGlobalApiKey(object):
         .. important::
 
             You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
-            not create a new dict.
+            not create a new dict. You may not use this method to update the 'key' field.
 
         Usage example
 
@@ -1849,13 +1854,13 @@ class DSSGlobalApiKey(object):
         :param dict definition: the definition for the API key
         """
         return self.client._perform_empty(
-            "PUT", "/admin/globalAPIKeys/%s" % self.key,
+            "PUT", "/admin/global-api-keys/%s" % self.id_,
             body = definition)
 
 
 class DSSGlobalApiKeyListItem(dict):
     """
-    An item in a list of personal API key. 
+    An item in a list of global API keys.
     
     .. important::
 
@@ -1871,7 +1876,7 @@ class DSSGlobalApiKeyListItem(dict):
 
         :rtype: :class:`DSSGlobalApiKey`
         """
-        return DSSGlobalApiKey(self.client, self["key"])
+        return DSSGlobalApiKey(self.client, self["key"], self["id"])
 
     @property
     def id(self):
@@ -1895,6 +1900,8 @@ class DSSGlobalApiKeyListItem(dict):
     def key(self):
         """
         Get the API key
+
+        If the secure API keys feature is enabled, this key field will not be available
 
         :rtype: string
         """
@@ -1945,8 +1952,9 @@ class DSSPersonalApiKey(object):
 
         Do not instantiate directly, use :meth:`dataikuapi.DSSClient.get_personal_api_key` instead.
     """
-    def __init__(self, client, id_):
+    def __init__(self, client, key, id_):
         self.client = client
+        self.key = key
         self.id_ = id_
 
     ########################################################
@@ -1957,8 +1965,7 @@ class DSSPersonalApiKey(object):
         """
         Get the API key's definition
         
-        :return: the personal API key definition, as a dict. The key itself is in a **key** field,
-                 and the login of the user of this personal key in a **user** field.
+        :return: the personal API key definition, as a dict. The login of the user of this personal key is in a **user** field.
 
         :rtype: dict
         """
@@ -1995,7 +2002,7 @@ class DSSPersonalApiKeyListItem(dict):
 
         :rtype: :class:`DSSPersonalApiKey`
         """
-        return DSSPersonalApiKey(self.client, self["id"])
+        return DSSPersonalApiKey(self.client, self.get("key", ""), self["id"])
 
     @property
     def id(self):
@@ -2019,6 +2026,8 @@ class DSSPersonalApiKeyListItem(dict):
     def key(self):
         """
         Get the API key
+
+        If the secure API keys feature is enabled, this key field will not be available
 
         :rtype: string
         """
