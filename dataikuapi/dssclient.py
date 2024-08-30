@@ -11,7 +11,6 @@ else:
 from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
-from .auth import HTTPBearerAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
