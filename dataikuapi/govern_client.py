@@ -2,7 +2,6 @@ import json
 
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
-from .auth import HTTPBearerAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from dataikuapi.govern.future import GovernFuture
