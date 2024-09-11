@@ -914,6 +914,20 @@ class DSSPlugin(object):
         """
         self.client._perform_empty("POST", "/plugins/%s/contents-actions/move" % self.plugin_id, body={"oldPath": path, "newPath": new_path})
 
+    ########################################################
+    # Git
+    ########################################################
+
+    def get_plugin_git(self):
+        """
+        Gets a handle to perform operations on the plugin's git repository.
+
+        :returns: a handle to perform git operations on the plugin.
+        :rtype: :class:`dataikuapi.dss.plugin.DSSPluginGit`
+        """
+        return DSSPluginGit(self.client, self.plugin_id)
+
+
 class DSSPluginUsage(object):
     """
     Information on a usage of an element of a plugin.
@@ -1088,3 +1102,85 @@ class DSSPluginUsages(object):
         :rtype: boolean
         """
         return not (not self.usages and not self.missing_types)
+
+
+class DSSPluginGit(object):
+    """Handle to manage the git repository of a DSS plugin (fetch, push, pull, ...)"""
+
+    def __init__(self, client, plugin_id):
+        """Do not call directly, use :meth:`DSSPlugin.get_plugin_git`"""
+        self.client = client
+        self.plugin_id = plugin_id
+
+    def get_remote(self):
+        """
+        Get the URL of the remote repository.
+
+        :return: The URL of the remote origin if set, None otherwise.
+        :rtype: str or None
+        """
+        resp = self.client._perform_json("GET", "/plugins/%s/gitRemote" % self.plugin_id)
+        return resp["repositoryUrl"] if "repositoryUrl" in resp else None
+
+    def set_remote(self, url):
+        """
+        Set the URL of the remote repository.
+
+        :param str url: The URL of the remote repository (git@github.com:user/repo.git).
+        """
+        self.client._perform_json("POST", "/plugins/%s/gitRemote" % self.plugin_id, body={"repositoryUrl": url})
+
+    def remove_remote(self):
+        """
+        Remove the remote origin of the project's git repository.
+
+        """
+        self.client._perform_json("DELETE", "/plugins/%s/gitRemote" % self.plugin_id)
+
+    def list_branches(self):
+        """
+        List all branches of the project's git repository.
+
+        :return: A list of branch names.
+        :rtype: list
+        """
+        return self.client._perform_json("GET", "/plugins/%s/gitBranches" % self.plugin_id)
+
+    def fetch(self):
+        """
+        Fetch branches and/or tags (collectively, "refs") from the remote repository to the plugin's git repository.
+
+        :return: A dict containing keys 'commandSucceeded', 'messages' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/fetch" % self.plugin_id)
+
+    def pull(self):
+        """
+        Incorporate changes from a remote repository into the current branch on the plugin's git repository.
+
+        :return: A dict containing keys 'commandSucceeded', 'messages' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/pullRebase" % self.plugin_id)
+
+    def push(self):
+        """
+        Update the remote repository with the plugin's local commits.
+
+        :return: A dict containing keys 'commandSucceeded', 'messages' with information about the command execution.
+        :rtype: dict
+        """
+        return self.client._perform_json("POST", "/plugins/%s/actions/push" % self.plugin_id)
+
+    def reset_to_head(self):
+        """
+        Drop uncommitted changes in the plugin's git repository (hard reset to HEAD).
+        """
+        self.client._perform_json("POST", "/plugins/%s/actions/resetToLocalHeadState" % self.plugin_id)
+
+    def reset_to_upstream(self):
+        """
+        Drop local changes in the project's git repository and hard reset to the upstream branch.
+        """
+        self.client._perform_json("POST", "/projects/%s/git/resetToRemoteHeadState" % self.plugin_id)
