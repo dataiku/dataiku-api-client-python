@@ -206,7 +206,7 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         :param str role: The message role. Use ``system`` to set the LLM behavior, ``assistant`` to store predefined
           responses, ``user`` to provide requests or comments for the LLM to answer to. Defaults to ``user``.
 
-        :rtype :class:`DSSLLMCompletionQueryMultipartMessage`
+        :rtype: :class:`DSSLLMCompletionQueryMultipartMessage`
         """
         return DSSLLMCompletionQueryMultipartMessage(self, role)
 
@@ -297,9 +297,10 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery):
 
     def execute_streamed(self):
         """
-        Prevent documentation as it's still preview.
+        Run the completion query and retrieve the LLM response as streamed chunks.
 
-        :meta private:
+        :returns: An iterator over the LLM response chunks
+        :rtype: Iterator[Union[:class:`DSSLLMStreamedCompletionChunk`, :class:`DSSLLMStreamedCompletionFooter`]]
         """
         request = {"query": self.cq, "settings": self.settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_raw("POST", "/projects/%s/llms/streamed-completion" % (self.llm.project_key), body=request)
@@ -492,9 +493,25 @@ class DSSLLMCompletionResponse(object):
     def text(self):
         """
         :return: The raw text of the LLM response.
-        :rtype: str
+        :rtype: Union[str, None]
         """
-        return self._raw["text"]
+        return self._raw.get("text")
+
+    @property
+    def tool_calls(self):
+        """
+        :return: The tool calls of the LLM response.
+        :rtype: Union[list, None]
+        """
+        return self._raw.get("toolCalls")
+
+    @property
+    def log_probs(self):
+        """
+        :return: The log probs of the LLM response.
+        :rtype: Union[list, None]
+        """
+        return self._raw.get("logProbs")
 
 class DSSLLMCompletionsResponse(object):
     """

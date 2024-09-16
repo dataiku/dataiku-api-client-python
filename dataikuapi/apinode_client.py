@@ -7,7 +7,7 @@ class APINodeClient(DSSBaseClient):
     This is an API client for the user-facing API of DSS API Node server (user facing API)
     """
 
-    def __init__(self, uri, service_id, api_key=None, bearer_token=None):
+    def __init__(self, uri, service_id, api_key=None, bearer_token=None, insecure_tls=False):
         """
         Instantiate a new DSS API client on the given base URI with the given API key.
 
@@ -16,7 +16,7 @@ class APINodeClient(DSSBaseClient):
         :param str api_key: Optional, API key for the service. Only required if the service has its authorization setup to API keys
         :param str bearer_token: Optional, The bearer token. Only required if the service has its authorization setup to OAuth2/JWT
         """
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token)
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token, insecure_tls=insecure_tls)
 
     @staticmethod
     def _set_dispatch(obj, forced_generation, dispatch_key):

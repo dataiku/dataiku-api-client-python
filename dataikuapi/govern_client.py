@@ -22,7 +22,7 @@ from dataikuapi.utils import DataikuException
 class GovernClient(object):
     """Entry point for the Govern API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None):
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, insecure_tls=False):
         """
         Instantiate a new Govern API client on the given host with the given API key.
         API keys can be managed in Govern in the global settings.
@@ -32,6 +32,8 @@ class GovernClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
+        if insecure_tls:
+            self._session.verify = False
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")

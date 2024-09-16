@@ -53,6 +53,7 @@ class FMClient(object):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
+        insecure_tls=False,
     ):
         """
         Base class for the different FM Clients
@@ -67,6 +68,8 @@ class FMClient(object):
         self.host = host
         self.__tenant_id = tenant_id
         self._session = Session()
+        if insecure_tls:
+            self._session.verify = False
 
         if self.api_key_id is not None and self.api_key_secret is not None:
             self._session.auth = HTTPBasicAuth(self.api_key_id, self.api_key_secret)
@@ -344,6 +347,7 @@ class FMClientAWS(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
+        insecure_tls=False,
     ):
         """
         AWS Only - Instantiate a new FM API client on the given host with the given API key.
@@ -355,7 +359,7 @@ class FMClientAWS(FMClient):
         """
         self.cloud = "AWS"
         super(FMClientAWS, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
 
     def new_virtual_network_creator(self, label):
@@ -401,6 +405,7 @@ class FMClientAzure(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
+        insecure_tls=False,
     ):
         """
         Azure Only - Instantiate a new FM API client on the given host with the given API key.
@@ -411,7 +416,7 @@ class FMClientAzure(FMClient):
         """
         self.cloud = "Azure"
         super(FMClientAzure, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
 
     def new_virtual_network_creator(self, label):
@@ -456,6 +461,7 @@ class FMClientGCP(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
+        insecure_tls=False,
     ):
         """
         GCP Only - Instantiate a new FM API client on the given host with the given API key.
@@ -466,7 +472,7 @@ class FMClientGCP(FMClient):
         """
         self.cloud = "GCP"
         super(FMClientGCP, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
 
     def new_virtual_network_creator(self, label):

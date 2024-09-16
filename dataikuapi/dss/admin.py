@@ -1972,6 +1972,35 @@ class DSSPersonalApiKey(object):
         return self.client._perform_json(
             "GET", "/personal-api-keys/%s" % (self.id_))
 
+    def set_definition(self, definition):
+        """
+        Set the API key's definition
+
+        .. note::
+
+            Only the label and description of the key can be updated.
+
+        .. important::
+
+            You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`,
+            not create a new dict. You may not use this method to update the 'key' field.
+
+        Usage example
+
+        .. code-block:: python
+
+            # update an API key label
+            key = client.get_personal_api_key('my_api_key_id')
+            definition = key.get_definition()
+            definition["label"] = "My New Label"
+            key.set_definition(definition)
+
+        :param dict definition: the definition for the API key
+        """
+        return self.client._perform_empty(
+            "PUT", "/personal-api-keys/%s" % self.id_,
+            body=definition)
+
     ########################################################
     # Key deletion
     ########################################################
