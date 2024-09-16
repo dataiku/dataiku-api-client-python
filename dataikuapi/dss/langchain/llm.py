@@ -374,20 +374,15 @@ class DKUChatModel(BaseChatModel):
             token_counts_are_estimated = token_counts_are_estimated or prompt_resp._raw.get("tokenCountsAreEstimated", False)
             total_estimated_cost += prompt_resp._raw.get("estimatedCost", 0)
 
-            text = prompt_resp._raw.get("text")
-            if text is not None:
-                # Post enforcing them because stopSequences are not supported by all of our connections/models
-                text = _enforce_stop_sequences(text, stop)
-            else:
-                # AIMessage does not accept a None content, must be an empty string
-                text = ""
+            # Post enforcing them because stopSequences are not supported by all of our connections/models
+            # Default to empty string because AIMessage does not accept a None content
+            text = _enforce_stop_sequences(prompt_resp.text, stop) if prompt_resp.text else ""
 
-            raw_resp = prompt_resp._raw
             additional_kwargs: Dict = {}
             tool_calls = []
             invalid_tool_calls = []
+            raw_tool_calls = prompt_resp.tool_calls
 
-            raw_tool_calls = raw_resp.get("toolCalls")
             if raw_tool_calls:
                 # adding the raw tool calls to the extra kwargs to replicate
                 # the behavior from the official OpenAI wrapper.
@@ -434,29 +429,12 @@ class DKUChatModel(BaseChatModel):
         # as params. Else, Langchain ends up putting them both in args and kwargs and leading to failure
         # when using agent_executor.astream_events
         tools = kwargs.get("tools", None)
-
-        # Streaming is not yet supported when tools are called. Emulate it
-        # TODO https://app.shortcut.com/dataiku/story/195605/langchain-support-the-streaming-path-for-tool-calls
-        if tools is not None and len(tools) > 0:
-            logging.debug("DKUChatModel _stream called, but tools are enabled, emulating streaming")
-            chat_result = self._generate(messages=messages, stop=stop, run_manager=run_manager, **kwargs)
-            generation0 = chat_result.generations[0]
-            # logging.debug("Got chat result %s" % chat_result)
-            msg = AIMessageChunk(
-                content=generation0.message.content,
-                additional_kwargs=generation0.message.additional_kwargs,
-                tool_calls=generation0.message.tool_calls,
-                invalid_tool_calls=generation0.message.invalid_tool_calls
-            )
-            logging.debug("Sending ChatGenerationChunk with message: %s" % msg)
-            yield ChatGenerationChunk(message=msg)
-            return
-
+        tool_choice = kwargs.get("tool_choice", None)
         logging.debug("DKUChatModel _stream called, messages=%s tools=%s stop=%s" % (messages, tools, stop))
 
         completion = self._llm_handle.new_completion()
         completion = _completion_with_typed_messages(completion, messages)
-        completion.settings.update(_llm_settings(self, stop))
+        completion.settings.update(_llm_settings(self, stop, tools, tool_choice))
 
         def produce_chunk(chunk: ChatGenerationChunk):
             if run_manager:
@@ -468,7 +446,26 @@ class DKUChatModel(BaseChatModel):
 
         for raw_chunk in completion.execute_streamed():
             text = raw_chunk.data.get("text", "")
-            new_chunk = ChatGenerationChunk(message=AIMessageChunk(content=text), generation_info=raw_chunk.data)
+
+            additional_kwargs: Dict = {}
+            tool_call_chunks = []
+            raw_tool_calls = raw_chunk.data.get("toolCalls")
+            if raw_tool_calls:
+                # adding the raw tool calls to the extra kwargs to replicate
+                # the behavior from the official OpenAI wrapper. cf
+                # https://github.com/langchain-ai/langchain/blob/86ca44d4514b409fed65e2ad8b2ae3c1ee7da48d/libs/partners/openai/langchain_openai/chat_models/base.py#L243
+                additional_kwargs["tool_calls"] = raw_tool_calls
+                tool_call_chunks = _parse_tool_call_chunks(raw_tool_calls)
+
+            new_chunk = ChatGenerationChunk(
+                message=AIMessageChunk(
+                    content=text,
+                    tool_call_chunks=tool_call_chunks,
+                    additional_kwargs=additional_kwargs,
+                ),
+                generation_info=raw_chunk.data,
+            )
+
             streamer.append(new_chunk)
             if streamer.should_stop():
                 break
@@ -523,3 +520,19 @@ def _lc_invalid_tool_call_to_dku_tool_call(
             "arguments": invalid_tool_call["args"],
         },
     }
+
+
+def _parse_tool_call_chunks(raw_tool_calls):
+    try:
+        return [
+            {
+                "id": rtc.get("id"),
+                "index": rtc.get("index"),
+                "name": rtc["function"].get("name"),
+                "args": rtc["function"].get("arguments"),
+            }
+            for rtc in raw_tool_calls
+        ]
+    except KeyError as e:
+        logger.error("Error when constructing the tool call chunk: ", str(e))
+        return []

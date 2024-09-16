@@ -332,6 +332,10 @@ class DSSRecipe(object):
                 "PUT", "/projects/%s/recipes/%s/metadata" % (self.project_key, self.recipe_name),
                 body=metadata)
 
+    def get_input_refs(self):
+        inputs = self.get_settings().data["recipe"]["inputs"]["main"]["items"]
+        return [inp["ref"] for inp in inputs]
+
     def get_object_discussions(self):
         """
         Get a handle to manage discussions on the recipe.
