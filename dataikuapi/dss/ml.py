@@ -2504,7 +2504,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         return self.mltask_settings["predictionLength"]
 
-    def set_forecast_horizon(self, forecast_horizon, reguess=True, update_algorithm_settings=True):
+    def set_forecast_horizon(self, forecast_horizon, reguess=True, update_algorithm_settings=True, validation_horizons=None):
         """
         Sets the time series forecast horizon
 
@@ -2514,9 +2514,20 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         :type reguess: bool
         :param update_algorithm_settings: Whether the algorithm settings should be reguessed after the forecast horizon (defaults to **True**)
         :type update_algorithm_settings: bool
+        :param validation_horizons: The number of validation horizons to be set. If omitted, retains the previous ratio.
+        :type validation_horizons: int|None
         """
         assert isinstance(forecast_horizon, int)
+
+        if validation_horizons is None:
+            validation_horizons = self.mltask_settings["evaluationParams"]["testSize"] / self.mltask_settings["predictionLength"]
+
+        assert validation_horizons % 1 == 0, "Validation horizons is not a whole integer"
+        validation_horizons = int(validation_horizons)
+
         self.mltask_settings["predictionLength"] = forecast_horizon
+        self.mltask_settings["evaluationParams"]["testSize"] = forecast_horizon * validation_horizons
+
         if reguess:
             logger.info("Reguessing ML task settings after changing forecast horizon")
             self.client._perform_empty(
@@ -2524,7 +2535,11 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
                 "/projects/{project_key}/models/lab/{analysis_id}/{mltask_id}/reguess-with-forecasting-params".format(
                     project_key=self.project_key, analysis_id=self.analysis_id, mltask_id=self.mltask_id
                 ),
-                body={"forecastHorizon": forecast_horizon, "updateAlgorithmSettings": update_algorithm_settings},
+                body={
+                    "forecastHorizon": forecast_horizon,
+                    "updateAlgorithmSettings": update_algorithm_settings,
+                    "validationHorizons": validation_horizons
+                },
             )
 
     @property
@@ -3367,21 +3382,30 @@ class DSSTreeNode(object):
         return info
 
 class DSSTree(object):
-    def __init__(self, tree, feature_names):
+    def __init__(self, tree, feature_names, prediction_type, classes):
         self.tree = tree
         self.feature_names = feature_names
+        self.prediction_type = prediction_type
+        self.classes = classes
 
     def get_raw(self):
         """Gets the raw tree data structure"""
         return self.tree
+
+    def get_classes(self):
+        if self.prediction_type not in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
+            logger.warning("Regression models do not have a `classes` attribute")
+            return None
+        return self.classes
 
     def get_root(self):
         """Gets a :class:`dataikuapi.dss.ml.DSSTreeNode` representing the root of the tree"""
         return DSSTreeNode(self, 0)
 
 class DSSTreeSet(object):
-    def __init__(self, trees):
+    def __init__(self, trees, prediction_type):
         self.trees = trees
+        self.prediction_type = prediction_type
 
     def get_raw(self):
         """Gets the raw trees data structure"""
@@ -3391,9 +3415,23 @@ class DSSTreeSet(object):
         """Gets the list of feature names (after dummification) """
         return self.trees["featureNames"]
 
+    def get_classes(self):
+        if self.prediction_type not in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
+            logger.warning("Regression models do not have a `classes` attribute")
+            return None
+        else:
+            classes = self.trees.get("classes", None)
+            if classes is None:
+                logger.warning("Models trained on version prior to 13.1 do not have a `classes` attribute")
+            return classes
+
     def get_trees(self):
         """Gets the list of trees as :class:`dataikuapi.dss.ml.DSSTree` """
-        return [DSSTree(t, self.trees["featureNames"]) for t in self.trees["trees"]]
+        if self.prediction_type in {"BINARY_CLASSIFICATION", "MULTICLASS"}:
+            classes = self.get_classes()
+        else:
+            classes = None
+        return [DSSTree(t, self.trees["featureNames"], self.prediction_type, classes) for t in self.trees["trees"]]
 
 class DSSCoefficientPaths(object):
     def __init__(self, paths):
@@ -3557,7 +3595,8 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/trees" % (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
         if data is None:
             raise ValueError("This model has no tree data")
-        return DSSTreeSet(data)
+        prediction_type = self.details.get("coreParams", {}).get("prediction_type")
+        return DSSTreeSet(data, prediction_type)
 
     def get_coefficient_paths(self):
         """
