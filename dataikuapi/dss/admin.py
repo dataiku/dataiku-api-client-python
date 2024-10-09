@@ -362,6 +362,19 @@ class DSSConnectionSettings(object):
         self.settings["allowManagedFolders"] = new_value
 
     @property
+    def allow_knowledge_banks(self):
+        """
+        Whether Knowledge Banks can use the connection.
+
+        :rtype: boolean
+        """
+        return self.settings['allowKnowledgeBanks']
+
+    @allow_knowledge_banks.setter
+    def allow_knowledge_banks(self, new_value):
+        self.settings["allowKnowledgeBanks"] = new_value
+
+    @property
     def allow_write(self):
         """
         Whether data can be written to this connection.

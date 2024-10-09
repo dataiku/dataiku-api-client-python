@@ -261,7 +261,20 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         return self
 
 
-class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery):
+class SettingsMixin(object):
+    def with_json_output(self):
+        """
+        Request the model to generate a valid JSON response, for models that support it.
+        
+        Note that some models may require you to also explicitly request this in the user or system prompt to use this.
+        """
+        self._settings["responseFormat"] = {
+            "type": "json"
+        }
+        return self
+
+
+class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
     """
     A handle to interact with a completion query.
     Completion queries allow you to send a prompt to a DSS-managed LLM and
@@ -314,7 +327,7 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery):
                 yield DSSLLMStreamedCompletionFooter(json.loads(evt.data))
 
 
-class DSSLLMCompletionsQuery(object):
+class DSSLLMCompletionsQuery(SettingsMixin):
     """
     A handle to interact with a multi-completion query.
     Completion queries allow you to send a prompt to a DSS-managed LLM and
@@ -480,6 +493,20 @@ class DSSLLMCompletionResponse(object):
     """
     def __init__(self, raw_resp):
         self._raw = raw_resp
+        self._json = None
+
+    @property
+    def json(self):
+        """
+        :return: LLM response parsed as a JSON object
+        """
+        if not self.success:
+            error_message = self._raw.get("errorMessage", "An unknown error occurred")
+            raise Exception(error_message)
+
+        if self._json is None:
+            self._json = json.loads(self._raw["text"])
+        return self._json
 
     @property
     def success(self):
