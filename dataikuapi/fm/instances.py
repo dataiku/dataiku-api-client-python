@@ -293,6 +293,31 @@ class FMInstance(object):
             "GET", "/instances/%s/actions/delete" % self.id
         )
         return FMFuture.from_resp(self.client, future)
+    
+    def start(self):
+        """
+        Start the DSS instance
+
+        :return: the `Future` object representing the starting process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/start" % self.id
+        )
+        return FMFuture.from_resp(self.client, future)
+
+    def stop(self):
+        """
+        Stop the DSS instance
+
+        :return: the `Future` object representing the stopping process
+        :rtype: :class:`dataikuapi.fm.future.FMFuture`
+        """
+        future = self.client._perform_tenant_json(
+            "GET", "/instances/%s/actions/stop" % self.id
+        )
+        return FMFuture.from_resp(self.client, future)
+
 
     def get_initial_password(self):
         """
