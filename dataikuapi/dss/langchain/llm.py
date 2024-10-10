@@ -10,6 +10,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    Literal,
     Optional,
     Sequence,
     Type,
@@ -479,6 +480,9 @@ class DKUChatModel(BaseChatModel):
     def bind_tools(
             self,
             tools: Sequence[Union[Dict[str, Any], Type[BaseModel], Callable, BaseTool]],
+            tool_choice: Optional[
+                Union[dict, str, Literal["auto", "none", "required", "any"], bool]
+            ] = None,
             **kwargs: Any,
     ):
         """
@@ -490,9 +494,23 @@ class DKUChatModel(BaseChatModel):
                 models, callables, and BaseTools will be automatically converted to
                 their schema dictionary representation.
 
+            tool_choice: Which tool to request the model to call.
+                Options are:
+                    - name of the tool (str): call the corresponding tool;
+                    - "auto": automatically select a tool (or no tool);
+                    - "none": do not call a tool;
+                    - "any" or "required": force at least one tool call;
+                    - True: call the one given tool (requires `tools` to be of length 1);
+                    - a dict of the form: {"type": "tool_name", "name": "<<tool_name>>"},
+                      or {"type": "required"}, or {"type": "any"} or {"type": "none"},
+                      or {"type": "auto"};
+
             kwargs: Any additional parameters to bind.
         """
         formatted_tools = [convert_to_openai_tool(tool) for tool in tools]
+        if tool_choice:
+            kwargs["tool_choice"] = _convert_to_llm_mesh_tool_choice(tool_choice, formatted_tools)
+
         return super().bind(tools=formatted_tools, **kwargs)
 
 
@@ -536,3 +554,83 @@ def _parse_tool_call_chunks(raw_tool_calls):
     except KeyError as e:
         logger.error("Error when constructing the tool call chunk: ", str(e))
         return []
+
+
+def _convert_to_llm_mesh_tool_choice(
+        tool_choice: Union[dict, str, Literal["auto", "none", "required", "any"], bool],
+        formatted_tools: Sequence[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Map the tool choice to its LLM mesh compatible representation"""
+    tool_names = [
+        formatted_tool["function"]["name"]
+        for formatted_tool in formatted_tools
+    ]
+
+    if isinstance(tool_choice, str):
+        # supporting "any" because it seems common in the LangChain vocabulary
+        if tool_choice == "any":
+            tool_choice = "required"
+
+        if tool_choice in ("auto", "none", "required"):
+            return {"type": tool_choice}
+
+        # tool_choice refers to a dedicated tool name
+        if tool_choice not in tool_names:
+            raise ValueError(
+                f"Tool choice {tool_choice} was specified, but the only "
+                f"provided tools were {tool_names}."
+            )
+
+        return {"type": "tool_name", "name": tool_choice}
+
+    if isinstance(tool_choice, bool) and tool_choice:
+        if len(tool_names) != 1:
+            raise ValueError(
+                "tool_choice=True can only be used when a single tool is "
+                f"passed in, received {len(tool_names)} tools."
+            )
+
+        return {
+            "type": "tool_name",
+            "name": tool_names[0]
+        }
+
+    if isinstance(tool_choice, dict):
+        expected_tool_choice_types = ["auto", "none", "any", "required", "tool_name"]
+
+        if "type" not in tool_choice:
+            raise ValueError(
+                f'Tool choice {tool_choice} must contain a "type" property. '
+                f"Allowed values are {expected_tool_choice_types}."
+            )
+
+        if tool_choice["type"] not in expected_tool_choice_types:
+            raise ValueError(
+                f'Invalid tool choice type: {tool_choice["type"]}. '
+                f"Allowed values are {expected_tool_choice_types}."
+            )
+
+        # supporting "any" because it seems common in the LangChain vocabulary
+        # note: we already support it for the 'string' case
+        if tool_choice["type"] == "any":
+            tool_choice["type"] = "required"
+
+        if tool_choice["type"] == "tool_name":
+            if "name" not in tool_choice:
+                raise ValueError(
+                    f'Tool choice {tool_choice} must contain a "name" property.'
+                )
+
+            if tool_choice["name"] not in tool_names:
+                raise ValueError(
+                    f"Tool choice {tool_choice} was specified, but the only "
+                    f"provided tools were {tool_names}."
+                )
+
+        return tool_choice
+
+    # default, unknown case
+    raise ValueError(
+        f"Unrecognized tool_choice type. Expected str, bool or dict. "
+        f"Received: {tool_choice}"
+    )

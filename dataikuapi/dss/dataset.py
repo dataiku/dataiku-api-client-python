@@ -46,7 +46,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["name"]
-    
+
     @property
     def id(self):
         """
@@ -55,7 +55,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["name"]
-    
+
     @property
     def type(self):
         """
@@ -64,7 +64,7 @@ class DSSDatasetListItem(DSSTaggableObjectListItem):
         :rtype: string
         """
         return self._data["type"]
-    
+
     @property
     def schema(self):
         """
@@ -125,7 +125,7 @@ class DSSDataset(object):
         :rtype: string
         """
         return self.dataset_name
-    
+
     ########################################################
     # Dataset deletion
     ########################################################
@@ -529,7 +529,7 @@ class DSSDataset(object):
         :returns: A ML task handle of type 'PREDICTION'
         :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
         """
-        return self.project.create_prediction_ml_task(self.dataset_name, 
+        return self.project.create_prediction_ml_task(self.dataset_name,
              target_variable = target_variable, ml_backend_type = ml_backend_type,
              guess_policy = guess_policy, prediction_type = prediction_type, wait_guess_complete = wait_guess_complete)
 
@@ -612,7 +612,7 @@ class DSSDataset(object):
         :rtype: :class:`dataikuapi.dss.analysis.DSSAnalysis`
         """
         return self.project.create_analysis(self.dataset_name)
- 
+
     def list_analyses(self, as_type="listitems"):
         """
         List the visual analyses on this dataset
@@ -829,7 +829,7 @@ class DSSDataset(object):
         elif settings.type in self.__class__._SQL_TYPES:
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/externalSQL"% (self.project_key, self.dataset_name))
-        
+
         elif settings.type == "ElasticSearch":
             return self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/elasticsearch"% (self.project_key, self.dataset_name))
@@ -869,7 +869,7 @@ class DSSDataset(object):
 
             settings.get_raw()["schema"] = result["schemaDetection"]["newSchema"]
             return settings
-        
+
         elif settings.type == "ElasticSearch":
             result = self.test_and_detect()
 
@@ -927,7 +927,7 @@ class DSSDataset(object):
         builder = self.project.new_recipe(type=type, name=recipe_name)
         builder.with_input(self.dataset_name)
         return builder
-    
+
     ########################################################
     # Data Quality
     ########################################################
@@ -940,6 +940,33 @@ class DSSDataset(object):
         :rtype: :class:`dataikuapi.dss.data_quality.DSSDataQualityRuleSet`
         """
         return DSSDataQualityRuleSet(self.project_key, self.dataset_name, self.client)
+
+    ########################################################
+    # Column Lineage
+    ########################################################
+
+    def get_column_lineage(self, column, max_dataset_count=None):
+        """
+        Get the full lineage (auto-computed and manual) information of a column in this dataset.
+        Column relations with datasets from both local and foreign projects will be included in the result.
+ 
+        :param str column: name of the column to retrieve the lineage on.
+        :param integer max_dataset_count: (optional) the maximum number of datasets to query for. If none, then the max hard limit is used. 
+
+        :returns: the full column lineage (auto-computed and manual) as a list of relations.
+        :rtype: list of dict
+        """
+        
+        if max_dataset_count is not None and max_dataset_count <= 0:
+            raise ValueError("Invalid value, max_dataset_count must be a positive integer.")
+
+        return self.client._perform_json(
+            "GET", "/projects/%s/datasets/%s/column-lineage" % (self.project_key, self.dataset_name),
+            params={
+                "columnName": column,
+                "maxDatasetCount": max_dataset_count,
+            }
+        )
 
 class DSSDatasetSettings(DSSTaggableObjectSettings):
     """
@@ -1072,7 +1099,7 @@ class FSLikeDatasetSettings(DSSDatasetSettings):
         Get the raw format parameters as a dict.
         
         :rtype: dict
-        """ 
+        """
         return self.settings["formatParams"]
 
     def set_format(self, format_type, format_params = None):
@@ -1198,7 +1225,7 @@ class DSSManagedDatasetCreationHelper(object):
         if type_option_id is not None:
             self.creation_settings["typeOptionId"] = type_option_id
         if format_option_id is not None:
-            self.creation_settings["specificSettings"]["formatOptionId"] = format_option_id 
+            self.creation_settings["specificSettings"]["formatOptionId"] = format_option_id
         return self
 
     def with_copy_partitioning_from(self, dataset_ref, object_type='DATASET'):

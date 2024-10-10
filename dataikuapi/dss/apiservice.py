@@ -1,5 +1,3 @@
-import json
-
 class DSSAPIServiceListItem(dict):
     """
     An item in a list of API services. 
@@ -236,11 +234,25 @@ class DSSAPIService(object):
 
         return DSSAPIServiceSettings(self.client, self.project_key, self.service_id, settings)
 
+    def get_package_summary(self, package_id):
+        """
+        Get summary of a package
+
+        :param str package_id: version (identifier) of the package to get the summary for
+
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "GET",
+            "/projects/%s/apiservices/%s/packages/%s/summary"
+            % (self.project_key, self.service_id, package_id),
+        )
+
     def list_packages(self):
         """
         List the versions of this API service.
-        
-        :return: a list of pacakges, each one as a dict. Each dict has fields:
+
+        :return: a list of packages, each one as a dict. Each dict has fields:
 
                     * **id** : version (identifier) of the package
                     * **createdOn** : timestamp in milliseconds of when the package was created
@@ -250,14 +262,19 @@ class DSSAPIService(object):
         return self.client._perform_json(
             "GET", "/projects/%s/apiservices/%s/packages" % (self.project_key, self.service_id))
 
-    def create_package(self, package_id):
+    def create_package(self, package_id, release_notes=None):
         """
         Create a new version of this API service.
 
         :param string package_id: version (identifier) of the package to create
+        :param str release_notes: important changes introduced in the package
         """
         self.client._perform_empty(
-            "POST", "/projects/%s/apiservices/%s/packages/%s" % (self.project_key, self.service_id, package_id))
+            method="POST",
+            path="/projects/%s/apiservices/%s/packages/%s"
+            % (self.project_key, self.service_id, package_id),
+            params={"releaseNotes": release_notes},
+        )
 
     def delete_package(self, package_id):
         """

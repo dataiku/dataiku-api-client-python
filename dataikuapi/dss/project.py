@@ -1435,7 +1435,7 @@ class DSSProject(object):
             Use :meth:`DSSJupyterNotebook.get_content()` on a similar existing **DSSJupyterNotebook** object in order
             to get a sample definition object.
         :returns: A handle to interact with the newly created jupyter notebook
-        :rtype: :class:`dataikuapi.dss.jupyternotebook.DSSJupyterNotebook` jupyter notebook handle
+        :rtype: dataikuapi.dss.jupyternotebook.DSSJupyterNotebook
         """
         self.client._perform_json("POST", "/projects/%s/jupyter-notebooks/%s" % (self.project_key, notebook_name),
                                   body=notebook_content)
@@ -1631,13 +1631,18 @@ class DSSProject(object):
         """
         return self.client._perform_json("GET", "/projects/%s/bundles/exported" % self.project_key)
 
-    def export_bundle(self, bundle_id):
+    def export_bundle(self, bundle_id, release_notes=None):
         """
         Creates a new project bundle on the Design node
 
         :param str bundle_id: bundle id tag
+        :param str release_notes: important changes introduced in the bundle
         """
-        return self.client._perform_json("PUT", "/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id))
+        return self.client._perform_json(
+            method="PUT",
+            path="/projects/%s/bundles/exported/%s" % (self.project_key, bundle_id),
+            params={"releaseNotes": release_notes}
+        )
 
     def delete_exported_bundle(self, bundle_id):
         """
