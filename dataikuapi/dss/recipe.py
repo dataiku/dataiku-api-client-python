@@ -96,7 +96,7 @@ class DSSRecipe(object):
         Computes which updates are required to the outputs of this recipe.
 
         This method only computes which changes would be needed to make the schema of the outputs
-        of the reicpe match the actual schema that the recipe will produce. To effectively apply
+        of the recipe match the actual schema that the recipe will produce. To effectively apply
         these changes to the outputs, you can use the :meth:`~RequiredSchemaUpdates.apply()` on
         the returned object.
 
