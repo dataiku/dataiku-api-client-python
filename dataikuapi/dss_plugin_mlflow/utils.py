@@ -42,13 +42,16 @@ class MLflowHandle:
             )
         sys.path.insert(0, self.tempdir)
 
-        # Reload the artifact_repository_registry in case MLflow was imported beforehand
         if sys.version_info > (3, 4):
             from importlib import reload
         import mlflow
-        reload(mlflow.store.artifact.artifact_repository_registry)
+        import mlflow.store.artifact.artifact_repository_registry
+        import mlflow.tracking.request_header.registry
+        reload(mlflow.tracking.request_header.registry) # Reload the request_header registry in case MLflow was imported beforehand
+        reload(mlflow.store.artifact.artifact_repository_registry) # Reload the artifact_repository_registry in case MLflow was imported beforehand
         mlflow.set_tracking_uri(None)  # if user has changed tracking backend manually before
         mlflow.end_run()  # if user already created a run with another tracking backend
+        self.remove_dataiku_duplicates_in_request_header_registry()
 
         # Setup authentication
         if client._session.auth is not None:
@@ -113,6 +116,27 @@ class MLflowHandle:
             "DSS_MLFLOW_MANAGED_FOLDER_ID": mf_full_id
         })
         self.override_env(self.mlflow_env)
+
+
+    def remove_dataiku_duplicates_in_request_header_registry(self):
+        try:
+            # Try to make sure we are not loading our MLflow plugin twice
+            # see https://app.shortcut.com/dataiku/story/210232
+            from mlflow.tracking.request_header.registry import _request_header_provider_registry
+            registry = _request_header_provider_registry._registry
+            seen = set()
+            i = 0
+            while i < len(registry):
+                entrypoint = registry[i]
+                entrypoint_name = "{}.{}".format(entrypoint.__class__.__module__, entrypoint.__class__.__name__)
+                if entrypoint_name in seen and 'dataikuapi' in entrypoint_name:
+                    registry.pop(i)
+                else:
+                    seen.add(entrypoint_name)
+                    i += 1
+        except Exception as e:
+            logging.warning(str(e), exc_info=True)
+
 
     def clear(self):
         shutil.rmtree(self.tempdir)

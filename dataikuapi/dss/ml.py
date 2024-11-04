@@ -4757,7 +4757,8 @@ class DSSMLTask(object):
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/deployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
             body=obj)
 
-    def redeploy_to_flow(self, model_id, recipe_name=None, saved_model_id=None, activate=True):
+    def redeploy_to_flow(self, model_id, recipe_name=None, saved_model_id=None, activate=True,
+                         redo_optimization=False, redo_threshold_optimization=True, fixed_threshold=None):
         """
         Redeploys a trained model from this ML Task to an existing saved model and training recipe in the flow.
 
@@ -4769,17 +4770,27 @@ class DSSMLTask(object):
         :param saved_model_id: Name of the saved model to update (defaults to **None**)
         :type saved_model_id: str, optional
         :param bool activate: If True (default), make the newly deployed model version become the active version
+        :param bool redo_optimization: Whether to re-run the model optimization (hyperparameter search) on every train
+        :param bool redo_threshold_optimization: Whether to redo the model threshold Optimization on every train (for binary classification models)
+        :param fixed_threshold: Value to use as fixed threshold. Must be set if redoThresholdOptimization is False (for binary classification models)
+        :type fixed_threshold: float, optional
         :return: A dict containing: "impactsDownstream" - whether the active saved mode version changed and downstream recipes are impacted
         :rtype: dict
         """
         obj = {
-            "recipeName" : recipe_name,
-            "savedModelId" : saved_model_id,
-            "activate" : activate
+            "recipeName": recipe_name,
+            "savedModelId": saved_model_id,
+            "activate": activate,
+            "redoOptimization": redo_optimization,
+            "redoThresholdOptimization": redo_threshold_optimization
         }
+
+        if fixed_threshold is not None:
+            obj["fixedThreshold"] = fixed_threshold
+
         return self.client._perform_json(
             "POST", "/projects/%s/models/lab/%s/%s/models/%s/actions/redeployToFlow" % (self.project_key, self.analysis_id, self.mltask_id, model_id),
-            body = obj)
+            body=obj)
 
     def remove_unused_splits(self):
         """
