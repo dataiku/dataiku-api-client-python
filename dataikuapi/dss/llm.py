@@ -150,13 +150,17 @@ class DSSLLMEmbeddingsQuery(object):
         self.eq["queries"].append({"text": text})
         return self
 
-    def add_image(self, image_base64):
+    def add_image(self, image):
         """
         Add an image to the embedding query.
 
-        :param str image_base64: Image content, as a base 64 formatted string.
+        :param image: Image content as bytes or str (base64)
         """
-        self.eq["queries"].append({"inlineImage": image_base64})
+        if isinstance(image, str):
+            self.eq["queries"].append({"inlineImage": image})
+        elif isinstance(image, bytes):
+            import base64
+            self.eq["queries"].append({"inlineImage": base64.b64encode(image).decode("utf8")})
         return self
 
     def execute(self):
@@ -609,6 +613,20 @@ class DSSLLMImageGenerationQuery(object):
         return self
 
     @property
+    def inference_steps(self):
+        return self.gq.get("nbInferenceSteps", None)
+    @inference_steps.setter
+    def inference_steps(self, new_value):
+        self.gq["nbInferenceSteps"] = new_value
+
+    @property
+    def refiner_strength(self):
+        return self.gq.get("refinerStrength", None)
+    @refiner_strength.setter
+    def refiner_strength(self, new_value):
+        self.gq["refinerStrength"] = new_value
+
+    @property
     def height(self):
         return self.gq.get("height", None)
     @height.setter
@@ -710,3 +728,21 @@ class DSSLLMImageGenerationResponse(object):
 
         else:
             return self._raw["images"][0]["data"]
+
+    def get_images(self, as_type="bytes"):
+        """
+        :return: The generated images.
+        :rtype: List[str]
+        """
+
+        if not self.success:
+            raise Exception("Image generation did not succeed: %s" % self._raw["errorMessage"])
+
+        if len(self._raw["images"]) == 0:
+            raise Exception("Image generation succeeded but did not return any image")
+
+        if as_type == "bytes":
+            import base64
+            return [base64.b64decode(image["data"]) for image in self._raw["images"]]
+        else:
+            return [image["data"] for image in self._raw["images"]]
