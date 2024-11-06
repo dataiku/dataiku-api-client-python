@@ -1,6 +1,10 @@
 Changelog
 ==========
 
+13.2.2.1 (2024-11-06)
+---------------------
+
+* Fixed usage of LangChain compatibility layer for LLM Mesh
 
 13.2.2 (2024-11-04)
 ---------------------
