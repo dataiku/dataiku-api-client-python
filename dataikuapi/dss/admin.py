@@ -1303,7 +1303,7 @@ class DSSCodeEnv(object):
         
         .. note::
 
-            This call requires an API key with admin rights
+            This call requires an API key with `Manage all code envs` permission
         """
         resp = self.client._perform_json(
             "DELETE", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
@@ -1328,7 +1328,7 @@ class DSSCodeEnv(object):
   
         .. note::
 
-            This call requires an API key with admin rights
+            This call requires an API key with `Create code envs` or `Manage all code envs` permission
         
         :return: the code env definition
         :rtype: dict
@@ -1364,7 +1364,7 @@ class DSSCodeEnv(object):
 
         .. note::
 
-            This call requires an API key with admin rights
+            This call requires an API key with `Create code envs` or `Manage all code envs` permission
         
         .. important::
 
@@ -1441,7 +1441,7 @@ class DSSCodeEnv(object):
         
         .. note::
 
-            This call requires an API key with admin rights
+            This call requires an API key with `Create code envs` or `Manage all code envs` permission
         
         :param boolean active: True to activate jupyter support, False to deactivate
         """
@@ -1460,7 +1460,7 @@ class DSSCodeEnv(object):
         
         .. note::
 
-            This call requires an API key with admin rights
+            This call requires an API key with `Create code envs` or `Manage all code envs` permission
 
         :param boolean force_rebuild_env: whether to rebuild the code env from scratch
 

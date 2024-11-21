@@ -663,8 +663,6 @@ class DSSClient(object):
         """
         List all code envs setup on the DSS instance
 
-        Note: this call requires an API key with admin rights
-
         :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
         :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
         """
@@ -689,7 +687,7 @@ class DSSClient(object):
         """
         Create a code env, and return a handle to interact with it
 
-        Note: this call requires an API key with admin rights
+        Note: this call requires an API key with `Create code envs` or `Manage all code envs` permission
 
         :param env_lang: the language (PYTHON or R) of the new code env
         :param env_name: the name of the new code env
