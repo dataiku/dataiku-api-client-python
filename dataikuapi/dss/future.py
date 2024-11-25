@@ -1,5 +1,4 @@
-import time
-
+from ..utils import _ExponentialBackoff
 
 class DSSFuture(object):
     """
@@ -126,8 +125,11 @@ class DSSFuture(object):
             return self.result_wrapper(self.state.get('result', None))
         if self.state is None or not self.state.get('hasResult', False) or self.state_is_peek:
             self.get_state()
+
+        eb = _ExponentialBackoff()
+
         while not self.state.get('hasResult', False):
-            time.sleep(5)
+            eb.sleep_next()
             self.get_state()
         if self.state.get('hasResult', False):
             return self.result_wrapper(self.state.get('result', None))

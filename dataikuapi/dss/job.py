@@ -1,7 +1,6 @@
-import time
 import sys
 from ..utils import DataikuException
-
+from ..utils import _ExponentialBackoff
 
 class DSSJob(object):
     """
@@ -77,10 +76,9 @@ class DSSJobWaiter(object):
         :rtype: dict
         """
         job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
-        sleep_time = 2
+        eb = _ExponentialBackoff()
         while job_state not in ["DONE", "ABORTED", "FAILED"]:
-            sleep_time = 60 if sleep_time >= 60 else sleep_time * 1.2
-            time.sleep(int(sleep_time))
+            eb.sleep_next()
             job_state = self.job.get_status().get("baseStatus", {}).get("state", "")
 
         if no_fail or (job_state == "DONE"):
