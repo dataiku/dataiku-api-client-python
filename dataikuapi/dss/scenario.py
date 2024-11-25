@@ -1,6 +1,6 @@
 from datetime import datetime
-import time, warnings
-from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime, _local_timezone
+import warnings
+from ..utils import DataikuException, _timestamp_ms_to_zoned_datetime, _local_timezone, _ExponentialBackoff
 from .discussion import DSSObjectDiscussions
 from .utils import DSSTaggableObjectListItem
 from dateutil.tz import tzlocal
@@ -715,9 +715,10 @@ class DSSScenarioRun(object):
 
         :param boolean no_fail: if False, raises an exception if scenario fails
         """
+        eb = _ExponentialBackoff()
         while self.running:
             self.refresh()
-            time.sleep(5)
+            eb.sleep_next()
 
         if self.outcome != 'SUCCESS' and no_fail == False:
             raise DataikuException("Scenario run returned status %s" % outcome)
@@ -963,9 +964,10 @@ class DSSScenarioRunWaiter(object):
         :return: the final state of the scenario run (see :meth:`DSSScenarioRun.get_info()`)
         :rtype: dict
         """
+        eb = _ExponentialBackoff()
         while not self.scenario_run.run.get('result', False):
             self.scenario_run = self.trigger_fire.get_scenario_run()
-            time.sleep(5)
+            eb.sleep_next()
         outcome = self.scenario_run.run.get('result', None).get('outcome', 'UNKNOWN')
         if outcome == 'SUCCESS' or no_fail:
             return self.scenario_run
@@ -1012,6 +1014,7 @@ class DSSTriggerFire(object):
         """
         scenario_run = None
         refresh_trigger_counter = 0
+        eb = _ExponentialBackoff()
         while scenario_run is None:
             refresh_trigger_counter += 1
             if refresh_trigger_counter == 10:
@@ -1022,7 +1025,7 @@ class DSSTriggerFire(object):
                 else:
                     raise DataikuException("Scenario run has been cancelled")
             scenario_run = self.get_scenario_run()
-            time.sleep(5)
+            eb.sleep_next()
         return scenario_run
 
     def get_scenario_run(self):

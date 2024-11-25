@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-import time
 import warnings
 
 from six import string_types
@@ -11,6 +10,7 @@ from .utils import DSSDatasetSelectionBuilder
 from .utils import DSSFilterBuilder
 from ..utils import DataikuException
 from ..utils import _write_response_content_to_file
+from ..utils import _ExponentialBackoff
 
 logger = logging.getLogger("dataikuapi.dss.ml")
 
@@ -4486,11 +4486,12 @@ class DSSMLTask(object):
         This should be called immediately after the creation of a new ML Task if the ML Task was created with ``wait_guess_complete = False``,
         before calling :meth:`get_settings` or :meth:`train`.
         """
+        eb = _ExponentialBackoff()
         while True:
             status = self.get_status()
             if status.get("guessing", "???") == False:
                 break
-            time.sleep(0.2)
+            eb.sleep_next()
 
     def get_status(self):
         """
@@ -4627,11 +4628,12 @@ class DSSMLTask(object):
 
         To be used following any asynchronous training started with :meth:`start_train` or :meth:`start_ensembling`
         """
+        eb = _ExponentialBackoff()
         while True:
             status = self.get_status()
             if status.get("training", "???") == False:
                 break
-            time.sleep(2)
+            eb.sleep_next()
 
     def get_trained_models_ids(self, session_id=None, algorithm=None):
         """

@@ -2,6 +2,16 @@ Changelog
 ==========
 
 
+13.2.3 (2024-11-25)
+---------------------
+
+* Initial release for DSS 13.2.3
+
+13.2.2.1 (2024-11-06)
+---------------------
+
+* Fixed usage of LangChain compatibility layer for LLM Mesh
+
 13.2.2 (2024-11-04)
 ---------------------
 

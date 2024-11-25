@@ -5,6 +5,7 @@ import os
 import zipfile
 import itertools
 import sys
+import time
 from datetime import datetime
 
 if sys.version_info > (3,0):
@@ -160,3 +161,33 @@ def _timestamp_ms_to_zoned_datetime(timestamp_ms):
         return datetime.fromtimestamp(timestamp_ms / 1000, tz=_local_timezone)
     else:
         return None
+
+
+class _ExponentialBackoff(object):
+    # These values lead to:
+    #  - 25 calls in the first 20 seconds
+    #  - Overhead overall remains below 10%
+    #  - After 1 minute, the interval is 5 seconds
+
+    def __init__(self, initial_time_ms=200, max_time_ms=15000, factor=1.1):
+        self.initial_time_ms = initial_time_ms
+        self.last_time = None
+        self.max_time_ms = max_time_ms
+        self.factor = factor
+
+    def next_sleep_time(self):
+        if self.last_time is None:
+            next_time = self.initial_time_ms
+        else:
+            next_time = self.last_time * self.factor
+        if next_time > self.max_time_ms:
+            next_time = self.max_time_ms
+
+        self.last_time = next_time
+
+        return next_time
+
+    def sleep_next(self):
+        sleep_time = float(self.next_sleep_time()) / 1000.0
+        #print("Sleeping %.3f" % sleep_time)
+        time.sleep(sleep_time)
