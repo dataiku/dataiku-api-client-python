@@ -1783,6 +1783,42 @@ class DSSProject(object):
                                          self.project_key, bundle_id))
 
     ########################################################
+    # Testing with DSS test scenarios report
+    ########################################################
+
+    def get_last_test_scenario_runs_report(self, bundle_id):
+        """
+        Download a report describing the outcome of the latest test scenario runs performed in this project, on an
+        Automation node, under a specified active bundle
+
+        :param str bundle_id: bundle id tag
+
+        :return: the test scenarios report, in JUnit XML format
+        :rtype: file-like
+        """
+        return self.client._perform_raw(
+            "GET",
+            "/projects/%s/scenarios/last-test-scenario-runs-report" % self.project_key,
+            params={"bundleId": bundle_id}
+        )
+
+    def get_last_test_scenario_runs_html_report(self, bundle_id):
+        """
+        Download a report describing the outcome of the latest test scenario runs performed in this project, on an
+        Automation node, under a specified active bundle
+
+        :param str bundle_id: bundle id tag
+
+        :return: the test scenarios report, in HTML format
+        :rtype: file-like
+        """
+        return self.client._perform_raw(
+            "GET",
+            "/projects/%s/scenarios/last-test-scenario-runs-html-report" % self.project_key,
+            params={"bundleId": bundle_id}
+        )
+
+    ########################################################
     # Scenarios
     ########################################################
 
@@ -2492,6 +2528,26 @@ class DSSProject(object):
         :rtype: list of dict
         """
         return self.client._perform_json("GET", "/projects/%s/data-quality/timeline" % self.project_key, params={"minTimestamp": min_timestamp, "maxTimestamp": max_timestamp})
+
+    def list_test_scenarios(self):
+        """
+        Lists all the test scenarios of a DSS Project
+        :return: list all test scenarios of a project
+        :rtype: list of :class:`DSSScenario`
+        """
+        scenarios = self.client._perform_json("GET", "/projects/%s/scenarios/" % self.project_key)
+        return [DSSScenario(self.client, self.project_key, scenario["id"]) for scenario in scenarios if scenario.get("markedAsTest")]
+
+    def get_testing_status(self, bundle_id=None):
+        """
+        Get the testing status of a DSS Project. It combines the last run outcomes of all the test scenarios defined on the project, considering the worst outcome as a final result.
+        :param (optional) string bundle_id : if the project is on automation node, you can specify a bundle_id to filter only on the last
+        scenario runs when this bundle was active
+        :return: returns a dict with the keys 'nbTotalRanScenarios' and 'nbScenariosPerOutcome'
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/projects/%s/scenarios/testing-status" % self.project_key,  params={"bundleId": bundle_id})
+
 
 class TablesImportDefinition(object):
     """

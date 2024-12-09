@@ -4,6 +4,7 @@ import json
 class FMCloudCredentials(object):
     """
     A Tenant Cloud Credentials in the FM instance
+
     """
 
     def __init__(self, client, cloud_credentials):
@@ -97,7 +98,6 @@ class FMCloudCredentials(object):
         """
         Saves back the settings to the project
         """
-
         self.client._perform_tenant_empty(
             "PUT", "/cloud-credentials", body=self.cloud_credentials
         )
@@ -120,7 +120,6 @@ class FMCloudTags(object):
         """
         Saves the tags on FM
         """
-
         self.client._perform_tenant_empty("PUT", "/cloud-tags", body=self.cloud_tags)
 
 
@@ -133,6 +132,7 @@ class FMCloudAuthentication(dict):
             - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_same_as_fm` to use the same authentication as Fleet Manager
             - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_iam_role` to use a custom IAM Role
             - :meth:`dataikuapi.fm.tenant.FMCloudAuthentication.aws_keypair` to use a AWS Access key ID and AWS Secret Access Key pair
+
         """
         super(FMCloudAuthentication, self).__init__(data)
 

@@ -266,15 +266,72 @@ class DSSLLMCompletionsQuerySingleQuery(object):
 
 
 class SettingsMixin(object):
-    def with_json_output(self):
+    def with_json_output(self, schema=None, strict=None, compatible=None):
         """
         Request the model to generate a valid JSON response, for models that support it.
-        
+
         Note that some models may require you to also explicitly request this in the user or system prompt to use this.
+
+        .. caution::
+            JSON output support is experimental for locally-running Hugging Face models.
+
+        :param dict schema: (optional) If specified, request the model to produce a JSON response that adheres to the provided schema. Support varies across models/providers.
+        :param bool strict: (optional) If a schema is provided, whether to strictly enforce it. Support varies across models/providers.
+        :param bool compatible: (optional) Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
         """
         self._settings["responseFormat"] = {
-            "type": "json"
+            "type": "json",
+            "schema": schema,
+            "strict": strict,
+            "compatible": compatible,
         }
+        return self
+
+    def with_structured_output(self, model_type, strict=None, compatible=None):
+        """
+        Instruct the model to generate a response as an instance of a specified Pydantic model.
+
+        This functionality depends on `with_json_output` and necessitates that the model supports JSON output with a schema.
+
+        .. caution::
+            Structured output support is experimental for locally-running Hugging Face models.
+
+        :param pydantic.BaseModel model_type: A Pydantic model class used for structuring the response.
+        :param bool strict: (optional) see :func:`with_json_output`
+        :param bool compatible: (optional) see :func:`with_json_output`
+        """
+        if hasattr(model_type, "model_json_schema") and hasattr(model_type, "model_validate_json"):
+            schema = model_type.model_json_schema()  # Pydantic 2 BaseModel
+            self._response_parser = model_type.model_validate_json
+        elif hasattr(model_type, "schema") and hasattr(model_type, "parse_raw"):
+            schema = model_type.schema()  # Pydantic 1 BaseModel
+            self._response_parser = model_type.parse_raw
+        else:
+            # 'model_type' is not a Pydantic BaseModel. Derive schema Python type hints.
+            try:
+                import pydantic
+            except ImportError:
+                raise Exception("Pydantic is required to use Python's type hints with structured output")
+
+            if hasattr(pydantic, "TypeAdapter"):
+                # Pydantic 2 provides a TypeAdapter to work with regular Python classes / type hints
+                from pydantic import TypeAdapter
+                adapter = TypeAdapter(model_type)
+                schema = adapter.json_schema()
+                self._response_parser = adapter.validate_json
+            elif hasattr(pydantic, "schema_of") and hasattr(pydantic, "parse_obj_as"):
+                # Pydantic 1 had similar functionality via 'schema_of' and 'parse_obj_as'
+                schema = pydantic.schema_of(model_type)
+
+                def response_parser(json_response):
+                    parsed_json = json.loads(json_response)
+                    return pydantic.parse_obj_as(model_type, parsed_json)
+
+                self._response_parser = response_parser
+            else:
+                # Unsupported Pydantic version
+                raise Exception("Incompatible Pydantic version")
+        self.with_json_output(schema=schema, strict=strict, compatible=compatible)
         return self
 
 
@@ -291,6 +348,7 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         super().__init__()
         self.llm = llm
         self._settings = {}
+        self._response_parser = None
 
     @property
     def settings(self):
@@ -310,7 +368,7 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         queries = {"queries": [self.cq], "settings": self._settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
 
-        return DSSLLMCompletionResponse(ret["responses"][0])
+        return DSSLLMCompletionResponse(raw_resp=ret["responses"][0], response_parser=self._response_parser)
 
     def execute_streamed(self):
         """
@@ -344,6 +402,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         self.llm = llm
         self.queries = []
         self._settings = {}
+        self._response_parser = None
 
     @property
     def settings(self):
@@ -368,7 +427,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         queries = {"queries": [q.cq for q in self.queries], "settings": self._settings, "llmId": self.llm.llm_id}
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
 
-        return DSSLLMCompletionsResponse(ret["responses"])
+        return DSSLLMCompletionsResponse(ret["responses"], response_parser=self._response_parser)
 
 
 class DSSLLMCompletionQueryMultipartMessage(object):
@@ -393,8 +452,8 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         """
         Add an image part to the multipart message
 
-        :param image: bytes or str (base64)
-        :param mime_type str: None for default
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
         """
         img_b64 = None
         if isinstance(image, str):
@@ -424,6 +483,21 @@ class DSSLLMStreamedCompletionChunk(object):
     def __init__(self, data):
         self.data = data
 
+    @property
+    def type(self):
+        """Type of this chunk, either "content" or "event" """
+        return self.data.get("type", "content")
+
+    @property
+    def text(self):
+        """If this chunk is content and has text, the (partial) text"""
+        return self.data.get("text", None)
+
+    @property
+    def event_kind(self):
+        """If this chunk is an event, its kind"""
+        return self.data.get("eventKind", None)
+
     def __repr__(self):
         return "<completion-chunk: %s>" % self.data
 
@@ -431,6 +505,15 @@ class DSSLLMStreamedCompletionChunk(object):
 class DSSLLMStreamedCompletionFooter(object):
     def __init__(self, data):
         self.data = data
+
+    # Compatibility for code that just checks for "type""
+    @property
+    def type(self):
+        return "footer"
+
+    @property
+    def trace(self):
+        return self.data.get("trace", None)
 
     def __repr__(self):
         return "<completion-footer: %s>" % self.data
@@ -490,27 +573,39 @@ class _SSEClient(object):
 
 class DSSLLMCompletionResponse(object):
     """
-    A handle to interact with a completion response.
-
-    .. important::
-        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.execute` instead.
+    Response to a completion
     """
-    def __init__(self, raw_resp):
-        self._raw = raw_resp
+    def __init__(self, raw_resp=None, text=None, finish_reason=None, response_parser=None, trace=None):
+        if raw_resp is not None:
+            self._raw = raw_resp
+        else:
+            self._raw = {}
+            self._raw["text"] = text
+            self._raw["finishReason"] = finish_reason
+            self._raw["trace"] = trace
+
         self._json = None
+        self._response_parser = response_parser
+        self._parsed = None
 
     @property
     def json(self):
         """
         :return: LLM response parsed as a JSON object
         """
-        if not self.success:
-            error_message = self._raw.get("errorMessage", "An unknown error occurred")
-            raise Exception(error_message)
-
-        if self._json is None:
-            self._json = json.loads(self._raw["text"])
+        self._fail_unless_success()
+        if self._json is None and self.text is not None:
+            self._json = json.loads(self.text)
         return self._json
+
+    @property
+    def parsed(self):
+        self._fail_unless_success()
+        if self._parsed is None and self.text is not None:
+            if not self._response_parser:
+                raise Exception("Structured output is not enabled for this completion query")
+            self._parsed = self._response_parser(self.text)
+        return self._parsed
 
     @property
     def success(self):
@@ -526,6 +621,7 @@ class DSSLLMCompletionResponse(object):
         :return: The raw text of the LLM response.
         :rtype: Union[str, None]
         """
+        self._fail_unless_success()
         return self._raw.get("text")
 
     @property
@@ -534,6 +630,7 @@ class DSSLLMCompletionResponse(object):
         :return: The tool calls of the LLM response.
         :rtype: Union[list, None]
         """
+        self._fail_unless_success()
         return self._raw.get("toolCalls")
 
     @property
@@ -542,7 +639,17 @@ class DSSLLMCompletionResponse(object):
         :return: The log probs of the LLM response.
         :rtype: Union[list, None]
         """
+        self._fail_unless_success()
         return self._raw.get("logProbs")
+
+    @property
+    def trace(self):
+        return self._raw.get("trace", None)
+
+    def _fail_unless_success(self):
+        if not self.success:
+            error_message = self._raw.get("errorMessage", "An unknown error occurred")
+            raise Exception(error_message)
 
 class DSSLLMCompletionsResponse(object):
     """
@@ -551,13 +658,14 @@ class DSSLLMCompletionsResponse(object):
     .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuery.execute` instead.
     """
-    def __init__(self, raw_resp):
+    def __init__(self, raw_resp, response_parser=None):
         self._raw = raw_resp
+        self._response_parser = response_parser
 
     @property
     def responses(self):
         """The array of responses"""
-        return [DSSLLMCompletionResponse(x) for x in self._raw]
+        return [DSSLLMCompletionResponse(raw_resp=x, response_parser=self._response_parser) for x in self._raw]
 
 
 class DSSLLMImageGenerationQuery(object):
@@ -577,22 +685,49 @@ class DSSLLMImageGenerationQuery(object):
 
     def with_prompt(self, prompt, weight=None):
         """
+        Add a prompt to the image generation query.
+
+        :param str prompt: The prompt text.
+        :param float weight: Optional weight between 0 and 1 for the prompt.
         """
         self.gq["prompts"].append({"prompt": prompt, "weight": weight})
         return self
  
     def with_negative_prompt(self, prompt, weight=None):
         """
+        Add a negative prompt to the image generation query.
+
+        :param str prompt: The prompt text.
+        :param float weight: Optional weight between 0 and 1 for the negative prompt.
         """
         self.gq["negativePrompts"].append({"prompt": prompt, "weight": weight})
         return self
 
     def with_original_image(self, image, mode=None, weight=None):
+        """
+        Add an image to the generation query.
+
+        To edit specific pixels of the original image. A mask can be applied by calling `with_mask()`:
+
+        >>> query.with_original_image(image, mode="INPAINTING") # replace the pixels using a mask
+
+        To edit an image:
+
+        >>> query.with_original_image(image, mode="MASK_FREE") # edit the original image according to the prompt
+
+        >>> query.with_original_image(image, mode="VARY") # generates a variation of the original image
+
+        :param Union[str, bytes] image: The original image as `str` in base 64 or `bytes`.
+        :param str mode: The edition mode. Modes support varies across models/providers.
+        :param float weight: The original image weight between 0 and 1.
+        """
         if isinstance(image, str):
             self.gq["originalImage"] = image
         elif isinstance(image, bytes):
             import base64
             self.gq["originalImage"] = base64.b64encode(image).decode("utf8")
+        else:
+            raise Exception(u"The `image` parameter has to be of type `str` in base 64 or `bytes`. Got {} instead.".format(type(image)))
 
         if mode is not None:
             self.gq["originalImageEditionMode"] = mode
@@ -601,7 +736,21 @@ class DSSLLMImageGenerationQuery(object):
             self.gq["originalImageWeight"] = weight
         return self
 
-    def with_mask(self, mode, image=None, text=None):
+    def with_mask(self, mode, image=None):
+        """
+        Add a mask for edition to the generation query. Call this method alongside `with_original_image()`.
+
+        To edit parts of the image using a black mask (replace the black pixels):
+
+        >>> query.with_mask("MASK_IMAGE_BLACK", image=black_mask)
+
+        To edit parts of the image that are transparent (replace the transparent pixels):
+
+        >>> query.with_mask("ORIGINAL_IMAGE_ALPHA")
+
+        :param str mode: The mask mode. Modes support varies across models/providers.
+        :param Union[str, bytes] image: The mask image to apply to the image edition. As `str` in base 64 or `bytes`.
+        """
         self.gq["maskMode"] = mode
         
         if image is not None:
@@ -610,82 +759,151 @@ class DSSLLMImageGenerationQuery(object):
             elif isinstance(image, bytes):
                 import base64
                 self.gq["maskImage"] = base64.b64encode(image).decode("utf8")
+            else:
+                raise Exception(u"When specified, the mask `image` parameter has to be of type `str` in base 64 or `bytes`. Got type {} instead.".format(type(image)))
         return self
 
     @property
-    def inference_steps(self):
-        return self.gq.get("nbInferenceSteps", None)
-    @inference_steps.setter
-    def inference_steps(self, new_value):
-        self.gq["nbInferenceSteps"] = new_value
-
-    @property
-    def refiner_strength(self):
-        return self.gq.get("refinerStrength", None)
-    @refiner_strength.setter
-    def refiner_strength(self, new_value):
-        self.gq["refinerStrength"] = new_value
-
-    @property
     def height(self):
+        """
+        :return: The generated image height in pixels.
+        :rtype: Optional[int]
+        """
         return self.gq.get("height", None)
     @height.setter
     def height(self, new_value):
-        self.gq["height"] = new_value
+        """
+        The generated image height in pixels.
+
+        :param Optional[int] new_value: The generated image height in pixels.
+        """
+        self.gq["height"] = int(new_value) if new_value is not None else None
 
     @property
     def width(self):
+        """
+        :return: The generated image width in pixels.
+        :rtype: Optional[int]
+        """
         return self.gq.get("width", None)
     @width.setter
     def width(self, new_value):
-        self.gq["width"] = new_value
+        """
+        The generated image width in pixels.
+
+        :param Optional[int] new_value: The generated image width in pixels.
+        """
+        self.gq["width"] = int(new_value) if new_value is not None else None
 
     @property
     def fidelity(self):
+        """
+        :return: From 0.0 to 1.0, how strongly to adhere to prompt.
+        :rtype: Optional[float]
+        """
         return self.gq.get("fidelity", None)
     @fidelity.setter
     def fidelity(self, new_value):
+        """
+        Quality of the image to generate. Valid values depend on the targeted model.
+
+        :param Optional[float] new_value: From 0.0 to 1.0, how strongly to adhere to prompt.
+        """
         self.gq["fidelity"] = new_value
 
     @property
     def quality(self):
+        """
+        :return: Quality of the image to generate. Valid values depend on the targeted model.
+        :rtype: Optional[str]
+        """
         return self.gq.get("quality", None)
     @quality.setter
     def quality(self, new_value):
+        """
+        Quality of the image to generate. Valid values depend on the targeted model.
+
+        :param str new_value: Quality of the image to generate.
+        """
         self.gq["quality"] = new_value
 
     @property
     def seed(self):
+        """
+        :return: Seed of the image to generate, gives deterministic results when set.
+        :rtype: Optional[int]
+        """
         return self.gq.get("seed", None)
     @seed.setter
     def seed(self, new_value):
+        """
+        Seed of the image to generate, gives deterministic results when set.
+
+        :param str new_value: Seed of the image to generate.
+        """
         self.gq["seed"] = new_value
 
     @property
     def style(self):
-        """Style of the image to generate. Valid values depend on the targeted model"""
+        """
+        :return: Style of the image to generate. Valid values depend on the targeted model.
+        :rtype: Optional[str]
+        """
         return self.gq.get("style", None)
     @style.setter
     def style(self, new_value):
+        """
+        Style of the image to generate. Valid values depend on the targeted model.
+
+        :param str new_value: Style of the image to generate.
+        """
         self.gq["style"] = new_value
 
     @property
     def images_to_generate(self):
+        """
+        :return: Number of images to generate per query. Valid values depend on the targeted model.
+        :rtype: Optional[int]
+        """
         return self.gq.get("nbImagesToGenerate", None)
     @images_to_generate.setter
     def images_to_generate(self, new_value):
+        """
+        Number of images to generate per query. Valid values depend on the targeted model.
+
+        :param int new_value: Number of images to generate. Valid values depend on the targeted model.
+        """
         self.gq["nbImagesToGenerate"] = new_value
 
-    def with_aspect_ratio(self, ar):
-        self.gq["height"] = 1024
-        self.gq["width"] = int(1024 * ar)
-        return self
+    @property
+    def aspect_ratio(self):
+        """
+        :return: The width/height aspect ratio or `None` if either is not set.
+        :rtype: Optional[float]
+        """
+        if self.width is not None and self.width > 0 and self.height is not None and self.height > 0:
+            return self.width / self.height
+        return None
+    @aspect_ratio.setter
+    def aspect_ratio(self, ar):
+        """
+        Aspect ratio of the image to generate. Valid values depend on the targeted model. Set/update the width or height, or both if none are set.
+
+        :param float ar: The width/height aspect ratio.
+        """
+        if self.height is not None and self.height > 0:
+            self.width = self.height * ar
+        elif self.width is not None and self.width > 0:
+            self.height = self.width / ar
+        else:
+            self.height = 1024
+            self.width = 1024 * ar
 
     def execute(self):
         """
         Executes the image generation
 
-        :rtype: :class:DSSLLMImageGenerationResponse
+        :rtype: :class:`DSSLLMImageGenerationResponse`
         """
 
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq)
@@ -712,8 +930,9 @@ class DSSLLMImageGenerationResponse(object):
 
     def first_image(self, as_type="bytes"):
         """
-        :return: The first generated image.
-        :rtype: str
+        :param str as_type: The type of image to return, 'bytes' for `bytes` otherwise 'str' for base 64 `str`.
+        :return: The first generated image as `bytes` or `str` depending on the `as_type` parameter.
+        :rtype: Union[bytes,str]
         """
 
         if not self.success:
@@ -731,8 +950,9 @@ class DSSLLMImageGenerationResponse(object):
 
     def get_images(self, as_type="bytes"):
         """
-        :return: The generated images.
-        :rtype: List[str]
+        :param str as_type: The type of images to return, 'bytes' for `bytes` otherwise 'str' for base 64 `str`.
+        :return: The generated images as `bytes` or `str` depending on the `as_type` parameter.
+        :rtype: Union[List[bytes], List[str]]
         """
 
         if not self.success:
@@ -746,3 +966,11 @@ class DSSLLMImageGenerationResponse(object):
             return [base64.b64decode(image["data"]) for image in self._raw["images"]]
         else:
             return [image["data"] for image in self._raw["images"]]
+
+    @property
+    def images(self):
+        """
+        :return: The generated images in bytes format.
+        :rtype: List[bytes]
+        """
+        return self.get_images(as_type="bytes")
