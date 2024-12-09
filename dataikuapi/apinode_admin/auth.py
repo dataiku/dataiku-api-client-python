@@ -10,12 +10,13 @@ class APINodeAuth(object):
         """Lists the Admin API keys"""
         return self.client._perform_json("GET", "keys")
 
-    def add_key(self, label=None, description=None, created_by=None):
+    def add_key(self, label=None, description=None, created_by=None, expiry=None):
         """Add an Admin API key. Returns the key details"""
         key = {
             "label" : label,
             "description" : description,
-            "createdBy" : created_by
+            "createdBy" : created_by,
+            "expiry" : expiry
         }
         return self.client._perform_json("POST", "keys", body=key)
 

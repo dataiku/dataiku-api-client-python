@@ -23,11 +23,11 @@ class DSSProjectDeployer(object):
             # list all deployments with their current state
             for deployment in deployer.list_deployments():
                 status = deployment.get_status()
-                print("Deployment %s is %s" % (deployment.id, status.get_health()))            
+                print("Deployment %s is %s" % (deployment.id, status.get_health()))
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerDeployment`, else returns a list of dict.
 
-        :returns: list of deployments, either as :class:`DSSProjectDeployerDeployment` or as dict (with fields 
+        :returns: list of deployments, either as :class:`DSSProjectDeployerDeployment` or as dict (with fields
                   as in :meth:`DSSProjectDeployerDeploymentStatus.get_light()`)
         :rtype: list
         """
@@ -50,7 +50,7 @@ class DSSProjectDeployer(object):
     def create_deployment(self, deployment_id, project_key, infra_id, bundle_id,
                           deployed_project_key=None, project_folder_id=None, ignore_warnings=False):
         """
-        Create a deployment and return the handle to interact with it. 
+        Create a deployment and return the handle to interact with it.
 
         The returned deployment is not yet started and you need to call :meth:`~DSSProjectDeployerDeployment.start_update`
 
@@ -117,11 +117,11 @@ class DSSProjectDeployer(object):
             # list infrastructures that the user can deploy to
             for infrastructure in deployer.list_infras(as_objects=False):
                 if infrastructure.get("canDeploy", False):
-                    print("User can deploy to %s" % infrastructure["infraBasicInfo"]["id"])            
+                    print("User can deploy to %s" % infrastructure["infraBasicInfo"]["id"])
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerInfra`, else returns a list of dict.
 
-        :return: list of infrastructures, either as :class:`DSSProjectDeployerInfra` or as dict (with fields 
+        :return: list of infrastructures, either as :class:`DSSProjectDeployerInfra` or as dict (with fields
                  as in :meth:`DSSProjectDeployerInfraStatus.get_raw()`)
         :rtype: list
         """
@@ -144,7 +144,7 @@ class DSSProjectDeployer(object):
         """
         settings = {
             "id": infra_id,
-            "stage": stage, 
+            "stage": stage,
             "governCheckPolicy": govern_check_policy,
         }
         self.client._perform_json("POST", "/project-deployer/infras", body=settings)
@@ -171,12 +171,12 @@ class DSSProjectDeployer(object):
             # list project that the user can deploy bundles from
             for project in deployer.list_projects(as_objects=False):
                 if project.get("canDeploy", False):
-                    print("User can deploy to %s" % project["projectBasicInfo"]["id"])            
+                    print("User can deploy to %s" % project["projectBasicInfo"]["id"])
 
 
         :param boolean as_objects: if True, returns a list of :class:`DSSProjectDeployerProject`, else returns a list of dict.
 
-        :return: list of published projects, either as :class:`DSSProjectDeployerProject` or as dict (with fields 
+        :return: list of published projects, either as :class:`DSSProjectDeployerProject` or as dict (with fields
                  as in :meth:`DSSProjectDeployerProjectStatus.get_raw()`)
         :rtype: list
         """
@@ -215,7 +215,7 @@ class DSSProjectDeployer(object):
         Upload a bundle archive for a project.
 
         :param file-like fp: a bundle archive (should be a zip)
-        :param string project_key: key of the published project where the bundle will be uploaded. If the project does not 
+        :param string project_key: key of the published project where the bundle will be uploaded. If the project does not
                                    exist, it is created. If not set, the key of the bundle's source project is used.
         """
         if project_key is None:
@@ -266,7 +266,7 @@ class DSSProjectDeployerInfra(object):
 
     def get_settings(self):
         """
-        Get the settings of this infrastructure. 
+        Get the settings of this infrastructure.
 
         :rtype: :class:`DSSProjectDeployerInfraSettings`
         """
@@ -278,7 +278,7 @@ class DSSProjectDeployerInfra(object):
     def delete(self):
         """
         Delete this infra.
-        
+
         .. note::
 
             You may only delete an infra if there are no deployments using it.
@@ -304,9 +304,9 @@ class DSSProjectDeployerInfraSettings(object):
 
     def get_raw(self):
         """
-        Get the raw settings of this infrastructure. 
+        Get the raw settings of this infrastructure.
 
-        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        This returns a reference to the raw settings, not a copy, so changes made to the returned
         object will be reflected when saving.
 
         :return: the settings, as a dict.
@@ -347,7 +347,7 @@ class DSSProjectDeployerInfraStatus(object):
 
     def get_raw(self):
         """
-        Get the raw status information. 
+        Get the raw status information.
 
         :return: the status, as a dict. The dict contains a list of the bundles currently deployed on the infrastructure
                  as a **deployments** field.
@@ -401,7 +401,7 @@ class DSSProjectDeployerDeployment(object):
 
         :param string bundle_id: (Optional) The ID of a specific bundle of the published project to get status from. If empty, the bundle currently used in the deployment.
 
-        :return: messages about the governance status, as a dict with a **messages** field, itself a list of meassage 
+        :return: messages about the governance status, as a dict with a **messages** field, itself a list of meassage
                  information, each one a dict of:
 
                     * **severity** : severity of the error in the message. Possible values are SUCCESS, INFO, WARNING, ERROR
@@ -411,13 +411,13 @@ class DSSProjectDeployerDeployment(object):
                     * **message** : the error message
                     * **details** : a more detailed error description
 
-        :rtype: dict 
+        :rtype: dict
         """
         return self.client._perform_json("GET", "/project-deployer/deployments/%s/governance-status" % (self.deployment_id), params={ "bundleId": bundle_id })
 
     def get_settings(self):
         """
-        Get the settings of this deployment. 
+        Get the settings of this deployment.
 
         :rtype: :class:`DSSProjectDeployerDeploymentSettings`
         """
@@ -451,6 +451,20 @@ class DSSProjectDeployerDeployment(object):
         self.client._perform_empty(
             "DELETE", "/project-deployer/deployments/%s" % (self.deployment_id))
 
+    def get_testing_status(self, bundle_id=None, automation_node_id=None):
+        """
+        Get the testing status of a project deployment.
+
+        :param (optional) string bundle_id: filters the scenario runs done on a specific bundle
+        :param (optional) automation_node_id: for multi-node deployments only, you need to specify the automation node id on which you want to retrieve
+        the testing status
+        """
+
+        return self.client._perform_json("GET", "/project-deployer/deployments/%s/testing-status" % self.deployment_id, params={
+            "bundleId": bundle_id,
+            "automationNodeId": automation_node_id
+        })
+
 
 class DSSProjectDeployerDeploymentSettings(object):
     """
@@ -470,16 +484,16 @@ class DSSProjectDeployerDeploymentSettings(object):
 
     def get_raw(self):
         """
-        Get the raw settings of this deployment. 
+        Get the raw settings of this deployment.
 
-        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        This returns a reference to the raw settings, not a copy, so changes made to the returned
         object will be reflected when saving.
 
         :return: the settings, as a dict. Notable fields are:
 
                     * **id** : identifier of the deployment
                     * **infraId** : identifier of the infrastructure on which the deployment is done
-                    * **bundleId** : identifier of the bundle of the published project being deployed 
+                    * **bundleId** : identifier of the bundle of the published project being deployed
 
         :rtype: dict
         """
@@ -488,7 +502,7 @@ class DSSProjectDeployerDeploymentSettings(object):
     @property
     def bundle_id(self):
         """
-        Get or set the identifier of the bundle currently used by this deployment. 
+        Get or set the identifier of the bundle currently used by this deployment.
 
         If setting the value, you need to call :meth:`save()` afterward for the change to be effective.
         """
@@ -526,7 +540,7 @@ class DSSProjectDeployerDeploymentStatus(object):
 
     def get_light(self):
         """
-        Get the 'light' (summary) status. 
+        Get the 'light' (summary) status.
 
         This returns a dictionary with various information about the deployment, but not the actual health of the deployment
 
@@ -538,11 +552,11 @@ class DSSProjectDeployerDeploymentStatus(object):
 
     def get_heavy(self):
         """
-        Get the 'heavy' (full) status. 
+        Get the 'heavy' (full) status.
 
         This returns various information about the deployment, notably its health.
 
-        :return: a status, as a dict. The overall status of the deployment is in a **health** field (possible values: UNKNOWN, ERROR, 
+        :return: a status, as a dict. The overall status of the deployment is in a **health** field (possible values: UNKNOWN, ERROR,
                  WARNING, HEALTHY, UNHEALTHY, OUT_OF_SYNC).
         :rtype: dict
         """
@@ -601,9 +615,9 @@ class DSSProjectDeployerProject(object):
 
     def get_status(self):
         """
-        Get status information about this published project. 
+        Get status information about this published project.
 
-        This is used mostly to get information about which versions are available and which 
+        This is used mostly to get information about which versions are available and which
         deployments are exposing this project
 
         :rtype: :class:`DSSProjectDeployerProjectStatus`
@@ -613,7 +627,7 @@ class DSSProjectDeployerProject(object):
 
     def get_settings(self):
         """
-        Get the settings of this published project. 
+        Get the settings of this published project.
 
         The main things that can be modified in a project settings are permissions
 
@@ -662,9 +676,9 @@ class DSSProjectDeployerProjectSettings(object):
 
     def get_raw(self):
         """
-        Get the raw settings of this published project. 
+        Get the raw settings of this published project.
 
-        This returns a reference to the raw settings, not a copy, so changes made to the returned 
+        This returns a reference to the raw settings, not a copy, so changes made to the returned
         object will be reflected when saving.
 
         :return: the settings, as a dict.
@@ -698,8 +712,8 @@ class DSSProjectDeployerProjectStatus(object):
         """
         Get the deployments that have been created from this published project.
 
-        :param string infra_id: (optional) identifier of an infrastructure. When set, only get the deployments deployed on 
-                                this infrastructure. When not set, the list contains all the deployments using this published project, 
+        :param string infra_id: (optional) identifier of an infrastructure. When set, only get the deployments deployed on
+                                this infrastructure. When not set, the list contains all the deployments using this published project,
                                 across every infrastructure of the Project Deployer.
 
         :returns: a list of deployments, each a :class:`DSSProjectDeployerDeployment`
@@ -731,7 +745,7 @@ class DSSProjectDeployerProjectStatus(object):
 
     def get_raw(self):
         """
-        Gets the raw status information. 
+        Gets the raw status information.
 
         :return: the status, as a dict. A  **deployments** sub-field contains a list of the deployments of bundles of this projects.
         :rtype: dict
