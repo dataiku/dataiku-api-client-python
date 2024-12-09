@@ -12,7 +12,7 @@ setup(
     version=VERSION,
     license="Apache Software License",
     packages=["dataikuapi", "dataikuapi.dss", "dataikuapi.apinode_admin", "dataikuapi.fm", "dataikuapi.iam",
-              "dataikuapi.govern", "dataikuapi.dss_plugin_mlflow", "dataikuapi.dss.langchain", "dataikuapi.dss.tools"],
+              "dataikuapi.govern", "dataikuapi.dss_plugin_mlflow", "dataikuapi.dss.langchain", "dataikuapi.dss.tools", "dataikuapi.dss.llm_tracing"],
     description="Python API client for Dataiku APIs",
     long_description=long_description,
     author="Dataiku",
