@@ -133,6 +133,7 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
     def __init__(self, client, data):
         super().__init__(client, data)
         self._sender = data.get("sender", None)
+        self._use_current_user_as_sender = data.get("useCurrentUserAsSender", None)
 
     @property
     def sender(self):
@@ -142,6 +143,16 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
         :rtype: str
         """
         return self._sender
+
+    @property
+    def use_current_user_as_sender(self):
+        """
+        Indicates whether the messaging channel will use the address of the current user as sender.
+        If True and the current user has no associated email address, the sender property is used instead.
+
+        :rtype: bool
+        """
+        return self._use_current_user_as_sender
 
     def send(self, project_key, to, subject, body, attachments=None, plain_text=False, sender=None, cc=None, bcc=None):
         """

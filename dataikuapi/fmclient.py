@@ -9,6 +9,15 @@ from .utils import DataikuException
 from .iam.settings import FMSSOSettings, FMLDAPSettings, FMAzureADSettings
 
 from .fm.tenant import FMCloudCredentials, FMCloudTags
+from .fm.cloudaccounts import (
+    FMCloudAccount,
+    FMAWSCloudAccountCreator,
+    FMAzureCloudAccountCreator,
+    FMGCPCloudAccountCreator,
+    FMAWSCloudAccount,
+    FMAzureCloudAccount,
+    FMGCPCloudAccount
+)
 from .fm.virtualnetworks import (
     FMVirtualNetwork,
     FMAWSVirtualNetworkCreator,
@@ -17,6 +26,12 @@ from .fm.virtualnetworks import (
     FMAWSVirtualNetwork,
     FMAzureVirtualNetwork,
     FMGCPVirtualNetwork
+)
+from .fm.loadbalancers import (
+    FMAWSLoadBalancerCreator,
+    FMAzureLoadBalancerCreator,
+    FMAWSLoadBalancer,
+    FMAzureLoadBalancer
 )
 from .fm.instances import (
     FMInstance,
@@ -85,17 +100,16 @@ class FMClient(object):
 
     def get_tenant_id(self):
         return self.__tenant_id
-        
+
     def get_cloud_credentials(self):
         """
         Get the cloud credentials
-
         :return: cloud credentials
         :rtype: :class:`dataikuapi.fm.tenant.FMCloudCredentials`
         """
         creds = self._perform_tenant_json("GET", "/cloud-credentials")
         return FMCloudCredentials(self, creds)
-    
+
     def get_sso_settings(self):
         """
         Get the Single Sign-On (SSO) settings
@@ -125,7 +139,7 @@ class FMClient(object):
         """
         ldap = self._perform_tenant_json("GET", "/iam/azure-ad-settings")
         return FMAzureADSettings(self, ldap)
-    
+
     def get_cloud_tags(self):
         """
         Get the tenant's cloud tags
@@ -135,6 +149,44 @@ class FMClient(object):
         """
         tags = self._perform_tenant_json("GET", "/cloud-tags")
         return FMCloudTags(self, tags)
+
+    ########################################################
+    # CloudAccount
+    ########################################################
+
+    def _make_cloud_account(self, account):
+        if self.cloud == "AWS":
+            return FMAWSCloudAccount(self, account)
+        elif self.cloud == "Azure":
+            return FMAzureCloudAccount(self, account)
+        elif self.cloud == "GCP":
+            return FMGCPCloudAccount(self, account)
+        else:
+            raise Exception("Unknown cloud type %s" % self.cloud)
+
+    def list_cloud_accounts(self):
+        """
+        List all cloud accounts
+
+        :return: list of cloud accounts
+        :rtype: list of :class:`dataikuapi.fm.cloudaccounts.FMCloudAccount`
+        """
+        vns = self._perform_tenant_json("GET", "/cloud-accounts")
+        return [self._make_cloud_account(x) for x in vns]
+
+    def get_cloud_account(self, cloud_account_id):
+        """
+        Get a cloud account by its id
+
+        :param str cloud_account_id: the id of the cloud account to retrieve
+
+        :return: the requested cloud account
+        :rtype: :class:`dataikuapi.fm.cloudaccounts.FMCloudAccount`
+        """
+        vn = self._perform_tenant_json(
+            "GET", "/cloud-accounts/%s" % cloud_account_id
+        )
+        return self._make_cloud_account(vn)
 
     ########################################################
     # VirtualNetwork
@@ -173,6 +225,42 @@ class FMClient(object):
             "GET", "/virtual-networks/%s" % virtual_network_id
         )
         return self._make_virtual_network(vn)
+
+    ########################################################
+    # Load balancers
+    ########################################################
+
+    def _make_load_balancer(self, vn):
+        if self.cloud == "AWS":
+            return FMAWSLoadBalancer(self, vn)
+        elif self.cloud == "Azure":
+            return FMAzureLoadBalancer(self, vn)
+        else:
+            raise Exception("Unknown cloud type %s" % self.cloud)
+
+    def list_load_balancers(self):
+        """
+        List all load balancers
+
+        :return: list of load balancers
+        :rtype: list of :class:`dataikuapi.fm.loadbalancers.FMLoadBalancer`
+        """
+        vns = self._perform_tenant_json("GET", "/load-balancers")
+        return [self._make_load_balancer(x) for x in vns]
+
+    def get_load_balancer(self, load_balancer_id):
+        """
+        Get a load balancer by its id
+
+        :param str load_balancer_id: the id of the load balancer to retrieve
+
+        :return: the requested load balancer
+        :rtype: :class:`dataikuapi.fm.loadbalancers.FMLoadBalancer`
+        """
+        vn = self._perform_tenant_json(
+            "GET", "/load-balancers/%s" % load_balancer_id
+        )
+        return self._make_load_balancer(vn)
 
     ########################################################
     # Instance settings template
@@ -362,6 +450,15 @@ class FMClientAWS(FMClient):
             host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
 
+    def new_cloud_account_creator(self, label):
+        """
+        Instantiate a new cloud account creator
+
+        :param str label: The label of the cloud account
+        :rtype: :class:`dataikuapi.fm.cloudaccounts.FMAWSCloudAccountCreator`
+        """
+        return FMAWSCloudAccountCreator(self, label)
+
     def new_virtual_network_creator(self, label):
         """
         Instantiate a new virtual network creator
@@ -370,6 +467,16 @@ class FMClientAWS(FMClient):
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAWSVirtualNetworkCreator`
         """
         return FMAWSVirtualNetworkCreator(self, label)
+
+    def new_load_balancer_creator(self, name, virtual_network_id):
+        """
+        Instantiate a new load balancer creator
+
+        :param str name: The name of the load balancer
+        :param str virtual_network_id: The id of the virtual network
+        :rtype: :class:`dataikuapi.fm.loadbalancers.FMAWSLoadBalancerCreator`
+        """
+        return FMAWSLoadBalancerCreator(self, name, virtual_network_id)
 
     def new_instance_template_creator(self, label):
         """
@@ -419,6 +526,15 @@ class FMClientAzure(FMClient):
             host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
 
+    def new_cloud_account_creator(self, label):
+        """
+        Instantiate a new cloud account creator
+
+        :param str label: The label of the cloud account
+        :rtype: :class:`dataikuapi.fm.cloudaccounts.FMAzureCloudAccountCreator`
+        """
+        return FMAzureCloudAccountCreator(self, label)
+
     def new_virtual_network_creator(self, label):
         """
         Instantiate a new virtual network creator
@@ -427,6 +543,16 @@ class FMClientAzure(FMClient):
         :rtype: :class:`dataikuapi.fm.virtualnetworks.FMAzureVirtualNetworkCreator`
         """
         return FMAzureVirtualNetworkCreator(self, label)
+
+    def new_load_balancer_creator(self, name, virtual_network_id):
+        """
+        Instantiate a new Load balancer creator
+
+        :param str name: The name of the load balancer
+        :param str virtual_network_id: The id of the virtual network
+        :rtype: :class:`dataikuapi.fm.loadbalancers.FMAzureLoadBalancerCreator`
+        """
+        return FMAzureLoadBalancerCreator(self, name, virtual_network_id)
 
     def new_instance_template_creator(self, label):
         """
@@ -474,6 +600,15 @@ class FMClientGCP(FMClient):
         super(FMClientGCP, self).__init__(
             host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
         )
+
+    def new_cloud_account_creator(self, label):
+        """
+        Instantiate a new cloud account creator
+
+        :param str label: The label of the cloud account
+        :rtype: :class:`dataikuapi.fm.cloudaccounts.FMGCPCloudAccountCreator`
+        """
+        return FMGCPCloudAccountCreator(self, label)
 
     def new_virtual_network_creator(self, label):
         """

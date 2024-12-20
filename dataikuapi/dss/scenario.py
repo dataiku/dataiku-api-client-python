@@ -831,6 +831,73 @@ class DSSScenarioRun(object):
 
     duration = property(get_duration)
 
+    def get_report(self):
+        """
+        Download a report describing the outcome of a test scenario run, in JUnit XML format.
+
+        :return: the scenario run report, in JUnit XML format
+        :rtype: file-like
+        """
+        if not self.run["scenario"].get("markedAsTest"):
+            raise DataikuException(
+                "When run %s was performed, scenario %s was not marked as a test scenario. Reports are only available for test scenarios."
+                % (self.run["runId"], self.run["scenario"]["id"])
+            )
+
+        return self.client._perform_raw(
+            "GET", "/projects/%s/scenarios/%s/%s/scenario-run-report" % (
+                self.run["scenario"]["projectKey"],
+                self.run["scenario"]["id"],
+                self.run["runId"]
+            ),
+        )
+
+    def get_step_run_report(self, step_id):
+        """
+        Download a report describing the outcome of a test scenario step run, in JUnit XML format.
+
+        :param string step_id: identifier of the step
+
+        :return: the step run report, in JUnit XML format
+        :rtype: file-like
+        """
+        if not self.run["scenario"].get("markedAsTest"):
+            raise DataikuException(
+                "When run %s was performed, scenario %s was not marked as a test scenario. Reports are only available for test scenarios."
+                % (self.run["runId"], self.run["scenario"]["id"])
+            )
+
+        return self.client._perform_raw(
+            "GET",
+            "/projects/%s/scenarios/%s/%s/step-run-report"
+            % (
+                self.run["scenario"]["projectKey"],
+                self.run["scenario"]["id"],
+                self.run["runId"],
+            ),
+            params={"stepId": step_id},
+        )
+
+    def get_log(self, step_id=None):
+        """
+        Gets the logs of the scenario run. If a step_id is passed in the parameters
+        the logs will be scoped to that step.
+
+        :param string step_id: (optional) the id of the step in the run whose log is requested (defaults to **None**)
+
+        :returns: the scenario run logs
+        :rtype: string
+        """
+        return self.client._perform_text(
+            "GET", "/projects/%s/scenarios/%s/%s/log" % (
+                self.run["scenario"]["projectKey"],
+                self.run["scenario"]["id"],
+                self.run["runId"],
+            ),
+            params={ "stepId" : step_id }
+        )
+
+
 class DSSScenarioRunDetails(dict):
     """
     Details of a scenario run, notably the outcome of its steps.

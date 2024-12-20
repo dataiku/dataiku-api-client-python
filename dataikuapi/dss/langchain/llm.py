@@ -17,7 +17,7 @@ from typing import (
     Union,
 )
 
-from langchain.callbacks.manager import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import BaseLLM
 from langchain_core.messages import (
     AIMessage,
@@ -30,20 +30,21 @@ from langchain_core.messages import (
     ToolCall,
     ToolMessage,
 )
+from langchain_core.messages.ai import UsageMetadata
 from langchain_core.outputs import Generation, GenerationChunk, ChatGenerationChunk, LLMResult, ChatResult
 from langchain_core.output_parsers.openai_tools import (
     make_invalid_tool_call,
     parse_tool_call,
 )
 from langchain_core.language_models import BaseChatModel
-from langchain_core.pydantic_v1 import BaseModel
 from langchain_core.tools import BaseTool
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from langchain.schema import ChatGeneration
-from pydantic import Extra
+import pydantic
 
+from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
 from dataikuapi.dss.tools.langchain import StopSequencesAwareStreamer
-
+from dataikuapi.dss.llm import DSSLLMStreamedCompletionFooter
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +132,19 @@ def _enforce_stop_sequences(text: str, stop: List[str]) -> str:
     return re.split("|".join(escaped_stop), text, maxsplit=1)[0]
 
 
-class DKULLM(BaseLLM):
+if must_use_deprecated_pydantic_config():
+    class LockedDownBaseLLM(BaseLLM):
+        class Config:
+            extra = pydantic.Extra.forbid
+            underscore_attrs_are_private = True
+else:
+    class LockedDownBaseLLM(BaseLLM):
+        model_config = {
+            'extra': 'forbid',
+        }
+
+
+class DKULLM(LockedDownBaseLLM):
     """
     Langchain-compatible wrapper around Dataiku-mediated LLMs
 
@@ -173,10 +186,6 @@ class DKULLM(BaseLLM):
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
-
-    class Config:
-        extra = Extra.forbid
-        underscore_attrs_are_private = True
 
     def __init__(self, llm_handle=None, **data: Any):
         if llm_handle is None:
@@ -223,6 +232,9 @@ class DKULLM(BaseLLM):
         total_estimated_cost = 0.0
 
         generations = []
+
+        trace_of_last_response = None
+
         for prompt_resp in resp.responses:
             if not prompt_resp.success:
                 raise Exception("LLM call failed: %s" % prompt_resp._raw.get("errorMessage", "Unknown error"))
@@ -236,12 +248,16 @@ class DKULLM(BaseLLM):
             text = _enforce_stop_sequences(prompt_resp.text, stop)
             generations.append([Generation(text=text)])
 
+            if prompt_resp._raw.get("trace", None) is not None:
+                trace_of_last_response = prompt_resp._raw.get("trace")
+
         llm_output = {
             'promptTokens': total_prompt_tokens,
             'completionTokens': total_completion_tokens,
             'totalTokens': total_total_tokens,
             'tokenCountsAreEstimated': token_counts_are_estimated,
-            'estimatedCost': total_estimated_cost
+            'estimatedCost': total_estimated_cost,
+            'lastTrace': trace_of_last_response
         }
 
         return LLMResult(generations=generations, llm_output=llm_output)
@@ -280,7 +296,19 @@ class DKULLM(BaseLLM):
             yield streamer.yield_(produce_chunk)
 
 
-class DKUChatModel(BaseChatModel):
+if must_use_deprecated_pydantic_config():
+    class LockedDownBaseChatModel(BaseChatModel):
+        class Config:
+            extra = pydantic.Extra.forbid
+            underscore_attrs_are_private = True
+else:
+    class LockedDownBaseChatModel(BaseChatModel):
+        model_config = {
+            'extra': 'forbid',
+        }
+
+
+class DKUChatModel(LockedDownBaseChatModel):
     """
     Langchain-compatible wrapper around Dataiku-mediated chat LLMs
 
@@ -317,10 +345,6 @@ class DKUChatModel(BaseChatModel):
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
-
-    class Config:
-        extra = Extra.forbid
-        underscore_attrs_are_private = True
 
     def __init__(self, llm_handle=None, **data: Any):
         if llm_handle is None:
@@ -365,6 +389,9 @@ class DKUChatModel(BaseChatModel):
         token_counts_are_estimated = False
         total_estimated_cost = 0.0
         generations = []
+
+        trace_of_last_response = None
+
         for prompt_resp in resp.responses:
             if not prompt_resp.success:
                 raise Exception("LLM call failed: %s" % prompt_resp._raw.get("errorMessage", "Unknown error"))
@@ -400,12 +427,22 @@ class DKUChatModel(BaseChatModel):
                             make_invalid_tool_call(raw_tool_call, str(e))
                         )
 
+            if prompt_resp._raw.get("trace", None) is not None:
+                trace_of_last_response = prompt_resp._raw.get("trace")
+
+            usage_metadata = UsageMetadata(
+                input_tokens=prompt_resp._raw.get("promptTokens", 0),
+                output_tokens=prompt_resp._raw.get("completionTokens", 0),
+                total_tokens=prompt_resp._raw.get("totalTokens", 0),
+            )
+
             generations.append(
                 ChatGeneration(message=AIMessage(
                     content=text,
                     additional_kwargs=additional_kwargs,
                     tool_calls=tool_calls,
-                    invalid_tool_calls=invalid_tool_calls
+                    invalid_tool_calls=invalid_tool_calls,
+                    usage_metadata = usage_metadata
                 ))
             )
 
@@ -414,7 +451,8 @@ class DKUChatModel(BaseChatModel):
             'completionTokens': total_completion_tokens,
             'totalTokens': total_total_tokens,
             'tokenCountsAreEstimated': token_counts_are_estimated,
-            'estimatedCost': total_estimated_cost
+            'estimatedCost': total_estimated_cost,
+            'lastTrace': trace_of_last_response
         }
 
         return ChatResult(generations=generations, llm_output=llm_output)
@@ -458,6 +496,15 @@ class DKUChatModel(BaseChatModel):
                 additional_kwargs["tool_calls"] = raw_tool_calls
                 tool_call_chunks = _parse_tool_call_chunks(raw_tool_calls)
 
+            if type(raw_chunk) == DSSLLMStreamedCompletionFooter:
+                usage_metadata = UsageMetadata(
+                    input_tokens=raw_chunk.data.get("promptTokens", 0),
+                    output_tokens=raw_chunk.data.get("completionTokens", 0),
+                    total_tokens=raw_chunk.data.get("totalTokens", 0),
+                )
+            else:
+                usage_metadata = None
+
             new_chunk = ChatGenerationChunk(
                 message=AIMessageChunk(
                     content=text,
@@ -465,6 +512,7 @@ class DKUChatModel(BaseChatModel):
                     additional_kwargs=additional_kwargs,
                 ),
                 generation_info=raw_chunk.data,
+                usage_metadata = usage_metadata
             )
 
             streamer.append(new_chunk)
@@ -479,10 +527,12 @@ class DKUChatModel(BaseChatModel):
 
     def bind_tools(
             self,
-            tools: Sequence[Union[Dict[str, Any], Type[BaseModel], Callable, BaseTool]],
+            tools: Sequence[Union[Dict[str, Any], Type[pydantic.BaseModel], Callable, BaseTool]],
             tool_choice: Optional[
                 Union[dict, str, Literal["auto", "none", "required", "any"], bool]
             ] = None,
+            strict: Optional[bool] = None,
+            compatible: Optional[bool] = None,
             **kwargs: Any,
     ):
         """
@@ -504,10 +554,16 @@ class DKUChatModel(BaseChatModel):
                     - a dict of the form: {"type": "tool_name", "name": "<<tool_name>>"},
                       or {"type": "required"}, or {"type": "any"} or {"type": "none"},
                       or {"type": "auto"};
+            strict: If specified, request the model to produce a JSON tool call that adheres to the provided schema. Support varies across models/providers.
+            compatible: Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
 
             kwargs: Any additional parameters to bind.
         """
-        formatted_tools = [convert_to_openai_tool(tool) for tool in tools]
+        formatted_tools = [
+            _convert_to_llm_mesh_tool(tool, strict, compatible)
+            for tool in tools
+        ]
+
         if tool_choice:
             kwargs["tool_choice"] = _convert_to_llm_mesh_tool_choice(tool_choice, formatted_tools)
 
@@ -554,6 +610,20 @@ def _parse_tool_call_chunks(raw_tool_calls):
     except KeyError as e:
         logger.error("Error when constructing the tool call chunk: ", str(e))
         return []
+
+
+def _convert_to_llm_mesh_tool(
+        tool: Union[Dict[str, Any], Type[pydantic.BaseModel], Callable, BaseTool],
+        strict: Optional[bool] = None,
+        compatible: Optional[bool] = None
+) -> Dict[str, Any]:
+    """Map the tool to its LLM mesh compatible representation"""
+    mesh_tool = convert_to_openai_tool(tool)
+    if isinstance(strict, bool):
+        mesh_tool['function']['strict'] = strict
+    if isinstance(compatible, bool):
+        mesh_tool['function']['compatible'] = compatible
+    return mesh_tool
 
 
 def _convert_to_llm_mesh_tool_choice(
