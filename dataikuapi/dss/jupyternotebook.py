@@ -148,6 +148,13 @@ class DSSJupyterNotebook(object):
         return self.client._perform_json("DELETE",
                                          "/projects/%s/jupyter-notebooks/%s" % (self.project_key, self.notebook_name))
 
+    def clear_outputs(self):
+        """
+        Clear this Jupyter notebook's outputs.
+        """
+        return self.client._perform_json("DELETE",
+                                         "/projects/%s/jupyter-notebooks/%s/outputs" % (self.project_key, self.notebook_name))
+
     ########################################################
     # Discussions
     ########################################################

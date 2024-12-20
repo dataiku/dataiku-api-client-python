@@ -1897,6 +1897,43 @@ class GluonTSNPTSForecasterSettings(PredictionAlgorithmSettings):
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
 
 
+class GluonTSTorchSimpleFeedForwardSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSTorchSimpleFeedForwardSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.distr_output = self._register_categorical_hyperparameter("distr_output")
+        self.batch_normalization = self._register_categorical_hyperparameter("batch_normalization")
+        self.mean_scaling = self._register_categorical_hyperparameter("mean_scaling")
+        self.num_hidden_dimensions = self._register_single_value_hyperparameter("num_hidden_dimensions", accepted_types=[list])
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class GluonTSTorchDeepARSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(GluonTSTorchDeepARSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.num_layers = self._register_numerical_hyperparameter("num_layers")
+        self.num_cells = self._register_numerical_hyperparameter("num_cells")
+        self.dropout_rate = self._register_numerical_hyperparameter("dropout_rate")
+        self.distr_output = self._register_categorical_hyperparameter("distr_output")
+        self.full_context = self._register_single_value_hyperparameter("full_context", accepted_types=[bool])
+        self.scaling = self._register_single_value_hyperparameter("scaling", accepted_types=[bool])
+        self.num_parallel_samples = self._register_single_value_hyperparameter("num_parallel_samples", accepted_types=[int])
+        self.minimum_scale = self._register_single_value_hyperparameter("minimum_scale", accepted_types=[float])
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.epochs = self._register_single_value_hyperparameter("epochs", accepted_types=[int])
+        self.auto_num_batches_per_epoch = self._register_single_value_hyperparameter("auto_num_batches_per_epoch", accepted_types=[bool])
+        self.num_batches_per_epoch = self._register_single_value_hyperparameter("num_batches_per_epoch", accepted_types=[int])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
 class GluonTSSimpleFeedForwardSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -2325,6 +2362,10 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
         "PROPHET": PredictionAlgorithmMeta("prophet_timeseries", ProphetSettings),
         "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
+
+        "GLUONTS_TORCH_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_torch_simple_feed_forward_timeseries", GluonTSTorchSimpleFeedForwardSettings),
+        "GLUONTS_TORCH_DEEPAR": PredictionAlgorithmMeta("gluonts_torch_deepar_timeseries", GluonTSTorchDeepARSettings),
+
         "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
         "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
         "GLUONTS_TRANSFORMER": PredictionAlgorithmMeta("gluonts_transformer_timeseries", GluonTSTransformerSettings),
@@ -2332,7 +2373,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
     }
 
     _TIME_UNITS = {"MILLISECOND", "SECOND", "MINUTE", "HOUR", "DAY", "BUSINESS_DAY", "WEEK", "MONTH", "QUARTER", "HALF_YEAR", "YEAR"}
-    _INTERPOLATION_METHODS = {"NEAREST", "PREVIOUS", "NEXT", "LINEAR", "QUADRATIC", "CUBIC", "CONSTANT"}
+    _INTERPOLATION_METHODS = {"NEAREST", "PREVIOUS", "NEXT", "LINEAR", "QUADRATIC", "CUBIC", "CONSTANT","STAIRCASE"}
     _EXTRAPOLATION_METHODS = {"PREVIOUS_NEXT", "NO_EXTRAPOLATION", "CONSTANT", "LINEAR", "QUADRATIC", "CUBIC"}
     _CATEGORICAL_IMPUTATION_METHODS = {"MOST_COMMON", "NULL", "CONSTANT", "PREVIOUS_NEXT", "PREVIOUS", "NEXT"}
     _DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
@@ -2429,7 +2470,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         Sets the time series resampling numerical interpolation parameters
 
         :param method: Interpolation method. Valid values are: NEAREST, PREVIOUS, NEXT, LINEAR, QUADRATIC,
-            CUBIC, CONSTANT (defaults to **None**, i.e. don't change)
+            CUBIC, CONSTANT, STAIRCASE (defaults to **None**, i.e. don't change)
         :type method: str, optional
         :param constant: Value for the CONSTANT interpolation method (defaults to **None**, i.e. don't change)
         :type constant: float, optional

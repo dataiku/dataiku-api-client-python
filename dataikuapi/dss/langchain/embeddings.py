@@ -2,18 +2,33 @@
 import asyncio
 import concurrent
 import logging
+import threading 
+
 from typing import List, Any
 
-from pydantic import BaseModel, Extra
-
+import pydantic
 from langchain.embeddings.base import Embeddings
+from dataikuapi.dss.llm_tracing import new_trace
 
+from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
 
 logger = logging.getLogger(__name__)
 CHUNK_SIZE = 1000
 
 
-class DKUEmbeddings(BaseModel, Embeddings):
+if must_use_deprecated_pydantic_config():
+    class LockedDownBaseModel(pydantic.BaseModel):
+        class Config:
+            extra = pydantic.Extra.forbid
+            underscore_attrs_are_private = True
+else:
+    class LockedDownBaseModel(pydantic.BaseModel):
+        model_config = {
+            'extra': 'forbid',
+        }
+
+
+class DKUEmbeddings(LockedDownBaseModel, Embeddings):
     """
     Langchain-compatible wrapper around Dataiku-mediated embedding LLMs
 
@@ -27,9 +42,12 @@ class DKUEmbeddings(BaseModel, Embeddings):
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
 
-    class Config:
-        extra = Extra.forbid
-        underscore_attrs_are_private = True
+    # The embeddings class of LangChain can only return raw embedding, without any additional information
+    # (unlike ChatModel, which supports additional information), so we cannot use this to return the last
+    # trace to the caller.
+    # So, instead, we keep a thread local with the last trace, and the caller can get it from here
+    # (at the moment, it's mostly done by rag_query_server.py)
+    _last_trace = None
 
     def __init__(self, llm_handle=None, **data: Any):
         if llm_handle is None:
@@ -45,6 +63,7 @@ class DKUEmbeddings(BaseModel, Embeddings):
 
         super().__init__(**data)
         self._llm_handle = llm_handle
+        self._last_trace = threading.local()
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Call out to Dataiku-mediated LLM
@@ -55,29 +74,37 @@ class DKUEmbeddings(BaseModel, Embeddings):
         Returns:
             List of embeddings, one for each text.
         """
-        logging.info("Performing embedding of {num_texts} texts".format(num_texts=len(texts)))
 
-        embeddings = []
-        for i in range(0, len(texts), CHUNK_SIZE):
-            query = self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
+        with new_trace("DKUEmbeddings") as trace:
+            self._last_trace.trace = trace
 
-            for text in texts[i:i+CHUNK_SIZE]:
-                query.add_text(text)
+            logger.info("Performing embedding of {num_texts} texts".format(num_texts=len(texts)))
 
-            resp = query.execute()
+            embeddings = []
+            for i in range(0, len(texts), CHUNK_SIZE):
+                query = self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
 
-            # TODO
-            #if not resp.success:
-            #    raise Exception("LLM call failed: %s" % resp._raw.get("errorMessage", "Unknown error"))
+                for text in texts[i:i+CHUNK_SIZE]:
+                    query.add_text(text)
 
-            embeddings.extend(resp.get_embeddings())
+                resp = query.execute()
 
-            logging.info("Finished a chunk. Embedded {num_embedded} of {num_texts} texts".format(
-                num_embedded=min(i + CHUNK_SIZE, len(texts)), num_texts=len(texts)))
+                # TODO
+                #if not resp.success:
+                #    raise Exception("LLM call failed: %s" % resp._raw.get("errorMessage", "Unknown error"))
 
-        logging.info("Done performing embedding of {num_texts} texts".format(num_texts=len(texts)))
+                if "responses" in resp._raw and len(resp._raw["responses"]) == 1:
+                    if "trace" in resp._raw["responses"][0]:
+                        trace.append_trace(resp._raw["responses"][0]["trace"])
 
-        return embeddings
+                embeddings.extend(resp.get_embeddings())
+
+                logger.info("Finished a chunk. Embedded {num_embedded} of {num_texts} texts".format(
+                    num_embedded=min(i + CHUNK_SIZE, len(texts)), num_texts=len(texts)))
+
+            logger.info("Done performing embedding of {num_texts} texts".format(num_texts=len(texts)))
+
+            return embeddings
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()
