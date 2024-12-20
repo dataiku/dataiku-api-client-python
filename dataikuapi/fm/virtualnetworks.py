@@ -38,17 +38,52 @@ class FMVirtualNetworkCreator(object):
         self.use_default_values = True
         return self
 
+    def with_account(self, cloud_account=None, cloud_account_id=None):
+        """
+        Set the Cloud Account for this virtual network
+
+        :param  cloud_account: The cloud account
+        :type cloud_account: :class:`dataikuapi.fm.cloudaccounts.FMCloudAccount`
+        :param str cloud_account_id: The cloud account identifier
+
+        """
+        if cloud_account_id is not None:
+            self.data["accountId"] = cloud_account_id
+        else:
+            if cloud_account is not None:
+                self.data["accountId"] = cloud_account.id
+            else:
+                raise ValueError("You must specify a Cloud Account or a Cloud Account identifier")
+        return self
+
+    def with_auto_create_peering(self):
+        """
+        Automatically create the network peering when creating this virtual network
+        """
+        self.data["autoCreatePeerings"] = True
+        return self
 
 class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
-    def with_vpc(self, aws_vpc_id, aws_subnet_id):
+    def with_vpc(self, aws_vpc_id, aws_subnet_id, aws_second_subnet_id=None):
         """
-        Setup the VPC and Subnet to be used by the virtual network
+        Set the VPC and Subnet to be used by the virtual network
 
         :param str aws_vpc_id: ID of the VPC to use
         :param str aws_subnet_id: ID of the subnet to use
+        :param str aws_second_subnet_id: ID of the second subnet to use
         """
         self.data["awsVpcId"] = aws_vpc_id
         self.data["awsSubnetId"] = aws_subnet_id
+        self.data["awsSecondSubnetId"] = aws_second_subnet_id
+        return self
+
+    def with_region(self, aws_region):
+        """
+        Set the region where the VPC should be found
+
+        :param str aws_region: the region of the VPC to use
+        """
+        self.data["awsRegion"] = aws_region
         return self
 
     def with_auto_create_security_groups(self):
@@ -82,15 +117,17 @@ class FMAWSVirtualNetworkCreator(FMVirtualNetworkCreator):
 
 
 class FMAzureVirtualNetworkCreator(FMVirtualNetworkCreator):
-    def with_azure_virtual_network(self, azure_vn_id, azure_subnet_id):
+    def with_azure_virtual_network(self, azure_vn_id, azure_subnet_id, azure_second_subnet_id=None):
         """
         Setup the Azure Virtual Network and Subnet to be used by the virtual network
 
         :param str azure_vn_id: Resource ID of the Azure Virtual Network to use
-        :param str azure_subnet_id: Resource ID of the subnet to use
+        :param str azure_subnet_id: Subnet name of the first subnet
+        :param str azure_second_subnet_id: Subnet name of the second subnet
         """
         self.data["azureVnId"] = azure_vn_id
         self.data["azureSubnetId"] = azure_subnet_id
+        self.data["azureSecondSubnetId"] = azure_second_subnet_id
         return self
 
     def with_auto_update_security_groups(self, auto_update_security_groups=True):
