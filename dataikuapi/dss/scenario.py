@@ -66,9 +66,9 @@ class DSSScenario(object):
 
             # When you call `run` a scenario, the scenario is not immediately
             # started. Instead a "manual trigger" fires.
-            # 
+            #
             # This trigger fire can be cancelled if the scenario was already running,
-            # or if another trigger fires. Thus, the scenario run is not available 
+            # or if another trigger fires. Thus, the scenario run is not available
             # immediately, and we must "wait" for it
             scenario_run = trigger_fire.wait_for_scenario_run()
 
@@ -256,7 +256,7 @@ class DSSScenario(object):
 
     def get_trigger_fire(self, trigger_id, trigger_run_id):
         """
-        Get a trigger fire object. 
+        Get a trigger fire object.
 
         .. caution::
 
@@ -280,12 +280,12 @@ class DSSScenario(object):
     def get_definition(self, with_status=True):
         """
         Get the definition of the scenario.
-        
+
         .. attention::
 
             Deprecated, use :meth:`get_settings` and :meth:`get_status`
 
-        :param bool with_status: if True, get only the run status of the scenario. If False, get the 
+        :param bool with_status: if True, get only the run status of the scenario. If False, get the
                                  raw definition of the scenario.
 
         :return: if **with_status** is False, the scenario's definition as returned by :meth:`DSSScenarioSettings.get_raw()`.
@@ -307,7 +307,7 @@ class DSSScenario(object):
             Deprecated, use :meth:`get_settings` and :meth:`DSSScenarioSettings.save`
 
         :param dict definition: a scenario definition obtained by calling :meth:`get_definition()`, then modified
-        :param bool with_status: should be the same as the value passed to :meth:`get_definition()`. If True, the only 
+        :param bool with_status: should be the same as the value passed to :meth:`get_definition()`. If True, the only
                                  fields that can be modified are active, checklists, description, shortDesc and tags
         """
         warnings.warn("DSSScenario.set_definition is deprecated, please use get_settings", DeprecationWarning)
@@ -318,11 +318,11 @@ class DSSScenario(object):
     def get_payload(self, extension='py'):
         """
         Get the payload of the scenario.
-        
+
         .. attention::
 
             Deprecated, use :meth:`get_settings` and :meth:`get_status`
-        
+
         :param string extension: the type of script. Default is 'py' for python
         """
         warnings.warn("DSSScenario.get_payload is deprecated, please use get_settings", DeprecationWarning)
@@ -337,7 +337,7 @@ class DSSScenario(object):
         .. attention::
 
             Deprecated, use :meth:`get_settings` and :meth:`DSSScenarioSettings.save`
-        
+
         :param string script: the new value of the script
         :param string extension: the type of script. Default is 'py' for python
         """
@@ -347,7 +347,7 @@ class DSSScenario(object):
 
 class DSSScenarioStatus(object):
     """
-    Status of a scenario. 
+    Status of a scenario.
 
     .. important::
 
@@ -387,10 +387,10 @@ class DSSScenarioStatus(object):
         Time at which the scenario is expected to run next.
 
         This expected time is computed based on the only triggers for which forecasts
-        are possible, that is, the active time-based triggers. May be None if there is 
+        are possible, that is, the active time-based triggers. May be None if there is
         no such trigger.
 
-        This is an approximate indication as scenario run may be delayed, especially in the case of 
+        This is an approximate indication as scenario run may be delayed, especially in the case of
         multiple triggers or high load.
 
         :rtype: :class:`datetime.datetime`
@@ -402,7 +402,7 @@ class DSSScenarioStatus(object):
 
 class DSSScenarioSettings(object):
     """
-    Settings of a scenario. 
+    Settings of a scenario.
 
     .. important::
 
@@ -427,7 +427,7 @@ class DSSScenarioSettings(object):
         """
         return self.data
 
-    @property 
+    @property
     def active(self):
         """
         Whether this scenario is currently active, i.e. its auto-triggers are executing.
@@ -439,12 +439,12 @@ class DSSScenarioSettings(object):
     def active(self, active):
         self.data["active"] = active
 
-    @property 
+    @property
     def run_as(self):
         """
         Get the login of the user the scenario runs as.
 
-        None means that the scenario runs as the last user who modified the scenario. Only 
+        None means that the scenario runs as the last user who modified the scenario. Only
         administrators may set a non-None value.
 
         :rtype: string
@@ -457,7 +457,7 @@ class DSSScenarioSettings(object):
     @property
     def effective_run_as(self):
         """
-        Get the effective 'run as' of the scenario. 
+        Get the effective 'run as' of the scenario.
 
         If the value returned by :meth:`run_as()` is not None, then that value. Otherwise, this
         will be the login of the last user who modified the scenario.
@@ -525,7 +525,7 @@ class DSSScenarioSettings(object):
         :param int month: month part of the date/time before which the trigger won't run
         :param int day: day part of the date/time before which the trigger won't run
         :param int starting_hour: hour part of the date/time before which the trigger won't run
-        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or 
+        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or
                                 "SERVER" for the time zone of the DSS server
         """
         starting_date =self.__get_starting_date__(year=year, month=month, day=day)
@@ -539,14 +539,14 @@ class DSSScenarioSettings(object):
 
         :param int repeat_every: interval between activations of the trigger, in days
         :param list days: if None, the trigger runs every **repeat_every** other day. If set to a list of day names, the trigger
-                          runs every **repeat_every** other week, on the designated days. The day names are Monday, Tuesday, 
+                          runs every **repeat_every** other week, on the designated days. The day names are Monday, Tuesday,
                           Wednesday, Thursday, Friday, Saturday, Sunday
         :param int hour: hour in the day when the trigger should run
         :param int minute: minute in the hour when the trigger should run
         :param int year: year part of the date/time before which the trigger won't run
         :param int month: month part of the date/time before which the trigger won't run
         :param int day: day part of the date/time before which the trigger won't run
-        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or 
+        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or
                                 "SERVER" for the time zone of the DSS server
         """
         starting_date =self.__get_starting_date__(year=year, month=month, day=day)
@@ -563,7 +563,7 @@ class DSSScenarioSettings(object):
         Add a trigger that runs the scenario every X months.
 
         :param int repeat_every: interval between activations of the trigger, in months
-        :parma string run_on: when in the month the trigger should run. Possible values are ON_THE_DAY, LAST_DAY_OF_THE_MONTH, 
+        :parma string run_on: when in the month the trigger should run. Possible values are ON_THE_DAY, LAST_DAY_OF_THE_MONTH,
                               FIRST_WEEK, SECOND_WEEK, THIRD_WEEK, FOURTH_WEEK, LAST_WEEK.
         :param int day: day in the day when the trigger should run, when **run_on** is ON_THE_DAY or None
         :param int hour: hour in the day when the trigger should run, when **run_on** is ON_THE_DAY or None
@@ -571,7 +571,7 @@ class DSSScenarioSettings(object):
         :param int minute_of_hour: position in the hour of the firing of the trigger
         :param int year: year part of the date/time before which the trigger won't run
         :param int month: month part of the date/time before which the trigger won't run
-        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or 
+        :param string timezone: timezone in which the start date/time is expressed. Can be a time zone name like "Europe/Paris" or
                                 "SERVER" for the time zone of the DSS server
         """
         starting_date = self.__get_starting_date__(year=year, month=month, day=day, default_is_today=False)
@@ -658,7 +658,7 @@ class PythonScriptBasedScenarioSettings(DSSScenarioSettings):
     @code.setter
     def code(self, script):
         self.script = script
-    
+
     def save(self):
         """
         Saves the settings to the scenario.
@@ -696,10 +696,10 @@ class DSSScenarioRun(object):
         """
         Refresh the details of the run.
 
-        For ongoing scenario runs, this updates the set of outcomes of the steps and 
+        For ongoing scenario runs, this updates the set of outcomes of the steps and
         their results.
 
-        .. note:: 
+        .. note::
 
             This method performs another API call
         """
@@ -772,7 +772,7 @@ class DSSScenarioRun(object):
 
         This includes notably the individual step runs inside the scenario run.
 
-        .. note:: 
+        .. note::
 
             This method performs another API call
 
@@ -941,7 +941,7 @@ class DSSScenarioRunDetails(dict):
     @property
     def first_error_details(self):
         """
-        Get the details of the first error if this run failed. 
+        Get the details of the first error if this run failed.
 
         This will not always be able to find the error details (it returns None in that case)
 
@@ -1000,7 +1000,7 @@ class DSSStepRunDetails(dict):
             * **stack** : stacktrace of the exception, as a single string
             * **code** : well-known error code, as listed in `the doc <https://doc.dataiku.com/dss/latest/troubleshooting/errors/index.html>`_
             * **fixability** : type of action to take in order to remediate the issue, if possible. For example USER_CONFIG_DATASET, ADMIN_SETTINGS_SECURITY, ...
-        
+
         :rtype: dict
         """
         if self.outcome == 'FAILED':
@@ -1017,7 +1017,7 @@ class DSSStepRunDetails(dict):
 class DSSScenarioRunWaiter(object):
     """
     Helper to wait for a scenario to run to complete.
-    """    
+    """
     def __init__(self, scenario_run, trigger_fire):
         self.trigger_fire = trigger_fire
         self.scenario_run = scenario_run
@@ -1043,7 +1043,7 @@ class DSSScenarioRunWaiter(object):
 
 class DSSTriggerFire(object):
     """
-    A handle representing the firing of a trigger on a scenario. 
+    A handle representing the firing of a trigger on a scenario.
 
     .. important::
 
@@ -1061,7 +1061,7 @@ class DSSTriggerFire(object):
         """
         Get the definition of the trigger fire event.
 
-        :return: the trigger fire, as a dict. The **runId** field in the dict is not an identifier 
+        :return: the trigger fire, as a dict. The **runId** field in the dict is not an identifier
                  of a scenario run, but of a run of the trigger.
         :rtype: dict
         """
@@ -1071,11 +1071,11 @@ class DSSTriggerFire(object):
         """
         Poll for the run of the scenario that the trigger fire should initiate.
 
-        This methos waits for the run of the sceanrio that this trigger activation launched to be available, or 
+        This methos waits for the run of the sceanrio that this trigger activation launched to be available, or
         for the trigger fire to be cancelled (possibly cancelled by another trigger firing).
 
         :param boolean no_fail: if True, return None if the trigger fire is cancelled, else raise
-        
+
         :return: a handle on a scenario run, or None
         :rtype: :class:`DSSScenarioRun`
         """
@@ -1097,7 +1097,7 @@ class DSSTriggerFire(object):
 
     def get_scenario_run(self):
         """
-        Get the run of the scenario that this trigger fire launched. 
+        Get the run of the scenario that this trigger fire launched.
 
         May return None if the scenario run started from this trigger has not yet been created.
 
@@ -1130,7 +1130,7 @@ class DSSTriggerFire(object):
 
 class DSSScenarioListItem(DSSTaggableObjectListItem):
     """
-    An item in a list of scenarios. 
+    An item in a list of scenarios.
 
     .. important::
 
@@ -1175,3 +1175,42 @@ class DSSScenarioListItem(DSSTaggableObjectListItem):
         :rtype: :class:`datetime.datetime`
         """
         return _timestamp_ms_to_zoned_datetime(self._data['start'])
+
+
+class DSSTestingStatus(object):
+    """
+    The testing status of a project
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.get_testing_status()` or :meth:`dataikuapi.dss.project.DSSProjectDeployer.get_testing_status()`
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    @property
+    def nb_total_ran_scenarios(self):
+        """
+        The total number of ran scenarios
+
+        :rtype: int
+        """
+        return self._raw["nbTotalRanScenarios"]
+
+    @property
+    def nb_scenarios_per_outcome(self):
+        """
+        The number of ran scenarios per scenario outcome
+
+        :rtype: dict[string, int]
+        """
+        return self._raw["nbScenariosPerOutcome"]
+
+    def get_raw(self):
+        """
+        Gets the raw testing status information.
+
+        :rtype: dict
+        """
+        return self._raw

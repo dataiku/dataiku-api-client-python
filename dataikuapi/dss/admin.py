@@ -635,10 +635,10 @@ class DSSUser(object):
         from dataikuapi.dssclient import DSSClient
 
         if self.client.api_key is not None:
-            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login}, insecure_tls=not self.client._session.verify)
+            return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login}, no_check_certificate=not self.client._session.verify)
         elif self.client.internal_ticket is not None:
             return DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
-                                         extra_headers={"X-DKU-ProxyUser":  self.login}, insecure_tls=not self.client._session.verify)
+                                         extra_headers={"X-DKU-ProxyUser":  self.login}, no_check_certificate=not self.client._session.verify)
         else:
             raise ValueError("Don't know how to proxy this client")
 
@@ -680,7 +680,7 @@ class DSSUserSettingsBase(object):
 
     def get_raw(self):
         """
-        Get the the raw settings of the user
+        Get the raw settings of the user.
 
         Modifications made to the returned object are reflected when saving.
 
@@ -689,6 +689,12 @@ class DSSUserSettingsBase(object):
                     * **login** : identifier of the user, can't be modified
                     * **enabled** : whether the user can log into DSS
                     * **groups** : list of group names this user belongs to
+                    * **trialStatus**: The trial status of the user, with the following keys:
+                        - exists: True if this user is or was on trial
+                        - expired: True if the trial period has expired
+                        - valid: True if the trial is valid (for ex, has not expired and the license allows it)
+                        - expiresOn: Date (ms since epoch) when the trial will expire
+                        - grantedOn: Date (ms since epoch) when the trial was granted
 
         :rtype: dict
         """

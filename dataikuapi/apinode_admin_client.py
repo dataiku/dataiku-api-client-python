@@ -1,4 +1,5 @@
 import json
+import warnings
 
 from .apinode_admin.service import APINodeService
 from .apinode_admin.auth import APINodeAuth
@@ -8,11 +9,16 @@ from .base_client import DSSBaseClient
 class APINodeAdminClient(DSSBaseClient):
     """Entry point for the DSS APINode admin client"""
 
-    def __init__(self, uri, api_key, insecure_tls=False):
+    def __init__(self, uri, api_key, no_check_certificate=False, **kwargs):
         """
         Instantiate a new DSS API client on the given base uri with the given API key.
         """
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "admin/api"), api_key, insecure_tls=insecure_tls)
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "admin/api"), api_key, no_check_certificate=no_check_certificate)
 
     ########################################################
     # Services generations

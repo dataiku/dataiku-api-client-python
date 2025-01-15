@@ -33,12 +33,13 @@ from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 import os.path as osp
 from .utils import DataikuException, dku_basestring_type
+from .govern_client import GovernClient
 
 
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, insecure_tls=False):
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, **kwargs):
         """
         Instantiate a new DSS API client on the given host with the given API key.
 
@@ -46,11 +47,16 @@ class DSSClient(object):
 
         The API key will define which operations are allowed for the client.
         """
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.api_key = api_key
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
-        if insecure_tls:
+        if no_check_certificate:
             self._session.verify = False
 
         if self.api_key is not None:
@@ -1466,6 +1472,25 @@ class DSSClient(object):
         """
         self._perform_empty(
             "POST", "/admin/licensing/license", body=json.loads(license))
+
+    ########################################################
+    # Govern
+    ########################################################
+
+    def get_govern_client(self):
+        """
+        Return the Govern Client handle corresponding to the Dataiku Govern integration settigns, or None if not enabled or misconfigured.
+
+        This call requires an API key with admin rights.
+
+        :return: a Dataiku Govern client handle or None if not enabled or misconfigured
+        :rtype: :class:`dataikuapi.GovernClient` or None
+        """
+        resp = self._perform_json("GET", "/admin/get-govern-node-ref")
+        if resp.get('enabled', False) is False or resp.get('nodeUrl', None) is None or resp.get('apiKey', None) is None:
+            return None
+        else:
+            return GovernClient(resp['nodeUrl'], resp['apiKey'], no_check_certificate=resp.get('trustAllSSLCertificates', False))
 
 
     ########################################################

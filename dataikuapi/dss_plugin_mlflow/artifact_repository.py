@@ -3,6 +3,7 @@ import tempfile
 import urllib
 import re
 import sys
+import warnings
 from dataikuapi import DSSClient
 
 
@@ -27,7 +28,7 @@ class PluginDSSManagedFolderArtifactRepository:
             os.environ.get("DSS_MLFLOW_HOST"),
             api_key=os.environ.get("DSS_MLFLOW_APIKEY"),
             internal_ticket=os.environ.get("DSS_MLFLOW_INTERNAL_TICKET"),
-            insecure_tls= self._should_use_insecure_tls
+            no_check_certificate= self._should_use_no_check_certificate
         )
         if 'DSS_MLFLOW_VERIFY_CERT' in os.environ:
             self.client._session.verify = os.environ.get('DSS_MLFLOW_VERIFY_CERT')
@@ -35,15 +36,21 @@ class PluginDSSManagedFolderArtifactRepository:
         parsed_uri = parse_dss_managed_folder_uri(artifact_uri)
         self.managed_folder = self.__get_managed_folder(parsed_uri.netloc)
         self.base_artifact_path = PurePosixPath(parsed_uri.path)
-
+    
     @property
     def _should_use_insecure_tls(self):
-        insecure_tls = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS")
+        # Backward compatibility before removing insecure_tls option
+        warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+        return self._should_use_no_check_certificate(self)
+
+    @property
+    def _should_use_no_check_certificate(self):
+        no_check_certificate = os.environ.get("MLFLOW_TRACKING_INSECURE_TLS")
         # this env variable is documented in MLFlow, it's not ours, we must parse it similarly to how MLflow does it.
         # https://github.com/mlflow/mlflow/blob/dde5d79f57eada1820da1cafe4d58eeff476a022/mlflow/environment_variables.py#L70
-        if insecure_tls is not None:
-            insecure_tls = insecure_tls.lower()
-            return insecure_tls in ["true", "1"]
+        if no_check_certificate is not None:
+            no_check_certificate = no_check_certificate.lower()
+            return no_check_certificate in ["true", "1"]
         else:
             return False
 

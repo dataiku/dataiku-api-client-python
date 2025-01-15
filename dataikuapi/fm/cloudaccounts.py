@@ -66,14 +66,16 @@ class FMAWSCloudAccountCreator(FMCloudAccountCreator):
 
 
 class FMAzureCloudAccountCreator(FMCloudAccountCreator):
-    def same_as_fm(self, tenant_id, image_resource_group):
+    def same_as_fm(self, subscription, tenant_id, image_resource_group):
         """
         Use the same authentication as Fleet Manager
         
+        :param str subscription: Azure Subscription
         :param str tenant_id: Azure Tenant Id
         :param str image_resource_group: Azure image cached resource group
         """
         self.data["azureAuthenticationMode"] = "DEFAULT_INSTANCE_CREDENTIALS"
+        self.data["azureSubscription"] = subscription
         self.data["azureTenantId"] = tenant_id
         self.data["azureImageResourceGroup"] = image_resource_group
         return self
