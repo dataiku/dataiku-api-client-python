@@ -1,4 +1,5 @@
 import json
+import warnings
 from requests import Session, exceptions
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
@@ -6,12 +7,17 @@ from .auth import HTTPBearerAuth
 from .utils import DataikuException
 
 class DSSBaseClient(object):
-    def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None, insecure_tls=False):
+    def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None, no_check_certificate=False, **kwargs):
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.api_key = api_key
         self.bearer_token = bearer_token
         self.base_uri = base_uri
         self._session = Session()
-        if insecure_tls:
+        if no_check_certificate:
             self._session.verify = False
 
     ########################################################

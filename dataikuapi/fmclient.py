@@ -3,6 +3,7 @@ from requests import Session
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 import os.path as osp
+import warnings
 
 from .utils import DataikuException
 
@@ -68,7 +69,8 @@ class FMClient(object):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
-        insecure_tls=False,
+        no_check_certificate=False,
+        **kwargs
     ):
         """
         Base class for the different FM Clients
@@ -78,12 +80,18 @@ class FMClient(object):
             raise NotImplementedError(
                 "Do not use FMClient directly, instead use FMClientAWS, FMClientAzure or FMClientGCP"
             )
+        
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.api_key_id = api_key_id
         self.api_key_secret = api_key_secret
         self.host = host
         self.__tenant_id = tenant_id
         self._session = Session()
-        if insecure_tls:
+        if no_check_certificate:
             self._session.verify = False
 
         if self.api_key_id is not None and self.api_key_secret is not None:
@@ -435,7 +443,8 @@ class FMClientAWS(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
-        insecure_tls=False,
+        no_check_certificate=False,
+        **kwargs
     ):
         """
         AWS Only - Instantiate a new FM API client on the given host with the given API key.
@@ -445,9 +454,14 @@ class FMClientAWS(FMClient):
         :param str host: Full url of the FM
 
         """
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.cloud = "AWS"
         super(FMClientAWS, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, no_check_certificate=no_check_certificate
         )
 
     def new_cloud_account_creator(self, label):
@@ -512,7 +526,8 @@ class FMClientAzure(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
-        insecure_tls=False,
+        no_check_certificate=False,
+        **kwargs
     ):
         """
         Azure Only - Instantiate a new FM API client on the given host with the given API key.
@@ -521,9 +536,14 @@ class FMClientAzure(FMClient):
 
         :param str host: Full url of the FM
         """
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.cloud = "Azure"
         super(FMClientAzure, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, no_check_certificate=no_check_certificate
         )
 
     def new_cloud_account_creator(self, label):
@@ -587,7 +607,8 @@ class FMClientGCP(FMClient):
         api_key_secret,
         tenant_id="main",
         extra_headers=None,
-        insecure_tls=False,
+        no_check_certificate=False,
+        **kwargs
     ):
         """
         GCP Only - Instantiate a new FM API client on the given host with the given API key.
@@ -596,9 +617,14 @@ class FMClientGCP(FMClient):
 
         :param str host: Full url of the FM
         """
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+        
         self.cloud = "GCP"
         super(FMClientGCP, self).__init__(
-            host, api_key_id, api_key_secret, tenant_id, extra_headers, insecure_tls
+            host, api_key_id, api_key_secret, tenant_id, extra_headers, no_check_certificate=no_check_certificate
         )
 
     def new_cloud_account_creator(self, label):
