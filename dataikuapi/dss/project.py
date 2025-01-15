@@ -26,7 +26,7 @@ from .notebook import DSSNotebook
 from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
 from .savedmodel import DSSSavedModel
-from .scenario import DSSScenario, DSSScenarioListItem
+from .scenario import DSSScenario, DSSScenarioListItem, DSSTestingStatus
 from .sqlnotebook import DSSSQLNotebook, DSSSQLNotebookListItem
 from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListItem, \
     DSSManagedStreamingEndpointCreationHelper
@@ -143,7 +143,7 @@ class DSSProject(object):
             - **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
             - **exportAllInputManagedFolders** (boolean):
               Exports the data of all input managed folders (default to **False**)
-            - **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
+            - **exportGitRepository** (boolean): Exports the Git repository history (you must be project admin if a git remote with credentials is configured, defaults to **False**)
             - **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
 
 
@@ -173,7 +173,7 @@ class DSSProject(object):
             * **exportAllDatasets** (boolean): Exports the data of all datasets (default to **False**)
             * **exportAllInputManagedFolders** (boolean): \
                 Exports the data of all input managed folders (default to **False**)
-            * **exportGitRepository** (boolean): Exports the Git repository history (default to **False**)
+            * **exportGitRepository** (boolean): Exports the Git repository history (you must be project admin if git contains a remote with credentials, defaults to **False**)
             * **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
 
         """
@@ -196,7 +196,7 @@ class DSSProject(object):
                   duplication_mode="MINIMAL",
                   export_analysis_models=True,
                   export_saved_models=True,
-                  export_git_repository=True,
+                  export_git_repository=None,
                   export_insights_data=True,
                   remapping=None,
                   target_project_folder=None):
@@ -208,7 +208,7 @@ class DSSProject(object):
         :param str duplication_mode: can be one of the following values: MINIMAL, SHARING, FULL, NONE (defaults to **MINIMAL**)
         :param bool export_analysis_models: (defaults to **True**)
         :param bool export_saved_models: (defaults to **True**)
-        :param bool export_git_repository: (defaults to **True**)
+        :param bool export_git_repository: (you must be project admin if git contains a remote with credentials, defaults to **True** if authorized)
         :param bool export_insights_data: (defaults to **True**)
         :param dict remapping: dict of connections to be remapped for the new project (defaults to **{}**)
         :param target_project_folder: the project folder where to put the duplicated project (defaults to **None**)
@@ -1786,12 +1786,12 @@ class DSSProject(object):
     # Testing with DSS test scenarios report
     ########################################################
 
-    def get_last_test_scenario_runs_report(self, bundle_id):
+    def get_last_test_scenario_runs_report(self, bundle_id=None):
         """
-        Download a report describing the outcome of the latest test scenario runs performed in this project, on an
-        Automation node, under a specified active bundle
+        Download a report describing the outcome of the latest test scenario runs performed in this project.
+        On an Automation node, you can specify a bundle id, otherwise the report concerns the active bundle.
 
-        :param str bundle_id: bundle id tag
+        :param str (optional) bundle_id: bundle id tag
 
         :return: the test scenarios report, in JUnit XML format
         :rtype: file-like
@@ -1802,12 +1802,12 @@ class DSSProject(object):
             params={"bundleId": bundle_id}
         )
 
-    def get_last_test_scenario_runs_html_report(self, bundle_id):
+    def get_last_test_scenario_runs_html_report(self, bundle_id=None):
         """
-        Download a report describing the outcome of the latest test scenario runs performed in this project, on an
-        Automation node, under a specified active bundle
+        Download a report describing the outcome of the latest test scenario runs performed in this project.
+        On an Automation node, you can specify a bundle id, otherwise the report concerns the active bundle.
 
-        :param str bundle_id: bundle id tag
+        :param str (optional) bundle_id: bundle id tag
 
         :return: the test scenarios report, in HTML format
         :rtype: file-like
@@ -2543,10 +2543,10 @@ class DSSProject(object):
         Get the testing status of a DSS Project. It combines the last run outcomes of all the test scenarios defined on the project, considering the worst outcome as a final result.
         :param (optional) string bundle_id : if the project is on automation node, you can specify a bundle_id to filter only on the last
         scenario runs when this bundle was active
-        :return: returns a dict with the keys 'nbTotalRanScenarios' and 'nbScenariosPerOutcome'
-        :rtype: dict
+        :returns: A :class:`dataikuapi.dss.scenario.DSSTestingStatus` object handle
         """
-        return self.client._perform_json("GET", "/projects/%s/scenarios/testing-status" % self.project_key,  params={"bundleId": bundle_id})
+
+        return DSSTestingStatus(self.client._perform_json("GET", "/projects/%s/scenarios/testing-status" % self.project_key,  params={"bundleId": bundle_id}))
 
 
 class TablesImportDefinition(object):
@@ -3003,7 +3003,7 @@ class DSSProjectGit(object):
         """
         return self.client._perform_json("GET", "/projects/%s/git/lib-git-refs/" % self.project_key)
 
-    def add_library(self, repository, local_target_path, checkout,  path_in_git_repository="", add_to_python_path=True):
+    def add_library(self, repository, local_target_path, checkout,  path_in_git_repository="", add_to_python_path=True, login=None, password=None):
         """
         Add a new external library to the project and pull it.
 
@@ -3012,11 +3012,15 @@ class DSSProjectGit(object):
         :param str checkout: The branch, commit, or tag to check out.
         :param str path_in_git_repository: The path in the git repository.
         :param bool add_to_python_path: Whether to add the reference to the Python path.
+        :param str login: The remote repository login, for HTTPS repository (defaults to **None**).
+        :param str password: The remote repository password, for HTTPS repository (defaults to **None**).
         :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the pull process
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
         body = {
             "repository": repository,
+            "login": login,
+            "password": password,
             "pathInGitRepository": path_in_git_repository,
             "localTargetPath": local_target_path,
             "checkout": checkout,
@@ -3024,7 +3028,7 @@ class DSSProjectGit(object):
         }
         return self.client._perform_json("POST", "/projects/%s/git/lib-git-refs/" % self.project_key, body=body)
 
-    def set_library(self, git_reference_path, remote, remotePath, checkout):
+    def set_library(self, git_reference_path, remote, remotePath, checkout, login=None, password=None):
         """
         Set an existing external library.
 
@@ -3032,11 +3036,15 @@ class DSSProjectGit(object):
         :param str remote: The remote repository.
         :param str remotePath: The path in the git repository.
         :param str checkout: The branch, commit, or tag to check out.
+        :param str login: The remote repository login, for HTTPS repository (defaults to **None**).
+        :param str password: The remote repository password, for HTTPS repository (defaults to **None**).
         :return: The path of the external library.
         :rtype: str
         """
         body = {
             "repository": remote,
+            "login": login,
+            "password": password,
             "pathInGitRepository": remotePath,
             "checkout": checkout,
         }

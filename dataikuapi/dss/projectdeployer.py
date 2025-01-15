@@ -1,5 +1,5 @@
 from .future import DSSFuture
-
+from .scenario import DSSTestingStatus
 
 class DSSProjectDeployer(object):
     """
@@ -458,12 +458,13 @@ class DSSProjectDeployerDeployment(object):
         :param (optional) string bundle_id: filters the scenario runs done on a specific bundle
         :param (optional) automation_node_id: for multi-node deployments only, you need to specify the automation node id on which you want to retrieve
         the testing status
+        :returns: A :class:`dataikuapi.dss.scenario.DSSTestingStatus` object handle
         """
 
-        return self.client._perform_json("GET", "/project-deployer/deployments/%s/testing-status" % self.deployment_id, params={
+        return DSSTestingStatus(self.client._perform_json("GET", "/project-deployer/deployments/%s/testing-status" % self.deployment_id, params={
             "bundleId": bundle_id,
             "automationNodeId": automation_node_id
-        })
+        }))
 
 
 class DSSProjectDeployerDeploymentSettings(object):

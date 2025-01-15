@@ -1,3 +1,5 @@
+import warnings
+
 from .utils import DataikuException
 from .base_client import DSSBaseClient
 
@@ -7,7 +9,7 @@ class APINodeClient(DSSBaseClient):
     This is an API client for the user-facing API of DSS API Node server (user facing API)
     """
 
-    def __init__(self, uri, service_id, api_key=None, bearer_token=None, insecure_tls=False):
+    def __init__(self, uri, service_id, api_key=None, bearer_token=None, no_check_certificate=False, **kwargs):
         """
         Instantiate a new DSS API client on the given base URI with the given API key.
 
@@ -16,7 +18,12 @@ class APINodeClient(DSSBaseClient):
         :param str api_key: Optional, API key for the service. Only required if the service has its authorization setup to API keys
         :param str bearer_token: Optional, The bearer token. Only required if the service has its authorization setup to OAuth2/JWT
         """
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token, insecure_tls=insecure_tls)
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "public/api/v1/%s" % service_id), api_key=api_key, bearer_token=bearer_token, no_check_certificate=no_check_certificate)
 
     @staticmethod
     def _set_dispatch(obj, forced_generation, dispatch_key):

@@ -1,4 +1,5 @@
 import json
+import warnings
 
 from requests import Session, exceptions
 from requests.auth import HTTPBasicAuth
@@ -22,17 +23,22 @@ from dataikuapi.utils import DataikuException
 class GovernClient(object):
     """Entry point for the Govern API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, insecure_tls=False):
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, **kwargs):
         """
         Instantiate a new Govern API client on the given host with the given API key.
         API keys can be managed in Govern in the global settings.
         The API key will define which operations are allowed for the client.
         """
+        if "insecure_tls" in kwargs:
+            # Backward compatibility before removing insecure_tls option
+            warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
+            no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
+
         self.api_key = api_key
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
-        if insecure_tls:
+        if no_check_certificate:
             self._session.verify = False
 
         if self.api_key is not None:

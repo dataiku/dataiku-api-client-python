@@ -275,6 +275,16 @@ class FMAWSVirtualNetwork(FMVirtualNetwork):
 
         return self
 
+    def set_assign_public_ip(self, public_ip=True):
+        """
+        Sets whether the instances on this network will have a publicly accessible IP
+
+        :param bool public_ip: if False, the instances will not be accessible from outside AWS VPC
+        """
+        if public_ip is not None:
+            self.vn_data["awsAssignPublicIP"] = public_ip
+            return self
+
 
 class FMAzureVirtualNetwork(FMVirtualNetwork):
     def set_dns_strategy(self, assign_domain_name, azure_dns_zone_id=None):
@@ -292,6 +302,16 @@ class FMAzureVirtualNetwork(FMVirtualNetwork):
             self.vn_data["dnsStrategy"] = "NONE"
 
         return self
+
+    def set_assign_public_ip(self, public_ip=True):
+        """
+        Sets whether the instances on this network will have a publicly accessible IP
+
+        :param bool public_ip: if False, the instances will not be accessible from outside Azure Vnet
+        """
+        if public_ip is not None:
+            self.vn_data["azureAssignPublicIP"] = public_ip
+            return self
 
 
 class FMGCPVirtualNetwork(FMVirtualNetwork):

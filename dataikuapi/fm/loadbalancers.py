@@ -120,7 +120,7 @@ class FMAzureLoadBalancerCreator(FMLoadBalancerCreator):
 
         :param :class:`dataikuapi.fm.loadbalancers.FMAzureLoadBalancerTier` tier: lb tier
         """
-        self.lb_data["tier"] = tier
+        self.lb_data["tier"] = tier.value
         return self
 
     def with_certificate_secret_id(self, azure_certificate_secret_id):
@@ -339,7 +339,7 @@ class FMAzureLoadBalancer(FMLoadBalancer):
 
         :param :class:`dataikuapi.fm.loadbalancers.FMAzureLoadBalancerTier` tier: lb tier
         """
-        self.lb_data["tier"] = tier
+        self.lb_data["tier"] = tier.value
         return self
 
     def set_certificate_secret_id(

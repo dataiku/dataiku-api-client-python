@@ -554,6 +554,7 @@ class DKUChatModel(LockedDownBaseChatModel):
                     - a dict of the form: {"type": "tool_name", "name": "<<tool_name>>"},
                       or {"type": "required"}, or {"type": "any"} or {"type": "none"},
                       or {"type": "auto"};
+
             strict: If specified, request the model to produce a JSON tool call that adheres to the provided schema. Support varies across models/providers.
             compatible: Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
 
