@@ -5,7 +5,7 @@ from requests.auth import HTTPBasicAuth
 import os.path as osp
 import warnings
 
-from .utils import DataikuException
+from .utils import handle_http_exception
 
 from .iam.settings import FMSSOSettings, FMLDAPSettings, FMAzureADSettings
 
@@ -360,8 +360,9 @@ class FMClient(object):
             body = json.dumps(body)
         if raw_body is not None:
             body = raw_body
-        try:
-            http_res = self._session.request(
+
+
+        http_res = self._session.request(
                 method,
                 "%s/api/public%s" % (self.host, path),
                 params=params,
@@ -369,20 +370,8 @@ class FMClient(object):
                 files=files,
                 stream=stream,
             )
-            http_res.raise_for_status()
-            return http_res
-        except exceptions.HTTPError:
-            try:
-                ex = http_res.json()
-            except ValueError:
-                ex = {"message": http_res.text}
-            raise DataikuException(
-                "%s: %s"
-                % (
-                    ex.get("errorType", "Unknown error"),
-                    ex.get("message", "No message"),
-                )
-            )
+        handle_http_exception(http_res)
+        return http_res
 
     def _perform_empty(
         self, method, path, params=None, body=None, files=None, raw_body=None

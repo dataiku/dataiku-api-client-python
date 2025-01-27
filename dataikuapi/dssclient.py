@@ -32,7 +32,7 @@ from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 import os.path as osp
-from .utils import DataikuException, dku_basestring_type
+from .utils import dku_basestring_type, handle_http_exception
 from .govern_client import GovernClient
 
 
@@ -1503,21 +1503,14 @@ class DSSClient(object):
         if raw_body is not None:
             body = raw_body
 
-        try:
-            http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    params=params, data=body,
-                    files=files,
-                    stream=stream,
-                    headers=headers)
-            http_res.raise_for_status()
-            return http_res
-        except exceptions.HTTPError:
-            try:
-                ex = http_res.json()
-            except ValueError:
-                ex = {"message": http_res.text}
-            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("detailedMessage", ex.get("message", "No message"))))
+        http_res = self._session.request(
+                method, "%s/dip/publicapi%s" % (self.host, path),
+                params=params, data=body,
+                files=files,
+                stream=stream,
+                headers=headers)
+        handle_http_exception(http_res)
+        return http_res
 
     def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
         self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
@@ -1532,15 +1525,12 @@ class DSSClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
 
     def _perform_json_upload(self, method, path, name, f):
-        try:
-            http_res = self._session.request(
-                    method, "%s/dip/publicapi%s" % (self.host, path),
-                    files = {'file': (name, f, {'Expires': '0'})} )
-            http_res.raise_for_status()
-            return http_res
-        except exceptions.HTTPError:
-            ex = http_res.json()
-            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+        http_res = self._session.request(
+            method, "%s/dip/publicapi%s" % (self.host, path),
+            files = {'file': (name, f, {'Expires': '0'})} )
+
+        handle_http_exception(http_res)
+        return http_res
 
     ########################################################
     # Discussions
