@@ -4,7 +4,7 @@ from requests import Session, exceptions
 from requests import exceptions
 from requests.auth import HTTPBasicAuth
 from .auth import HTTPBearerAuth
-from .utils import DataikuException
+from .utils import handle_http_exception
 
 class DSSBaseClient(object):
     def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None, no_check_certificate=False, **kwargs):
@@ -36,16 +36,12 @@ class DSSBaseClient(object):
         elif self.bearer_token:
             auth = HTTPBearerAuth(self.bearer_token)
 
-        try:
-            http_res = self._session.request(
+        http_res = self._session.request(
                     method, "%s/%s" % (self.base_uri, path),
                     params=params, data=body, headers=headers,
                     auth=auth, stream = stream)
-            http_res.raise_for_status()
-            return http_res
-        except exceptions.HTTPError:
-            ex = http_res.json()
-            raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("message", "No message")))
+        handle_http_exception(http_res)
+        return http_res
 
     def _perform_empty(self, method, path, params=None, body=None):
         self._perform_http(method, path, params, body, False)

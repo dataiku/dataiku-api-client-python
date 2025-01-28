@@ -22,6 +22,15 @@ else:
 class DataikuException(Exception):
     """Exception launched by the Dataiku API clients when an error occurs"""
 
+def handle_http_exception(http_res):
+    if http_res.status_code >= 400:
+        try:
+            ex = http_res.json()
+        except ValueError:
+            ex = {"message": http_res.text}
+        raise DataikuException("%s: %s" % (ex.get("errorType", "Unknown error"), ex.get("detailedMessage", ex.get("message", "No message"))))
+
+
 class DataikuUTF8CSVReader(object):
     """
     A CSV reader which will iterate over lines in the CSV file "f",
