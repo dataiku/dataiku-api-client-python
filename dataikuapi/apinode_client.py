@@ -1,8 +1,5 @@
 import warnings
-
-from .utils import DataikuException
 from .base_client import DSSBaseClient
-
 
 class APINodeClient(DSSBaseClient):
     """Entry point for the DSS API Node client
