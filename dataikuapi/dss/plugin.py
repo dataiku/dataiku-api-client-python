@@ -27,9 +27,8 @@ class DSSPluginSettingsBase(object):
             then calling :meth:`save()` results in these changes being saved.
 
         :return: the settings as a dict. The instance-level settings consist of the plugin code env's name,
-        the presets and the permissions to use the plugin components. The project-level settings consist of the
-        presets and the parameter set descriptions.
-
+                 the presets and the permissions to use the plugin components. The project-level settings consist of the
+                 presets and the parameter set descriptions.
         :rtype: dict
         """
         return self.settings

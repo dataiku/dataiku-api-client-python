@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import re
@@ -2377,6 +2378,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
     _EXTRAPOLATION_METHODS = {"PREVIOUS_NEXT", "NO_EXTRAPOLATION", "CONSTANT", "LINEAR", "QUADRATIC", "CUBIC"}
     _CATEGORICAL_IMPUTATION_METHODS = {"MOST_COMMON", "NULL", "CONSTANT", "PREVIOUS_NEXT", "PREVIOUS", "NEXT"}
     _DUPLICATE_TIMESTAMPS_HANDLING_METHODS = {"FAIL_IF_CONFLICTING", "DROP_IF_CONFLICTING", "MEAN_MODE"}
+    _BOUNDARY_DATE_MODE = {"AUTO", "CUSTOM"}
 
     class PredictionTypes:
         """
@@ -2402,7 +2404,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         """
         return self.mltask_settings["timestepParams"]
 
-    def set_time_step(self, time_unit=None, n_time_units=None, end_of_week_day=None, reguess=True, update_algorithm_settings=True, unit_alignment=None):
+    def set_time_step(self, time_unit=None, n_time_units=None, end_of_week_day=None, reguess=True, update_algorithm_settings=True, unit_alignment=None, monthly_alignment=None):
         """
         Sets the time step parameters for the time series forecasting task.
 
@@ -2417,8 +2419,10 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         :type reguess: bool
         :param update_algorithm_settings: Whether the algorithm settings should also be reguessed if reguessing the ML Task (defaults to **True**)
         :type update_algorithm_settings: bool
-        :param unit_alignment: month for each step when time_unit is QUARTER or YEAR, between 1 and 3 for QUARTER and 1 and 12 for YEAR (defaults to **None**, i.e. don't change)
+        :param unit_alignment: for each step, month index (between 1 and 3) when time_unit is QUARTER, month index (between 1 and 6) when time_unit is HALF_YEAR, month number (between 1 and 12) when time_unit is YEAR (defaults to **None**, i.e. don't change)
         :type unit_alignment: int, optional
+        :param monthly_alignment: for each step, day of the month (between 1 and 31) when time_unit is MONTH, QUARTER, HALF_YEAR or YEAR (defaults to **None**, i.e. don't change)
+        :type monthly_alignment: int, optional
         """
 
         time_step_params = self.get_time_step_params()
@@ -2434,14 +2438,24 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
             if time_step_params["timeunit"] != "WEEK":
                 logger.warning("Changing end of week day, but time unit is not WEEK")
             time_step_params["endOfWeekDay"] = end_of_week_day
+        if monthly_alignment is not None:
+            assert isinstance(monthly_alignment, int), "monthly_alignment should be an int"
+            assert 1 <= monthly_alignment <= 31, "unit_alignment should be in [1, 31]"
+            if time_step_params["timeunit"] not in ["MONTH", "QUARTER", "HALF_YEAR", "YEAR"]:
+                logger.warning('Changing monthly alignment, but time unit is not in ["MONTH", "QUARTER", "HALF_YEAR", "YEAR"]')
+            time_step_params["monthlyAlignment"] = monthly_alignment
         if unit_alignment is not None:
             assert isinstance(unit_alignment, int), "unit_alignment should be an int"
-            max_selected_month = 12
+            max_unit_value = 12
             if time_step_params["timeunit"] == "QUARTER":
-                max_selected_month = 3
-            assert unit_alignment >= 1 and unit_alignment <= max_selected_month, "unit_alignment should be in [1, {}]".format(max_selected_month)
-            if time_step_params["timeunit"] not in ["QUARTER", "YEAR"]:
-                logger.warning('Changing unit alignment, but time unit is not in ["QUARTER", "YEAR"]')
+                max_unit_value = 3
+            if time_step_params["timeunit"] == "HALF_YEAR":
+                max_unit_value = 6
+            if time_step_params["timeunit"] == "YEAR":
+                max_unit_value = 12
+            assert 1 <= unit_alignment <= max_unit_value, "unit_alignment should be in [1, {}]".format(max_unit_value)
+            if time_step_params["timeunit"] not in ["QUARTER", "HALF_YEAR", "YEAR"]:
+                logger.warning('Changing unit alignment, but time unit is not in ["QUARTER", "HALF_YEAR", "YEAR"]')
             time_step_params["unitAlignment"] = unit_alignment
         if reguess:
             logger.info("Reguessing ML task settings after changing time step params")
@@ -2504,6 +2518,37 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
             if resampling_params["numericalExtrapolateMethod"] != "CONSTANT":
                 logger.warning("Changing numerical extrapolation constant value, but extrapolation method is not CONSTANT")
             resampling_params["numericalExtrapolateConstantValue"] = constant
+
+    def set_resampling_dates(self, start_date_mode="AUTO", custom_start_date=None, end_date_mode="AUTO", custom_end_date=None):
+        """
+        Sets dates to use for resampling the time series
+
+        :param start_date_mode: either "AUTO" to use the oldest known timestamp or "CUSTOM" to use the date set with *custom_start_date* (defaults to **AUTO**)
+        :type start_date_mode: string, optional
+        :param custom_start_date: start date to use for resampling (defaults to **None**)
+        :type custom_start_date: datetime.date, optional
+        :param end_date_mode: either "AUTO" to use the newest known timestamp or "CUSTOM" to use the date set with *custom_end_date* (defaults to **AUTO**)
+        :type end_date_mode: string, optional
+        :param custom_end_date: end date to use for resampling (defaults to **None**)
+        :type custom_end_date: datetime.date, optional
+        """
+        resampling_params = self.get_resampling_params()
+
+        assert start_date_mode in self._BOUNDARY_DATE_MODE, "Resampling start date mode must be in {}, not {}".format(self._BOUNDARY_DATE_MODE, start_date_mode)
+        resampling_params["startDateMode"] = start_date_mode
+        if custom_start_date is not None:
+            assert isinstance(custom_start_date, datetime.date), "Resampling start date should be a datetime.date"
+            if resampling_params["startDateMode"] != "CUSTOM":
+                logger.warning("Changing resampling start date but start date mode is not CUSTOM, the date will be ignored")
+            resampling_params["customStartDate"] = custom_start_date.isoformat()
+
+        assert end_date_mode in self._BOUNDARY_DATE_MODE, "Resampling end date mode must be in {}, not {}".format(self._BOUNDARY_DATE_MODE, end_date_mode)
+        resampling_params["endDateMode"] = end_date_mode
+        if custom_end_date is not None:
+            assert isinstance(custom_end_date, datetime.date), "Resampling end date should be a datetime.date"
+            if resampling_params["endDateMode"] != "CUSTOM":
+                logger.warning("Changing resampling end date but end date mode is not CUSTOM, the date will be ignored")
+            resampling_params["customEndDate"] = custom_end_date.isoformat()
 
     def set_categorical_imputation(self, method=None, constant=None):
         """
@@ -3732,35 +3777,40 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         with open(filename, "wb") as f:
             f.write(self.get_scoring_python_stream().content)
 
-    def get_scoring_mlflow_stream(self):
+    def get_scoring_mlflow_stream(self, use_original_model=False):
         """
         Returns a stream of a zip containing this trained model using the MLflow Model format.
 
         This works provided that you have the license to do so and that the model is compatible with MLflow scoring.
         You need to close the stream after download. Failure to do so will result in the DSSClient becoming unusable.
 
+        :param use_original_model: Works only if the model was originally imported from MLflow. Set to True if you want to get the original MLflow model and to False if you want DSS to regenerate a new MLflow model. Defaults to False.
+        :type use_original_model: bool, optional
         :returns: an archive file, as a stream
         :rtype: file-like
         """
+        use_original_model_param = "true" if use_original_model else "false"
         if self.mltask is not None:
             return self.mltask.client._perform_raw(
-                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-python?mlflowExport=true" %
-                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id))
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/scoring-python?mlflowExport=true&useOriginalMLflowModel=%s" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id, use_original_model_param))
         else:
             return self.saved_model.client._perform_raw(
-                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python?mlflowExport=true" %
-                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version))
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/scoring-python?mlflowExport=true&useOriginalMLflowModel=%s" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version, use_original_model_param))
 
-    def get_scoring_mlflow(self, filename):
+    def get_scoring_mlflow(self, filename, use_original_model=False):
         """
         Downloads a zip containing data for this trained model, using the MLflow Model format.
 
         This works provided that you have the license to do so and that the model is compatible with MLflow scoring.
 
         :param str filename: filename to the resulting MLflow Model zip
+        :param use_original_model: Works only if the model was originally imported from MLflow. Set to True if you want to get the original MLflow model and to False if you want DSS to regenerate a new MLflow model. Defaults to False.
+        :type use_original_model: bool, optional
         """
         with open(filename, "wb") as f:
-            f.write(self.get_scoring_mlflow_stream().content)
+            f.write(self.get_scoring_mlflow_stream(use_original_model).content)
 
     def export_to_snowflake_function(self, connection_name, function_name, wait=True):
         """
@@ -3957,6 +4007,59 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
         return DSSPartialDependencies(data)
+
+
+class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetails):
+    """
+    Object to read details of a timeseries forecasting model, for instance the per time series metrics
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
+    """
+    def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        super(DSSTrainedTimeseriesForecastingModelDetails, self).__init__(details, snippet, saved_model, saved_model_version, mltask, mltask_model_id)
+    
+    def compute_residuals(self, wait=True):
+        """
+        Launch computation of residuals for this trained timeseries model.
+        :param wait: a flag to wait for the operation to complete (defaults to **True**)
+        :return: if wait is True, a dictionary containing the residuals per-timeseries, else a future to wait on the result
+        :rtype: Union[:class:`dict`, :class:`dataikuapi.dss.future.DSSFuture`]
+        """
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/timeseries-residuals" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/timeseries-residuals" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version)
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+    
+    def get_residuals(self):
+        """
+        Retrieve a list of residuals for this trained time-series models
+        :return: A dictionary, which contains a residuals object per-timeseries
+        :rtype: dict
+        """
+        if self.mltask is not None:
+            res = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/timeseries-residuals" %
+                       (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            res = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/timeseries-residuals" %
+                       (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version)
+                )
+
+        return res
 
 
 class DSSSubpopulationGlobal(object):
@@ -4743,7 +4846,7 @@ class DSSMLTask(object):
         :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
 
         :return: A :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails` representing the details of this trained model.
-        :rtype: Union[:class:`DSSTrainedPredictionModelDetails`, :class:`DSSTrainedClusteringModelDetails`]
+        :rtype: Union[:class:`DSSTrainedPredictionModelDetails`, :class:`DSSTrainedClusteringModelDetails`, :class:`DSSTrainedTimeseriesForecastingModelDetails`]
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
@@ -4751,8 +4854,9 @@ class DSSMLTask(object):
 
         if "facts" in ret:
             return DSSTrainedClusteringModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
-        else:
-            return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
+        if snippet.get("predictionType", "") == DSSTimeseriesForecastingMLTaskSettings.PredictionTypes.TIMESERIES_FORECAST:
+            return DSSTrainedTimeseriesForecastingModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
+        return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
 
     def delete_trained_model(self, model_id):
         """

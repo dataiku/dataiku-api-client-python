@@ -21,7 +21,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix
+from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix, DSSLLMCostLimitingCounters
 from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
@@ -353,7 +353,7 @@ class DSSClient(object):
     # SQL queries
     ########################################################
 
-    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, project_key=None):
+    def sql_query(self, query, connection=None, database=None, dataset_full_name=None, pre_queries=None, post_queries=None, type='sql', extra_conf=None, script_steps=None, script_input_schema=None, script_output_schema=None, script_report_location=None, read_timestamp_without_timezone_as_string=True, read_date_as_string=False, project_key=None, datetimenotz_read_mode="AS_IS", dateonly_read_mode="AS_IS"):
         """
         Initiate a SQL, Hive or Impala query and get a handle to retrieve the results of the query.
 
@@ -369,13 +369,20 @@ class DSSClient(object):
         :param list post_queries: (optional) array of queries to run after the query
         :param str type: the type of query : either 'sql', 'hive' or 'impala' (default: sql)
         :param str project_key: The project_key on which the query should be run (especially useful for user isolation/impersonation scenario)
+        :param str datetimenotz_read_mode: if set to 'AS_IS', read SQL data types that map to the 'datetime no tz' DSS type as such. If set
+                                          to 'AS_STRING', read them as strings, straight from the database (ie: conversion to string is
+                                          done by the database, according to its own settings). If set to 'AS_DATE', read them as the DSS 'datetime with tz'
+                                          type, in the UTC timezone. Default 'AS_IS'
+        :param str dateonly_read_mode: if set to 'AS_IS', read SQL data types that map to the 'date only' DSS type as such. If set
+                                          to 'AS_STRING', read them as strings, straight from the database. If set to 'AS_DATE', read them as the
+                                          DSS 'datetime with tz' type, in the UTC timezone. Default 'AS_IS'
 
         :return: a handle on the SQL query
         :rtype: :class:`dataikuapi.dss.sqlquery.DSSSQLQuery`
         """
         if extra_conf is None:
             extra_conf = {}
-        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, project_key)
+        return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, datetimenotz_read_mode, dateonly_read_mode, project_key)
 
     ########################################################
     # Users
@@ -1503,6 +1510,8 @@ class DSSClient(object):
         if raw_body is not None:
             body = raw_body
 
+        #logging.info("Request with headers=%s" % headers)
+
         http_res = self._session.request(
                 method, "%s/dip/publicapi%s" % (self.host, path),
                 params=params, data=body,
@@ -1512,17 +1521,17 @@ class DSSClient(object):
         handle_http_exception(http_res)
         return http_res
 
-    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None):
-        self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body)
+    def _perform_empty(self, method, path, params=None, body=None, files = None, raw_body=None, headers=None):
+        self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body, headers=headers)
 
-    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body).text
+    def _perform_text(self, method, path, params=None, body=None,files=None, raw_body=None, headers=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=False, raw_body=raw_body, headers=headers).text
 
-    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None):
-        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body).json()
+    def _perform_json(self, method, path, params=None, body=None,files=None, raw_body=None, headers=None):
+        return self._perform_http(method, path,  params=params, body=body, files=files, stream=False, raw_body=raw_body, headers=headers).json()
 
-    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None):
-        return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body)
+    def _perform_raw(self, method, path, params=None, body=None,files=None, raw_body=None, headers=None):
+        return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body, headers=headers)
 
     def _perform_json_upload(self, method, path, name, f):
         http_res = self._session.request(
@@ -1753,6 +1762,18 @@ class DSSClient(object):
         ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
         return DSSAzureADSettings(self, ldap)
 
+    ########################################################
+    # LLM Cost limiting
+    ########################################################
+
+    def get_llm_cost_limiting_counters(self):
+        """
+        Gets the LLM cost limiting counters of the instance
+
+        :return: the cost limiting counters
+        :rtype: DSSLLMCostLimitingCounters
+        """
+        return DSSLLMCostLimitingCounters(self._perform_json("GET", "/admin/llm-cost-limiting/counters"))
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):
@@ -1792,7 +1813,6 @@ class TemporaryImportHandle(object):
             settings["_"] = "_"
         return self.client._perform_json("POST", "/projects/import/%s/process" % (self.import_id),
             body = settings)
-
 
 class DSSInstanceInfo(object):
     """Global information about the DSS instance"""

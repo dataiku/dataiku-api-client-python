@@ -10,6 +10,7 @@ from .continuousactivity import DSSContinuousActivity
 from .dashboard import DSSDashboard, DSSDashboardListItem, DASHBOARDS_URI_FORMAT
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .discussion import DSSObjectDiscussions
+from .document_extractor import DocumentExtractor
 from .flow import DSSProjectFlow
 from .future import DSSFuture
 from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
@@ -33,6 +34,7 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
 from .llm import DSSLLM, DSSLLMListItem
+from .agent_tool import DSSAgentTool, DSSAgentToolListItem
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from ..dss_plugin_mlflow import MLflowHandle
 
@@ -1329,6 +1331,8 @@ class DSSProject(object):
                 STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive\
                 metastore for recomputed HDFS datasets.
+            * (Optional) a autoUpdateSchemaBeforeEachRecipeRun field (True or False) to specify whether to auto update\
+                the schema before each recipe run.
 
         :returns: A job handle
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
@@ -1348,6 +1352,9 @@ class DSSProject(object):
                 STREAMING_ENDPOINT)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive\
                 metastore for recomputed HDFS datasets.
+            * (Optional) a autoUpdateSchemaBeforeEachRecipeRun field (True or False) to specify whether to auto update\
+                the schema before each recipe run.
+
         :param bool no_fail: if true, the function won't fail even if the job fails or aborts (defaults to **False**)
 
         :returns: the final status of the job
@@ -1573,6 +1580,10 @@ class DSSProject(object):
         current_variables[type].update(variables)
         self.set_variables(current_variables)
 
+    @property
+    def document_extractor(self):
+        return DocumentExtractor(self.client, self.project_key)
+
     ########################################################
     # API Services
     ########################################################
@@ -1791,10 +1802,18 @@ class DSSProject(object):
         Download a report describing the outcome of the latest test scenario runs performed in this project.
         On an Automation node, you can specify a bundle id, otherwise the report concerns the active bundle.
 
+        Usage example:
+
+        .. code-block:: python
+
+            project = client.get_project('MY_PROJECT')
+            with open('/tmp/report.xml', 'wb') as f:
+                f.write(project.get_last_test_scenario_runs_report().content)
+
         :param str (optional) bundle_id: bundle id tag
 
-        :return: the test scenarios report, in JUnit XML format
-        :rtype: file-like
+        :returns: the HTTP response to read the report content from, in a JUnit XML format
+        :rtype: :class:`requests.models.Response`
         """
         return self.client._perform_raw(
             "GET",
@@ -1809,8 +1828,16 @@ class DSSProject(object):
 
         :param str (optional) bundle_id: bundle id tag
 
-        :return: the test scenarios report, in HTML format
-        :rtype: file-like
+        Usage example:
+
+        .. code-block:: python
+
+            project = client.get_project('MY_PROJECT')
+            with open('/tmp/report.html', 'wb') as f:
+                f.write(project.get_last_test_scenario_runs_html_report().content)
+
+        :returns: the HTTP response to read the report content from, in an HTML format
+        :rtype: :class:`requests.models.Response`
         """
         return self.client._perform_raw(
             "GET",
@@ -1872,6 +1899,7 @@ class DSSProject(object):
         scenario_id = self.client._perform_json("POST", "/projects/%s/scenarios/" % self.project_key,
                                                 body=definition)['id']
         return DSSScenario(self.client, self.project_key, scenario_id)
+
 
     ########################################################
     # Recipes
@@ -2001,7 +2029,7 @@ class DSSProject(object):
             return recipe.DownloadRecipeCreator(name, self)
         elif type == "sql_query":
             return recipe.SQLQueryRecipeCreator(name, self)
-        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
             return recipe.CodeRecipeCreator(name, type, self)
         elif type in ["cpython", "ksql", "streaming_spark_scala"]:
             return recipe.CodeRecipeCreator(name, type, self)
@@ -2369,6 +2397,29 @@ class DSSProject(object):
         :returns: A :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank` knowledge bank handle
         """
         return DSSKnowledgeBank(self.client, self.project_key, id)
+
+
+    ########################################################
+    # Agent Tools
+    ########################################################
+
+    def list_agent_tools(self, as_type="listitems"):
+        """
+        :rtype: list
+        """
+        ret = self.client._perform_json("GET", "/projects/%s/agents/tools?includeDescriptions=false" % (self.project_key))
+        if as_type == "listitems":
+            return [DSSAgentToolListItem(self.client, self.project_key, item) for item in ret["tools"]]
+        elif as_type == "objects":
+            return [DSSAgentTool(self.client, self.project_key, item["id"]) for item in ret["tools"]]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_agent_tool(self, tool_id):
+        """
+        Get a handle to interact with a specific tool
+        """
+        return DSSAgentTool(self.client, self.project_key, tool_id)
 
     ########################################################
     # Webapps
@@ -3114,7 +3165,7 @@ class JobDefinitionBuilder(object):
 
     def __init__(self, project, job_type="NON_RECURSIVE_FORCED_BUILD"):
         self.project = project
-        self.definition = {'type': job_type, 'refreshHiveMetastore': False, 'outputs': []}
+        self.definition = {'type': job_type, 'refreshHiveMetastore': False, 'outputs': [], 'autoUpdateSchemaBeforeEachRecipeRun': False}
 
     def with_type(self, job_type):
         """
@@ -3150,6 +3201,15 @@ class JobDefinitionBuilder(object):
             {'type': object_type, 'id': name, 'projectKey': object_project_key, 'partition': partition})
         return self
 
+    def with_auto_update_schema_before_each_recipe_run(self, auto_update_schema_before_each_recipe_run):
+        """
+        Sets whether the schema should be auto updated before each recipe run
+
+        :param bool auto_update_schema_before_each_recipe_run:
+        """
+        self.definition['autoUpdateSchemaBeforeEachRecipeRun'] = auto_update_schema_before_each_recipe_run
+        return self
+
     def get_definition(self):
         """Gets the internal definition for this job"""
         return self.definition
@@ -3183,3 +3243,4 @@ class JobDefinitionBuilder(object):
         waiter = DSSJobWaiter(job)
         waiter.wait(no_fail)
         return job
+

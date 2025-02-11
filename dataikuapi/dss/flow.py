@@ -10,6 +10,7 @@ from .knowledgebank import DSSKnowledgeBank
 from .future import DSSFuture
 from .streaming_endpoint import DSSStreamingEndpoint
 import logging, json
+import warnings
 
 
 class DSSProjectFlow(object):
@@ -202,14 +203,22 @@ class DSSProjectFlow(object):
 
     def start_tool(self, type, data={}):
         """
-        Start a tool or open a view in the flow.
+        .. caution::
 
-        :param str type: one of {COPY, CHECK_CONSISTENCY, PROPAGATE_SCHEMA} (tools) or {TAGS, CUSTOM_FIELDS, CONNECTIONS, COUNT_OF_RECORDS, FILESIZE, FILEFORMATS, RECIPES_ENGINES, RECIPES_CODE_ENVS, IMPALA_WRITE_MODE, HIVE_MODE, SPARK_ENGINE, SPARK_CONFIG, SPARK_PIPELINES, SQL_PIPELINES, PARTITIONING, PARTITIONS, SCENARIOS, CREATION, LAST_MODIFICATION, LAST_BUILD, RECENT_ACTIVITY, WATCH}  (views)
+        Deprecated, this method will no longer be available for views (starting with DSS 13.4):
+        TAGS, CUSTOM_FIELDS, CONNECTIONS, COUNT_OF_RECORDS, FILESIZE, FILEFORMATS, RECIPES_ENGINES, RECIPES_CODE_ENVS, IMPALA_WRITE_MODE, HIVE_MODE, SPARK_CONFIG, SPARK_PIPELINES, SQL_PIPELINES, PARTITIONING, PARTITIONS, SCENARIOS, CREATION, LAST_MODIFICATION, LAST_BUILD, RECENT_ACTIVITY, WATCH.
+        It will be maintained for flow actions.
+
+        Start a tool in the flow.
+
+        :param str type: one of {COPY, CHECK_CONSISTENCY, PROPAGATE_SCHEMA}
         :param dict data: initial data for the tool (defaults to **{}**)
 
         :returns: A handle to interact with the newly-created tool or view
         :rtype: :class:`.DSSFlowTool`
         """
+        if type in ['TAGS', 'CUSTOM_FIELDS', 'CONNECTIONS', 'COUNT_OF_RECORDS', 'FILESIZE', 'FILEFORMATS', 'RECIPES_ENGINES', 'RECIPES_CODE_ENVS', 'IMPALA_WRITE_MODE', 'HIVE_MODE', 'SPARK_CONFIG', 'SPARK_PIPELINES', 'SQL_PIPELINES', 'PARTITIONING', 'PARTITIONS', 'SCENARIOS', 'CREATION', 'LAST_MODIFICATION', 'LAST_BUILD', 'RECENT_ACTIVITY', 'WATCH']:
+            warnings.warn("This method is deprecated for views and will be removed in a future version (starting with DSS 13.4).", DeprecationWarning)
         tool_id = self.client._perform_text("POST", "/projects/%s/flow/tools/" % self.project.project_key, params={'type': type}, body=data)
         return DSSFlowTool(self.client, self.project.project_key, tool_id)
 

@@ -469,7 +469,7 @@ class DKUChatModel(LockedDownBaseChatModel):
         # when using agent_executor.astream_events
         tools = kwargs.get("tools", None)
         tool_choice = kwargs.get("tool_choice", None)
-        logging.debug("DKUChatModel _stream called, messages=%s tools=%s stop=%s" % (messages, tools, stop))
+        logging.debug("DKUChatModel _stream called, messages=%s tools=%s stop=%s" % (len(messages), len(tools) if tools is not None else "-", stop))
 
         completion = self._llm_handle.new_completion()
         completion = _completion_with_typed_messages(completion, messages)
@@ -521,9 +521,13 @@ class DKUChatModel(LockedDownBaseChatModel):
             if streamer.can_yield():
                 yield streamer.yield_(produce_chunk)
 
+        logging.debug("DKUChatModel _stream: completion.execute_streamed done")
+
         # flush any remaining chunk
         if streamer and streamer.can_yield():
             yield streamer.yield_(produce_chunk)
+
+        logging.debug("DKUChatModel _stream: done")
 
     def bind_tools(
             self,

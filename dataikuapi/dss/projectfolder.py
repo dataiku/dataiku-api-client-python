@@ -165,6 +165,16 @@ class DSSProjectFolder(object):
         """
         return self.client.create_project(project_key, name, owner, description=description, settings=settings, project_folder_id=self.id)
 
+    def get_default_folder_for_project_creation(self):
+        """
+        Get a handle to interact with the default folder used to create projects for the current user in this folder.
+
+        :returns: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder` to interact with this project folder
+        """
+        data = self.client._perform_json("GET", "/project-folders/%s/default-for-project-creation" % self.id)
+        return DSSProjectFolder(self.client, data)
+
+
     ########################################################
     # Project folder move
     ########################################################
