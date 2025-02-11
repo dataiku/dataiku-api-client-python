@@ -4,10 +4,12 @@ import concurrent
 import logging
 import threading 
 
-from typing import List, Any
+from typing import Callable, List, Any, Union
 
 import pydantic
 from langchain.embeddings.base import Embeddings
+from langchain_core.callbacks import BaseCallbackHandler, LLMManagerMixin
+from dataiku.llm.tracing import SpanBuilder
 from dataikuapi.dss.llm_tracing import new_trace
 
 from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
@@ -48,6 +50,12 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
     # So, instead, we keep a thread local with the last trace, and the caller can get it from here
     # (at the moment, it's mostly done by rag_query_server.py)
     _last_trace = None
+
+    # `_last_trace` is unique to the thread using the DKUEmbeddings instance but when the instance is passed
+    # to another thread we don't have access to the last trace in the calling thread. To work around this we
+    # allow a list of callbacks to be passed. These callbacks will be called back once the model has been called.
+    # See how TraceableDKUEmbeddings is used
+    _callbacks: List[Callable[[Union[dict, SpanBuilder]], None]] = []
 
     def __init__(self, llm_handle=None, **data: Any):
         if llm_handle is None:
@@ -95,7 +103,10 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
                 if "responses" in resp._raw and len(resp._raw["responses"]) == 1:
                     if "trace" in resp._raw["responses"][0]:
-                        trace.append_trace(resp._raw["responses"][0]["trace"])
+                        trace_response = resp._raw["responses"][0]["trace"]
+                        trace.append_trace(trace_response)
+                        for callback in self._callbacks:
+                            callback(trace_response)
 
                 embeddings.extend(resp.get_embeddings())
 

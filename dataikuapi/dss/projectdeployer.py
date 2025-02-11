@@ -286,6 +286,109 @@ class DSSProjectDeployerInfra(object):
         self.client._perform_empty(
             "DELETE", "/project-deployer/infras/%s" % (self.infra_id))
 
+    def generate_personal_api_key(self, label, description, for_user = None):
+        """
+        Generate a personal api key on all the nodes of the infrastructure. Only available for multi automation node infrastructures.
+
+        :param string label: label of the key to create
+        :param string description: description of the key to create
+        :param string for_user: (Optional) the user for whom the key will be created. If not set, the key will be created for the current user.
+                                Requires admin permission on the automation nodes to create a key for another user.
+
+        :return: the key creation result, as a :class:`DSSPersonalAPIKeyCreationResult`
+        :rtype: :class:`DSSPersonalAPIKeyCreationResult`
+        """
+        key_settings = {
+            "label": label,
+            "description": description,
+            "forUser": for_user
+        }
+        key_creation_result = self.client._perform_json("POST", "/project-deployer/infras/%s/generate-personal-api-key" % self.infra_id, params=key_settings)
+        return DSSPersonalAPIKeyCreationResult(key_creation_result)
+
+
+class DSSPersonalAPIKeyCreationResult(object):
+    """
+    A handle on the result of the creation of a personal API key on the automation nodes of a Project Deployer multi automation nodes infrastructure
+
+    .. warning::
+        Do not instantiate directly, use :meth:`dataikuapi.dss.projectdeployer.DSSProjectDeployerInfra.generate_personal_api_key()`
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    @property
+    def created_on_all_nodes(self):
+        """
+        A boolean indicating that the personal API key has been created successfully on all the automation nodes
+
+        :rtype: boolean
+        """
+        return self._raw["createdOnAllNodes"]
+
+    @property
+    def user(self):
+        """
+        The user for which the key has been created
+
+        :rtype: str
+        """
+        return self._raw["user"]
+
+    @property
+    def secret(self):
+        """
+        The secret of the key created. If the key could not be created on any node, it will be set to None.
+
+        :rtype: str
+        """
+        return self._raw.get("secret", None)
+
+    @property
+    def nodes_and_keys(self):
+        """
+        A list[dict] with information by node on the key created
+
+        :rtype: list[dict]
+        """
+        return self._raw["nodesAndKeys"]
+
+    @property
+    def error(self):
+        """
+        If an error occurs while trying to create the key on any automation node, it will be reported in this field. Otherwise, it will be set to None.
+
+        :rtype: str
+        """
+        return self._raw.get("error", None)
+
+    @property
+    def nodes_where_user_does_not_exist(self):
+        """
+        A list[dict] with information on the automation nodes where the user does not exist
+
+        :rtype: list[dict]
+        """
+        return self._raw["nodesWhereUserDoesNotExist"]
+
+    @property
+    def nodes_where_user_is_disabled(self):
+        """
+        A list[dict] with information on the automation nodes where the user exists but is disabled
+
+        :rtype: list[dict]
+        """
+        return self._raw["nodesWhereUserIsDisabled"]
+
+    def get_raw(self):
+        """
+        Gets the raw personal API key creation result information.
+
+        :rtype: dict
+        """
+        return self._raw
+
 
 class DSSProjectDeployerInfraSettings(object):
     """
@@ -457,7 +560,7 @@ class DSSProjectDeployerDeployment(object):
 
         :param (optional) string bundle_id: filters the scenario runs done on a specific bundle
         :param (optional) automation_node_id: for multi-node deployments only, you need to specify the automation node id on which you want to retrieve
-        the testing status
+                                              the testing status
         :returns: A :class:`dataikuapi.dss.scenario.DSSTestingStatus` object handle
         """
 

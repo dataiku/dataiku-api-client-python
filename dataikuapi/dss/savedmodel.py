@@ -6,7 +6,7 @@ from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 from .discussion import DSSObjectDiscussions
 from .managedfolder import DSSManagedFolder
 from .metrics import ComputedMetrics
-from .ml import DSSMLTask
+from .ml import DSSMLTask, DSSTrainedTimeseriesForecastingModelDetails
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 from ..utils import _make_zipfile, dku_basestring_type
@@ -184,6 +184,8 @@ class DSSSavedModel(object):
         if "facts" in details:
             return DSSTrainedClusteringModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
         else:
+            if snippet.get("predictionType", "") == "TIMESERIES_FORECAST":
+                    return DSSTrainedTimeseriesForecastingModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
             return DSSTrainedPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
 
     def set_active_version(self, version_id):

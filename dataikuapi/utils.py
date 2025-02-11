@@ -86,6 +86,8 @@ class DataikuValueCaster(object):
             "float": float,
             "double": float,
             "date": parse_iso_date,
+            "dateonly": parse_iso_date,
+            "datetimenotz": parse_iso_date,
             "boolean": str_to_bool,
         }
         return [CASTERS.get(col["type"], decode) for col in schema]
