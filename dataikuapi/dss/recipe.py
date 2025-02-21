@@ -240,7 +240,7 @@ class DSSRecipe(object):
             return DownloadRecipeSettings(self, data)
         #elif type == "sql_query":
         #    return WindowRecipeSettings(self, data)
-        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell"]:
+        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
             return CodeRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)

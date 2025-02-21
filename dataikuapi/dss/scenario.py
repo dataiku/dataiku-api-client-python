@@ -1065,7 +1065,7 @@ class DSSTriggerFire(object):
                  of a scenario run, but of a run of the trigger.
         :rtype: dict
         """
-
+        return self.trigger_fire
 
     def wait_for_scenario_run(self, no_fail=False):
         """

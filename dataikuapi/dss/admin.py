@@ -814,6 +814,31 @@ class DSSUserSettingsBase(object):
             del self.settings["credentials"][name]
 
 
+class DSSUserPreferences(object):
+    """
+    Preferences for a DSS user.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSUserSettings.preferences` instead.
+    """
+    def __init__(self, preferences):
+        self.preferences = preferences
+
+    @property
+    def ui_language(self):
+        """
+        Get or set the language used in the Web User Interface for this user. Valid values are "en" (English) and "ja" (Japanese)
+
+        :rtype: str
+        """
+        return self.preferences['uiLanguage']
+
+    @ui_language.setter
+    def ui_language(self, new_value):
+        self.preferences["uiLanguage"] = new_value
+
+
 class DSSUserSettings(DSSUserSettingsBase):
     """
     Settings for a DSS user.
@@ -865,6 +890,16 @@ class DSSUserSettings(DSSUserSettingsBase):
         """
         timestamp = self.settings["creationDate"] if "creationDate" in self.settings else None
         return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def preferences(self):
+        """
+        Get the preferences for this user
+
+        :return: user preferences
+        :rtype: :class:`DSSUserPreferences`
+        """
+        return DSSUserPreferences(self.settings["preferences"])
 
     def save(self):
         """
@@ -1460,7 +1495,7 @@ class DSSCodeEnv(object):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
         return resp
 
-    def update_packages(self, force_rebuild_env=False):
+    def update_packages(self, force_rebuild_env=False, version=None):
         """
         Update the code env packages so that it matches its spec
         
@@ -1469,6 +1504,7 @@ class DSSCodeEnv(object):
             This call requires an API key with `Create code envs` or `Manage all code envs` permission
 
         :param boolean force_rebuild_env: whether to rebuild the code env from scratch
+        :param boolean version: version to rebuild (applies only to version code envs on automation nodes)
 
         :return: list of messages collected during the operation. Fields are:
 
@@ -1480,7 +1516,7 @@ class DSSCodeEnv(object):
         """
         resp = self.client._perform_json(
             "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name),
-            params={"forceRebuildEnv": force_rebuild_env})
+            params={"forceRebuildEnv": force_rebuild_env, "versionToUpdate": version})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
@@ -2689,4 +2725,41 @@ class DSSCodeStudioTemplateSettings(object):
         Saves the settings of the code studio template
         """
         self.client._perform_empty("PUT", "/admin/code-studios/%s" % (self.template_id), body=self.settings)
+
+class DSSLLMCostLimitingCounters(object):
+    """
+    The LLM cost limiting counters of the instance
+    """
+    def __init__(self, data):
+        self._data = data
+
+    def get_raw(self):
+        """
+        Gets counters as a raw dictionary.
+
+        :return: a dictionary containing raw counters
+        :rtype: dict
+        """
+        return self._data
+
+    @property
+    def counters(self):
+        """
+        Get the list of counters
+
+        :return: a list of counters
+        :rtype: list
+        """
+        return self._data['counters']
+
+    def get_counter(self, id):
+        """
+        Retrieve the counters from a quota id
+
+        :param id identifier of the quota to retrieve
+
+        :return: a dictionary containing the counter
+        :rtype: dict
+        """
+        return next((counter for counter in self.counters if counter["id"] == id), None)
 

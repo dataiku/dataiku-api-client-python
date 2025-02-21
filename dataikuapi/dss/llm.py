@@ -1,5 +1,11 @@
 from .utils import DSSTaggableObjectListItem
 import json
+import os
+import logging
+import threading
+
+_dku_bypass_guardrail_ls = threading.local()
+
 
 class DSSLLMListItem(DSSTaggableObjectListItem):
     """
@@ -133,6 +139,7 @@ class DSSLLMEmbeddingsQuery(object):
     """
     def __init__(self, llm, text_overflow_mode):
         self.llm = llm
+        self._guardrails = None
         self.eq = {
             "queries": [],
             "llmId": llm.llm_id,
@@ -163,6 +170,12 @@ class DSSLLMEmbeddingsQuery(object):
             self.eq["queries"].append({"inlineImage": base64.b64encode(image).decode("utf8")})
         return self
 
+    def new_guardrail(self, type):
+        """
+        Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+        """
+        return DSSLLMRequestGuardrailBuilder(self, type)
+
     def execute(self):
         """
         Run the embedding query.
@@ -170,7 +183,15 @@ class DSSLLMEmbeddingsQuery(object):
         :returns: The results of the embedding query.
         :rtype: :class:`DSSLLMEmbeddingsResponse`
         """
-        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/embeddings" % (self.llm.project_key), body=self.eq)
+
+        if self._guardrails is not None:
+            self.eq["guardrails"] = self._guardrails
+
+        if hasattr(_dku_bypass_guardrail_ls, "current_bypass_token"):
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/embeddings" % (self.llm.project_key), body=self.eq,
+                                        headers= {"x-dku-guardrails-bypass-token": _dku_bypass_guardrail_ls.current_bypass_token})
+        else:
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/embeddings" % (self.llm.project_key), body=self.eq)
         return DSSLLMEmbeddingsResponse(ret)
 
 class DSSLLMEmbeddingsResponse(object):
@@ -264,6 +285,10 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         self.cq["messages"].append(role_message)
         return self
 
+    def with_context(self, context):
+        self.cq["context"] = context
+        return self
+
 
 class SettingsMixin(object):
     def with_json_output(self, schema=None, strict=None, compatible=None):
@@ -334,6 +359,20 @@ class SettingsMixin(object):
         self.with_json_output(schema=schema, strict=strict, compatible=compatible)
         return self
 
+class DSSLLMRequestGuardrailBuilder(object):
+    def __init__(self, request, type):
+        self.request = request
+        self.guardrail = { "type" : type, "enabled": True, "params" : {}}
+
+    @property
+    def params(self):
+        return self.guardrail["params"]
+
+    def add(self):
+        if self.request._guardrails is None:
+            self.request._guardrails = {"guardrails" : []}
+        self.request._guardrails["guardrails"].append(self.guardrail)
+
 
 class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
     """
@@ -348,6 +387,7 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         super().__init__()
         self.llm = llm
         self._settings = {}
+        self._guardrails = None
         self._response_parser = None
 
     @property
@@ -358,6 +398,12 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         """
         return self._settings
 
+    def new_guardrail(self, type):
+        """
+        Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+        """
+        return DSSLLMRequestGuardrailBuilder(self, type)
+
     def execute(self):
         """
         Run the completion query and retrieve the LLM response.
@@ -366,7 +412,15 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         :rtype: :class:`DSSLLMCompletionResponse`
         """
         queries = {"queries": [self.cq], "settings": self._settings, "llmId": self.llm.llm_id}
-        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
+
+        if self._guardrails is not None:
+            queries["guardrails"] = self._guardrails
+
+        if hasattr(_dku_bypass_guardrail_ls, "current_bypass_token"):
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries,
+                        headers= {"x-dku-guardrails-bypass-token": _dku_bypass_guardrail_ls.current_bypass_token})
+        else:
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
 
         return DSSLLMCompletionResponse(raw_resp=ret["responses"][0], response_parser=self._response_parser)
 
@@ -378,9 +432,17 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         :rtype: Iterator[Union[:class:`DSSLLMStreamedCompletionChunk`, :class:`DSSLLMStreamedCompletionFooter`]]
         """
         request = {"query": self.cq, "settings": self.settings, "llmId": self.llm.llm_id}
-        ret = self.llm.client._perform_raw("POST", "/projects/%s/llms/streamed-completion" % (self.llm.project_key), body=request)
 
-        sseclient = _SSEClient(ret.raw)
+        if self._guardrails is not None:
+            request["guardrails"] = self._guardrails
+
+        if hasattr(_dku_bypass_guardrail_ls, "current_bypass_token"):
+            ret = self.llm.client._perform_raw("POST", "/projects/%s/llms/streamed-completion" % (self.llm.project_key), body=request,
+                        headers= {"x-dku-guardrails-bypass-token": _dku_bypass_guardrail_ls.current_bypass_token})
+        else:
+            ret = self.llm.client._perform_raw("POST", "/projects/%s/llms/streamed-completion" % (self.llm.project_key), body=request)
+
+        sseclient = _SSEClient(ret.iter_content(128))
 
         for evt in sseclient.iterevents():
             if evt.event == "completion-chunk":
@@ -402,6 +464,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         self.llm = llm
         self.queries = []
         self._settings = {}
+        self._guardrails = None
         self._response_parser = None
 
     @property
@@ -417,6 +480,12 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         self.queries.append(ret)
         return ret
 
+    def new_guardrail(self, type):
+        """
+        Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+        """
+        return DSSLLMRequestGuardrailBuilder(self, type)
+
     def execute(self):
         """
         Run the completions query and retrieve the LLM response.
@@ -425,7 +494,15 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         :rtype: :class:`DSSLLMCompletionsResponse`
         """
         queries = {"queries": [q.cq for q in self.queries], "settings": self._settings, "llmId": self.llm.llm_id}
-        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
+
+        if self._guardrails is not None:
+            queries["guardrails"] = self._guardrails
+
+        if hasattr(_dku_bypass_guardrail_ls, "current_bypass_token"):
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries,
+                        headers= {"x-dku-guardrails-bypass-token": _dku_bypass_guardrail_ls.current_bypass_token})
+        else:
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/completions" % (self.llm.project_key), body=queries)
 
         return DSSLLMCompletionsResponse(ret["responses"], response_parser=self._response_parser)
 
@@ -532,19 +609,22 @@ class _SSEClient(object):
     def _read(self):
         """Reads the raw source and yields events. Reassembles events
         that may span multiple HTTP chunks"""
-
+        #logging.debug("SSEClient._read")
         data = b''
         for chunk in self.raw_source:
+            #logging.info("SSEClient._read: got chunk (len=%s): %s" % (len(chunk), chunk))
             for line in chunk.splitlines(True):
                 data += line
                 if data.endswith(b'\r\r') or data.endswith(b'\n\n') or data.endswith(b'\r\n\r\n'):
                     yield data
                     data = b''
+        #logging.info("SSEClient._read: no more chunk")
         if data:
             yield data
 
     def iterevents(self):
         for event_chunk in self._read():
+            #logging.info("SSEClient._iterevents: got event")
             evt = _SSEEvent()
 
             for line in event_chunk.splitlines():
@@ -567,8 +647,9 @@ class _SSEClient(object):
                 else:
                     evt.__dict__[field] = value
 
-            #print("Yielding event: %s" % evt.__dict__)
-            yield evt
+            if evt.event is not None:
+                #logging.info("Yielding event: %s" % evt.__dict__)
+                yield evt
 
 
 class DSSLLMCompletionResponse(object):
@@ -677,6 +758,7 @@ class DSSLLMImageGenerationQuery(object):
     """
     def __init__(self, llm):
         self.llm = llm
+        self._guardrails = None
         self.gq = {
             "prompts": [],
             "negativePrompts": [],
@@ -762,6 +844,12 @@ class DSSLLMImageGenerationQuery(object):
             else:
                 raise Exception(u"When specified, the mask `image` parameter has to be of type `str` in base 64 or `bytes`. Got type {} instead.".format(type(image)))
         return self
+
+    def new_guardrail(self, type):
+        """
+        Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+        """
+        return DSSLLMRequestGuardrailBuilder(self, type)
 
     @property
     def height(self):
@@ -906,7 +994,14 @@ class DSSLLMImageGenerationQuery(object):
         :rtype: :class:`DSSLLMImageGenerationResponse`
         """
 
-        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq)
+        if self._guardrails is not None:
+            self.gq["guardrails"] = self._guardrails
+
+        if hasattr(_dku_bypass_guardrail_ls, "current_bypass_token"):
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq,
+                                        headers= {"x-dku-guardrails-bypass-token": _dku_bypass_guardrail_ls.current_bypass_token})
+        else:
+            ret = self.llm.client._perform_json("POST", "/projects/%s/llms/images" % (self.llm.project_key), body=self.gq)
         return DSSLLMImageGenerationResponse(ret)
 
 

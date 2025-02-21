@@ -3,6 +3,7 @@ from ..utils import DataikuUTF8CSVReader
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 import json
+import sys
 import os
 from requests import utils
 from .metrics import ComputedMetrics
@@ -55,6 +56,29 @@ class DSSManagedFolder(object):
             "DELETE", "/projects/%s/managedfolders/%s" % (self.project_key, self.odb_id))
 
 
+    ########################################################
+    # Managed folder renaming
+    ########################################################
+
+    def rename(self, new_name):
+        """
+        Rename the managed folder
+
+        :param str new_name: the new name of the managed folder
+
+        .. note::
+
+            The new name cannot be made of whitespaces only.
+        """
+        body = {
+            "id": self.odb_id,
+            "newName": new_name
+        }
+        return self.client._perform_empty(
+            "POST",
+            u"/projects/{}/actions/renameManagedFolder".format(self.project_key),
+            body=body
+        )
 
     ########################################################
     # Managed folder definition
