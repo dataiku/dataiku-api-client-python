@@ -6,6 +6,11 @@ Changelog
 
 * Initial release for DSS 13.4.1
 
+13.4.0 (2025-02-11)
+---------------------
+
+* Initial release for DSS 13.4.0
+
 13.3.3 (2025-01-27)
 ---------------------
 
