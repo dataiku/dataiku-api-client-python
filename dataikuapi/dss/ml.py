@@ -2363,9 +2363,9 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
         "PROPHET": PredictionAlgorithmMeta("prophet_timeseries", ProphetSettings),
         "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
-
-        "GLUONTS_TORCH_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_torch_simple_feed_forward_timeseries", GluonTSTorchSimpleFeedForwardSettings),
-        "GLUONTS_TORCH_DEEPAR": PredictionAlgorithmMeta("gluonts_torch_deepar_timeseries", GluonTSTorchDeepARSettings),
+        #
+        # "GLUONTS_TORCH_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_torch_simple_feed_forward_timeseries", GluonTSTorchSimpleFeedForwardSettings),
+        # "GLUONTS_TORCH_DEEPAR": PredictionAlgorithmMeta("gluonts_torch_deepar_timeseries", GluonTSTorchDeepARSettings),
 
         "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
         "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
