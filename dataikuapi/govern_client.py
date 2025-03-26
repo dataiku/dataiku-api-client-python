@@ -38,8 +38,8 @@ class GovernClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
-        if no_check_certificate:
-            self._session.verify = False
+        if no_check_certificate: # either True or a string in case of encrypted rpc
+            self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")

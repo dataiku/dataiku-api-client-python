@@ -1582,6 +1582,11 @@ class DSSProject(object):
 
     @property
     def document_extractor(self):
+        """
+
+        :returns: A handle to interact with a DSS-managed Document Extractor
+        :rtype: :class:`dataikuapi.dss.document_extractor.DocumentExtractor`
+        """
         return DocumentExtractor(self.client, self.project_key)
 
     ########################################################

@@ -721,7 +721,7 @@ class DSSScenarioRun(object):
             eb.sleep_next()
 
         if self.outcome != 'SUCCESS' and no_fail == False:
-            raise DataikuException("Scenario run returned status %s" % outcome)
+            raise DataikuException("Scenario run returned status %s" % self.outcome)
 
     @property
     def running(self):
