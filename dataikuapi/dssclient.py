@@ -56,8 +56,8 @@ class DSSClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
-        if no_check_certificate:
-            self._session.verify = False
+        if no_check_certificate: # either True or a string in case of encrypted rpc
+            self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")
@@ -414,7 +414,7 @@ class DSSClient(object):
         """
         return DSSUser(self, login)
 
-    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST'):
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='DATA_SCIENTIST', email=None):
         """
         Create a user, and return a handle to interact with it
 
@@ -426,6 +426,7 @@ class DSSClient(object):
         :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ...
+        :param str email: The email for the new user.
 
         :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
         """
@@ -438,7 +439,8 @@ class DSSClient(object):
                    "displayName" : display_name,
                    "sourceType" : source_type,
                    "groups" : groups,
-                   "userProfile" : profile
+                   "userProfile" : profile,
+                   "email": email
                })
         return DSSUser(self, login)
 

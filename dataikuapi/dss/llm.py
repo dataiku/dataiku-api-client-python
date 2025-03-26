@@ -157,17 +157,29 @@ class DSSLLMEmbeddingsQuery(object):
         self.eq["queries"].append({"text": text})
         return self
 
-    def add_image(self, image):
+    def add_image(self, image, text = None):
         """
         Add an image to the embedding query.
 
         :param image: Image content as bytes or str (base64)
+        :param text: Optional text (requires a multimodal model)
         """
+        query = {}
+
         if isinstance(image, str):
-            self.eq["queries"].append({"inlineImage": image})
+            query["inlineImage"] = image
         elif isinstance(image, bytes):
             import base64
-            self.eq["queries"].append({"inlineImage": base64.b64encode(image).decode("utf8")})
+            query["inlineImage"] = base64.b64encode(image).decode("utf8")
+        else:
+            raise Exception("Expecting image to be an instance of str or bytes, got '%s' instead." % type(image) )
+
+        if text is not None:
+            query["text"] = text
+
+        if query:
+            self.eq["queries"].append(query)
+
         return self
 
     def new_guardrail(self, type):
@@ -254,6 +266,9 @@ class DSSLLMCompletionsQuerySingleQuery(object):
     def with_tool_calls(self, tool_calls, role="assistant"):
         """
         Add tool calls to the completion query.
+
+        .. caution::
+            Tool calls support is experimental for locally-running Hugging Face models.
 
         :param list[dict] tool_calls: Calls to tools that the LLM requested to use.
         :param str role: The message role. Defaults to ``assistant``.
