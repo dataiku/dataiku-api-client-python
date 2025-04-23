@@ -183,10 +183,9 @@ class DSSSavedModel(object):
 
         if "facts" in details:
             return DSSTrainedClusteringModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
-        else:
-            if snippet.get("predictionType", "") == "TIMESERIES_FORECAST":
-                    return DSSTrainedTimeseriesForecastingModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
-            return DSSTrainedPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
+        if snippet.get("predictionType", "") == "TIMESERIES_FORECAST":
+            return DSSTrainedTimeseriesForecastingModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
+        return DSSTrainedPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
 
     def set_active_version(self, version_id):
         """

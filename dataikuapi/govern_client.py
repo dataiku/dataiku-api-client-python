@@ -23,11 +23,27 @@ from dataikuapi.utils import handle_http_exception
 class GovernClient(object):
     """Entry point for the Govern API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, **kwargs):
-        """
-        Instantiate a new Govern API client on the given host with the given API key.
-        API keys can be managed in Govern in the global settings.
-        The API key will define which operations are allowed for the client.
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, client_certificate=None, **kwargs):
+        """Initialize a new Govern API client.
+
+        This client provides access to Dataiku's Govern instance.
+
+        Args:
+            host (str): The URL of the DSS instance (e.g., "http://localhost:11200")
+            api_key (str, optional): API key for authentication. Can be managed in Govern global settings.
+                The API key determines which operations are allowed.
+            internal_ticket (str, optional): Internal ticket for authentication
+            extra_headers (dict, optional): Additional HTTP headers to include in all requests
+            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification.
+                Defaults to False.
+            client_certificate (str or tuple, optional): Path to client certificate file or tuple of 
+                (cert, key) paths for client certificate authentication
+            **kwargs: Additional keyword arguments
+
+        Note:
+            - API key is required for most operations and can be managed in Govern global settings
+            - When using HTTPS, certificate verification is enabled by default for security
+            - Use no_check_certificate=True only in development or when using self-signed certificates
         """
         if "insecure_tls" in kwargs:
             # Backward compatibility before removing insecure_tls option
@@ -38,8 +54,11 @@ class GovernClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
+        
         if no_check_certificate: # either True or a string in case of encrypted rpc
             self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
+        if client_certificate:
+            self._session.cert = client_certificate
 
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")

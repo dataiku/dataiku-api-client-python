@@ -212,6 +212,8 @@ class DSSRecipe(object):
             return GenerateFeaturesRecipeSettings(self, data)
         if type == "grouping":
             return GroupingRecipeSettings(self, data)
+        if type == "upsert":
+            return UpsertRecipeSettings(self, data)
         elif type == "window":
             return WindowRecipeSettings(self, data)
         elif type == "sync":
@@ -238,6 +240,8 @@ class DSSRecipe(object):
         #elif type == "clustering_scoring":
         elif type == "download":
             return DownloadRecipeSettings(self, data)
+        elif type == 'export':
+            return ExportRecipeSettings(self, data)
         #elif type == "sql_query":
         #    return WindowRecipeSettings(self, data)
         elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
@@ -1123,6 +1127,29 @@ class GenerateFeaturesRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
         VirtualInputsSingleOutputRecipeCreator.__init__(self, 'generate_features', name, project)
 
 
+class ExtractFailedRowsRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create an Extract failed rows recipe
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+   """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'extract_failed_rows', name, project)
+
+    def with_output(self, output_id, append=False, role='main'):
+        """
+        Add an existing object as output to the recipe-to-be-created.
+
+        The output dataset must already exist.
+        """
+        assert self.create_output_dataset is None
+        self.create_output_dataset = False
+        self._with_output(output_id, append, role)
+        return self
+
+
 class GroupingRecipeSettings(DSSRecipeSettings):
     """
     Settings of a grouping recipe.
@@ -1261,6 +1288,77 @@ class GroupingRecipeCreator(SingleOutputRecipeCreator):
         super(GroupingRecipeCreator, self)._finish_creation_settings()
         if self.group_key is not None:
             self.creation_settings['groupKey'] = self.group_key
+
+class UpsertRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a upsert recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+    """
+    def clear_upsert_keys(self):
+        """
+        Clear all upsert keys.
+        """
+        self.obj_payload["keys"] = []
+
+    def add_upsert_key(self, column):
+        """
+        Adds upsert on a column.
+
+        :param string column: column to group on
+        """
+        self.obj_payload["keys"].append({"column":column})
+
+    def add_computed_column(self, computed_column):
+        """
+        Add a computed column applied on the input.
+
+        Use :class:`dataikuapi.dss.utils.DSSComputedColumn` to build the computed_column object.
+
+        :param dict computed_column: a computed column definition, as a dict of:
+
+                        * **mode** : type of expression used to define the computations. One of GREL or SQL.
+                        * **name** : name of the column generated
+                        * **type** : name of a DSS type for the computed column
+                        * **expr** : if **mode** is CUSTOM, a formula in DSS `formula language <https://doc.dataiku.com/dss/latest/formula/index.html>`_ . If **mode** is SQL, a SQL expression.
+        """
+        self.obj_payload["computedColumns"].append(computed_column)
+
+class UpsertRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create a Upsert recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+    """
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'upsert', name, project)
+        self.upsert_key = None
+
+    def with_upsert_key(self, upsert_key):
+        """
+        Set a column as the first upsert key.
+
+        Only a single upsert key may be set at recipe creation time. To add more upsert keys,
+        get the recipe settings and use :meth:`UpsertRecipeSettings.add_upsert_key()`. To have
+        no upsert keys at all, get the recipe settings and use
+        :meth:`UpsertRecipeSettings.clear_upsert_keys()`.
+
+        :param string upsert_key: name of a column in the input dataset
+
+        :return: self
+        :rtype: :class:`UpsertRecipeCreator`
+        """
+        self.upsert_key = upsert_key
+        return self
+
+    def _finish_creation_settings(self):
+        super(UpsertRecipeCreator, self)._finish_creation_settings()
+        if self.upsert_key is not None:
+            self.creation_settings['upsertKey'] = self.upsert_key
 
 
 class WindowRecipeSettings(DSSRecipeSettings):
@@ -2058,6 +2156,56 @@ class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sql_query', name, project)
 
+#####################################################
+# Per-recipe-type classes: Other recipes
+#####################################################
+
+class ExportRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of an Export recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+    """
+    pass
+
+class ExportRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Create an Export recipe
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+
+    Usage example:
+
+    .. code-block:: python
+
+        # Create a new Export recipe outputting an existing input dataset to a new managed folder (option 1)
+        # or to an existing managed folder (option 2)
+
+        project = client.get_project("MYPROJECT")
+        builder = project.new_recipe("export")
+        builder.with_input("my_input_dataset")
+
+        # Option 1: output to a new managed folder
+        builder.with_new_output("my_new_output_folder_name", "filesystem_folders", object_type='MANAGED_FOLDER')
+
+        # Option 2: output to an existing managed folder (you need to know the folder id)
+        builder.with_existing_output("my_existing_output_folder_id") # Careful, id and not name
+
+        recipe = builder.create()
+
+        # Run the recipe
+        job = recipe.run()
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'export', name, project)
+
+    def _finish_creation_settings(self):
+        super(ExportRecipeCreator, self)._finish_creation_settings()
 
 #####################################################
 # Per-recipe-type classes: ML recipes
@@ -2272,13 +2420,13 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
     def __init__(self, name, project):
         DSSRecipeCreator.__init__(self, 'nlp_llm_evaluation', name, project)
 
-    def with_output(self, output_id):
+    def with_output(self, output_id, append=False, role="main"):
         """
         Set the output dataset containing the evaluation dataset scored row by row
 
         :param string output_id: name of the dataset
         """
-        return self._with_output(output_id, role="main")
+        return self._with_output(output_id, append, role)
 
     def with_output_metrics(self, name):
         """

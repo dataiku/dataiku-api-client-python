@@ -650,6 +650,50 @@ class DSSAPIDeployerService(object):
         self.client._perform_empty(
             "DELETE", "/api-deployer/services/%s/versions/%s" % (self.service_id, version))
 
+    def get_version_stream(self, version_id):
+        """
+        Download a version of a service as a stream.
+
+        The archive of this version can then be deployed in a DSS API Node.
+
+        .. warning::
+
+            This call will monopolize the DSSClient until the stream it returns is closed.
+
+        .. code-block:: python
+
+                with api_deployer_service.get_version_stream('v1') as fp:
+                    # use fp
+
+                # or explicitly close the stream after use
+                fp = api_deployer_service.get_version_stream('v1')
+                # use fp, then close
+                fp.close()
+
+        :param string version_id: version (identifier) of the package to download
+
+        :return: the package archive, as an HTTP stream
+        :rtype: file-like
+        """
+        return self.client._perform_raw(
+            "GET", "/api-deployer/services/%s/versions/%s" % (self.service_id, version_id))
+
+    def download_version_to_file(self, version_id, path):
+        """
+        Download an archive of a version to a local file.
+
+        The archive can then be deployed in a DSS API Node.
+
+        :param string version_id: version (identifier) of the package to download
+        :param string path: absolute or relative path to a file in which the package is downloaded
+        """
+        with self.get_version_stream(version_id) as version_stream:
+            with open(path, 'wb') as f:
+                for chunk in version_stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
+
     def delete(self):
         """
         Deletes this service

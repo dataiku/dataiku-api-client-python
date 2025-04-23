@@ -7,7 +7,7 @@ from .auth import HTTPBearerAuth
 from .utils import handle_http_exception
 
 class DSSBaseClient(object):
-    def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None, no_check_certificate=False, **kwargs):
+    def __init__(self, base_uri, api_key=None, internal_ticket=None, bearer_token=None, no_check_certificate=False, client_certificate=None, **kwargs):
         if "insecure_tls" in kwargs:
             # Backward compatibility before removing insecure_tls option
             warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
@@ -19,6 +19,9 @@ class DSSBaseClient(object):
         self._session = Session()
         if no_check_certificate:
             self._session.verify = False
+        if client_certificate:
+            self._session.cert = client_certificate
+
 
     ########################################################
     # Internal Request handling

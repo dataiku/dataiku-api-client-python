@@ -4012,6 +4012,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetails):
     """
     Object to read details of a timeseries forecasting model, for instance the per time series metrics
+
     .. important::
         Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
     """
@@ -4021,8 +4022,9 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
     def compute_residuals(self, wait=True):
         """
         Launch computation of residuals for this trained timeseries model.
+
         :param wait: a flag to wait for the operation to complete (defaults to **True**)
-        :return: if wait is True, a dictionary containing the residuals per-timeseries, else a future to wait on the result
+        :returns: if wait is True, a dictionary containing the residuals per-timeseries, else a future to wait on the result
         :rtype: Union[:class:`dict`, :class:`dataikuapi.dss.future.DSSFuture`]
         """
         if self.mltask is not None:
@@ -4045,7 +4047,8 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
     def get_residuals(self):
         """
         Retrieve a list of residuals for this trained time-series models
-        :return: A dictionary, which contains a residuals object per-timeseries
+
+        :returns: A dictionary, which contains a residuals object per-timeseries
         :rtype: dict
         """
         if self.mltask is not None:
@@ -4061,6 +4064,24 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
 
         return res
 
+    def get_per_timeseries_metrics(self):
+            """
+            Returns per timeseries performance metrics for this model.
+
+            :returns: a dict of performance metrics values
+            :rtype: dict
+            """
+            if self.mltask is not None:
+                data = self.mltask.client._perform_json(
+                    "GET", "/projects/%s/models/lab/%s/%s/models/%s/per-timeseries-metrics" %
+                           (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+                )
+            else:
+                data = self.saved_model.client._perform_json(
+                    "GET", "/projects/%s/savedmodels/%s/versions/%s/per-timeseries-metrics" %
+                           (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                           )
+            return data
 
 class DSSSubpopulationGlobal(object):
     """
@@ -4834,10 +4855,10 @@ class DSSMLTask(object):
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models-snippets" % (self.project_key, self.analysis_id, self.mltask_id),
             body = obj)
-        if id is not None:
-            return ret[id]
-        else:
+        if id is None:
             return ret
+        return ret[id]
+
 
     def get_trained_model_details(self, id):
         """
