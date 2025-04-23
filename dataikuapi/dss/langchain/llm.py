@@ -17,8 +17,13 @@ from typing import (
     Union,
 )
 
-from langchain.callbacks.manager import CallbackManagerForLLMRun
-from langchain.llms.base import BaseLLM
+try:
+    from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+    from langchain_core.language_models.llms import BaseLLM
+except ModuleNotFoundError:
+    from langchain.callbacks.manager import CallbackManagerForLLMRun
+    from langchain.llms.base import BaseLLM
+
 from langchain_core.messages import (
     AIMessage,
     AIMessageChunk,
@@ -39,21 +44,26 @@ from langchain_core.output_parsers.openai_tools import (
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 from langchain_core.utils.function_calling import convert_to_openai_tool
-from langchain.schema import ChatGeneration
+try:
+    from langchain_core.outputs import ChatGeneration
+except ModuleNotFoundError:
+    from langchain.schema import ChatGeneration
 import pydantic
 
 from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
 from dataikuapi.dss.tools.langchain import StopSequencesAwareStreamer
-from dataikuapi.dss.llm import DSSLLMStreamedCompletionFooter
+from dataikuapi.dss.llm import DSSLLMStreamedCompletionFooter, DSSLLMCompletionsQuerySingleQuery
+
 logger = logging.getLogger(__name__)
 
 
 def _llm_settings(llm, stop_sequences, tools=None, tool_choice=None):
     """Returns a settings dict from a DKULLM or DKUChatLLM object"""
-    settings = {
-        "temperature": llm.temperature,
-        "maxOutputTokens": llm.max_tokens,
-    }
+    settings = {}
+    if llm.temperature is not None:
+        settings["temperature"] = llm.temperature
+    if llm.max_tokens is not None:
+        settings["maxOutputTokens"] = llm.max_tokens
     if llm.top_p is not None:
         settings["topP"] = llm.top_p
     if llm.top_k is not None:
@@ -64,6 +74,7 @@ def _llm_settings(llm, stop_sequences, tools=None, tool_choice=None):
         settings["toolChoice"] = tool_choice
     if tools is not None:
         settings["tools"] = tools
+    settings.update(llm.completion_settings)
     return settings
 
 
@@ -73,7 +84,10 @@ def _completion_with_typed_messages(completion, messages):
         if isinstance(message, ChatMessage):
             completion.with_message(message.content, message.role)
         elif isinstance(message, HumanMessage):
-            completion.with_message(message.content, "user")
+            if isinstance(message.content, list):
+                _parse_multi_part_content(message.content, completion, "user")
+            else:
+                completion.with_message(message.content, "user")
 
         elif isinstance(message, AIMessage):
             raw_tool_calls = message.additional_kwargs.get("tool_calls")
@@ -172,17 +186,20 @@ class DKULLM(LockedDownBaseLLM):
     llm_id: str
     """LLM identifier to use"""
 
-    max_tokens: int = 1024
-    """Denotes the number of tokens to predict per generation."""
+    max_tokens: int = None
+    """Denotes the number of tokens to predict per generation. Deprecated: use key "maxOutputTokens" in field "completion_settings"."""
 
-    temperature: float = 0
-    """A non-negative float that tunes the degree of randomness in generation."""
+    temperature: float = None
+    """A non-negative float that tunes the degree of randomness in generation. Deprecated: use key "temperature" in field "completion_settings"."""
 
     top_k: int = None
-    """Number of tokens to pick from when sampling."""
+    """Number of tokens to pick from when sampling. Deprecated: use key "topK" in field "completion_settings"."""
 
     top_p: float = None
-    """Sample from the top tokens whose probabilities add up to p."""
+    """Sample from the top tokens whose probabilities add up to p. Deprecated: use key "topP" in field "completion_settings"."""
+
+    completion_settings: dict = {}
+    """Settings applied to completion queries, all keys are optional and can include: maxOutputTokens, temperature, topK, topP, frequencyPenalty, presencePenalty, logitBias, logProbs and topLogProbs."""
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
@@ -331,17 +348,20 @@ class DKUChatModel(LockedDownBaseChatModel):
     llm_id: str
     """LLM identifier to use"""
 
-    max_tokens: int = 1024
-    """Denotes the number of tokens to predict per generation."""
+    max_tokens: int = None
+    """Denotes the number of tokens to predict per generation. Deprecated: use key "maxOutputTokens" in field "completion_settings"."""
 
-    temperature: float = 0
-    """A non-negative float that tunes the degree of randomness in generation."""
+    temperature: float = None
+    """A non-negative float that tunes the degree of randomness in generation. Deprecated: use key "temperature" in field "completion_settings"."""
 
     top_k: int = None
-    """Number of tokens to pick from when sampling."""
+    """Number of tokens to pick from when sampling. Deprecated: use key "topK" in field "completion_settings"."""
 
     top_p: float = None
-    """Sample from the top tokens whose probabilities add up to p."""
+    """Sample from the top tokens whose probabilities add up to p. Deprecated: use key "topP" in field "completion_settings"."""
+
+    completion_settings: dict = {}
+    """Settings applied to completion queries, all keys are optional and can include: maxOutputTokens, temperature, topK, topP, frequencyPenalty, presencePenalty, logitBias, logProbs and topLogProbs."""
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
@@ -375,7 +395,7 @@ class DKUChatModel(LockedDownBaseChatModel):
     ) -> ChatResult:
         tools = kwargs.get("tools", None)
         tool_choice = kwargs.get("tool_choice", None)
-        logging.debug("DKUChatModel _generate called, messages=%s tools=%s stop=%s" % (messages, tools, stop))
+        logging.debug("DKUChatModel _generate called, messages=%s tools=%s stop=%s" % (len(messages), len(tools) if tools is not None else "-", stop))
 
         completions = self._llm_handle.new_completions()
         completions.settings.update(_llm_settings(self, stop, tools, tool_choice))
@@ -709,3 +729,15 @@ def _convert_to_llm_mesh_tool_choice(
         f"Unrecognized tool_choice type. Expected str, bool or dict. "
         f"Received: {tool_choice}"
     )
+
+
+def _parse_multi_part_content(content: List[dict], completion: DSSLLMCompletionsQuerySingleQuery, role: str) -> None:
+    assert isinstance(content, list), "The content must be multi-part"
+
+    multi_part_message = completion.new_multipart_message(role)
+    for content_part in content:
+        if content_part['type'] == 'text':
+            multi_part_message.with_text(content_part['text'])
+        elif content_part['type'] == 'image_url':
+            multi_part_message.with_image_url(content_part['image_url']['url'])
+    multi_part_message.add()

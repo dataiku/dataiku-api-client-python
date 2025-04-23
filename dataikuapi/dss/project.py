@@ -177,6 +177,7 @@ class DSSProject(object):
                 Exports the data of all input managed folders (default to **False**)
             * **exportGitRepository** (boolean): Exports the Git repository history (you must be project admin if git contains a remote with credentials, defaults to **False**)
             * **exportInsightsData** (boolean): Exports the data of static insights (default to **False**)
+            * **exportPromptStudioHistories** (boolean): Exports the prompt studio execution histories (default to **False**)
 
         """
         if options is None:
@@ -1996,6 +1997,8 @@ class DSSProject(object):
             return recipe.GenerateFeaturesRecipeCreator(name, self)
         elif type == "grouping":
             return recipe.GroupingRecipeCreator(name, self)
+        elif type == "upsert":
+            return recipe.UpsertRecipeCreator(name, self)
         elif type == "window":
             return recipe.WindowRecipeCreator(name, self)
         elif type == "sync":
@@ -2032,12 +2035,17 @@ class DSSProject(object):
             return recipe.ClusteringScoringRecipeCreator(name, self)
         elif type == "download":
             return recipe.DownloadRecipeCreator(name, self)
+        elif type == 'export':
+            return recipe.ExportRecipeCreator(name, self)
         elif type == "sql_query":
             return recipe.SQLQueryRecipeCreator(name, self)
         elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
             return recipe.CodeRecipeCreator(name, type, self)
         elif type in ["cpython", "ksql", "streaming_spark_scala"]:
             return recipe.CodeRecipeCreator(name, type, self)
+        elif type == "extract_failed_rows":
+            return recipe.ExtractFailedRowsRecipeCreator(name, self)
+
 
     ########################################################
     # Flow
@@ -2354,7 +2362,7 @@ class DSSProject(object):
         """
         List the LLM usable in this project
 
-        :param str purpose: Usage purpose of the LLM. Main values are GENERIC_COMPLETION and TEXT_EMBEDDING_EXTRACTION
+        :param str purpose: Usage purpose of the LLM. Main values are GENERIC_COMPLETION, TEXT_EMBEDDING_EXTRACTION and IMAGE_GENERATION
         :param str as_type: How to return the list. Supported values are "listitems" and "objects".
         :returns: The list of LLMs. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.llm.DSSLLMListItem`.
                   If "as_type" is "objects", each one as a :class:`dataikuapi.dss.llm.DSSLLM`
@@ -2450,6 +2458,7 @@ class DSSProject(object):
     def get_webapp(self, webapp_id):
         """
         Get a handle to interact with a specific webapp
+
         :param webapp_id: the identifier of a webapp
         :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
         """

@@ -471,7 +471,7 @@ class DSSManagedFolder(object):
 class DSSManagedFolderSettings(DSSTaggableObjectSettings):
     """
     Base settings class for a DSS managed folder.
-    Do not instantiate this class directly, use :meth:`DSSDSSManagedFolderSettings.get_settings`
+    Do not instantiate this class directly, use :meth:`DSSManagedFolder.get_settings`
 
     Use :meth:`save` to save your changes
     """

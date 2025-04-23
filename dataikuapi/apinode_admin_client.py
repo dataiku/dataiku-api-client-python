@@ -9,16 +9,32 @@ from .base_client import DSSBaseClient
 class APINodeAdminClient(DSSBaseClient):
     """Entry point for the DSS APINode admin client"""
 
-    def __init__(self, uri, api_key, no_check_certificate=False, **kwargs):
-        """
-        Instantiate a new DSS API client on the given base uri with the given API key.
+    def __init__(self, uri, api_key, no_check_certificate=False, client_certificate=None, **kwargs):
+        """Initialize a new DSS API Node Admin client.
+
+        This client provides administrative access to DSS API node admin.
+
+        Args:
+            uri (str): Base URI of the DSS API node server (http://host:port/ or https://host:port/)
+            api_key (str): API key for administrative authentication
+            no_check_certificate (bool, optional): If True, disables SSL certificate verification.
+                Defaults to False.
+            client_certificate (str or tuple, optional): Path to client certificate file or tuple of 
+                (cert, key) paths for client certificate authentication
+            **kwargs: Additional keyword arguments. Note: 'insecure_tls' is deprecated in favor of 
+                no_check_certificate.
+
+        Note:
+            - API key is required for administrative access
+            - When using HTTPS, certificate verification is enabled by default for security
+            - Use no_check_certificate=True only in development or when using self-signed certificates
         """
         if "insecure_tls" in kwargs:
             # Backward compatibility before removing insecure_tls option
             warnings.warn("insecure_tls field is now deprecated. It has been replaced by no_check_certificate.", DeprecationWarning)
             no_check_certificate = kwargs.get("insecure_tls") or no_check_certificate
 
-        DSSBaseClient.__init__(self, "%s/%s" % (uri, "admin/api"), api_key, no_check_certificate=no_check_certificate)
+        DSSBaseClient.__init__(self, "%s/%s" % (uri, "admin/api"), api_key, no_check_certificate=no_check_certificate, client_certificate=client_certificate)
 
     ########################################################
     # Services generations

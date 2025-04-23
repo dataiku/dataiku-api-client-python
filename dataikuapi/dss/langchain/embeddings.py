@@ -7,7 +7,10 @@ import threading
 from typing import Callable, List, Any, Union
 
 import pydantic
-from langchain.embeddings.base import Embeddings
+try:
+    from langchain_core.embeddings.embeddings import Embeddings
+except ModuleNotFoundError:
+    from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks import BaseCallbackHandler, LLMManagerMixin
 from dataiku.llm.tracing import SpanBuilder
 from dataikuapi.dss.llm_tracing import new_trace

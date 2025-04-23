@@ -751,6 +751,47 @@ class DSSProjectDeployerProject(object):
         self.client._perform_empty(
             "DELETE", "/project-deployer/projects/%s/bundles/%s" % (self.project_key, bundle_id))
 
+    def get_bundle_stream(self, bundle_id):
+        """
+        Download a bundle from this published project, as a binary stream.
+
+        .. warning::
+
+            The stream must be closed after use. Use a **with** statement to handle closing the stream at the end of
+            the block by default. For example:
+
+        .. code-block:: python
+
+                with project_deployer_project.get_bundle_stream('v1') as fp:
+                    # use fp
+
+                # or explicitly close the stream after use
+                fp = project_deployer_project.get_bundle_stream('v1')
+                # use fp, then close
+                fp.close()
+
+        :param str bundle_id: the identifier of the bundle
+
+        """
+        return self.client._perform_raw("GET",
+                                        "/project-deployer/projects/%s/bundles/%s" % (self.project_key, bundle_id))
+
+    def download_bundle_to_file(self, bundle_id, path):
+        """
+        Download a bundle from this published project into the given output file.
+
+        :param str bundle_id: the identifier of the bundle
+        :param str path: if "-", will write to /dev/stdout
+        """
+        if path == "-":
+            path = "/dev/stdout"
+        with self.get_bundle_stream(bundle_id) as stream:
+            with open(path, 'wb') as f:
+                for chunk in stream.iter_content(chunk_size=10000):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
+
     def delete(self):
         """
         Delete this published project.
