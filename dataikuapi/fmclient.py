@@ -70,11 +70,30 @@ class FMClient(object):
         tenant_id="main",
         extra_headers=None,
         no_check_certificate=False,
+        client_certificate=None,
         **kwargs
     ):
-        """
-        Base class for the different FM Clients
-        Do not create this class, instead use :class:`dataikuapi.FMClientAWS`, :class:`dataikuapi.FMClientAzure` or :class:`dataikuapi.FMClientGCP`
+        """Initialize a new FM (Fleet Management) API client.
+
+        This client provides access to Dataiku's Fleet Management capabilities, allowing interaction
+        with feature stores, feature sets, and related functionality.
+
+        Args:
+            host (str): The URL of the DSS instance (e.g., "http://localhost:11200")
+            api_key_id (str): The API key ID for authentication
+            api_key_secret (str): The API key secret for authentication
+            tenant_id (str, optional): The tenant ID. Defaults to "main"
+            extra_headers (dict, optional): Additional HTTP headers to include in all requests
+            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification.
+                Defaults to False.
+            client_certificate (str or tuple, optional): Path to client certificate file or tuple of 
+                (cert, key) paths for client certificate authentication
+            **kwargs: Additional keyword arguments
+
+        Note:
+            - API key ID and secret are required for authentication
+            - When using HTTPS, certificate verification is enabled by default for security
+            - Use no_check_certificate=True only in development or when using self-signed certificates
         """
         if self.cloud == None:
             raise NotImplementedError(
@@ -93,6 +112,8 @@ class FMClient(object):
         self._session = Session()
         if no_check_certificate:
             self._session.verify = False
+        if client_certificate:
+            self._session.cert = client_certificate
 
         if self.api_key_id is not None and self.api_key_secret is not None:
             self._session.auth = HTTPBasicAuth(self.api_key_id, self.api_key_secret)

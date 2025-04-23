@@ -95,7 +95,7 @@ class DSSLLM(object):
 
     def new_images_generation(self):
         return DSSLLMImageGenerationQuery(self)
-    
+
     def as_langchain_llm(self, **data):
         """
         Create a langchain-compatible LLM object for this LLM.
@@ -525,7 +525,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
 class DSSLLMCompletionQueryMultipartMessage(object):
     """
       .. important::
-        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or 
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or
         :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message`.
 
     """
@@ -563,6 +563,16 @@ class DSSLLMCompletionQueryMultipartMessage(object):
             part["imageMimeType"] = mime_type
 
         self.msg["parts"].append(part)
+        return self
+
+    def with_image_url(self, image):
+        """
+        Add an image url part to the multipart message
+
+        :param image: str the image url
+        """
+
+        self.msg["parts"].append({"type": "IMAGE_URI", "imageUrl": image})
         return self
 
     def add(self):
@@ -767,7 +777,7 @@ class DSSLLMCompletionsResponse(object):
 class DSSLLMImageGenerationQuery(object):
     """
     A handle to interact with an image generation query.
-    
+
     .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_images_generation` instead.
     """
@@ -789,7 +799,7 @@ class DSSLLMImageGenerationQuery(object):
         """
         self.gq["prompts"].append({"prompt": prompt, "weight": weight})
         return self
- 
+
     def with_negative_prompt(self, prompt, weight=None):
         """
         Add a negative prompt to the image generation query.
@@ -849,7 +859,7 @@ class DSSLLMImageGenerationQuery(object):
         :param Union[str, bytes] image: The mask image to apply to the image edition. As `str` in base 64 or `bytes`.
         """
         self.gq["maskMode"] = mode
-        
+
         if image is not None:
             if isinstance(image, str):
                 self.gq["maskImage"] = image

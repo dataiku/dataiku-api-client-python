@@ -49,12 +49,12 @@ class GovernUser(object):
         from dataikuapi.govern_client import GovernClient
 
         if self.client.api_key is not None:
-            return GovernClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser": self.login}, no_check_certificate=not self.client._session.verify)
+            return GovernClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser": self.login}, no_check_certificate=not self.client._session.verify, client_certificate=self.client._session.cert)
         elif self.client.internal_ticket is not None:
             verify = self.client._session.verify
             no_check_certificate = verify if isinstance(verify, str) else not verify
             return GovernClient(self.client.host, internal_ticket=self.client.internal_ticket,
-                                extra_headers={"X-DKU-ProxyUser": self.login}, no_check_certificate=no_check_certificate)
+                                extra_headers={"X-DKU-ProxyUser": self.login}, no_check_certificate=no_check_certificate, client_certificate=self.client._session.cert)
         else:
             raise ValueError("Don't know how to proxy this client")
 

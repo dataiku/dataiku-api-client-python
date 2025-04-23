@@ -22,7 +22,7 @@ from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix, DSSLLMCostLimitingCounters
-from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel
+from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel, SMTPMessagingChannelCreator, AWSSESMailMessagingChannelCreator, MicrosoftGraphMailMessagingChannelCreator, SlackMessagingChannelCreator, MSTeamsMessagingChannelCreator, GoogleChatMessagingChannelCreator, TwilioMessagingChannelCreator, ShellMessagingChannelCreator
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
@@ -39,13 +39,23 @@ from .govern_client import GovernClient
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, **kwargs):
-        """
-        Instantiate a new DSS API client on the given host with the given API key.
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, client_certificate=None, **kwargs):
+        """Initialize a new DSS API client.
 
-        API keys can be managed in DSS on the project page or in the global settings.
+        Args:
+            host (str): The host URL of the DSS instance (e.g., "http://localhost:11200")
+            api_key (str, optional): API key for authentication. Can be managed in DSS project page or global settings.
+            internal_ticket (str, optional): Internal ticket for authentication.
+            extra_headers (dict, optional): Additional HTTP headers to include in requests.
+            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification. 
+                Defaults to False.
+            client_certificate (str or tuple, optional): Path to client certificate file or tuple of (cert, key) paths.
+            **kwargs: Additional keyword arguments. Note: 'insecure_tls' is deprecated in favor of no_check_certificate.
 
-        The API key will define which operations are allowed for the client.
+        Note:
+            The API key determines which operations are allowed for the client.
+            If no_check_certificate is True, SSL certificate verification will be disabled.
+            If client_certificate is provided, it will be used for client certificate authentication.
         """
         if "insecure_tls" in kwargs:
             # Backward compatibility before removing insecure_tls option
@@ -58,7 +68,9 @@ class DSSClient(object):
         self._session = Session()
         if no_check_certificate: # either True or a string in case of encrypted rpc
             self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
-
+        if client_certificate:
+            self._session.cert = client_certificate
+            
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")
         elif self.internal_ticket is not None:
@@ -1688,7 +1700,7 @@ class DSSClient(object):
         Get the messaging channel with the corresponding ID
 
         :param channel_id: ID of channel as specified Notifications & Integrations UI
-        :return: A messaging channel object, such as DSSMessagingChannel, or a DSSMailMessagingChannel for mail a channel
+        :return: A messaging channel object, such as :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel`, or a :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel` for a mail channel
         """
         channel = self._perform_json('GET', '/messaging-channels/%s' % channel_id)
         return self._map_channel_to_object_type(channel)
@@ -1698,9 +1710,9 @@ class DSSClient(object):
         List all available messaging channels
 
         :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
-        :param str channel_type: a channel type to filter by, e.g. "smtp", "aws-ses-mail", "slack"
+        :param str channel_type: a channel type to filter by, e.g. "smtp", "aws-ses-mail", "slack" (see :meth:`DSSClient.create_messaging_channel` for the full list of supported types)
         :param str channel_family: a str to filter for family of channels with a similar interface - "mail" for all channels that send email-like messages
-        :return: A list of messaging channels after the filtering specified, as listitems (DSSMessagingChannelListItem) or objects (DSSMessagingChannel / DSSMailMessagingChannel)
+        :return: A list of messaging channels after the filtering specified, as listitems (:class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelListItem`) or objects (:class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel` or :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel`)
         """
         query_string = ""
         if channel_type is not None:
@@ -1716,6 +1728,143 @@ class DSSClient(object):
             return [self._map_channel_to_object_type(channel) for channel in channels]
         else:
             raise ValueError("Unknown as_type")
+
+
+    def new_messaging_channel(self, type):
+        """
+        Initializes the creation of a new messaging channel. Returns a :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelCreator`
+        or one of its subclasses to complete the creation of the messaging channel. The creation requires admin privileges.
+
+        :param str type: Type of the messaging channel. Can be of one the following: "smtp", "aws-ses-mail", "microsoft-graph-mail", "slack", "msft-teams", "google-chat", "twilio" or "shell".
+        :returns: A new DSS Messaging Channel Creator handle
+        :rtype: :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelCreator`
+
+        Usage example:
+
+        .. code-block:: python
+
+            smtp_messaging_channel_creator = client.new_messaging_channel("smtp")
+            smtp_messaging_channel_creator.with_channel_id("Some ID")
+            smtp_messaging_channel_creator.with_sender("email@example.com")
+            smtp_messaging_channel_creator.with_authorized_domains(["example.com", "example.org", "something.example.com"])
+            smtp_messaging_channel_creator.with_login("username")
+            smtp_messaging_channel_creator.with_password("password")
+            smtp_messaging_channel_creator.with_host("host.example.com")
+            smtp_messaging_channel_creator.with_port(443)
+            smtp_messaging_channel_creator.with_session_properties([{ "key": "key1", "value": "value1" }, { "key": "key2", "value": "value2" }])
+            smtp_messaging_channel = smtp_messaging_channel_creator.create()
+        """
+        if type == "smtp":
+            return SMTPMessagingChannelCreator(self)
+        elif type == "aws-ses-mail":
+            return AWSSESMailMessagingChannelCreator(self)
+        elif type == "microsoft-graph-mail":
+            return MicrosoftGraphMailMessagingChannelCreator(self)
+        elif type == "slack":
+            return SlackMessagingChannelCreator(self)
+        elif type == "msft-teams":
+            return MSTeamsMessagingChannelCreator(self)
+        elif type == "google-chat":
+            return GoogleChatMessagingChannelCreator(self)
+        elif type == "twilio":
+            return TwilioMessagingChannelCreator(self)
+        elif type == "shell":
+            return ShellMessagingChannelCreator(self)
+        else:
+            raise ValueError("Unknown type")
+
+    def create_messaging_channel(self, channel_type, channel_id=None, channel_configuration=None):
+        """
+        Create a messaging channel. Requires admin privileges.
+
+        We strongly recommend that you use the creator helpers instead of calling this directly. See :meth:`DSSClient.new_messaging_channel`.
+
+        :param str channel_type: type of the channel type. Can be of one the following: "smtp", "aws-ses-mail", "microsoft-graph-mail", "slack", "msft-teams", "google-chat", "twilio" or "shell".
+        :param str channel_id: optional ID of the channel, must be unique. If None or empty a random ID will be generated.
+        :param dict channel_configuration: optional specific configuration for the channel depending on the channel type. Every configuration entry is optional but not provided some may lead to a non-functional messaging channel.
+
+            - "smtp", "aws-ses-mail", "microsoft-graph-mail":
+                - "useCurrentUserAsSender": True to use the email of the user triggering the action as sender, False otherwise. Has precedence over 'sender' property;
+                - "sender": sender email, use an adhoc provided email if not provided;
+                - "authorizedDomain": comma-separated list of authorized domains for "To" addresses;
+                - "useSSL": True to use SSL, False otherwise;
+                - "useTLS": True to use TLS, False otherwise;
+                - "login": user login;
+                - "password": user password;
+                - "host": host to connect to;
+                - "port": port to connect to;
+                - "sessionProperties": Array of dictionaries with "key" and "value" keys set for session extra properties;
+                - Additional for "aws-ses-mail":
+                    - "accessKey": AWS access key;
+                    - "secretKey": AWS secret key;
+                    - "regionOrEndpoint": AWS region or custom endpoint.
+                - Additional for "microsoft-graph-mail":
+                    - "clientId": Microsoft application ID;
+                    - "tenantId": Microsoft directory ID;
+                    - "clientSecret": Account used to sent mails with this channel. Must be a User Principal Name with a valid Microsoft 365 license.
+            - "slack":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "mode": connection mode. Can be "WEBHOOK" or "API";
+                - "webhookUrl": webhook URL for "WEBHOOK" mode;
+                - "authorizationToken": authorization token for "API" mode;
+                - "channel": Slack channel ID.
+            - "msft-teams":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "webhookUrl": webhook URL;
+                - "webhookType": type of webhook to use. Can be "WORKFLOWS" or "OFFICE365" (legacy).
+            - "google-chat":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "webhookUrl": webhook URL;
+                - "webhookKey": key parameter for the webhook URL (mandatory if not included in the URL);
+                - "webhookToken": token parameter for the webhook URL (mandatory if not included in the URL).
+            - "twilio":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "accountSid": Twilio account SID;
+                - "authToken": authorization token;
+                - "fromNumber": Twilio from number.
+            - "shell":
+                - "type": Type of shell execution. Can be "COMMAND" or "FILE";
+                - "command": command to execute. In "FILE" mode this string will pass to the `-c` switch;
+                - "script": script content to execute for mode "FILE".
+
+        Usage example:
+
+        .. code-block:: python
+
+            channel_type = "smtp"
+            channel_id = "Some ID"
+            sender = "email@example.com"
+            authorized_domains = ["example.com", "example.org", "something.example.com"]
+            login = "username"
+            password = "password"
+            host = "host.example.com"
+            port = 587
+            session_properties = [{ "key": "key1", "value": "value1" }, { "key": "key2", "value": "value2" }]
+            channel_params = {
+                "useCurrentUserAsSender": False,
+                "sender": sender,
+                "authorizedDomain": ",".join(authorized_domains),
+                "useSSL": True,
+                "useTLS": True,
+                "login": login,
+                "password": password,
+                "host": host,
+                "port": port,
+                "sessionProperties": session_properties
+            }
+            client.create_messaging_channel(channel_type, channel_id, channel_params)
+
+        :return: The created messaging channel object, such as :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel`, or a :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel` for a mail channel
+        """
+        return self._map_channel_to_object_type(self._perform_json(
+            "POST",
+            "/messaging-channels/",
+            body = {
+                "id": channel_id if channel_id else "",
+                "type": channel_type,
+                "configuration": channel_configuration if channel_configuration else {}
+            }
+        ))
 
     ########################################################
     # Data Quality
