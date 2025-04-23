@@ -2450,6 +2450,7 @@ class DSSProject(object):
     def get_webapp(self, webapp_id):
         """
         Get a handle to interact with a specific webapp
+
         :param webapp_id: the identifier of a webapp
         :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
         """
