@@ -990,7 +990,7 @@ class DSSProject(object):
         List the saved models in this project
 
         :returns: the list of the saved models, each one as a python dict
-        :rtype: list
+        :rtype: list[DSSSavedModel]
         """
         return self.client._perform_json(
             "GET", "/projects/%s/savedmodels/" % self.project_key)
@@ -1329,7 +1329,7 @@ class DSSProject(object):
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD,\
                 RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL,\
-                STREAMING_ENDPOINT)
+                STREAMING_ENDPOINT, KNOWLEDGE_BANK)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive\
                 metastore for recomputed HDFS datasets.
             * (Optional) a autoUpdateSchemaBeforeEachRecipeRun field (True or False) to specify whether to auto update\
@@ -1350,7 +1350,7 @@ class DSSProject(object):
             * the type of job (RECURSIVE_BUILD, NON_RECURSIVE_FORCED_BUILD, RECURSIVE_FORCED_BUILD,\
                 RECURSIVE_MISSING_ONLY_BUILD)
             * a list of outputs to build from the available types: (DATASET, MANAGED_FOLDER, SAVED_MODEL,\
-                STREAMING_ENDPOINT)
+                STREAMING_ENDPOINT, KNOWLEDGE_BANK)
             * (Optional) a refreshHiveMetastore field (True or False) to specify whether to re-synchronize the Hive\
                 metastore for recomputed HDFS datasets.
             * (Optional) a autoUpdateSchemaBeforeEachRecipeRun field (True or False) to specify whether to auto update\
@@ -1798,6 +1798,14 @@ class DSSProject(object):
         return self.client._perform_json("POST",
                                          "/projects/%s/bundles/imported/%s/actions/preload" % (
                                          self.project_key, bundle_id))
+
+    def delete_imported_bundle(self, bundle_id):
+        """
+        Deletes a bundle that has been imported on the Automation node
+
+        :param str bundle_id: The identifier of the bundle
+        """
+        return self.client._perform_json("DELETE", "/projects/%s/bundles/imported/%s" % (self.project_key, bundle_id))
 
     ########################################################
     # Testing with DSS test scenarios report
@@ -2392,7 +2400,7 @@ class DSSProject(object):
         :param str as_type: How to return the list. Supported values are "listitems" and "objects".
         :returns: The list of knowledge banks. If "as_type" is "listitems", each one as a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBankListItem`.
                   If "as_type" is "objects", each one as a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank`
-        :rtype: list
+        :rtype: list[DSSKnowledgeBank]
         """
         kbs = self.client._perform_json("GET", "/projects/%s/knowledge-banks" % (self.project_key))
         if as_type == "listitems":
@@ -2411,6 +2419,36 @@ class DSSProject(object):
         """
         return DSSKnowledgeBank(self.client, self.project_key, id)
 
+    def create_knowledge_bank(self, name, vector_store_type, embedding_llm_id, settings=None):
+        """
+        Create a new knowledge bank in the project, and return a handle to interact with it
+
+        :param str name: The name for the new knowledge bank. This does not need to be unique
+
+        :param str vector_store_type: The vector store type to use for this knowledge bank. Valid values are:
+
+            * CHROMA
+            * PINECONE
+            * ELASTICSEARCH
+            * AZURE_AI_SEARCH
+            * VERTEX_AI_GCS_BASED
+            * FAISS *(not recommended)*
+            * QDRANT_LOCAL *(not recommended)*
+
+        :param str embedding_llm_id: The id of the embedding LLM. It has to have the TEXT_EMBEDDING_EXTRACTION purpose.
+
+        :param Optional[dict] settings: Additional settings for the knowledge bank.
+
+        :returns: a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank` handle to interact with the newly-created knowledge bank
+        """
+        if settings is None:
+            settings = {}
+        settings['name'] = name
+        settings['vectorStoreType'] = vector_store_type
+        settings['embeddingLLMId'] = embedding_llm_id
+
+        kb = self.client._perform_json("POST", "/projects/%s/knowledge-banks/" % self.project_key, body=settings)
+        return DSSKnowledgeBank(self.client, self.project_key, kb["id"])
 
     ########################################################
     # Agent Tools
@@ -3206,7 +3244,8 @@ class JobDefinitionBuilder(object):
         Adds an item to build in this job
 
         :param name: name of the output object
-        :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT
+        :param object_type: type of object to build from: DATASET, MANAGED_FOLDER, SAVED_MODEL, STREAMING_ENDPOINT,\
+            KNOWLEDGE_BANK
             (defaults to **None**)
         :param object_project_key: PROJECT_KEY for the project that contains the object to build (defaults to **None**)
         :param partition: specify partition to build (defaults to **None**)

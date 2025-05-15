@@ -140,7 +140,7 @@ class DSSRecipe(object):
                                   identifiers, and a partition identifier is a pipe-separated list of values for the partitioning
                                   dimensions
         :param boolean no_fail: if True, does not raise if the job failed
-        :param boolean wait: if True, the method waits for the job complettion. If False, the method returns immediately
+        :param boolean wait: if True, the method waits for the job completion. If False, the method returns immediately
 
         :return: a job handle corresponding to the recipe run
         :rtype: :class:`dataikuapi.dss.job.DSSJob`
@@ -158,7 +158,8 @@ class DSSRecipe(object):
             "COMPUTABLE_FOLDER": "MANAGED_FOLDER",
             "COMPUTABLE_SAVED_MODEL": "SAVED_MODEL",
             "COMPUTABLE_STREAMING_ENDPOINT": "STREAMING_ENDPOINT",
-            "COMPUTABLE_MODEL_EVALUATION_STORE": "MODEL_EVALUATION_STORE"
+            "COMPUTABLE_MODEL_EVALUATION_STORE": "MODEL_EVALUATION_STORE",
+            "COMPUTABLE_RETRIEVABLE_KNOWLEDGE": "RETRIEVABLE_KNOWLEDGE"
         }
         if first_output["type"] in object_type_map:
             jd = project.new_job(job_type)
