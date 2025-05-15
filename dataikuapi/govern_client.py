@@ -34,7 +34,7 @@ class GovernClient(object):
                 The API key determines which operations are allowed.
             internal_ticket (str, optional): Internal ticket for authentication
             extra_headers (dict, optional): Additional HTTP headers to include in all requests
-            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification.
+            no_check_certificate (bool, optional): If True, disables SSL certificate verification.
                 Defaults to False.
             client_certificate (str or tuple, optional): Path to client certificate file or tuple of 
                 (cert, key) paths for client certificate authentication
@@ -55,8 +55,8 @@ class GovernClient(object):
         self.host = host
         self._session = Session()
         
-        if no_check_certificate: # either True or a string in case of encrypted rpc
-            self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
+        if no_check_certificate:
+            self._session.verify = False
         if client_certificate:
             self._session.cert = client_certificate
 
@@ -408,7 +408,7 @@ class GovernClient(object):
         future_resp = self._perform_json("GET", "/admin/external-groups", params={'userSourceType': user_source_type})
         return GovernFuture.from_resp(self, future_resp)
 
-    def start_fetch_external_users(self, user_source_type, login=None, group_name=None):
+    def start_fetch_external_users(self, user_source_type, login=None, email=None, group_name=None):
         """
         Fetch users from external source filtered by login or group name:
          - if login is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
@@ -418,11 +418,12 @@ class GovernClient(object):
 
         :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
         :param login: optional - the login of the user in the external source
+        :param email: optional - the email of the user in the external source
         :param group_name: optional - the group name of the group in the external source
         :rtype: :class:`dataikuapi.govern.future.GovernFuture`
         :return: a GovernFuture containing a list of ExternalUser
         """
-        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'groupName': group_name})
+        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'email': email, 'groupName': group_name})
         return GovernFuture.from_resp(self, future_resp)
 
     def start_provision_users(self, user_source_type, users):

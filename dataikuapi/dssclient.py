@@ -47,7 +47,7 @@ class DSSClient(object):
             api_key (str, optional): API key for authentication. Can be managed in DSS project page or global settings.
             internal_ticket (str, optional): Internal ticket for authentication.
             extra_headers (dict, optional): Additional HTTP headers to include in requests.
-            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification. 
+            no_check_certificate (bool, optional): If True, disables SSL certificate verification. 
                 Defaults to False.
             client_certificate (str or tuple, optional): Path to client certificate file or tuple of (cert, key) paths.
             **kwargs: Additional keyword arguments. Note: 'insecure_tls' is deprecated in favor of no_check_certificate.
@@ -66,8 +66,8 @@ class DSSClient(object):
         self.internal_ticket = internal_ticket
         self.host = host
         self._session = Session()
-        if no_check_certificate: # either True or a string in case of encrypted rpc
-            self._session.verify = no_check_certificate if isinstance(no_check_certificate, str) else False
+        if no_check_certificate:
+            self._session.verify = False
         if client_certificate:
             self._session.cert = client_certificate
             
@@ -527,21 +527,22 @@ class DSSClient(object):
         future_resp = self._perform_json("GET", "/admin/external-groups", params={'userSourceType': user_source_type})
         return DSSFuture.from_resp(self, future_resp)
 
-    def start_fetch_external_users(self, user_source_type, login=None, group_name=None):
+    def start_fetch_external_users(self, user_source_type, login=None, email=None, group_name=None):
         """
         Fetch users from external source filtered by login or group name:
-         - if login is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
+         - if login or email is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
          - else,
             - if group_name is provided, will search for members of the group in the external source
             - else will search for all users
 
         :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
         :param login: optional - the login of the user in the external source
+        :param email: optional - the email of the user in the external source
         :param group_name: optional - the group name of the group in the external source
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         :return: a DSSFuture containing a list of ExternalUser
         """
-        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'groupName': group_name})
+        future_resp = self._perform_json("GET", "/admin/external-users", params={'userSourceType': user_source_type, 'login': login, 'email': email, 'groupName': group_name})
         return DSSFuture.from_resp(self, future_resp)
 
     def start_provision_users(self, user_source_type, users):
@@ -709,6 +710,38 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env  handle
         """
         return DSSCodeEnv(self, env_lang, env_name)
+
+    def create_internal_code_env(self, internal_env_type, python_interpreter=None, code_env_version=None):
+        """
+        Create a Python internal code environment, and return a handle to interact with it.
+
+        Note: this call requires an API key with `Create code envs` or `Manage all code envs` permission
+
+        Example:
+
+        .. code-block:: python
+
+            env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
+
+        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV` or `RAG_CODE_ENV`.
+        :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311` or `PYTHON312`. If None, DSS will try to select a supported & available interpreter.
+        :param str code_env_version: Version of the code env. Reserved for future use.
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
+        """
+        request_params = {
+            'dssInternalCodeEnvType': internal_env_type,
+            'pythonInterpreter': python_interpreter,
+            'codeEnvVersion': code_env_version,
+        }
+
+        response = self._perform_json("POST", "/admin/code-envs/internal-env/create", params=request_params)
+
+        if response is None:
+            raise Exception('Env creation returned no data')
+        if response.get('messages', {}).get('error', False):
+            raise Exception('Env creation failed : %s' % (json.dumps(response.get('messages', {}).get('messages', {}))))
+
+        return DSSCodeEnv(self, "python", response["envName"])
 
     def create_code_env(self, env_lang, env_name, deployment_mode, params=None):
         """
