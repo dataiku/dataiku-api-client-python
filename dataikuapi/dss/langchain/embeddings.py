@@ -12,8 +12,7 @@ try:
 except ModuleNotFoundError:
     from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks import BaseCallbackHandler, LLMManagerMixin
-from dataiku.llm.tracing import SpanBuilder
-from dataikuapi.dss.llm_tracing import new_trace
+from dataikuapi.dss.llm_tracing import new_trace, SpanBuilder
 
 from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
 

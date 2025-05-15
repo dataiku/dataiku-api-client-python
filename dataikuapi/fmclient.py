@@ -84,7 +84,7 @@ class FMClient(object):
             api_key_secret (str): The API key secret for authentication
             tenant_id (str, optional): The tenant ID. Defaults to "main"
             extra_headers (dict, optional): Additional HTTP headers to include in all requests
-            no_check_certificate (bool or str, optional): If True, disables SSL certificate verification.
+            no_check_certificate (bool, optional): If True, disables SSL certificate verification.
                 Defaults to False.
             client_certificate (str or tuple, optional): Path to client certificate file or tuple of 
                 (cert, key) paths for client certificate authentication
