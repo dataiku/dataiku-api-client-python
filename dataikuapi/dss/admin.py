@@ -519,7 +519,7 @@ class DSSUser(object):
 
     def get_settings(self):
         """
-        Get the settings of the user.
+        Get the settings of the user. You must be admin to call this method.
 
         You must use :meth:`~DSSUserSettings.save()` on the returned object to make your changes effective
         on the user.
@@ -542,13 +542,22 @@ class DSSUser(object):
 
     def get_activity(self):
         """
-        Gets the activity of the user.
+        Gets the activity of the user. You must be admin to call this method.
 
         :return: the user's activity
         :rtype: :class:`DSSUserActivity`
         """
         activity = self.client._perform_json("GET", "/admin/users/%s/activity" % self.login)
         return DSSUserActivity(self.client, self.login, activity)
+
+    def get_info(self):
+        """
+        Gets basic information about the user. You do not need to be admin to call this method
+
+        :rtype: :class:`DSSUserInfo`
+        """
+        raw = self.client._perform_json("GET", "/users/%s" % self.login)
+        return DSSUserInfo(raw)
 
     ########################################################
     # Supplier interaction
@@ -998,6 +1007,66 @@ class DSSUserActivity(object):
         """
         timestamp = self.activity["lastSessionActivity"]
         return _timestamp_ms_to_zoned_datetime(timestamp)
+
+
+class DSSUserInfo(object):
+    """
+    Basic information about a DSS user
+    
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSUser.get_info` or :meth:`DSSClient.list_users_info`
+    """
+    def __init__(self, raw):
+        self._raw = raw
+
+    def get_raw(self):
+        """
+        Get the raw info of the user.
+        :rtype: dict
+        """
+        return self._raw
+
+    @property
+    def login(self):
+        return self._raw["login"]
+    @property
+    def display_name(self):
+        return self._raw["displayName"]
+    @property
+    def groups(self):
+        """
+        :rtype: list
+        """
+        return self._raw["groups"]
+    @property
+    def email(self):
+        return self._raw["email"]
+    @property
+    def enabled(self):
+        return self._raw["enabled"]
+
+class DSSGroupInfo(object):
+    """
+    Basic information about a DSS group
+    
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSClient.list_groups_info`
+    """
+    def __init__(self, raw):
+        self._raw = raw
+
+    def get_raw(self):
+        """
+        Get the raw info of the group.
+        :rtype: dict
+        """
+        return self._raw
+
+    @property
+    def name(self):
+        return self._raw["name"]
 
 
 class DSSAuthorizationMatrix(object):

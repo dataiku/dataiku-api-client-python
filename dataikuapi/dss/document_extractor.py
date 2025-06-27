@@ -309,8 +309,12 @@ class StructuredExtractorResponse(object):
         def _flatten_using_dfs(node, current_outline):
             if not node or not "type" in node:
                 return []
-            elif node["type"] == "text":
+            elif node["type"] == "text" or node["type"] == "table":
+                if not node["text"]:
+                    return []
                 return [{"text": node["text"], "outline": current_outline}]
+            elif node["type"] == "image":
+                return []
             elif node["type"] not in ["document", "section"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
             if not "content" in node:
