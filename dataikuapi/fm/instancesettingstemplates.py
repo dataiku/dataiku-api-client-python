@@ -417,6 +417,21 @@ class FMSetupAction(dict):
         """
         return FMSetupAction(FMSetupActionType.SETUP_K8S_AND_SPARK)
 
+    @staticmethod
+    def install_deprecated_python(install_py36=False, install_py37=False, install_py38=False):
+        """
+        Return an INSTALL_DEPRECATED_PYTHON setup action
+
+        :param boolean install_py36: Install Python 3.6, optional (default: False)
+        :param boolean install_py37: Install Python 3.7, optional (default: False)
+        :param boolean install_py38: Install Python 3.8, optional (default: False)
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMSetupAction`
+        """
+        return FMSetupAction(
+            FMSetupActionType.INSTALL_DEPRECATED_PYTHON,
+            { "install_py36": install_py36, "install_py37": install_py37, "install_py38": install_py38 }
+        )
+
 
 class FMSetupActionType(Enum):
     RUN_ANSIBLE_TASKS = "RUN_ANSIBLE_TASKS"
@@ -441,6 +456,8 @@ class FMSetupActionType(Enum):
     SETUP_PROXY = "SETUP_PROXY"
     INSTALL_CODE_ENV_WITH_PRESET = "INSTALL_CODE_ENV_WITH_PRESET"
     UPDATE_DSS_PORT = "UPDATE_DSS_PORT"
+    INSTALL_DEPRECATED_PYTHON = "INSTALL_DEPRECATED_PYTHON"
+
 
 class FMSetupActionStage(Enum):
     after_dss_startup = "after_dss_startup"

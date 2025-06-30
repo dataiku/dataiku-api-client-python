@@ -15,7 +15,7 @@ class DSSAgentToolListItem(DSSTaggableObjectListItem):
         """
         Convert the current item.
         """
-        return DSSAgentTool(self.client, self.project_key, self._data["id"], "descriptor" in self._data and self._data["desciptor"] or None)
+        return DSSAgentTool(self.client, self.project_key, self._data["id"], "descriptor" in self._data and self._data["descriptor"] or None)
 
     @property
     def id(self):
@@ -34,12 +34,12 @@ class DSSAgentToolListItem(DSSTaggableObjectListItem):
         return self._data["type"]
 
     @property
-    def description(self):
+    def name(self):
         """
-        :returns: The description of the LLM (name, description, input schema)
+        :returns: The name of the tool
         :rtype: string
         """
-        return self._data["description"]
+        return self._data["name"]
 
 
 

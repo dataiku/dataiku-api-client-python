@@ -352,7 +352,11 @@ class DSSModelEvaluation:
         """
         data = self.client._perform_json(
             "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s" % (self.project_key, self.mes_id, self.evaluation_id))
-        return DSSModelEvaluationFullInfo(self, data)
+        prediction_type = data["evaluation"].get("predictionType")
+        if prediction_type == "TIMESERIES_FORECAST":
+            return DSSTimeSeriesModelEvaluationFullInfo(self, data)
+        else:
+            return DSSModelEvaluationFullInfo(self, data)
 
     def get_full_id(self):
         return "ME-{}-{}-{}".format(self.project_key, self.mes_id, self.evaluation_id)
@@ -498,6 +502,34 @@ class DSSModelEvaluationFullInfo:
         return self.model_evaluation.client._perform_text(
                 "PUT", "/projects/%s/modelevaluationstores/%s/evaluations/%s/user-meta" %
                        (self.model_evaluation.project_key, self.model_evaluation.mes_id, self.model_evaluation.evaluation_id), body=self.user_meta)
+
+
+class DSSTimeSeriesModelEvaluationFullInfo(DSSModelEvaluationFullInfo):
+    """
+    A handle on the full information on a time series model evaluation.
+
+    Includes information such as the full id of the evaluated model, the evaluation params,
+    the performance metrics, if any, etc.
+
+    Also provides methods for retrieving per-timeseries performance metrics.
+
+    .. warning::
+        Do not create this class directly, instead use :meth:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluation.get_full_info`
+    """
+    def __init__(self, model_evaluation, full_info):
+        super(DSSTimeSeriesModelEvaluationFullInfo, self).__init__(model_evaluation, full_info)
+
+    def get_per_timeseries_metrics(self):
+        """
+        Returns per timeseries performance metrics for this model evaluation.
+
+        :returns: a dict of performance metrics values
+        :rtype: dict
+        """
+        return self.model_evaluation.client._perform_json(
+            "GET", "/projects/%s/modelevaluationstores/%s/evaluations/%s/per-timeseries-metrics" %
+                   (self.model_evaluation.project_key, self.model_evaluation.mes_id, self.model_evaluation.evaluation_id)
+        )
 
 
 class DataDriftParams(object):

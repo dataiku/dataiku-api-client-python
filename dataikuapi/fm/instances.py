@@ -340,8 +340,10 @@ class FMInstance(object):
         :return: the `Future` object representing the password reset process
         :rtype: :class:`dataikuapi.fm.future.FMFuture`
         """
-        future =  self.client._perform_tenant_json(
-            "GET", "/instances/%s/actions/reset-user-password" % self.id, params={ 'userName':username, 'password':password }
+        future = self.client._perform_tenant_json(
+            "POST",
+            "/instances/%s/actions/reset-user-password" % self.id,
+            body={ 'userName': username, 'password': password }
         )
         return FMFuture.from_resp(self.client, future)
 

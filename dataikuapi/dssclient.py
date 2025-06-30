@@ -21,7 +21,7 @@ from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
 from .dss.plugin import DSSPlugin
-from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix, DSSLLMCostLimitingCounters
+from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSUserInfo, DSSGroupInfo, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix, DSSLLMCostLimitingCounters
 from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel, SMTPMessagingChannelCreator, AWSSESMailMessagingChannelCreator, MicrosoftGraphMailMessagingChannelCreator, SlackMessagingChannelCreator, MSTeamsMessagingChannelCreator, GoogleChatMessagingChannelCreator, TwilioMessagingChannelCreator, ShellMessagingChannelCreator
 from .dss.meaning import DSSMeaning
 from .dss.sqlquery import DSSSQLQuery
@@ -395,6 +395,34 @@ class DSSClient(object):
         if extra_conf is None:
             extra_conf = {}
         return DSSSQLQuery(self, query, connection, database, dataset_full_name, pre_queries, post_queries, type, extra_conf, script_steps, script_input_schema, script_output_schema, script_report_location, read_timestamp_without_timezone_as_string, read_date_as_string, datetimenotz_read_mode, dateonly_read_mode, project_key)
+
+
+    ########################################################
+    # Users & Groups (non-admin version)
+    ########################################################
+
+    def list_users_info(self):
+        """
+        Gets basic information about users on the DSS instance.
+
+        You do not need to be admin to call this
+
+        :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUserInfo`
+        """
+        data = self._perform_json("GET", "/users")
+        return [DSSUserInfo(u) for u in data]
+
+    def list_groups_info(self):
+        """
+        Gets basic information about groups on the DSS instance.
+
+        You do not need to be admin to call this
+
+        :return: A list of groups, as a list of :class:`dataikuapi.dss.admin.DSSGroupInfo`
+        """
+        data = self._perform_json("GET", "/groups")
+        return [DSSGroupInfo(g) for g in data]
+
 
     ########################################################
     # Users
@@ -1958,6 +1986,41 @@ class DSSClient(object):
         :rtype: DSSLLMCostLimitingCounters
         """
         return DSSLLMCostLimitingCounters(self._perform_json("GET", "/admin/llm-cost-limiting/counters"))
+
+
+    ########################################################
+    # Objects permission checking
+    ########################################################
+
+    def new_permission_check(self):
+        """Starts a permission check on a set of DSS objects
+
+        :rtype: DSSPermissionsCheckRequest
+        """
+        return DSSPermissionsCheckRequest(self)
+
+
+class DSSPermissionsCheckRequest(object):
+    def __init__(self, client):
+        self.client = client
+        self.request = {"items": []}
+
+
+    def with_item(self, object_type, object_project_key, object_id):
+        self.request["items"].append({
+            "objectType": object_type,
+            "objectProjectKey": object_project_key,
+            "objectId": object_id
+        })
+        return self
+
+    def execute_raw(self):
+        """
+        Executes the request, returns the raw response
+        :rtype dict
+        """
+        return self.client._perform_json("POST", "/permissions/actions/check-objects", body=self.request)
+
 
 class TemporaryImportHandle(object):
     def __init__(self, client, import_id):

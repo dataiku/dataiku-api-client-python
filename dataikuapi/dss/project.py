@@ -1,5 +1,6 @@
 import os.path as osp
 import warnings
+import logging
 
 from . import recipe
 from .analysis import DSSAnalysis
@@ -37,6 +38,8 @@ from .llm import DSSLLM, DSSLLMListItem
 from .agent_tool import DSSAgentTool, DSSAgentToolListItem
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from ..dss_plugin_mlflow import MLflowHandle
+
+logger = logging.getLogger(__name__)
 
 class DSSProject(object):
     """
@@ -438,6 +441,30 @@ class DSSProject(object):
         }
         if connection is not None:
             obj["params"]["uploadConnection"] = connection
+        self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
+                                  body=obj)
+        return DSSDataset(self.client, self.project_key, dataset_name)
+
+    def create_sample_dataset(self, dataset_name, plugin, sample):
+        """
+        Create a new dataset of type 'Sample' in the project, and return a handle to interact with it.
+
+        :param str dataset_name: the name of the dataset to create. Must not already exist
+        :param str plugin: the name of the plugin used as a reference. Must exist
+        :param str sample: the name of the sample component inside the plugin. Must exist
+
+        :returns: A dataset handle
+        :rtype: :class:`dataikuapi.dss.dataset.DSSDataset`
+        """
+        obj = {
+            "name": dataset_name,
+            "projectKey": self.project_key,
+            "type": "Sample_" + plugin + "_" + sample,
+            "params": {
+                "pluginId": plugin,
+                "sampleName": sample
+            }
+        }
         self.client._perform_json("POST", "/projects/%s/datasets/" % self.project_key,
                                   body=obj)
         return DSSDataset(self.client, self.project_key, dataset_name)
@@ -2287,6 +2314,10 @@ class DSSProject(object):
             a :class:`dataiku.Folder`
         :param str host: setup a custom host if the backend used is not DSS (defaults to **None**).
         """
+        import mlflow
+        mlflow_version = mlflow.__version__
+        if mlflow_version.startswith("3."):
+            logger.error("MLflow >= 3 (detected: {}) is unsupported and may cause compatibility issues".format(mlflow_version))
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
     def get_mlflow_extension(self):

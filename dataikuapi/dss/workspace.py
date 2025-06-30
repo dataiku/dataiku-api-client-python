@@ -1,5 +1,6 @@
 from dataikuapi.dss.app import DSSApp
-from dataikuapi.dss.dataset import DSSDataset
+from dataikuapi.dss.dashboard import DSSDashboard, DSSDashboardListItem
+from dataikuapi.dss.dataset import DSSDataset, DSSDatasetListItem
 from dataikuapi.dss.wiki import DSSWikiArticle
 
 
@@ -39,13 +40,19 @@ class DSSWorkspace:
         Object can be of different shapes (:class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.wiki.DSSWikiArticle`, :class:`dataikuapi.dss.app.DSSApp`, :class:`.DSSWorkspaceHtmlLinkObject` or a :class:`.dict` that contains the raw data)
         """
         if isinstance(object, DSSDataset):
-            data = {"reference": {"projectKey": object.project_key, "type": "DATASET", "id": object.dataset_name}}
+            data = {"reference": {"projectKey": object.project_key, "type": "DATASET", "id": object.dataset_name, "workspaceKey": self.workspace_key}}
+        elif isinstance(object, DSSDatasetListItem):
+             return self.add_object(object.to_dataset())
         elif isinstance(object, DSSWikiArticle):
-            data = {"reference": {"projectKey": object.project_key, "type": "ARTICLE", "id": object.article_id}}
+            data = {"reference": {"projectKey": object.project_key, "type": "ARTICLE", "id": object.article_id, "workspaceKey": self.workspace_key}}
         elif isinstance(object, DSSApp):
             data = {"appId": object.app_id}
         elif isinstance(object, DSSWorkspaceHtmlLinkObject):
             data = {"htmlLink": {"name": object.name, "url": object.url, "description": object.description}}
+        elif isinstance(object, DSSDashboard):
+            data = {"reference": {"projectKey": object.project_key, "type": "DASHBOARD", "id": object.dashboard_id, "workspaceKey": self.workspace_key}}
+        elif isinstance(object, DSSDashboardListItem):
+            return self.add_object(object.to_dashboard())
         elif isinstance(object, dict):
             data = object
         else:

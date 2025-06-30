@@ -3891,7 +3891,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
-        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param int n_jobs: number of cores used for parallel training.
         :param bool debug_mode: if True, output all logs (slower)
 
         :returns: if wait is True, an object containing the Subpopulation analyses, else a future to wait on the result
@@ -3954,7 +3954,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
         :param bool wait: if True, the call blocks until the computation is finished and returns the results directly
         :param int sample_size: number of records of the dataset to use for the computation 
         :param int random_state: random state to use to build sample, for reproducibility
-        :param int n_jobs: number of cores used for parallel training. (-1 means 'all cores')
+        :param int n_jobs: number of cores used for parallel training.
         :param bool debug_mode: if True, output all logs (slower)
 
         :returns: if wait is True, an object containing the Partial dependencies, else a future to wait on the result
