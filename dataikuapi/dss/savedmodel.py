@@ -1,5 +1,4 @@
 import os
-import shutil
 import tempfile
 
 from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
@@ -256,11 +255,9 @@ class DSSSavedModel(object):
         :rtype: :class:`dataikuapi.dss.savedmodel.ExternalModelVersionHandler`
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
-        import shutil
         import os
 
-        archive_temp_dir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as archive_temp_dir:
             archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
 
             with open(archive_filename, "rb") as fp:
@@ -272,8 +269,6 @@ class DSSSavedModel(object):
                             "setActive": set_active, "binaryClassificationThreshold": binary_classification_threshold},
                     files={"file": (archive_filename, fp)})
             return self.get_external_model_version_handler(version_id)
-        finally:
-            shutil.rmtree(archive_temp_dir)
 
     def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT",
                                                   container_exec_config_name="INHERIT", set_active=True,
@@ -343,9 +338,7 @@ class DSSSavedModel(object):
             raise ValueError("The connection " + connection_name + " is not a Databricks connection")
         if "params" not in connection_info:
             raise Exception("Permission to view details of the connection " + connection_name + "required")
-        temp_folder = tempfile.mktemp()
-        os.mkdir(temp_folder)
-        try:
+        with tempfile.TemporaryDirectory() as temp_folder:
             with DatabricksRepositoryContextManager(connection_info, use_unity_catalog):
                 self._download_from_databricks_registry(model_name, model_version, temp_folder)
             return self.import_mlflow_version_from_path(version_id, os.path.join(temp_folder),
@@ -353,9 +346,6 @@ class DSSSavedModel(object):
                                                         container_exec_config_name=container_exec_config_name,
                                                         set_active=set_active,
                                                         binary_classification_threshold=binary_classification_threshold)
-        finally:
-            if os.path.exists(temp_folder):
-                shutil.rmtree(temp_folder)
 
     @staticmethod
     def _download_from_databricks_registry(model_name, model_version, target_directory):
