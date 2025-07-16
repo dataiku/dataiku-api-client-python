@@ -1805,7 +1805,7 @@ class DSSClient(object):
         .. code-block:: python
 
             smtp_messaging_channel_creator = client.new_messaging_channel("smtp")
-            smtp_messaging_channel_creator.with_channel_id("Some ID")
+            smtp_messaging_channel_creator.with_id("Some ID")
             smtp_messaging_channel_creator.with_sender("email@example.com")
             smtp_messaging_channel_creator.with_authorized_domains(["example.com", "example.org", "something.example.com"])
             smtp_messaging_channel_creator.with_login("username")
