@@ -71,6 +71,26 @@ class DSSWebAppBackendClient(object):
             base_port =  remoterun.get_env_var("DKU_BASE_PORT", "???")
 
             dss_url = "%s://%s:%s" % (base_proto, remoterun.get_env_var("DKU_BACKEND_HOST", "127.0.0.1"), base_port)
+
+            # if verify == False, it has willingly been deactivated by the user, so do nothing
+            if self.session.verify:
+                # use the base Cert if SSL has been enabled on the instance
+                base_cert = remoterun.get_env_var("DKU_BASE_CERT", None)
+                if base_cert is not None and base_cert.startswith("b64:"):
+                    import os
+                    from pathlib import Path
+                    cert_path = os.path.join(os.getcwd(), "base_cert.pem")
+                    if not Path(cert_path).is_file():
+                        import base64
+                        base_cert = base_cert[4:]
+                        base_cert = base64.b64decode(base_cert).decode("utf8")
+                        with open(cert_path, "w") as f:
+                            f.write(base_cert)
+                    self.session.verify = cert_path
+                else:
+                    # session.verify is set to the rpc_server_cert.pem file path by default
+                    # unset the RPC certificate if present and default to True, as we are reaching the instance through the "normal" URL
+                    self.session.verify = True
         else:
             dss_url = self.client.host
 

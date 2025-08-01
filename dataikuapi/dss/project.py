@@ -70,23 +70,9 @@ class DSSProject(object):
 
         :rtype: :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         """
-        root = self.client.get_root_project_folder()
-
-        def rec(pf):
-            if self.project_key in pf.list_project_keys():
-                return pf
-            else:
-                for spf in pf.list_child_folders():
-                    found_in_child = rec(spf)
-                    if found_in_child:
-                        return found_in_child
-            return None
-
-        found_in = rec(root)
-        if found_in:
-            return found_in
-        else:
-            return root
+        data = self.client._perform_json("GET", "/project-folders/locate-project/%s" % self.project_key)
+        from .projectfolder import DSSProjectFolder # to handle circular import
+        return DSSProjectFolder(self.client, data)
 
     def move_to_folder(self, folder):
         """
@@ -3137,7 +3123,7 @@ class DSSProjectGit(object):
         """
         return self.client._perform_json("GET", "/projects/%s/git/lib-git-refs/" % self.project_key)
 
-    def add_library(self, repository, local_target_path, checkout,  path_in_git_repository="", add_to_python_path=True, login=None, password=None):
+    def add_library(self, repository, local_target_path, checkout, path_in_git_repository="", add_to_python_path=True, login=None, password=None, as_type="dict"):
         """
         Add a new external library to the project and pull it.
 
@@ -3148,9 +3134,12 @@ class DSSProjectGit(object):
         :param bool add_to_python_path: Whether to add the reference to the Python path.
         :param str login: The remote repository login, for HTTPS repository (defaults to **None**).
         :param str password: The remote repository password, for HTTPS repository (defaults to **None**).
-        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the pull process
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :param str as_type: The type of return. It can be 'dict' (default) or 'object'.
+        :return: A handle on the operation representing the pull process
+        :rtype: if as_type = 'object', it returns :class:`dataikuapi.dss.future.DSSFuture`. if as_type = 'dict', it returns a dict with a 'jobId' key.
         """
+        if as_type != "dict" and as_type != "object":
+            raise ValueError("Unknown as_type")
         body = {
             "repository": repository,
             "login": login,
@@ -3160,7 +3149,10 @@ class DSSProjectGit(object):
             "checkout": checkout,
             "addToPythonPath": add_to_python_path
         }
-        return self.client._perform_json("POST", "/projects/%s/git/lib-git-refs/" % self.project_key, body=body)
+        future_resp = self.client._perform_json("POST", "/projects/%s/git/lib-git-refs/" % self.project_key, body=body)
+        if as_type == 'object':
+            return DSSFuture.from_resp(self.client, future_resp)
+        return future_resp
 
     def set_library(self, git_reference_path, remote, remotePath, checkout, login=None, password=None):
         """

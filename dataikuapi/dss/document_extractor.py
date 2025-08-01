@@ -109,7 +109,7 @@ class DocumentExtractor(object):
             for image in doc_extractor.generate_pages_screenshots(document_ref):
                 print(image.get_raw())
 
-        :param document: input document (txt | md | docx | pdf).
+        :param document: input document (txt | pdf | docx | doc | odt | pptx | ppt | odp | xlsx | xls | xlsm | xlsb | ods | png | jpg | jpeg).
         :type document: :class:`DocumentRef`
         :param output_managed_folder: id of a managed folder to store the generated screenshots as png.
                                       When unspecified, return inline images in the response.

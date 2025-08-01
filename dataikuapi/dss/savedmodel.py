@@ -1,5 +1,6 @@
 import os
 import tempfile
+import logging
 
 from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 from .discussion import DSSObjectDiscussions
@@ -14,6 +15,69 @@ try:
     basestring
 except NameError:
     basestring = str
+
+logger = logging.getLogger(__name__)
+
+
+class RunConfigUtils(object):
+    @staticmethod
+    def retrieve_used_env():
+        """
+        Retrieve the code-env used in the notebook/recipe/code-studio.
+        If no code_env_name is retrieved, it will return "INHERIT".
+        """
+        import sys
+        import re
+        if os.environ.get("DKU_IS_CODE_STUDIO") == "1":
+            logger.info("Retrieving code env for Code-Studio")
+            local_kernel_executable = sys.executable
+            match = re.search("/([^/]+)/bin/python", local_kernel_executable)
+            if match:
+                retrieved_code_env_name = match.group(1)
+                logger.info("Retrieved code env name from sys.executable path: {}".format(retrieved_code_env_name))
+                return retrieved_code_env_name
+            else:
+                logger.info("No code env name found in sys.executable path, defaulting to 'INHERIT'")
+                return "INHERIT"
+        elif os.environ.get("DKU_CONTAINER_EXEC"):
+            logger.info("Retrieving code env for containerized execution")
+            local_code_env_name = os.environ.get("DKU_CODE_ENV_NAME")
+            if local_code_env_name:
+                logger.info("Retrieved code env name from 'DKU_CODE_ENV_NAME': {}".format(local_code_env_name))
+                return local_code_env_name
+            else:
+                logger.info("No 'DKU_CODE_ENV_NAME' found in environment, defaulting to 'INHERIT'")
+                return "INHERIT"
+        else:
+            logger.info("Retrieving code env for local execution")
+            local_kernel_executable = sys.executable
+            match = re.search(r"code-envs/python/([^/]+)/", local_kernel_executable)
+            if match:
+                logger.info("Retrieved local code env name from sys.executable path: {}".format(match.group(1)))
+                return match.group(1)
+            else:
+                logger.info("No code env name found in sys.executable path, defaulting to 'INHERIT'")
+                return "INHERIT"
+    
+    @staticmethod
+    def retrieve_used_containerized_exec_config():
+        """
+        If the code runs in a containerized config, retrieve the containerized execution name used in the notebook/recipe/code-studio.
+        If no config name is retrieved, return "INHERIT".
+        If the code runs locally, return "NONE".
+        """
+        if os.environ.get("DKU_CONTAINER_EXEC"):
+            logger.debug("Retrieving containerized execution name")
+            containerized_exec_name = os.environ.get("DKU_CONTAINER_EXEC_NAME")
+            if containerized_exec_name:
+                logger.debug("Retrieving containerized execution name from 'DKU_CONTAINER_EXEC_NAME': {}".format(containerized_exec_name))
+                return containerized_exec_name
+            else :
+                logger.debug("No 'DKU_CONTAINER_EXEC_NAME' found in environment, defaulting to 'INHERIT'")
+                return "INHERIT"
+        else:
+            logger.debug("Local execution, defaulting to 'NONE'")
+            return "NONE"
 
 
 class DatabricksRepositoryContextManager(object):
@@ -224,9 +288,15 @@ class DSSSavedModel(object):
         if fmi is not None:
             return DSSMLTask.from_full_model_id(self.client, fmi, project_key=self.project_key)
 
-    def import_mlflow_version_from_path(self, version_id, path, code_env_name="INHERIT",
-                                        container_exec_config_name="NONE", set_active=True,
-                                        binary_classification_threshold=0.5):
+    def import_mlflow_version_from_path(
+            self,
+            version_id,
+            path,
+            code_env_name="LOCAL-CODE-ENV",
+            container_exec_config_name="LOCAL-CONFIG",
+            set_active=True,
+            binary_classification_threshold=0.5,
+    ):
         """
         Creates a new version for this saved model from a path containing a MLFlow model.
 
@@ -237,17 +307,18 @@ class DSSSavedModel(object):
         :param str path: absolute path on the local filesystem - must be a folder, and must contain a MLFlow model
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
             mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
-
+            * If value is "LOCAL-CODE-ENV", the active code env will be used. If no env is found, fallback to "INHERIT".
             * If value is "INHERIT", the default active code env of the project will be used.
 
-            (defaults to **INHERIT**)
+            (defaults to **LOCAL-CODE-ENV**)
         :param str container_exec_config_name: Name of the containerized execution configuration to use for reading
             the metadata of the model
-
+            * If value is "LOCAL-CONFIG", set the variable to the active containerized configuration name. 
+            If running locally, set it to "NONE". If the config name can't be determined, fallback to "INHERIT".
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
 
-            (defaults to **INHERIT**)
+            (defaults to **LOCAL-CONFIG**)
         :param bool set_active: sets this new version as the active version of the saved model (defaults to **True**)
         :param float binary_classification_threshold: for binary classification, defines the actual threshold for the
             imported version (defaults to **0.5**)
@@ -256,6 +327,13 @@ class DSSSavedModel(object):
         """
         # TODO: Add a check that it's indeed a MLFlow model folder
         import os
+
+        # If code env is not defined, retrieve the one used in the code execution
+        if code_env_name == "LOCAL-CODE-ENV":
+            code_env_name = RunConfigUtils.retrieve_used_env()
+        # If containerized execution name is not defined, retrieve the one used in the code execution (or "NONE" if local execution)
+        if container_exec_config_name == "LOCAL-CONFIG":
+            container_exec_config_name = RunConfigUtils.retrieve_used_containerized_exec_config()
 
         with tempfile.TemporaryDirectory() as archive_temp_dir:
             archive_filename = _make_zipfile(os.path.join(archive_temp_dir, "tmpmodel.zip"), path)
@@ -270,9 +348,16 @@ class DSSSavedModel(object):
                     files={"file": (archive_filename, fp)})
             return self.get_external_model_version_handler(version_id)
 
-    def import_mlflow_version_from_managed_folder(self, version_id, managed_folder, path, code_env_name="INHERIT",
-                                                  container_exec_config_name="INHERIT", set_active=True,
-                                                  binary_classification_threshold=0.5):
+    def import_mlflow_version_from_managed_folder(
+            self,
+            version_id,
+            managed_folder,
+            path,
+            code_env_name="LOCAL-CODE-ENV",
+            container_exec_config_name="LOCAL-CONFIG",
+            set_active=True,
+            binary_classification_threshold=0.5,
+    ):
         """
         Creates a new version for this saved model from a managed folder.
 
@@ -285,17 +370,18 @@ class DSSSavedModel(object):
         :param str path: path of the MLflow folder in the managed folder
         :param str code_env_name: Name of the code env to use for this model version. The code env must contain at least
             mlflow and the package(s) corresponding to the used MLFlow-compatible frameworks.
-
+            * If value is "LOCAL-CODE-ENV", the active code env will be used. If no env is found, fallback to "INHERIT".
             * If value is "INHERIT", the default active code env of the project will be used.
 
-            (defaults to **INHERIT**)
+            (defaults to **LOCAL-CODE-ENV**)
         :param str container_exec_config_name: Name of the containerized execution configuration to use for reading the
             metadata of the model
-
+            * If value is "LOCAL-CONFIG", set the variable to the active containerized configuration name. 
+            If running locally, set it to "NONE". If the config name can't be determined, fallback to "INHERIT".
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
 
-            (defaults to **INHERIT**)
+            (defaults to **LOCAL-CONFIG**)
         :param bool set_active: sets this new version as the active version of the saved model (defaults to **True**)
         :param float binary_classification_threshold: for binary classification, defines the actual threshold for the
             imported version (defaults to **0.5**)
@@ -311,6 +397,13 @@ class DSSSavedModel(object):
         else:
             raise Exception("managed_folder should either be a string representing the identifier of the managed folder"
                             " or an instance of dataikuapi.dss.managedfolder.DSSManagedFolder")
+
+        # If code env is not defined, retrieve the one used in the code execution
+        if code_env_name == "LOCAL-CODE-ENV":
+            code_env_name = RunConfigUtils.retrieve_used_env()
+        # If containerized execution name is not defined, retrieve the one used in the code execution (or "NONE" if local execution)
+        if container_exec_config_name == "LOCAL-CONFIG":
+            container_exec_config_name = RunConfigUtils.retrieve_used_containerized_exec_config()
 
         self.client._perform_empty(
             "POST", "/projects/{project_id}/savedmodels/{saved_model_id}/versions/{version_id}".format(
@@ -329,8 +422,8 @@ class DSSSavedModel(object):
         return self.get_external_model_version_handler(version_id)
 
     def import_mlflow_version_from_databricks(self, version_id, connection_name, use_unity_catalog, model_name,
-                                              model_version, code_env_name="INHERIT",
-                                              container_exec_config_name="INHERIT",
+                                              model_version, code_env_name="LOCAL-CODE-ENV",
+                                              container_exec_config_name="LOCAL-CONFIG",
                                               set_active=True, binary_classification_threshold=0.5):
         connection = self.client.get_connection(connection_name)
         connection_info = connection.get_info(self.project_key)
@@ -357,7 +450,7 @@ class DSSSavedModel(object):
     def create_external_model_version(self, version_id, configuration, target_column_name=None,
                                       class_labels=None, set_active=True, binary_classification_threshold=0.5,
                                       input_dataset=None, selection=None, use_optimal_threshold=True,
-                                      skip_expensive_reports=True, features_list=None, container_exec_config_name="NONE",
+                                      skip_expensive_reports=True, features_list=None, container_exec_config_name="LOCAL-CONFIG",
                                       input_format="GUESS", output_format="GUESS", evaluate=True):
         """
         Creates a new version of an external model.
@@ -440,10 +533,12 @@ class DSSSavedModel(object):
 
         :param container_exec_config_name: (optional) name of the containerized execution configuration to use for running the
             evaluation process.
-
+            * If value is "LOCAL-CONFIG", set the variable to the active containerized configuration name. 
+            If running locally, set it to "NONE". If the config name can't be determined, fallback to "INHERIT".
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
-
+            (defaults to **LOCAL-CONFIG**)
+            
         :type container_exec_config_name: str
 
         :param input_format: (optional) Input format to use when querying the underlying endpoint.
@@ -624,6 +719,10 @@ class DSSSavedModel(object):
                                 input_dataset="train_titanic_prepared")
 
         """
+        # If containerized execution name is not defined, retrieve the one used in the code execution (or "NONE" if local execution)
+        if container_exec_config_name == "LOCAL-CONFIG":
+            container_exec_config_name = RunConfigUtils.retrieve_used_containerized_exec_config()
+
         model_version = self._create_external_model_version(version_id, configuration, set_active,
                                                          binary_classification_threshold)
         model_version._set_core_external_metadata(target_column_name, class_labels, features_list, input_dataset,
@@ -888,7 +987,7 @@ class ExternalModelVersionHandler:
     def set_core_metadata(self,
             target_column_name, class_labels=None,
             get_features_from_dataset=None, features_list=None,
-            container_exec_config_name="NONE"):
+            container_exec_config_name="LOCAL-CONFIG"):
         """
         Sets metadata for this MLFlow model version
 
@@ -904,11 +1003,12 @@ class ExternalModelVersionHandler:
         :type features_list: list or None
         :param str container_exec_config_name: name of the containerized execution configuration to use for running the
             evaluation process.
-
+            * If value is "LOCAL-CONFIG", set the variable to the active containerized configuration name. 
+            If running locally, set it to "NONE". If the config name can't be determined, fallback to "INHERIT".
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
 
-            (defaults to **None**)
+            (defaults to **LOCAL-CONFIG**)
         """
         model_version_info = self._init_model_version_info(target_column_name, class_labels, get_features_from_dataset, features_list)
 
@@ -919,6 +1019,10 @@ class ExternalModelVersionHandler:
         if self.saved_model.get_settings().prediction_type == "REGRESSION" and class_labels not in (None, []):
             raise Exception("Regression requires class_labels to be unset or an empty list.")
 
+        # If containerized execution name is not defined, retrieve the one used in the code execution (or "NONE" if local execution)
+        if container_exec_config_name == "LOCAL-CONFIG":
+            container_exec_config_name = RunConfigUtils.retrieve_used_containerized_exec_config()
+        
         self.saved_model.client._perform_empty(
             "PUT",
             "/projects/{project_key}/savedmodels/{sm_id}/versions/{version_id}/external-ml/metadata?containerExecConfigName={container_exec_config_name}".format(
@@ -930,7 +1034,7 @@ class ExternalModelVersionHandler:
             body=model_version_info
         )
 
-    def evaluate(self, dataset_ref, container_exec_config_name="INHERIT", selection=None, use_optimal_threshold=True,
+    def evaluate(self, dataset_ref, container_exec_config_name="LOCAL-CONFIG", selection=None, use_optimal_threshold=True,
                  skip_expensive_reports=True):
         """
         Evaluates the performance of this model version on a particular dataset.
@@ -948,11 +1052,12 @@ class ExternalModelVersionHandler:
         :type dataset_ref: str or :class:`dataikuapi.dss.dataset.DSSDataset` or :class:`dataiku.Dataset`
         :param str container_exec_config_name: Name of the containerized execution configuration to use for running the
             evaluation process.
-
+            * If value is "LOCAL-CONFIG", set the variable to the active containerized configuration name. 
+            If running locally, set it to "NONE". If the config name can't be determined, fallback to "INHERIT".
             * If value is "INHERIT", the container execution configuration of the project will be used.
             * If value is "NONE", local execution will be used (no container)
 
-            (defaults to **INHERIT**)
+            (defaults to **LOCAL-CONFIG**)
         :param selection:
             Sampling parameter for the evaluation.
 
@@ -967,6 +1072,10 @@ class ExternalModelVersionHandler:
             (defaults to **True**)
         :param boolean skip_expensive_reports: Skip expensive/slow reports (e.g. feature importance).
         """
+        # If containerized execution name is not defined, retrieve the one used in the code execution (or "NONE" if local execution)
+        if container_exec_config_name == "LOCAL-CONFIG":
+            container_exec_config_name = RunConfigUtils.retrieve_used_containerized_exec_config()
+
         sampling_param = selection.build() if isinstance(
             selection, DSSDatasetSelectionBuilder) else selection
 
