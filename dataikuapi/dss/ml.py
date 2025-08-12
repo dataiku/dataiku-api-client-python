@@ -2363,10 +2363,8 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
         "SEASONAL_LOESS": PredictionAlgorithmMeta("seasonal_loess_timeseries", SeasonalLoessSettings),
         "PROPHET": PredictionAlgorithmMeta("prophet_timeseries", ProphetSettings),
         "GLUONTS_NPTS_FORECASTER": PredictionAlgorithmMeta("gluonts_npts_timeseries", GluonTSNPTSForecasterSettings),
-        #
-        # "GLUONTS_TORCH_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_torch_simple_feed_forward_timeseries", GluonTSTorchSimpleFeedForwardSettings),
-        # "GLUONTS_TORCH_DEEPAR": PredictionAlgorithmMeta("gluonts_torch_deepar_timeseries", GluonTSTorchDeepARSettings),
-
+        "GLUONTS_TORCH_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_torch_simple_feed_forward_timeseries", GluonTSTorchSimpleFeedForwardSettings),
+        "GLUONTS_TORCH_DEEPAR": PredictionAlgorithmMeta("gluonts_torch_deepar_timeseries", GluonTSTorchDeepARSettings),
         "GLUONTS_SIMPLE_FEEDFORWARD": PredictionAlgorithmMeta("gluonts_simple_feed_forward_timeseries", GluonTSSimpleFeedForwardSettings),
         "GLUONTS_DEEPAR": PredictionAlgorithmMeta("gluonts_deepar_timeseries", GluonTSDeepARSettings),
         "GLUONTS_TRANSFORMER": PredictionAlgorithmMeta("gluonts_transformer_timeseries", GluonTSTransformerSettings),
@@ -4082,6 +4080,25 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
                            (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
                            )
             return data
+
+    def get_per_timeseries_evaluation_forecasts(self):
+        """
+        Returns per timeseries evaluation forecasts for this model.
+
+        :returns: a dict of evaluation forecasts per timeseries identifier
+        :rtype: dict
+        """
+        if self.mltask is not None:
+            data = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/per-timeseries-evaluation-forecasts" %
+                       (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            data = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/per-timeseries-evaluation-forecasts" %
+                       (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+        return data
 
 class DSSSubpopulationGlobal(object):
     """

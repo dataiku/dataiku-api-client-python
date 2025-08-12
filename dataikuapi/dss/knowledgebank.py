@@ -32,7 +32,7 @@ class DSSKnowledgeBankListItem(DSSTaggableObjectListItem):
     @property
     def project_key(self):
         """
-        :returns: The project        
+        :returns: The project key
         :rtype: string
         """
         return self._data["projectKey"]
@@ -88,7 +88,7 @@ class DSSKnowledgeBank(object):
         """
         settings = self.client._perform_json(
             "GET", "/projects/%s/knowledge-banks/%s" % (self.project_key, self.id))
-        return DSSKnowledgeBankSettings(self.client, settings)
+        return DSSKnowledgeBankSettings(self.client, self.project_key, settings)
 
     def delete(self):
         """
@@ -128,9 +128,10 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
         Do not instantiate directly, use :meth:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank.get_settings` instead
 
     """
-    def __init__(self, client, settings):
+    def __init__(self, client, project_key, settings):
         super(DSSKnowledgeBankSettings, self).__init__(settings)
         self._client = client
+        self._project_key = project_key
         self._settings = settings
 
     @property
@@ -159,6 +160,39 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
         :rtype: str
         """
         return self._settings['vectorStoreType']
+
+    def set_metadata_schema(self, schema):
+        """
+        Sets the schema for metadata fields.
+
+        :param schema: the schema, as a mapping metadata_field -> type
+        :type schema: Dict[str, str]
+        """
+        self._settings["metadataColumnsSchema"] = list(
+            {"name": k, "type": v}
+            for k, v in schema.items()
+        )
+
+    def set_images_folder(self, managed_folder_id, project_key=None):
+        """
+        Sets the images folder to use with this knowledge bank.
+
+        :param managed_folder_id: The (managed) images folder id.
+        :type managed_folder_id: str
+        :param project_key: The image folder project key, if different from
+            this knowledge bank project key. Default to None.
+        :type project_key: Optional[str]
+        """
+        if "." not in managed_folder_id:
+            if project_key is None:
+                project_key = self._project_key
+
+            managed_folder_id = "{}.{}".format(
+                project_key, managed_folder_id
+            )
+
+        self._settings["managedFolderId"] = managed_folder_id
+        self._settings["multimodalColumn"] = "DKU_MULTIMODAL_CONTENT"
 
     def get_raw(self):
         """

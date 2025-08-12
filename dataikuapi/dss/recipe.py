@@ -1,6 +1,7 @@
 from ..utils import DataikuException
 from .utils import DSSTaggableObjectSettings
 from .discussion import DSSObjectDiscussions
+from .llm import DSSLLM, DSSLLMListItem
 import json, logging, warnings
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 try:
@@ -247,6 +248,10 @@ class DSSRecipe(object):
         #    return WindowRecipeSettings(self, data)
         elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
             return CodeRecipeSettings(self, data)
+        elif type == "nlp_llm_rag_embedding":
+            return EmbedDatasetRecipeSettings(self, data)
+        elif type == "embed_documents":
+            return EmbedDocumentsRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)
 
@@ -2156,6 +2161,75 @@ class SQLQueryRecipeCreator(SingleOutputRecipeCreator):
     """
     def __init__(self, name, project):
         SingleOutputRecipeCreator.__init__(self, 'sql_query', name, project)
+
+#####################################################
+# Per-recipe-type classes: GenAI
+#####################################################
+
+class _BaseEmbedRecipeSettings(DSSRecipeSettings):
+    pass
+
+class _BaseEmbedRecipeCreator(DSSRecipeCreator):
+
+    def with_output_knowledge_bank(self, name, embedding_llm, vector_store_type="CHROMA", vector_store_params=None):
+        self.creation_settings["outputRetrievableKnowledgeName"] = name
+
+        if isinstance(embedding_llm, DSSLLM):
+            self.creation_settings["embeddingLLMId"] = embedding_llm.llm_id
+        elif isinstance(embedding_llm, DSSLLM):
+            self.creation_settings["embeddingLLMId"] = embedding_llm.id
+        elif isinstance(embedding_llm, str):
+            self.creation_settings["embeddingLLMId"] = embedding_llm
+        else:
+            raise Exception("Unknown embedding LLM: %s" % embedding_llm)
+
+        self.creation_settings["vectorStoreType"] = vector_store_type
+
+        if vector_store_params is not None:
+            self.creation_settings.update(vector_store_params)
+
+        return self
+
+class EmbedDatasetRecipeSettings(_BaseEmbedRecipeSettings):
+    """
+    Settings of an Embed Datasets recipe.
+
+    .. important:: Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+    """
+
+    @property
+    def embedding_column(self):
+        return self.get_json_payload()["knowledgeColumn"]
+    @embedding_column.setter
+    def embedding_column(self, column):
+        self.get_json_payload()["knowledgeColumn"] = column
+
+
+class EmbedDatasetRecipeCreator(_BaseEmbedRecipeCreator):
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'nlp_llm_rag_embedding', name, project)
+
+
+class EmbedDocumentsRecipeSettings(_BaseEmbedRecipeSettings):
+    pass
+
+class EmbedDocumentsRecipeCreator(_BaseEmbedRecipeCreator):
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'embed_documents', name, project)
+
+    def with_vlm(self, vlm):
+        if isinstance(vlm, DSSLLM):
+            self.creation_settings["VLMId"] = vlm.llm_id
+        elif isinstance(vlm, DSSLLM):
+            self.creation_settings["VLMId"] = vlm.id
+        elif isinstance(vlm, str):
+            self.creation_settings["VLMId"] = vlm
+        else:
+            raise Exception("Unknown VLM LLM: %s" % vlm)
+        return self
+
+
 
 #####################################################
 # Per-recipe-type classes: Other recipes

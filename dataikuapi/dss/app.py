@@ -48,7 +48,7 @@ class DSSApp(object):
     # Instances
     ########################################################
 
-    def create_instance(self, instance_key, instance_name, wait=True):
+    def create_instance(self, instance_key, instance_name, wait=True, is_temporary_instance=False):
         """
         Create a new instance of this application. 
 
@@ -59,6 +59,7 @@ class DSSApp(object):
         :param string instance_name: name for the new created app instance
         :param boolean wait: if False, the method returns immediately with a :class:`dataikuapi.dss.future.DSSFuture`
                              on which to wait for the app instance to be created
+        :param boolean is_temporary_instance: whether this instance will be temporary (in that case we disable git and its indexing in the catalog)
 
         :return: a handle to interact with the app instance
         :rtype: :class:`~DSSAppInstance`
@@ -66,7 +67,8 @@ class DSSApp(object):
         future_resp = self.client._perform_json(
             "POST", "/apps/%s/instances" % self.app_id, body={
                 "targetProjectKey": instance_key,
-                "targetProjectName": instance_name
+                "targetProjectName": instance_name,
+                "isTemporaryAppInstance": is_temporary_instance
             })
         future = DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
         if wait:
@@ -99,7 +101,7 @@ class DSSApp(object):
         :rtype: :class:`TemporaryDSSAppInstance`
         """
         key = self.make_random_project_key()
-        self.create_instance(key, key, True)
+        self.create_instance(key, key, True, True)
         return TemporaryDSSAppInstance(self.client, key)
 
     def list_instance_keys(self):
