@@ -118,6 +118,7 @@ class DSSMessagingChannelSettings(object):
         )
 
 
+
 class DSSMessagingChannel(object):
     """
     A handle to interact with a messaging channel on the DSS instance.
@@ -186,6 +187,46 @@ class DSSMessagingChannel(object):
             "GET", "/messaging-channels/%s/settings" % self.id
         )
         return DSSMessagingChannelSettings(self, data)
+    
+    def get_permissions(self):
+        """
+        Get the permissions attached to this channel
+
+        :returns: A list of permission items, each containing the group name or user login it applies to and whether the item allows the group/user to use the channel
+
+        .. code-block:: python
+
+            [
+                { "group": "some_group_name", canUse: True },
+                { "user": "user1_login", canUse: True },
+            ]
+
+        :rtype: list[dict]
+        """
+        return self.client._perform_json(
+            "GET", "/messaging-channels/%s/permissions" % self.id
+        )
+
+    def set_permissions(self, permissions):
+        """
+        Sets the permissions on this channel
+
+        Usage example:
+
+        .. code-block:: python
+
+            channel_permissions = channel.get_permissions()
+            channel_permissions.append({ 'group':'data_scientists', 'canUse': True })
+            channel.set_permissions(channel_permissions)
+
+        :param dict permissions: a permissions list with the same structure as the one returned by\
+            :meth:`get_permissions` call
+        """
+        return self.client._perform_empty(
+            "PUT",
+            "/messaging-channels/%s/permissions" % self.id,
+            body=permissions,
+        )
 
     def delete(self):
         """
@@ -301,6 +342,7 @@ class DSSMessagingChannelCreator(object):
         self.type = channel_type
         self.id = None
         self.channel_configuration = {}
+        self.permissions = None
 
     def with_id(self, channel_id):
         """
@@ -319,8 +361,22 @@ class DSSMessagingChannelCreator(object):
         :return: The created messaging channel object, such as :class:`DSSMessagingChannel`, or a :class:`DSSMessagingChannel` for a mail channel
         """
         return self.client.create_messaging_channel(
-            self.type, self.id, self.channel_configuration
+            self.type, self.id, self.channel_configuration, self.permissions
         )
+
+    def with_permissions(self, authorized_groups, authorized_users):
+        """
+        Replace the permission configuration for this channel.
+        By default, a channel is usable by anyone, but if this method is used, the channel will be restricted to the specified users and groups
+
+        :param List[string] authorized_groups: group ids to authorize
+        :param List[string] authorized_users: user logins to authorize
+
+        :return: the current DSSMessagingChannelCreator
+        """
+        self.permissions = [{"group": group, "canUse": True} for group in authorized_groups] \
+            + [{"user": user, "canUse": True} for user in authorized_users]
+        return self
 
 
 class MailMessagingChannelCreator(DSSMessagingChannelCreator):

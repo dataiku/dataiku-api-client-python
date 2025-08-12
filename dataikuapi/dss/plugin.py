@@ -1087,3 +1087,40 @@ class DSSPluginUsages(object):
         :rtype: boolean
         """
         return not (not self.usages and not self.missing_types)
+
+class DSSPluginUsagesListItem(object):
+    """
+    An item in a list of DSSPluginUsages
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.list_plugins_usages`
+    """
+    def __init__(self, data):
+        """
+        Initialize a DSSPluginUsages from a dict of its properties
+
+        :param dict data: the usages list item as json dict
+        """
+        self._plugin_usages = DSSPluginUsages(data.get("pluginUsages", {}))
+        self._plugin_id = data.get("pluginId", "")
+
+    @property
+    def plugin_usages(self):
+        """
+        Get the usages of components of the plugin.
+
+        :return: the usages, from :class:`DSSPluginUsages`
+        :rtype: :class:`DSSPluginUsages`
+        """
+        return self._plugin_usages
+
+    @property
+    def plugin_id(self):
+        """
+        Get the plugin id associated to the usages
+
+        :return: the plugin id, as a string.
+        :rtype: str
+        """
+        return self._plugin_id

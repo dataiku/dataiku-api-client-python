@@ -28,6 +28,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
+from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
@@ -485,6 +486,10 @@ class DSSClient(object):
         return DSSUser(self, login)
 
     def get_own_user(self):
+        """
+        Get a handle to interact with the current user
+        :return: A :class:`dataikuapi.dss.admin.DSSOwnUser` user handle
+        """
         return DSSOwnUser(self)
 
     def list_users_activity(self, enabled_users_only=False):
@@ -1373,6 +1378,17 @@ class DSSClient(object):
         return DSSUnifiedMonitoring(self)
 
     ########################################################
+    # Project Standards
+    ########################################################
+
+    def get_project_standards(self):
+        """Gets a handle to work with Project Standards
+
+        :rtype: :class:`~dataikuapi.dss.project_standards.DSSProjectStandards`
+        """
+        return DSSProjectStandards(self)
+
+    ########################################################
     # Data Catalog
     ########################################################
 
@@ -1834,7 +1850,7 @@ class DSSClient(object):
         else:
             raise ValueError("Unknown type")
 
-    def create_messaging_channel(self, channel_type, channel_id=None, channel_configuration=None):
+    def create_messaging_channel(self, channel_type, channel_id=None, channel_configuration=None, permissions=None):
         """
         Create a messaging channel. Requires admin privileges.
 
@@ -1888,6 +1904,11 @@ class DSSClient(object):
                 - "command": command to execute. In "FILE" mode this string will pass to the `-c` switch;
                 - "script": script content to execute for mode "FILE".
 
+        :param list[dict] permissions: optional list of permissions objects (all users can use the channel if not defined). Can be:
+
+            - { "group": group_id, canUse: True } to authorize a group to use the channel
+            - { "user": user_login, canUse: True } to authorize a single user to use the channel
+
         Usage example:
 
         .. code-block:: python
@@ -1923,7 +1944,8 @@ class DSSClient(object):
             body = {
                 "id": channel_id if channel_id else "",
                 "type": channel_type,
-                "configuration": channel_configuration if channel_configuration else {}
+                "configuration": channel_configuration if channel_configuration else {},
+                "permissions": permissions # if None, backend will default it to all users
             }
         ))
 

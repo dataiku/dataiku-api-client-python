@@ -452,6 +452,12 @@ class AnyLoc(object):
     def __eq__(self, obj):
         return isinstance(obj, AnyLoc) and obj.project_key == self.project_key and obj.object_id == self.object_id
 
+    def to_ref(self, context_project_key):
+        if self.project_key == context_project_key:
+            return self.object_id
+        else:
+            return "%s.%s" % (self.project_key, self.object_id)
+
     @staticmethod
     def from_ref(context_project_key, ref):
         if ref.find(".") >= 0:

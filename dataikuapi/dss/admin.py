@@ -833,6 +833,7 @@ class DSSUserPreferences(object):
 
         Do not instantiate directly, use :meth:`DSSUserSettings.preferences` instead.
     """
+
     def __init__(self, preferences):
         self.preferences = preferences
 
@@ -843,11 +844,284 @@ class DSSUserPreferences(object):
 
         :rtype: str
         """
-        return self.preferences['uiLanguage']
+        return self.preferences["uiLanguage"]
 
     @ui_language.setter
     def ui_language(self, new_value):
         self.preferences["uiLanguage"] = new_value
+
+    @property
+    def mention_emails(self):
+        """
+        Get or set whether the user receives email notifications when mentioned in discussions or commit messages
+
+        :rtype: bool
+        """
+        return self.preferences["mentionEmails"]
+
+    @mention_emails.setter
+    def mention_emails(self, new_value):
+        self.preferences["mentionEmails"] = new_value
+
+    @property
+    def discussion_emails(self):
+        """
+        Get or set whether the user receives email notifications when a user writes in a discussion thread from any item they are watching
+
+        :rtype: bool
+        """
+        return self.preferences["discussionEmails"]
+
+    @discussion_emails.setter
+    def discussion_emails(self, new_value):
+        self.preferences["discussionEmails"] = new_value
+
+    @property
+    def access_request_emails(self):
+        """
+        Get or set whether the user receives email notifications when a user requests access to one of their projects or to use an object from one of their projects
+
+        :rtype: bool
+        """
+        return self.preferences["accessRequestEmails"]
+
+    @access_request_emails.setter
+    def access_request_emails(self, new_value):
+        self.preferences["accessRequestEmails"] = new_value
+
+    @property
+    def granted_access_emails(self):
+        """
+        Get or set whether the user receives email notifications when they are granted access to a project, or when their access or sharing requests are approved
+
+        :rtype: bool
+        """
+        return self.preferences["grantedAccessEmails"]
+
+    @granted_access_emails.setter
+    def granted_access_emails(self, new_value):
+        self.preferences["grantedAccessEmails"] = new_value
+
+    @property
+    def granted_plugin_request_emails(self):
+        """
+        Get or set whether the user receives email notifications when their plugin requests are approved
+
+        :rtype: bool
+        """
+        return self.preferences["grantedPluginRequestEmails"]
+
+    @granted_plugin_request_emails.setter
+    def granted_plugin_request_emails(self, new_value):
+        self.preferences["grantedPluginRequestEmails"] = new_value
+
+    @property
+    def plugin_request_emails(self):
+        """
+        Get or set whether the user receives email notifications when users request to install a plugin
+
+        :rtype: bool
+        """
+        return self.preferences["pluginRequestEmails"]
+
+    @plugin_request_emails.setter
+    def plugin_request_emails(self, new_value):
+        self.preferences["pluginRequestEmails"] = new_value
+
+    @property
+    def instance_access_requests_emails(self):
+        """
+        Get or set whether the user receives email notifications when users request access to the instance
+
+        :rtype: bool
+        """
+        return self.preferences["instanceAccessRequestsEmails"]
+
+    @instance_access_requests_emails.setter
+    def instance_access_requests_emails(self, new_value):
+        self.preferences["instanceAccessRequestsEmails"] = new_value
+
+    @property
+    def profile_upgrade_requests_emails(self):
+        """
+        Get or set whether the user receives email notifications when users request to upgrade their profile
+
+        :rtype: bool
+        """
+        return self.preferences["profileUpgradeRequestsEmails"]
+
+    @profile_upgrade_requests_emails.setter
+    def profile_upgrade_requests_emails(self, new_value):
+        self.preferences["profileUpgradeRequestsEmails"] = new_value
+
+    @property
+    def code_env_creation_request_emails(self):
+        """
+        Get or set whether the user receives email notifications when a user requests a code env creation
+
+        :rtype: bool
+        """
+        return self.preferences["codeEnvCreationRequestEmails"]
+
+    @code_env_creation_request_emails.setter
+    def code_env_creation_request_emails(self, new_value):
+        self.preferences["codeEnvCreationRequestEmails"] = new_value
+
+    @property
+    def granted_code_env_creation_request_emails(self):
+        """
+        Get or set whether the user receives email notifications when their code env creation request is granted
+
+        :rtype: bool
+        """
+        return self.preferences["grantedCodeEnvCreationRequestEmails"]
+
+    @granted_code_env_creation_request_emails.setter
+    def granted_code_env_creation_request_emails(self, new_value):
+        self.preferences["grantedCodeEnvCreationRequestEmails"] = new_value
+
+    @property
+    def daily_digests_emails(self):
+        """
+        Get or set whether the user receives daily emails to sum-up the day activity regardless of whether they logged-in.
+
+        :rtype: bool
+        """
+        return self.preferences["dailyDigestsEmails"]
+
+    @daily_digests_emails.setter
+    def daily_digests_emails(self, new_value):
+        self.preferences["dailyDigestsEmails"] = new_value
+
+    @property
+    def offline_activity_emails(self):
+        """
+        Get or set whether the user receives emails periodically that notify them about activity happening while they are offline
+
+        :rtype: bool
+        """
+        return self.preferences["offlineActivityEmails"]
+
+    @offline_activity_emails.setter
+    def offline_activity_emails(self, new_value):
+        self.preferences["offlineActivityEmails"] = new_value
+
+    @property
+    def remember_position_flow(self):
+        """
+        Get or set whether for the user the flow remembers zoom settings and re-selects the last item viewed
+
+        :rtype: bool
+        """
+        return self.preferences["rememberPositionFlow"]
+
+    @remember_position_flow.setter
+    def remember_position_flow(self, new_value):
+        self.preferences["rememberPositionFlow"] = new_value
+
+    @property
+    def login_logout_notifications(self):
+        """
+        Get or set whether the user receives notifications when other users log in/out
+
+        :rtype: bool
+        """
+        return self.preferences["loginLogoutNotifications"]
+
+    @login_logout_notifications.setter
+    def login_logout_notifications(self, new_value):
+        self.preferences["loginLogoutNotifications"] = new_value
+
+    @property
+    def watched_objects_editions_notifications(self):
+        """
+        Get or set whether the user receives notifications when objects they are watching are edited
+
+        :rtype: bool
+        """
+        return self.preferences["watchedObjectsEditionsNotifications"]
+
+    @watched_objects_editions_notifications.setter
+    def watched_objects_editions_notifications(self, new_value):
+        self.preferences["watchedObjectsEditionsNotifications"] = new_value
+
+    @property
+    def object_on_current_project_created_deleted_notifications(self):
+        """
+        Get or set whether the user receives notifications when an object is created/deleted on the project they are browsing
+
+        :rtype: bool
+        """
+        return self.preferences["objectOnCurrentProjectCreatedDeletedNotifications"]
+
+    @object_on_current_project_created_deleted_notifications.setter
+    def object_on_current_project_created_deleted_notifications(self, new_value):
+        self.preferences["objectOnCurrentProjectCreatedDeletedNotifications"] = new_value
+
+    @property
+    def any_object_on_current_project_edited_notifications(self):
+        """
+        Get or set whether the user receives notifications when any object is edited on the project they are browsing
+
+        :rtype: bool
+        """
+        return self.preferences["anyObjectOnCurrentProjectEditedNotifications"]
+
+    @any_object_on_current_project_edited_notifications.setter
+    def any_object_on_current_project_edited_notifications(self, new_value):
+        self.preferences["anyObjectOnCurrentProjectEditedNotifications"] = new_value
+
+    @property
+    def watch_star_on_current_project_notifications(self):
+        """
+        Get or set whether the user receives notifications when an object is starred on the project they are browsing
+
+        :rtype: bool
+        """
+        return self.preferences["watchStarOnCurrentProjectNotifications"]
+
+    @watch_star_on_current_project_notifications.setter
+    def watch_star_on_current_project_notifications(self, new_value):
+        self.preferences["watchStarOnCurrentProjectNotifications"] = new_value
+
+    @property
+    def other_users_jobs_tasks_notifications(self):
+        """
+        Get or set whether the user receives notifications when other users run jobs/scenarios/ML tasks
+
+        :rtype: bool
+        """
+        return self.preferences["otherUsersJobsTasksNotifications"]
+
+    @other_users_jobs_tasks_notifications.setter
+    def other_users_jobs_tasks_notifications(self, new_value):
+        self.preferences["otherUsersJobsTasksNotifications"] = new_value
+
+    @property
+    def request_access_notifications(self):
+        """
+        Get or set whether the user receives notifications when they receive an access or sharing request, or one of their requests is approved
+
+        :rtype: bool
+        """
+        return self.preferences["requestAccessNotifications"]
+
+    @request_access_notifications.setter
+    def request_access_notifications(self, new_value):
+        self.preferences["requestAccessNotifications"] = new_value
+
+    @property
+    def scenario_run_notifications(self):
+        """
+        Get or set whether the user receives notifications when scenarios are run under their account
+
+        :rtype: bool
+        """
+        return self.preferences["scenarioRunNotifications"]
+
+    @scenario_run_notifications.setter
+    def scenario_run_notifications(self, new_value):
+        self.preferences["scenarioRunNotifications"] = new_value
 
 
 class DSSUserSettings(DSSUserSettingsBase):

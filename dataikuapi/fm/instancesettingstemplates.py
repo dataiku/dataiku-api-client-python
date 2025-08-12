@@ -10,7 +10,6 @@ else:
     class Enum(object):
         pass
 
-
 class FMInstanceSettingsTemplateCreator(object):
     def __init__(self, client, label):
         """
@@ -291,6 +290,59 @@ class FMInstanceSettingsTemplate(object):
         :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
         """
         self.ist_data["setupActions"].append(setup_action)
+        return self
+
+    def set_setup_action_enabled_by_index(self, index, enabled=True):
+        """
+        Enable or disable a setup action.
+
+        Specify the index of the setup action to update in the setupActions list.
+        This sets the 'enabled' field in the action's params dict.
+
+        :param int index: The index of the setup action to update (0-indexed)
+        :param bool enabled: Whether to enable (True) or disable (False) the action (default: True)
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        """
+        actions = self.ist_data.get("setupActions", [])
+        
+        if index < 0 or index >= len(actions):
+            raise IndexError("setup action index out of range")
+
+        actions[index]["enabled"] = enabled
+
+        return self
+    
+    def set_setup_action_enabled_by_action_type(self, action_type, index=0, enabled=True):
+        """
+        Enable or disable a setup action.
+
+        Specify the setup action to update by its type and its index (the index-th setup action of this type will be updated).
+        This sets the 'enabled' field in the action's params dict.
+
+        :param action_type: The type of the setup action to update. Must be an FMSetupActionType enum.
+        :type action_type: FMSetupActionType
+        :param int index: The index of the setup action to update within the list of setup actions of the correct type extracted from the setup actions list. First setup action in the list has index 0
+        :param bool enabled: Whether to enable (True) or disable (False) the action (default: True)
+        :rtype: :class:`dataikuapi.fm.instancesettingstemplates.FMInstanceSettingsTemplate`
+        """
+        actions = self.ist_data.get("setupActions", [])
+
+        if action_type:
+            if not isinstance(action_type, FMSetupActionType):
+                raise TypeError("action_type must be an instance of FMSetupActionType")
+
+            actions_with_type = [action for action in actions if action.get("type") == action_type.value]
+
+            if len(actions_with_type) == 0:
+                raise ValueError("No setup action with type '" + action_type.value + "' found")
+
+            if index < 0 or index >= len(actions_with_type):
+                raise IndexError("setup action index out of range")
+
+            actions_with_type[index]["enabled"] = enabled
+        else:
+            raise ValueError("You must provide action_type")
+
         return self
 
 

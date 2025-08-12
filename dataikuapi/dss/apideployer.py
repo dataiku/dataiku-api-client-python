@@ -29,14 +29,15 @@ class DSSAPIDeployer(object):
 
     def get_deployment(self, deployment_id):
         """
-        Returns a handle to interact with a single deployment, as a :class:`DSSAPIDeployerDeployment` 
+        Returns a handle to interact with a single deployment, as a :class:`DSSAPIDeployerDeployment`
 
         :param str deployment_id: Identifier of the deployment to get
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         return DSSAPIDeployerDeployment(self.client, deployment_id)
 
-    def create_deployment(self, deployment_id, service_id, infra_id, version, endpoint_id=None, ignore_warnings=False):
+    def create_deployment(self, deployment_id, service_id, infra_id, version, endpoint_id=None, ignore_warnings=False,
+                          authorizations_to_query_through_deployer=None):
         """
         Creates a deployment and returns the handle to interact with it. The returned deployment
         is not yet started and you need to call :meth:`~DSSAPIDeployerDeployment.start_update`
@@ -46,7 +47,24 @@ class DSSAPIDeployer(object):
         :param str infra_id: Identifier of the deployment infrastructure to use
         :param str version: Identifier of the API Service version to deploy
         :param str endpoint_id: Identifier of the endpoint to deploy if you use a Deploy Anywhere infra. Ignored otherwise
-        :param boolean ignore_warnings: ignore warnings concerning the governance status of the model version(s) to deploy
+        :param boolean ignore_warnings: Ignore warnings concerning the governance status of the model version(s) to deploy
+        :param list authorizations_to_query_through_deployer: List of group authorizations allowing query-through-deployer.
+
+        Each item is a dict with keys:
+          - "group": name of the group
+          - "queryThroughDeployer": boolean indicating if the group can query through the deployer
+
+        Example:
+
+        .. code-block:: python
+
+            authorizations_to_query_through_deployer = [
+                {
+                    "group": "administrators",
+                    "queryThroughDeployer": True
+                }
+            ]
+
         :rtype: :class:`DSSAPIDeployerDeployment`
         """
         settings = {
@@ -54,7 +72,8 @@ class DSSAPIDeployer(object):
             "publishedServiceId": service_id,
             "infraId": infra_id,
             "version": version,
-            "endpointId": endpoint_id
+            "endpointId": endpoint_id,
+            "authorizationsToQueryThroughDeployer": authorizations_to_query_through_deployer
         }
         self.client._perform_json("POST", "/api-deployer/deployments", params={"ignoreWarnings": ignore_warnings}, body=settings)
         return self.get_deployment(deployment_id)
@@ -105,7 +124,7 @@ class DSSAPIDeployer(object):
 
     def get_infra(self, infra_id):
         """
-        Returns a handle to interact with a single deployment infra, as a :class:`DSSAPIDeployerInfra` 
+        Returns a handle to interact with a single deployment infra, as a :class:`DSSAPIDeployerInfra`
 
         :param str infra_id: Identifier of the infra to get
         :rtype: :class:`DSSAPIDeployerInfra`
@@ -143,7 +162,7 @@ class DSSAPIDeployer(object):
 
     def get_service(self, service_id):
         """
-        Returns a handle to interact with a single service, as a :class:`DSSAPIDeployerService` 
+        Returns a handle to interact with a single service, as a :class:`DSSAPIDeployerService`
 
         :param str service_id: Identifier of the API service to get
         :rtype: :class:`DSSAPIDeployerService`
@@ -185,7 +204,7 @@ class DSSAPIDeployerInfra(object):
     def get_settings(self):
         """
         Gets the settings of this infra. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerInfraSettings.save` on the returned 
+        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerInfraSettings.save` on the returned
         object
 
         :returns: a :class:`dataikuapi.dss.apideployer.DSSAPIDeployerInfraSettings`
@@ -340,7 +359,7 @@ class DSSAPIDeployerDeployment(object):
     def get_settings(self):
         """
         Gets the settings of this deployment. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentSettings.save` on the returned 
+        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentSettings.save` on the returned
         object
 
         :returns: a :class:`dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentSettings`
@@ -354,7 +373,7 @@ class DSSAPIDeployerDeployment(object):
         """
         Starts an asynchronous update of this deployment to try to match the actual state to the current settings
 
-        :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call 
+        :returns: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the update. Call
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
                    to wait for completion (or failure)
         """
@@ -399,7 +418,6 @@ class DSSAPIDeployerDeployment(object):
 
         return DSSAPIDeployerDeploymentOpenApi(open_api)
 
-
     def run_test_queries(self, endpoint_id=None, test_queries=None):
         """
         Runs test queries on a deployment and returns results as a dict
@@ -426,16 +444,16 @@ class DSSAPIDeployerDeployment(object):
                 'Embarked': 'S'
             }}}]
 
-            # run existing test queries on deployement endpoint (if unique, else error)
+            # run existing test queries on deployment endpoint (if unique, else error)
             test_queries_result = deployment.run_test_queries()
 
-            # run specified test queries on deployement "survived" endpoint
+            # run specified test queries on deployment "survived" endpoint
             test_queries_result = deployment.run_test_queries(endpoint_id="survived", test_queries=test_queries)
 
-            # run existing test queries on deployement  "survived" endpoint
+            # run existing test queries on deployment  "survived" endpoint
             test_queries_result = deployment.run_test_queries(endpoint_id="survived")
 
-            # run specified test queries on deployement endpoint (if unique, else error)
+            # run specified test queries on deployment endpoint (if unique, else error)
             test_queries_result = deployment.run_test_queries(test_queries=test_queries)
 
         """
@@ -447,10 +465,78 @@ class DSSAPIDeployerDeployment(object):
 
         return self.client._perform_json("POST", "/api-deployer/deployments/%s/actions/run-test-queries" % self.deployment_id, params=settings)
 
+    def list_updates(self):
+        """
+        Retrieves a list of available deployment updates. Each element contains start timestamp, type and status fields
+
+        :returns: a list of deployment updates
+        :rtype: list of dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentUpdateListItem
+        """
+        updates = self.client._perform_json("GET", "/api-deployer/deployments/%s/update" % (self.deployment_id))
+        return [DSSAPIDeployerDeploymentUpdateListItem(self.client, self.deployment_id, update) for update in updates]
+
+    def get_update(self, timestamp=None):
+        """
+        Retrieves a specific deployment update by timestamp, or the most recent update if no timestamp is provided
+
+        :param (optional) string timestamp: The timestamp that uniquely identifies the update to retrieve
+        :rtype: dataikuapi.dss.apideployer.DSSAPIDeployerDeploymentUpdate
+        """
+        if timestamp is None:
+            update = self.client._perform_json("GET", "/api-deployer/deployments/%s/last-update" % self.deployment_id)
+        else:
+            update = self.client._perform_json("GET", "/api-deployer/deployments/%s/update/%s" % (self.deployment_id, timestamp))
+        return DSSAPIDeployerDeploymentUpdate(update)
+
+    def run_queries(self, queries, endpoint_id=None, adapt_query_for_infra_type=True):
+        """
+        Runs queries on a deployment and returns results as a dict
+        An authorization to query the deployment through the deployer is needed
+
+        :param list queries: Queries as str, formatted as ``[{"q": {"features": {"feat_1": "value", ...}}, {...}, ... ]``.
+        :param str endpoint_id: Mandatory if the deployment has multiple endpoints
+        :param bool adapt_query_for_infra_type: If True, automatically adjusts the query format to be compatible with the target infrastructure type.
+            This is mainly applicable to Deploy-Anywhere infrastructures. Defaults to True.
+        :rtype: dict
+
+        Usage example
+
+        .. code-block:: python
+
+            import dataiku
+
+            client = dataiku.api_client()
+            deployer = client.get_apideployer()
+            deployment = deployer.get_deployment('service14');
+
+            queries = [{'q': {'features': {
+                'Pclass': '200',
+                'Sex': 'male',
+                'Age': '22',
+                'Embarked': 'S'
+            }}}]
+
+            # run queries on deployment "survived" endpoint
+            queries_results = deployment.run_queries(endpoint_id="survived")
+
+            # run queries on deployment endpoint (if unique, else error)
+            queries_results = deployment.run_queries(queries)
+
+        """
+        settings = {
+            "queries": json.dumps(queries),
+            "adaptQueryForInfraType": adapt_query_for_infra_type
+        }
+
+        if endpoint_id is not None:
+            settings["endpointId"] = endpoint_id
+
+        return self.client._perform_json("POST", "/api-deployer/deployments/%s/actions/run-queries" % self.deployment_id, params=settings)
+
 
 class DSSAPIDeployerDeploymentSettings(object):
     """
-    The settings of an API Deployer deployment. 
+    The settings of an API Deployer deployment.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_settings`
     """
@@ -501,7 +587,7 @@ class DSSAPIDeployerDeploymentSettings(object):
 
 class DSSAPIDeployerDeploymentStatus(object):
     """
-    The status of an API Deployer deployment. 
+    The status of an API Deployer deployment.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_status`
     """
@@ -588,6 +674,98 @@ class DSSAPIDeployerDeploymentOpenApi(object):
         return self.open_api_doc_json
 
 
+class DSSAPIDeployerDeploymentUpdateListItem(object):
+    """
+    Represents a single item in a list of API Deployer's deployment updates.
+
+    This class should not be instantiated directly. Instead, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.list_updates`
+    to retrieve instances of this class.
+    """
+    def __init__(self, client, deployment_id, data):
+        self._client = client
+        self._deployment_id = deployment_id
+        self._data = data
+
+    @property
+    def start_time(self):
+        return self._data['startTimestamp']
+
+    @property
+    def type(self):
+        return self._data['type']
+
+    @property
+    def status(self):
+        return self._data['status']
+
+    def get_raw(self):
+        """
+        Returns the raw dictionary representation of this deployment update list item
+
+        :return: a deployment update list item, as a dict
+        :rtype: dict
+        """
+        return self._data
+
+    def get_full_update(self):
+        """
+        Returns the full deployment update corresponding to this list item, as a :class:`DSSAPIDeployerDeploymentUpdate`
+
+        :return: a fully detailed deployment update
+        :rtype: :class:`DSSAPIDeployerDeploymentUpdate`
+        """
+        update = self._client._perform_json("GET", "/api-deployer/deployments/%s/update/%s" % (self._deployment_id, self._data["startTimestamp"]))
+        return DSSAPIDeployerDeploymentUpdate(update)
+
+
+class DSSAPIDeployerDeploymentUpdate(object):
+    """
+    Represents an API Deployer's deployment update.
+
+    This class should not be instantiated directly. Use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerDeployment.get_update`
+    to obtain instances of this class
+    """
+    def __init__(self, update):
+        self._update = update
+
+    @property
+    def start_time(self):
+        return self._update['startTimestamp']
+
+    @property
+    def end_time(self):
+        return self._update['endTimestamp']
+
+    @property
+    def requester(self):
+        return self._update['requester']
+
+    @property
+    def status(self):
+        return self._update['status']
+
+    @property
+    def logs(self):
+        """
+        Returns the logs for this update as a list of lines:
+          - Each line represents a single log entry
+          - The list preserves the original order of the log output
+
+        :return: List of log lines, or None if no logs are available
+        :rtype: list[str] or None
+        """
+        return self._update['logs']['lines'] if 'logs' in self._update else None
+
+    def get_raw(self):
+        """
+        Returns the raw data of this deployment update as a dictionary
+
+        :return: a deployment update, as a dict
+        :rtype: dict
+        """
+        return self._update
+
+
 ###############################################
 # Published Service
 ###############################################
@@ -618,7 +796,7 @@ class DSSAPIDeployerService(object):
 
     def import_version(self, fp):
         """
-        Imports a new version for an API service from a file-like object pointing 
+        Imports a new version for an API service from a file-like object pointing
         to a version package Zip file
 
         :param string fp: A file-like object pointing to a version package Zip file
@@ -629,7 +807,7 @@ class DSSAPIDeployerService(object):
     def get_settings(self):
         """
         Gets the settings of this service. If you want to modify the settings, you need to
-        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerServiceSettings.save` on the returned 
+        call :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerServiceSettings.save` on the returned
         object.
 
         The main things that can be modified in a service settings are permissions
@@ -662,13 +840,13 @@ class DSSAPIDeployerService(object):
 
         .. code-block:: python
 
-                with api_deployer_service.get_version_stream('v1') as fp:
-                    # use fp
+            with api_deployer_service.get_version_stream('v1') as fp:
+                # use fp
 
-                # or explicitly close the stream after use
-                fp = api_deployer_service.get_version_stream('v1')
-                # use fp, then close
-                fp.close()
+            # or explicitly close the stream after use
+            fp = api_deployer_service.get_version_stream('v1')
+            # use fp, then close
+            fp.close()
 
         :param string version_id: version (identifier) of the package to download
 
@@ -706,7 +884,7 @@ class DSSAPIDeployerService(object):
 
 class DSSAPIDeployerServiceSettings(object):
     """
-    The settings of an API Deployer Service. 
+    The settings of an API Deployer Service.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerService.get_settings`
     """
@@ -735,7 +913,7 @@ class DSSAPIDeployerServiceSettings(object):
 
 class DSSAPIDeployerServiceStatus(object):
     """
-    The status of an API Deployer Service. 
+    The status of an API Deployer Service.
 
     Do not create this directly, use :meth:`~dataikuapi.dss.apideployer.DSSAPIDeployerService.get_status`
     """

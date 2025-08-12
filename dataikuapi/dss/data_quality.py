@@ -128,6 +128,17 @@ class DSSDataQualityRuleSet(object):
         return [DSSDataQualityRuleResult(result) for result in rule_results]
     
 
+    def delete_rules_history(self, partition="NP"):
+        """
+        Delete the history of computed rules for a single partition.
+
+        :param string partition: If the dataset is partitioned, the name of the partition to compute (or "ALL" for rules computed on the whole dataset). If the dataset is not partitioned, use "NP" or None.
+        """
+        if not partition:
+            partition = "NP"
+        self.client._perform_empty("DELETE", "/projects/%s/datasets/%s/data-quality/history/%s" % (self.project_key, self.dataset_name, partition))
+    
+
 class DSSDataQualityRule(object):
     """
     A rule defined on a dataset.
