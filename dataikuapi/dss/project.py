@@ -26,6 +26,7 @@ from .modelcomparison import DSSModelComparison
 from .modelevaluationstore import DSSModelEvaluationStore
 from .notebook import DSSNotebook
 from .plugin import DSSPluginUsagesListItem
+from .project_standards import DSSProjectStandardsRunReport, DSSProjectStandardsScope
 from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
 from .savedmodel import DSSSavedModel
@@ -2861,6 +2862,61 @@ class DSSProject(object):
         """
 
         return DSSTestingStatus(self.client._perform_json("GET", "/projects/%s/scenarios/testing-status" % self.project_key,  params={"bundleId": bundle_id}))
+
+    ########################################################
+    # Project Standards
+    ########################################################
+
+    def start_run_project_standards_checks(self, check_ids=None, bundle_id=None):
+        """
+        Run the Project Standards checks associated to the project.
+
+        If `check_ids` is None, the scope associated to the project (see :meth:`get_project_standards_scope`) will be used to fetch the check ids.
+        The saved report associated with the project, accessible with :meth:`get_project_standards_last_report`), is updated only if `check_ids` and `bundle_id` are None.
+
+        :param check_ids: List of explicit checks to run. If None, the scope associated to the project will be used to fetch the check ids.
+        :type check_ids: (List[str] | None)
+        :param bundle_id: The id of the bundle to run the checks on. If None, a temporary bundle will be created with minimal content.
+        :type bundle_id: (str | None)
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the checks. Call
+                   :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
+                   to wait for completion (or failure). The completed object will be an instance of :class:`.DSSProjectStandardsRunReport`
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        future_response = self.client._perform_json(
+            "POST",
+            "/projects/{}/project-standards/actions/run".format(self.project_key),
+            params={"checkIds": check_ids, "bundleId": bundle_id},
+        )
+        return DSSFuture(
+            self.client,
+            future_response.get("jobId", None),
+            result_wrapper=lambda raw_result: DSSProjectStandardsRunReport(self.client, raw_result),
+        )
+
+    def get_project_standards_last_report(self):
+        """
+        Get the latest Project Standards report of the project.
+
+        The report is updated each time Project Standards is run on the project (not a bundle) using the associated scope.
+        See :meth:`start_run_project_standards_checks`.
+
+        :return: The last report if it exists, None if checks have never been run on this project
+        :rtype: (DSSProjectStandardsRunReport | None)
+        """
+        raw_report = self.client._perform_http(
+            "GET", "/projects/{}/project-standards/last-report".format(self.project_key)
+        )
+        return DSSProjectStandardsRunReport(self.client, raw_report.json()) if raw_report.text else None
+
+    def get_project_standards_scope(self):
+        """
+        Get the name of the scope associated to the project.
+
+        :returns: The scope name.
+        :rtype: str
+        """
+        return self.client._perform_text("GET", "/projects/{}/project-standards/scope".format(self.project_key))
 
     ########################################################
     # Plugins

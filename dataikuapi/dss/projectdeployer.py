@@ -955,7 +955,7 @@ class DSSProjectDeployerProject(object):
         if raw_report is None:
             return None
         if as_type == "object":
-            return DSSProjectStandardsRunReport(raw_report)
+            return DSSProjectStandardsRunReport(self.client, raw_report)
         elif as_type == "dict":
             return raw_report
         else:
