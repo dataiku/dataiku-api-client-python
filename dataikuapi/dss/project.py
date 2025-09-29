@@ -2872,11 +2872,11 @@ class DSSProject(object):
         Run the Project Standards checks associated to the project.
 
         If `check_ids` is None, the scope associated to the project (see :meth:`get_project_standards_scope`) will be used to fetch the check ids.
-        The saved report associated with the project, accessible with :meth:`get_project_standards_last_report`), is updated only if `check_ids` and `bundle_id` are None.
+        The saved report associated with the project, accessible with :meth:`get_project_standards_last_report`, is updated only if `check_ids` and `bundle_id` are None.
 
         :param check_ids: List of explicit checks to run. If None, the scope associated to the project will be used to fetch the check ids.
         :type check_ids: (List[str] | None)
-        :param bundle_id: The id of the bundle to run the checks on. If None, a temporary bundle will be created with minimal content.
+        :param bundle_id: The id of the bundle on which to run the checks. If None, the checks will be run on the project itself.
         :type bundle_id: (str | None)
         :return: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the checks. Call
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
