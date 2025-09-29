@@ -80,7 +80,7 @@ class DSSProjectStandardsCheck(object):
     """
     A check for Project Standards
 
-    .. warning::
+    .. important::
         Do not create this class directly, use :meth:`~.DSSProjectStandards.get_check`
     """
 
@@ -170,7 +170,7 @@ class DSSProjectStandardsScope(object):
     A scope for Project Standards.
     Use scopes to select which checks a project should run.
 
-    .. warning::
+    .. important::
         Do not create this class directly, use :meth:`~.DSSProjectStandards.get_scope` or :meth:`~.DSSProjectStandards.get_default_scope`
     """
 
@@ -181,6 +181,10 @@ class DSSProjectStandardsScope(object):
     @property
     def is_default(self):
         return self.selection_method == "ALL"
+
+    @property
+    def id(self):
+        return self.name
 
     @property
     def name(self):
@@ -458,8 +462,8 @@ class DSSProjectStandards(object):
     """
     Handle to interact with Project Standards
 
-    .. warning::
-        Do not create this class directly, use :meth:`~dataikuapi.dssclient.DSSClient.get_project_standards`
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.DSSClient.get_project_standards`
     """
 
     def __init__(self, client):
