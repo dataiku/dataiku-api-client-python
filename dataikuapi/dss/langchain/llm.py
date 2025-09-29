@@ -263,10 +263,12 @@ class DKULLM(LockedDownBaseLLM):
             total_estimated_cost += prompt_resp._raw.get("estimatedCost", 0)
             # Post enforcing them because stopSequences are not supported by all of our connections/models
             text = _enforce_stop_sequences(prompt_resp.text, stop)
-            generations.append([Generation(text=text)])
+            trace = prompt_resp._raw.get("trace", None)
 
-            if prompt_resp._raw.get("trace", None) is not None:
-                trace_of_last_response = prompt_resp._raw.get("trace")
+            generations.append([Generation(text=text, generation_info={"trace":trace} if trace is not None else None)])
+
+            if trace is not None:
+                trace_of_last_response = trace
 
         llm_output = {
             'promptTokens': total_prompt_tokens,
@@ -447,8 +449,9 @@ class DKUChatModel(LockedDownBaseChatModel):
                             make_invalid_tool_call(raw_tool_call, str(e))
                         )
 
-            if prompt_resp._raw.get("trace", None) is not None:
-                trace_of_last_response = prompt_resp._raw.get("trace")
+            trace = prompt_resp._raw.get("trace", None)
+            if trace is not None:
+                trace_of_last_response = trace
 
             usage_metadata = UsageMetadata(
                 input_tokens=prompt_resp._raw.get("promptTokens", 0),
@@ -463,7 +466,8 @@ class DKUChatModel(LockedDownBaseChatModel):
                     tool_calls=tool_calls,
                     invalid_tool_calls=invalid_tool_calls,
                     usage_metadata = usage_metadata
-                ))
+                ),
+                generation_info={"trace": trace} if trace is not None else None)
             )
 
         llm_output = {

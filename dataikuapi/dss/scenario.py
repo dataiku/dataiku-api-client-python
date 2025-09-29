@@ -1183,7 +1183,8 @@ class DSSTestingStatus(object):
 
     .. important::
 
-        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.get_testing_status()` or :meth:`dataikuapi.dss.project.DSSProjectDeployer.get_testing_status()`
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.get_testing_status()`,
+        :meth:`dataikuapi.dss.project.DSSProjectDeployer.get_testing_status()` or `dataikuapi.dss.project.DSSProjectDeployer.run_test_scenarios()`
     """
 
     def __init__(self, raw):

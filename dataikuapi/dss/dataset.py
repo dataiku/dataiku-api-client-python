@@ -280,6 +280,26 @@ class DSSDataset(object):
         return self.client._perform_json(
                 "PUT", "/projects/%s/datasets/%s/metadata" % (self.project_key, self.dataset_name),
                 body=metadata)
+    
+    def generate_ai_description(self, language="english", save_description=False):
+        """
+        Generates AI-powered descriptions for this dataset and its columns.
+
+        :param str language: The language of the generated description. Supported languages are "dutch", "english", "french", "german", "portuguese", and "spanish" (defaults to **english**).
+        :param boolean: To save the generated description to this dataset (defaults to **False**).
+
+        :returns: a dict object of the dataset schema and descriptions.
+        :rtype: dict
+        """ 
+        supported_languages = {"dutch", "english", "french", "german", "japanese", "portuguese", "spanish"}
+
+        if language not in supported_languages:
+            raise ValueError("Invalid language: '{}'. Currently supported languages: {}.".format(language, supported_languages))
+        
+        return self.client._perform_json("POST", "/projects/%s/datasets/%s/generate-ai-description" % (self.project_key, self.dataset_name), params={
+            "language": language,
+            "saveDescription": save_description,
+        })
 
 
     ########################################################
@@ -811,7 +831,7 @@ class DSSDataset(object):
 
     _SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
-                "BigQuery", "Athena", "hiveserver2", "Synapse", "Databricks"]
+                "BigQuery", "Athena", "hiveserver2", "Synapse", "Databricks", "DatabricksLakebase"]
 
     def test_and_detect(self, infer_storage_types=False):
         """Used internally by :meth:`autodetect_settings` It is not usually required to call this method
@@ -1063,6 +1083,31 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
         :type status: bool
         """
         self.settings["featureGroup"] = status
+
+    @property
+    def data_steward(self):
+        """
+        Get or set the Data Steward of the dataset.
+
+        - **Getter**: Returns the identifier (login name) of the Data Steward.
+
+        If not explicitly set, it falls back to the dataset creator's login or returns `None` if unavailable.
+
+        - **Setter**: Assigns the Data Steward of the dataset (user login name)
+
+        :returns: the identifier of the Data Steward user (i.e. login name) or None
+        :rtype: string or None
+        """
+        if 'dataSteward' in self.settings:
+            return self.settings['dataSteward']
+        try:
+            return self.settings['creationTag']['lastModifiedBy']['login']
+        except:
+            return None
+    
+    @data_steward.setter
+    def data_steward(self, user_id):
+        self.settings['dataSteward'] = user_id
 
     def save(self):
         """

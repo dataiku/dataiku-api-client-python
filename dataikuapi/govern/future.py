@@ -1,9 +1,8 @@
-import time
-
+from ..utils import _ExponentialBackoff
 
 class GovernFuture(object):
     """
-    A future represents a long-running task on a Govern instance. It allows you to
+    A future represents a long-running task on a Dataiku Govern instance. It allows you to
     track the state of the task, retrieve its result when it is ready or abort it.
 
     Usage example:
@@ -31,7 +30,7 @@ class GovernFuture(object):
         """
         Creates a :class:`dataikuapi.govern.future.GovernFuture` from the response of an endpoint that initiated a long-running task.
 
-        :param client: An api client to connect to the Govern backend
+        :param client: An api client to connect to the Dataiku Govern backend
         :type client: :class:`dataikuapi.govern_client.GovernClient`
         :param resp: The response of the API call that initiated a long-running task.
         :type resp: dict
@@ -126,8 +125,11 @@ class GovernFuture(object):
             return self.result_wrapper(self.state.get('result', None))
         if self.state is None or not self.state.get('hasResult', False) or self.state_is_peek:
             self.get_state()
+
+        eb = _ExponentialBackoff()
+
         while not self.state.get('hasResult', False):
-            time.sleep(5)
+            eb.sleep_next()
             self.get_state()
         if self.state.get('hasResult', False):
             return self.result_wrapper(self.state.get('result', None))

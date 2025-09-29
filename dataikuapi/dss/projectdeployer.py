@@ -1,4 +1,5 @@
 from .future import DSSFuture
+from .project_standards import DSSProjectStandardsRunReport
 from .scenario import DSSTestingStatus
 
 class DSSProjectDeployer(object):
@@ -137,7 +138,7 @@ class DSSProjectDeployer(object):
 
         :param string infra_id: unique identifier of the infrastructure to create
         :param string stage: stage of the infrastructure to create
-        :param string govern_check_policy: what actions with Govern the the deployer will take whe bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
+        :param string govern_check_policy: what actions with Govern the deployer will take whe bundles are deployed on this infrastructure. Possible values: PREVENT, WARN, or NO_CHECK
 
         :return: a new infrastructure
         :rtype: :class:`DSSProjectDeployerInfra`
@@ -488,7 +489,7 @@ class DSSProjectDeployerDeployment(object):
         """
         Get status information about this deployment.
 
-        :rtype: dataikuapi.dss.apideployer.DSSProjectDeployerDeploymentStatus
+        :rtype: dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentStatus
         """
         light = self.client._perform_json("GET", "/project-deployer/deployments/%s" % (self.deployment_id))
         heavy = self.client._perform_json("GET", "/project-deployer/deployments/%s/status" % (self.deployment_id))
@@ -569,6 +570,44 @@ class DSSProjectDeployerDeployment(object):
             "automationNodeId": automation_node_id
         }))
 
+    def run_test_scenarios(self, automation_node_id=None):
+        """
+        Run all the test scenarios on a project deployment
+
+        :param (optional) automation_node_id: for multi-node deployments only, you need to specify the automation node id on which you want to run test scenarios
+        :returns: A :class:`dataikuapi.dss.scenario.DSSTestingStatus` object handle
+        """
+        return DSSTestingStatus(
+            self.client._perform_json(
+                "POST",
+                "/project-deployer/deployments/%s/run-test-scenarios" % self.deployment_id,
+                params={ "automationNodeId": automation_node_id }
+            )
+        )
+
+    def list_updates(self):
+        """
+        Retrieves a list of available deployment updates. Each element contains start timestamp, type and status fields
+
+        :returns: a list of deployment updates
+        :rtype: list of dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentUpdateListItem
+        """
+        updates = self.client._perform_json("GET", "/project-deployer/deployments/%s/update" % (self.deployment_id))
+        return [DSSProjectDeployerDeploymentUpdateListItem(self.client, self.deployment_id, update) for update in updates]
+
+    def get_update(self, timestamp=None):
+        """
+        Retrieves a specific deployment update by timestamp, or the most recent update if no timestamp is provided
+
+        :param (optional) string timestamp: The The timestamp that uniquely identifies the update to retrieve
+        :rtype: dataikuapi.dss.projectdeployer.DSSProjectDeployerDeploymentUpdate
+        """
+        if timestamp is None:
+            update = self.client._perform_json("GET", "/project-deployer/deployments/%s/last-update" % self.deployment_id)
+        else:
+            update = self.client._perform_json("GET", "/project-deployer/deployments/%s/update/%s" % (self.deployment_id, timestamp))
+        return DSSProjectDeployerDeploymentUpdate(update)
+
 
 class DSSProjectDeployerDeploymentSettings(object):
     """
@@ -615,6 +654,17 @@ class DSSProjectDeployerDeploymentSettings(object):
     @bundle_id.setter
     def bundle_id(self, new_bundle_id):
         self.settings["bundleId"] = new_bundle_id
+
+    @property
+    def published_project_key(self):
+        """
+        Get the published project key from which the deployed bundle originates.
+        You can't change this value.
+
+        :returns: The published project key
+        :rtype: string
+        """
+        return self.settings["publishedProjectKey"]
 
     def save(self, ignore_warnings=False):
         """
@@ -691,6 +741,99 @@ class DSSProjectDeployerDeploymentStatus(object):
         :rtype: dict
         """
         return self.heavy_status["healthMessages"]
+
+
+class DSSProjectDeployerDeploymentUpdateListItem(object):
+    """
+    Represents a single item in a list of Project Deployer's deployment updates.
+
+    This class should not be instantiated directly. Instead, use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment.list_updates`
+    to retrieve instances of this class.
+    """
+    def __init__(self, client, deployment_id, data):
+        self._client = client
+        self._deployment_id = deployment_id
+        self._data = data
+
+    @property
+    def start_time(self):
+        return self._data['startTimestamp']
+
+    @property
+    def type(self):
+        return self._data['type']
+
+    @property
+    def status(self):
+        return self._data['status']
+
+    def get_raw(self):
+        """
+        Returns the raw dictionary representation of this deployment update list item
+
+        :return: a deployment update list item, as a dict
+        :rtype: dict
+        """
+        return self._data
+
+    def get_full_update(self):
+        """
+        Returns the full deployment update corresponding to this list item, as a :class:`DSSProjectDeployerDeploymentUpdate`
+
+        :return: a fully detailed deployment update
+        :rtype: :class:`DSSProjectDeployerDeploymentUpdate`
+        """
+        update = self._client._perform_json("GET", "/project-deployer/deployments/%s/update/%s" % (self._deployment_id, self._data["startTimestamp"]))
+        return DSSProjectDeployerDeploymentUpdate(update)
+
+
+class DSSProjectDeployerDeploymentUpdate(object):
+    """
+    Represents a Project Deployer's deployment update.
+
+    This class should not be instantiated directly. Use :meth:`~dataikuapi.dss.projectdeployer.DSSProjectDeployerDeployment.get_update`
+    to obtain instances of this class
+    """
+    def __init__(self, update):
+        self._update = update
+
+    @property
+    def start_time(self):
+        return self._update['startTimestamp']
+
+    @property
+    def end_time(self):
+        return self._update['endTimestamp']
+
+    @property
+    def requester(self):
+        return self._update['requester']
+
+    @property
+    def status(self):
+        return self._update['status']
+
+    @property
+    def logs(self):
+        """
+        Returns the logs for this update, formatted as a list of lines:
+          - Each line represents a single log entry
+          - The list preserves the original order of the log output
+
+        :return: List of log lines, or None if no logs are available
+        :rtype: list[str] or None
+        """
+        return self._update['logs']['lines'] if 'logs' in self._update else None
+
+    def get_raw(self):
+        """
+        Returns the raw data of this deployment update as a dictionary
+
+        :return: a deployment update, as a dict
+        :rtype: dict
+        """
+        return self._update
+
 
 ###############################################
 # Published Project
@@ -791,6 +934,32 @@ class DSSProjectDeployerProject(object):
                     if chunk:
                         f.write(chunk)
                         f.flush()
+
+    def get_project_standards_report(self, bundle_id, as_type="object"):
+        """
+        Get the Project Standards report for a bundle in the project.
+
+        :param bundle_id: identifier of the bundle
+        :type bundle_id: str
+        :param as_type: How to return the report. Supported values are "dict" and "object" (defaults to **object**)
+        :type as_type: str, optional
+        :returns: The report, if any
+                If as_type=dict, report is returned as a dict.
+                If as_type=object, report is returned as a :class:`dataikuapi.dss.project_standards.DSSProjectStandardsRunReport`.
+        :rtype: (DSSProjectStandardsRunReport | dict | None)
+        """
+
+        raw_report = self.client._perform_json(
+            "GET", "/project-deployer/projects/%s/bundles/%s/project-standards-report" % (self.project_key, bundle_id)
+        )
+        if raw_report is None:
+            return None
+        if as_type == "object":
+            return DSSProjectStandardsRunReport(self.client, raw_report)
+        elif as_type == "dict":
+            return raw_report
+        else:
+            raise ValueError("Unknown as_type")
 
     def delete(self):
         """
