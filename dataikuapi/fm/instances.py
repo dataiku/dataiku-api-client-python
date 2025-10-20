@@ -54,7 +54,7 @@ class FMInstanceCreator(object):
             self.data["dssNodeType"] = value.value
         else:
             value = FMNodeType.get_from_string(dss_node_type.upper())
-            self.data["dssNodeType"] = value;
+            self.data["dssNodeType"] = value
         return self
 
     def with_cloud_instance_type(self, cloud_instance_type):

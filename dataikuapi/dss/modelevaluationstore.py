@@ -289,7 +289,7 @@ class DSSModelEvaluationStore(object):
             other = DSSModelEvaluationStore.MetricDefinition("other", 42, "Other", "Other metric desc")
             label = DSSModelEvaluationStore.LabelDefinition("custom:myLabel", "myValue")
 
-            mes.add_custom_model_evaluation([accuracy, pouet], labels=[label])
+            mes.add_custom_model_evaluation([accuracy, other], labels=[label])
             mes.run_checks()
         """
         if hasattr(model, 'full_id'):

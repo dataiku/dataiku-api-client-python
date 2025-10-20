@@ -599,7 +599,7 @@ class DSSPlugin(object):
             settings.set_code_env(env_name)
             settings.save()
 
-        :param string python_interpreter: which version of python to use. Possible values: PYTHON27, PYTHON34, PYTHON35, PYTHON36, PYTHON37, PYTHON38, PYTHON39, PYTHON310, PYTHON311, PYTHON312
+        :param string python_interpreter: which version of python to use. Possible values: PYTHON27, PYTHON34, PYTHON35, PYTHON36, PYTHON37, PYTHON38, PYTHON39, PYTHON310, PYTHON311, PYTHON312, PYTHON313
         :param boolean conda: if True use conda to create the code env, if False use virtualenv and pip.
 
         :return: a handle on the operation

@@ -176,10 +176,17 @@ class DSSAgentVersionSettings(object):
         :param tool: a string (identifier of the tool), or a :class:`dataikuapi.dss.agent_tool.DSSAgentTool`
         """
 
+        def get_tool_ref():
+            is_foreign = self._agent_settings._settings["projectKey"] != tool.project_key
+            if is_foreign:
+                return tool.project_key + "." + tool.id
+            else:
+                return tool.id
+
         if isinstance(tool, DSSAgentToolListItem):
-            tool_dict = { "toolRef" : tool.id}
+            tool_dict = { "toolRef" : get_tool_ref()}
         elif isinstance(tool, DSSAgentTool):
-            tool_dict = { "toolRef" : tool.id}
+            tool_dict = { "toolRef" : get_tool_ref()}
         elif isinstance(tool, str):
             tool_dict = { "toolRef" : tool}
         else:

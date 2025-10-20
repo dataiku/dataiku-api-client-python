@@ -2199,11 +2199,19 @@ class EmbedDatasetRecipeSettings(_BaseEmbedRecipeSettings):
 
     @property
     def embedding_column(self):
-        return self.get_json_payload()["knowledgeColumn"]
+        return self.get_json_payload().get("knowledgeColumn")
+
     @embedding_column.setter
     def embedding_column(self, column):
         self.get_json_payload()["knowledgeColumn"] = column
 
+    @property
+    def max_records(self):
+        return self.get_json_payload().get("maxRecords")
+
+    @max_records.setter
+    def max_records(self, column):
+        self.get_json_payload()["maxRecords"] = column
 
 class EmbedDatasetRecipeCreator(_BaseEmbedRecipeCreator):
 

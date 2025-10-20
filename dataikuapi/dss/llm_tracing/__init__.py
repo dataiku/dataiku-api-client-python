@@ -4,6 +4,8 @@ import threading
 
 dku_tracing_ls = threading.local()
 
+def datetime_to_timestamp_ms(datetime_str):
+    return int(datetime.datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%f%z").timestamp() * 1000)
 
 def new_trace(name):
     return SpanBuilder(name)
@@ -74,11 +76,11 @@ class SpanReader(object):
 
     @property
     def begin_ts(self):
-        return int(datetime.datetime.strptime(self.span_data["begin"], "%Y-%m-%dT%H:%M:%S.%f%z").timestamp() * 1000)
+        return datetime_to_timestamp_ms(self.span_data["begin"])
 
     @property
     def end_ts(self):
-        return int(datetime.datetime.strptime(self.span_data["end"], "%Y-%m-%dT%H:%M:%S.%f%z").timestamp() * 1000)
+        return datetime_to_timestamp_ms(self.span_data["end"])
 
 
 class SpanBuilder:
@@ -128,10 +130,10 @@ class SpanBuilder:
 
     def begin(self, begin_time):
         self._begin_ts = begin_time
-        self.span["begin"] = datetime.datetime.utcfromtimestamp(begin_time / 1000).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self.span["begin"] = datetime.datetime.fromtimestamp(begin_time / 1000, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def end(self, end_time):
-        self.span["end"] = datetime.datetime.utcfromtimestamp(end_time / 1000).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self.span["end"] = datetime.datetime.fromtimestamp(end_time / 1000, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         #print("Ending span: %s -> %s" % (self.span["begin"], self.span["end"]))
         self.span["duration"] = int(end_time - self._begin_ts)
 

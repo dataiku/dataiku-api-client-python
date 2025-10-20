@@ -400,6 +400,10 @@ class DKUChatModel(LockedDownBaseChatModel):
         logging.debug("DKUChatModel _generate called, messages=%s tools=%s stop=%s" % (len(messages), len(tools) if tools is not None else "-", stop))
 
         completions = self._llm_handle.new_completions()
+        context = kwargs.get("context")
+        if context:
+            completions.context = context
+
         completions.settings.update(_llm_settings(self, stop, tools, tool_choice))
         _completion_with_typed_messages(completions.new_completion(), messages)
 
@@ -496,6 +500,10 @@ class DKUChatModel(LockedDownBaseChatModel):
         logging.debug("DKUChatModel _stream called, messages=%s tools=%s stop=%s" % (len(messages), len(tools) if tools is not None else "-", stop))
 
         completion = self._llm_handle.new_completion()
+        context = kwargs.get("context")
+        if context:
+            completion.with_context(context)
+
         completion = _completion_with_typed_messages(completion, messages)
         completion.settings.update(_llm_settings(self, stop, tools, tool_choice))
 
