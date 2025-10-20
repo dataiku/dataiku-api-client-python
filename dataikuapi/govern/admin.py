@@ -15,12 +15,18 @@ class GovernUser(object):
         self.client = client
         self.login = login
 
-    def delete(self):
+    def delete(self, allow_self_deletion=False):
         """
         Deletes the user
+
+        :param bool allow_self_deletion : Allow the use of this function to delete your own user.
+                                          Warning: this is very dangerous and used in a loop could lead to the deletion of all users/admins.
         """
+        params = {
+            'allowSelfDeletion': allow_self_deletion
+        }
         return self.client._perform_empty(
-            "DELETE", "/admin/users/%s" % self.login)
+            "DELETE", "/admin/users/%s" % self.login, params=params)
 
     def get_settings(self):
         """
@@ -359,6 +365,8 @@ class GovernUserSettings(GovernUserSettingsBase):
     def save(self):
         """
         Saves the settings
+
+        Note: this call is not available to Dataiku Cloud users
         """
         self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
 

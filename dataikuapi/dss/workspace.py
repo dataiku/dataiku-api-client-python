@@ -37,7 +37,7 @@ class DSSWorkspace:
     def add_object(self, object):
         """
         Add an object to this workspace.
-        Object can be of different shapes (:class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.wiki.DSSWikiArticle`, :class:`dataikuapi.dss.app.DSSApp`, :class:`.DSSWorkspaceHtmlLinkObject` or a :class:`.dict` that contains the raw data)
+        Object can be of different shapes (:class:`dataikuapi.dss.dataset.DSSDataset`, :class:`dataikuapi.dss.dataset.DSSDatasetListItem`, :class:`dataikuapi.dss.wiki.DSSWikiArticle`, :class:`dataikuapi.dss.app.DSSApp`, :class:`.DSSWorkspaceHtmlLinkObject`, :class:`dataikuapi.dss.dashboard.DSSDashboard`, :class:`dataikuapi.dss.dashboard.DSSDashboardListItem` or a :class:`.dict` that contains the raw data)
         """
         if isinstance(object, DSSDataset):
             data = {"reference": {"projectKey": object.project_key, "type": "DATASET", "id": object.dataset_name, "workspaceKey": self.workspace_key}}

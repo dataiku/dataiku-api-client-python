@@ -285,9 +285,16 @@ class DSSDataset(object):
         """
         Generates AI-powered descriptions for this dataset and its columns.
 
-        :param str language: The language of the generated description. Supported languages are "dutch", "english", "french", "german", "portuguese", and "spanish" (defaults to **english**).
-        :param boolean: To save the generated description to this dataset (defaults to **False**).
+        This function operates with a two-tier rate limit per license:
+        1.  Up to 1000 requests per day.
+        2.  **Throttled Mode:** After the daily limit, the API's response time is slowed. 
+            Each subsequent call will take approximately 60 seconds to process and return a response.
 
+        Note: The "Generate Metadata" option must be enabled in the AI Services admin settings.
+
+        :param str language: The language of the generated description. Supported languages are "dutch", "english", "french", "german", "portuguese", and "spanish" (defaults to **english**).
+        :param bool save_description: To save the generated description to this dataset (defaults to **False**).
+        
         :returns: a dict object of the dataset schema and descriptions.
         :rtype: dict
         """ 
@@ -831,7 +838,8 @@ class DSSDataset(object):
 
     _SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
-                "BigQuery", "Athena", "hiveserver2", "Synapse", "Databricks", "DatabricksLakebase"]
+                "BigQuery", "Athena", "hiveserver2", "Synapse", "FabricWarehouse",
+                "Databricks", "DatabricksLakebase"]
 
     def test_and_detect(self, infer_storage_types=False):
         """Used internally by :meth:`autodetect_settings` It is not usually required to call this method

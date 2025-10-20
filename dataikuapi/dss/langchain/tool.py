@@ -1,8 +1,11 @@
-import logging
-from langchain.tools import BaseTool, StructuredTool, tool
 from typing import Optional, Callable, Literal, Type, Any, Dict
+
+from langchain.tools import BaseTool, StructuredTool, tool
 from pydantic import BaseModel
+
 from dataiku.langchain.dku_tracer import dku_span_builder_for_callbacks
+
+
 class DKUStructuredTool(StructuredTool):
     
     @property
@@ -113,11 +116,19 @@ class DKUStructuredTool(StructuredTool):
         )
 
 def convert_to_langchain_structured_tool(dku_tool, context = None):
-    from langchain.tools import BaseTool, StructuredTool, tool
-    from dataikuapi.dss.langchain.tool import DKUStructuredTool
-
     desc = dku_tool.get_descriptor()
+    if desc.get("multiple"):
+        ret = []
+        for subtool_desc in desc.get("subtools", []):
+            if not subtool_desc.get("enabled"):
+                continue
+            ret.append(_convert_to_langchain_structured_tool_single(dku_tool, desc, subtool_desc, context=context))
+        return ret
+    else:
+        return _convert_to_langchain_structured_tool_single(dku_tool, desc, None, context=context)
 
+def _convert_to_langchain_structured_tool_single(dku_tool, base_desc, subtool_desc, context = None):
+    desc = subtool_desc or base_desc
     tool_context = context
 
     def run_tool_func(callbacks = None, *args, **kwargs):
@@ -126,16 +137,23 @@ def convert_to_langchain_structured_tool(dku_tool, context = None):
         #logging.debug("run_tool_func callbacks=%s" % (callbacks))
 
         with dku_span_builder_for_callbacks(callbacks, ignore_missing=True).subspan("DKUStructuredTool") as s:
-            tool_output =  dku_tool.run(input=kwargs, context=tool_context)
+            if subtool_desc is not None:
+                tool_output = dku_tool.run(input=kwargs, context=tool_context, subtool_name=subtool_desc["name"])
+            else:
+                tool_output = dku_tool.run(input=kwargs, context=tool_context)
 
             # Split into output for LLM and artifact
 
             if "trace" in tool_output:
                 s.append_trace(tool_output["trace"])
 
+            if tool_output.get("error"):
+                raise Exception(tool_output["error"])
+
             ret = (tool_output["output"], {
                 #"trace": tool_output.get("trace", None),
-                "sources": tool_output.get("sources", None)
+                "sources": tool_output.get("sources", None),
+                "artifacts": tool_output.get("artifacts", None)
             })
 
             return ret
@@ -175,13 +193,22 @@ def convert_to_langchain_structured_tool(dku_tool, context = None):
             return desc["inputSchema"]
 
         def model_json_schema():
-            return desc["inputSchema"]                
+            return desc["inputSchema"]
 
-    tool = DKUStructuredTool.dku_from_function(func = run_tool_func,
-                name = desc["name"],
-                description = desc["description"],
-                args_schema = FakeModel,
-                response_format="content_and_artifact"
-                    )
+    name = base_desc["name"]
+    description = base_desc["description"]
+    if subtool_desc:
+        name +=  "__" + subtool_desc["name"]
+        if description:
+            description += "\n\n"
+        description += subtool_desc["description"]
+
+    tool = DKUStructuredTool.dku_from_function(
+        func=run_tool_func,
+        name=name,
+        description=description,
+        args_schema=FakeModel,
+        response_format="content_and_artifact"
+    )
 
     return tool

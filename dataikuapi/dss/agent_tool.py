@@ -82,6 +82,7 @@ class DSSAgentTool(object):
             return DSSVectorStoreSearchAgentToolSettings(self, settings)
         else:
             return DSSAgentToolSettings(self, settings)
+
     def delete(self):
         """
         Delete the agent tool
@@ -92,13 +93,16 @@ class DSSAgentTool(object):
         from dataikuapi.dss.langchain.tool import convert_to_langchain_structured_tool
         return convert_to_langchain_structured_tool(self, context)
 
-    def run(self, input, context=None):
+    def run(self, input, context=None, subtool_name=None):
         invocation = {
             "toolId" : self.tool_id,
             "input" : {
                 "input" : input
             }
         }
+        if subtool_name is not None:
+            invocation["input"]["subtoolName"] = subtool_name
+
         if context is not None:
             invocation["input"]["context"] = context
 
@@ -157,7 +161,7 @@ class DSSAgentToolSettings(DSSTaggableObjectSettings):
         The parameters of the tool, as a dict. Changes to the dict will be reflected when saving
         """
         return self._settings["params"]
-    
+
 
     def save(self):
         """

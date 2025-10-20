@@ -429,16 +429,24 @@ class DSSClient(object):
     # Users
     ########################################################
 
-    def list_users(self, as_objects=False):
+    def list_users(self, as_objects=False, include_settings=False):
         """
         List all users setup on the DSS instance
 
         Note: this call requires an API key with admin rights
 
+        :param bool as_objects: Return a list of :class:`dataikuapi.dss.admin.DSSUser` instead of dictionaries. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False, as
+               :class:`dataikuapi.dss.admin.DSSUser` already includes settings by default. Defaults to False.
+
         :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
         :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
         """
-        users = self._perform_json("GET", "/admin/users/")
+
+        params = {
+            "includeSettings": include_settings
+        }
+        users = self._perform_json("GET", "/admin/users/", params=params)
 
         if as_objects:
             return [DSSUser(self, user["login"]) for user in users]
@@ -460,6 +468,7 @@ class DSSClient(object):
         Create a user, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
+        Note: this call is not available to Dataiku Cloud users
 
         :param str login: the login of the new user
         :param str password: the password of the new user
@@ -484,6 +493,134 @@ class DSSClient(object):
                    "email": email
                })
         return DSSUser(self, login)
+
+    def create_users(self, users):
+        """
+        Create multiple users, and return a list of creation status
+
+        Note: this call requires an API key with admin rights
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation
+                           It should contain the following keys:
+                           - 'login' (str): the login of the new user
+                           - 'password' (str): the password of the new user
+                           - 'displayName' (str): the displayed name for the new user
+                           - 'sourceType' (str): the type of new user. Admissible values are 'LOCAL' or 'LDAP'. Defaults to 'LOCAL'
+                           - 'groups' (list): the names of the groups the new user belongs to
+                           - 'userProfile' (str): The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ... Defaults to 'DATA_SCIENTIST'
+                           - 'email' (str): The email for the new user. Defaults to None
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, where each dictionary represents the creation status of a user.
+                 It should contain the following keys:
+                 - 'login' (str): the login of the created user
+                 - 'status' (str): the creation status of the user. Can be 'SUCCESS' or 'FAILURE'
+                 - 'error' (str): the error that occurred during that user's creation. Empty if status is not 'FAILURE'.
+        """
+        for user in users:
+            user.setdefault('login', '')
+            user.setdefault('displayName', '')
+            user.setdefault('sourceType', 'LOCAL')
+            user.setdefault('groups', [])
+            user.setdefault('userProfile', 'DATA_SCIENTIST')
+            user.setdefault('email', None)
+            if user['groups'] is None:
+                user['groups'] = []
+
+        response = self._perform_text("POST", "/admin/users/actions/bulk", body=users)
+        user_statuses = json.loads(response)
+        return user_statuses
+
+    def edit_users(self, user_changes):
+        """
+        Edits multiple users in a single bulk operation. This method is very permissive and is intended
+        for mass operations. If you are modifying a small number of users, it is advised to get a handle
+        from the get_user method and interact directly with a `DSSUser` object.
+
+        A valid workflow is to get the full users dictionaries from `list_users(include_settings=True)`,
+        modify them and use this method to apply the modifications.
+
+        Note: This call requires an API key with admin rights.
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the
+                                        changes for a single user. Each dictionary **must** contain the
+                                        'login' key to identify the user. Other keys can be included
+                                        to modify the user's properties, matching the structure of a
+                                        user settings object (see the output of `list_users(include_settings=True))`.
+
+                                        Available keys include:
+                                        - 'login' (str): The login of the user to modify (mandatory). Cannot be modified.
+                                        - 'displayName' (str): The user's display name.
+                                        - 'email' (str): The user's email address.
+                                        - 'groups' (list[str]): The list of groups for the user.
+                                        - 'userProfile' (str): The user's profile (e.g., 'FULL_DESIGNER').
+                                        - 'enabled' (bool): Whether the user is enabled.
+                                        - 'sourceType': User provisioning source type. Admissible values are 'LOCAL' or 'LDAP'.
+                                        - 'adminProperties' (dict): Custom admin properties for the user.
+                                        - 'userProperties' (dict): Custom user properties for the user.
+                                        - 'secrets' (list): A list of user-specific secrets.
+                                        - 'preferences' (dict): A dictionary of user preferences:
+                                            - 'uiLanguage' (str): UI language code (e.g., 'en', 'ja').
+                                            - 'mentionEmails' (bool): Email notifications for mentions.
+                                            - 'discussionEmails' (bool): Email notifications for discussions.
+                                            - 'accessRequestEmails' (bool): Email notifications for access requests.
+                                            - 'grantedAccessEmails' (bool): Email notifications when access is granted.
+                                            - 'grantedPluginRequestEmails' (bool): Email notifications when a plugin request is granted.
+                                            - 'pluginRequestEmails' (bool): Email notifications for plugin requests.
+                                            - 'instanceAccessRequestsEmails' (bool): Email notifications for instance access requests.
+                                            - 'profileUpgradeRequestsEmails' (bool): Email notifications for profile upgrade requests.
+                                            - 'codeEnvCreationRequestEmails' (bool): Email notifications for code env creation requests.
+                                            - 'grantedCodeEnvCreationRequestEmails' (bool): Email notifications when a code env request is granted.
+                                            - 'dailyDigestsEmails' (bool): Daily digest emails.
+                                            - 'offlineActivityEmails' (bool): Offline activity summary emails.
+                                            - 'rememberPositionFlow' (bool): Remember position in the Flow.
+                                            - 'loginLogoutNotifications' (bool): Notifications for login/logout.
+                                            - 'watchedObjectsEditionsNotifications' (bool): Notifications for edits on watched objects.
+                                            - 'objectOnCurrentProjectCreatedDeletedNotifications' (bool): Notifications for object creation/deletion in the current project.
+                                            - 'anyObjectOnCurrentProjectEditedNotifications' (bool): Notifications for any object edit in the current project.
+                                            - 'watchStarOnCurrentProjectNotifications' (bool): Notifications for watch/star actions in the current project.
+                                            - 'otherUsersJobsTasksNotifications' (bool): Notifications for jobs/tasks from other users.
+                                            - 'requestAccessNotifications' (bool): Notifications for access requests.
+                                            - 'scenarioRunNotifications' (bool): Notifications for scenario runs.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted modification, indicating the status.
+                 Each dictionary contains the following keys:
+                 - 'login' (str): The login of the user that was modified.
+                 - 'status' (str): The result of the operation, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+
+        response = self._perform_text("PUT", "/admin/users/actions/bulk", body=user_changes)
+        user_statuses = json.loads(response)
+        return user_statuses
+
+    def delete_users(self, user_logins, allow_self_deletion=False):
+        """
+        Bulk deletes multiple users.
+
+        Note: This call requires an API key with admin rights.
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[str] user_logins : A list of logins for the users to be deleted.
+        :param bool allow_self_deletion : Allow the use of this function to delete your own user.
+                                          Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted deletion, indicating the status.
+                 Each dictionary contains the following keys:
+                 - 'login' (str): The login of the user that was deleted.
+                 - 'status' (str): The result of the deletion, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+        params = {
+            'allowSelfDeletion': allow_self_deletion
+        }
+        response = self._perform_text("DELETE", "/admin/users/actions/bulk", body=user_logins, params=params)
+        user_statuses = json.loads(response)
+        return user_statuses
 
     def get_own_user(self):
         """
@@ -757,7 +894,7 @@ class DSSClient(object):
             env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
 
         :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV` or `RAG_CODE_ENV`.
-        :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311` or `PYTHON312`. If None, DSS will try to select a supported & available interpreter.
+        :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
         """

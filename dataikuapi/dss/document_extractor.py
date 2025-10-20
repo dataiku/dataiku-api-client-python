@@ -66,27 +66,48 @@ class DocumentExtractor(object):
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
 
-    def structured_extract(self, document, max_section_depth=6):
+    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine=None, languages="en"):
         """
-        Splits a document (txt/md) into a structured hierarchy of sections and texts
+        Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
         :param document: document to split
         :type document: :class:`DocumentRef`
         :param max_section_depth: Maximum depth of sections to extract - consider deeper sections as plain text.
                                   If set to 0, extract the whole document as one single section.
         :type max_section_depth: int
+        :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR'.
+        :type image_handling_mode: str
+        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used.
+        :type ocr_engine: str
+        :param languages: OCR languages that will be used for recognition. ISO639 languages codes separated by commas are expected
+        :type languages: str
 
         :returns: Structured content of the document
         :rtype: :class:`StructuredExtractorResponse`
         """
+        if image_handling_mode not in ["IGNORE", "OCR"]:
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
+
         extractor_request = {
             "inputs": {
                 "document": document.as_json()
             },
             "settings": {
-                "maxSectionDepth": max_section_depth
+                "maxSectionDepth": max_section_depth,
             }
         }
+        if image_handling_mode == "IGNORE":
+            extractor_request["settings"]["imageHandlingMode"] = "IGNORE"
+        elif image_handling_mode == "OCR":
+            if ocr_engine not in ["TESSERACT", "EASYOCR", "AUTO"]:
+                raise ValueError("Invalid ocr_engine, it must be set to 'TESSERACT', 'EASYOCR' or 'AUTO'")
+            extractor_request["settings"]["imageHandlingMode"] = "OCR"
+            extractor_request["settings"]["ocrSettings"] = {
+                "ocrEngine": ocr_engine,
+                "ocrLanguages": languages
+            }
+        else:
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
 
         ret = self.client._perform_json("POST", "/projects/%s/document-extractors/structured" % self.project_key,
                                         raw_body={"json": json.dumps(extractor_request)},
@@ -310,11 +331,13 @@ class StructuredExtractorResponse(object):
             if not node or not "type" in node:
                 return []
             elif node["type"] == "text" or node["type"] == "table":
-                if not node["text"]:
+                if not "text" in node or not node["text"]:
                     return []
                 return [{"text": node["text"], "outline": current_outline}]
             elif node["type"] == "image":
-                return []
+                if not "description" in node or not node["description"]:
+                    return []
+                return [{"text": node["description"], "outline": current_outline}]
             elif node["type"] not in ["document", "section"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
             if not "content" in node:

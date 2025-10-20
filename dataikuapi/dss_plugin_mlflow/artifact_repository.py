@@ -15,7 +15,7 @@ def parse_dss_managed_folder_uri(uri):
     parsed = urllib.parse.urlparse(uri)
     if parsed.scheme != "dss-managed-folder":
         raise Exception("Not a DSS Managed Folder URI: %s" % uri)
-    pattern = re.compile("^(\w+\.)?\w{8}")
+    pattern = re.compile(r"^(\w+\.)?\w{8}")
     if not parsed.netloc or not pattern.match(parsed.netloc):
         raise Exception("Could not find a managed folder id in URI: %s" % uri)
     return parsed

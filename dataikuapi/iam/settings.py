@@ -152,6 +152,17 @@ class OpenIDParams(dict):
         self["claimKeyEmail"] = claim_key_email
         return self
 
+    def set_lowercase_identifier(self, lowercase_identifier):
+        """
+        Set whether the OpenID identifier should be lowercased. Default is False.
+
+        :param bool lowercase_identifier: True to lowercase identifier, False otherwise
+        :return: self
+        :rtype: OpenIDParams
+        """
+        self["lowercaseIdentifier"] = lowercase_identifier
+        return self
+    
     def set_enable_groups(self, enable_groups):
         """
         Set whether groups are enabled in OpenID.
