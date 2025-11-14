@@ -863,7 +863,7 @@ class DSSUserPreferences(object):
     @property
     def ui_language(self):
         """
-        Get or set the language used in the Web User Interface for this user. Valid values are "en" (English) and "ja" (Japanese)
+        Get or set the language used in the Web User Interface for this user. Valid values are "en" (English), "ja" (Japanese) and "fr" (French).
 
         :rtype: str
         """

@@ -348,9 +348,9 @@ class DSSProject(object):
         Generates an AI-powered description for this project.
 
         This function operates with a two-tier rate limit per license:
-        1.  Up to 1000 requests per day.
-        2.  **Throttled Mode:** After the daily limit, the API's response time is slowed. 
-            Each subsequent call will take approximately 60 seconds to process and return a response.
+            1. Up to 1000 requests per day.
+            2. **Throttled Mode:** After the daily limit, the API's response time is slowed.
+                Each subsequent call will take approximately 60 seconds to process and return a response.
 
         Note: The "Generate Metadata" option must be enabled in the AI Services admin settings.
 

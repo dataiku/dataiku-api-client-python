@@ -164,6 +164,7 @@ class GovernClient(object):
         Create a user, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
+
         Note: this call is not available to Dataiku Cloud users
 
         :param str login: the login of the new user
@@ -195,10 +196,11 @@ class GovernClient(object):
         Create multiple users, and return a list of creation status
 
         Note: this call requires an API key with admin rights
+
         Note: this call is not available to Dataiku Cloud users
 
-        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation
-                           It should contain the following keys:
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+                           
                            - 'login' (str): the login of the new user
                            - 'password' (str): the password of the new user
                            - 'displayName' (str): the displayed name for the new user
@@ -208,8 +210,8 @@ class GovernClient(object):
                            - 'email' (str): The email for the new user. Defaults to None
 
         :rtype: list[dict]
-        :return: A list of dictionaries, where each dictionary represents the creation status of a user.
-                 It should contain the following keys:
+        :return: A list of dictionaries, where each dictionary represents the creation status of a user. It should contain the following keys:
+                 
                  - 'login' (str): the login of the created user
                  - 'status' (str): the creation status of the user. Can be 'SUCCESS' or 'FAILURE'
                  - 'error' (str): the error that occurred during that user's creation. Empty if status is not 'FAILURE'.
@@ -238,15 +240,13 @@ class GovernClient(object):
         modify them and use this method to apply the modifications.
 
         Note: This call requires an API key with admin rights.
+
         Note: this call is not available to Dataiku Cloud users
 
-        :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the
-                                        changes for a single user. Each dictionary **must** contain the
-                                        'login' key to identify the user. Other keys can be included
-                                        to modify the user's properties, matching the structure of a
-                                        user settings object (see the output of `list_users(include_settings=True))`.
-
-                                        Available keys include:
+        :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the changes for a single user. Each dictionary **must** contain the
+                                        'login' key to identify the user. Other keys can be included to modify the user's properties, matching the structure of a
+                                        user settings object (see the output of `list_users(include_settings=True))`. Available keys include:
+                                        
                                         - 'login' (str): The login of the user to modify (mandatory). Cannot be modified.
                                         - 'displayName' (str): The user's display name.
                                         - 'email' (str): The user's email address.
@@ -258,8 +258,8 @@ class GovernClient(object):
                                         - 'userProperties' (dict): Custom user properties for the user.
 
         :rtype: list[dict]
-        :return: A list of dictionaries, one for each attempted modification, indicating the status.
-                 Each dictionary contains the following keys:
+        :return: A list of dictionaries, one for each attempted modification, indicating the status. Each dictionary contains the following keys:
+
                  - 'login' (str): The login of the user that was modified.
                  - 'status' (str): The result of the operation, either 'SUCCESS' or 'FAILURE'.
                  - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
@@ -274,15 +274,15 @@ class GovernClient(object):
         Bulk deletes multiple users.
 
         Note: This call requires an API key with admin rights.
+
         Note: this call is not available to Dataiku Cloud users
 
-        :param list[str] user_logins : A list of logins for the users to be deleted.
-        :param bool allow_self_deletion : Allow the use of this function to delete your own user.
-                                          Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
+        :param list[str] user_logins: A list of logins for the users to be deleted.
+        :param bool allow_self_deletion: Allow the use of this function to delete your own user. Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
 
         :rtype: list[dict]
-        :return: A list of dictionaries, one for each attempted deletion, indicating the status.
-                 Each dictionary contains the following keys:
+        :return: A list of dictionaries, one for each attempted deletion, indicating the status. Each dictionary contains the following keys:
+                 
                  - 'login' (str): The login of the user that was deleted.
                  - 'status' (str): The result of the deletion, either 'SUCCESS' or 'FAILURE'.
                  - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
@@ -297,6 +297,7 @@ class GovernClient(object):
     def get_own_user(self):
         """
         Get a handle to interact with the current user
+
         :return: A :class:`dataikuapi.govern.admin.GovernOwnUser` user handle
         """
         return GovernOwnUser(self)
@@ -668,7 +669,8 @@ class GovernClient(object):
                 params=params, data=body,
                 files=files,
                 stream=stream,
-                headers=headers)
+                headers=headers,
+                verify=self._session.verify)
         handle_http_exception(http_res)
         return http_res
 
@@ -687,7 +689,8 @@ class GovernClient(object):
     def _perform_json_upload(self, method, path, name, f):
         http_res = self._session.request(
             method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})} )
+            files = {'file': (name, f, {'Expires': '0'})},
+            verify=self._session.verify)
 
         handle_http_exception(http_res)
         return http_res

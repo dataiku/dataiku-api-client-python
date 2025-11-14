@@ -1,9 +1,9 @@
 import json
 import logging
 
-from .document_extractor import ManagedFolderImageRef
+from .document_extractor import ManagedFolderImageRef, ManagedFolderDocumentRef
 from .managedfolder import DSSManagedFolder
-from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc
 
 logger = logging.getLogger(__name__)
 
@@ -185,9 +185,9 @@ class DSSKnowledgeBank(object):
                 "useAdvancedReranking": hybrid_use_advanced_reranking,
                 "rrfRankConstant": hybrid_rrf_rank_constant,
                 "rrfRankWindowSize": hybrid_rrf_rank_window_size,
-                "allMetadataInContext": True,
                 "includeScore": True,
-                "filter": {}
+                "filter": {},
+                "includeMultimodalContent": True
             })
         })
         if response.get("error"):
@@ -372,7 +372,10 @@ class DSSKnowledgeBankSearchResultDocument(object):
         :return: metadata for this document
         :rtype: dict
         """
-        return self._metadata
+        return {
+            key: value for key, value in self._metadata.items()
+            if key not in {'DKU_MULTIMODAL_CONTENT', 'DKU_DOCUMENT_INFO'}
+        }
 
     @property
     def images(self):
@@ -382,7 +385,7 @@ class DSSKnowledgeBankSearchResultDocument(object):
         :return: a list of images references or None
         :rtype: list[ManagedFolderImageRef] | None
         """
-        multimodal_raw = self.metadata.get("DKU_MULTIMODAL_CONTENT")
+        multimodal_raw = self._metadata.get("DKU_MULTIMODAL_CONTENT")
         if not multimodal_raw:
             return None
         try:
@@ -397,3 +400,37 @@ class DSSKnowledgeBankSearchResultDocument(object):
         return [
             ManagedFolderImageRef(self._result.managed_folder_id, path) for path in multimodal["content"]
         ]
+    
+    @property
+    def file_ref(self):
+        """
+        Returns the file reference for this document
+
+        :return: a file reference or None
+        :rtype: ManagedFolderDocumentRef | None
+        """
+        document_info_raw = self._metadata.get("DKU_DOCUMENT_INFO")
+        if not document_info_raw:
+            return None
+        try:
+            document_info = json.loads(document_info_raw)
+        except ValueError as e:
+            logger.error("Failed to decode JSON payload for document info: {}, {}".format(e, document_info_raw))
+            return None
+        
+        source_file_info = document_info.get("source_file")
+        if source_file_info is None:
+            return None
+        
+        folder_full_id = source_file_info.get("folder_full_id")
+        path = source_file_info.get("path")
+        if folder_full_id is None or path is None:
+            return None
+        
+        try:
+            folder_loc = AnyLoc.from_full(folder_full_id)
+        except ValueError as e:
+            logger.error("Invalid folder_full_id in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))
+            return None
+
+        return ManagedFolderDocumentRef(path, folder_loc.object_id)

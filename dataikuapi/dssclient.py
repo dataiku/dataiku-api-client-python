@@ -178,14 +178,15 @@ class DSSClient(object):
         """
         return [x["projectKey"] for x in self._perform_json("GET", "/projects/")]
 
-    def list_projects(self):
+    def list_projects(self, include_location=False):
         """
         List the projects
 
+        :param bool include_location: whether to include project locations (slower)
         :returns: a list of projects, each as a dict. Each dictcontains at least a 'projectKey' field
         :rtype: list of dicts
         """
-        return self._perform_json("GET", "/projects/")
+        return self._perform_json("GET", "/projects/", params={"includeLocation": include_location})
 
     def get_project(self, project_key):
         """
@@ -468,6 +469,7 @@ class DSSClient(object):
         Create a user, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
+
         Note: this call is not available to Dataiku Cloud users
 
         :param str login: the login of the new user
@@ -499,10 +501,11 @@ class DSSClient(object):
         Create multiple users, and return a list of creation status
 
         Note: this call requires an API key with admin rights
+
         Note: this call is not available to Dataiku Cloud users
 
-        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation
-                           It should contain the following keys:
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+                           
                            - 'login' (str): the login of the new user
                            - 'password' (str): the password of the new user
                            - 'displayName' (str): the displayed name for the new user
@@ -512,8 +515,8 @@ class DSSClient(object):
                            - 'email' (str): The email for the new user. Defaults to None
 
         :rtype: list[dict]
-        :return: A list of dictionaries, where each dictionary represents the creation status of a user.
-                 It should contain the following keys:
+        :return: A list of dictionaries, where each dictionary represents the creation status of a user. It should contain the following keys:
+                 
                  - 'login' (str): the login of the created user
                  - 'status' (str): the creation status of the user. Can be 'SUCCESS' or 'FAILURE'
                  - 'error' (str): the error that occurred during that user's creation. Empty if status is not 'FAILURE'.
@@ -542,15 +545,16 @@ class DSSClient(object):
         modify them and use this method to apply the modifications.
 
         Note: This call requires an API key with admin rights.
+
         Note: this call is not available to Dataiku Cloud users
 
         :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the
                                         changes for a single user. Each dictionary **must** contain the
                                         'login' key to identify the user. Other keys can be included
                                         to modify the user's properties, matching the structure of a
-                                        user settings object (see the output of `list_users(include_settings=True))`.
+                                        user settings object (see the output of
+                                        `list_users(include_settings=True))`. Available keys include:
 
-                                        Available keys include:
                                         - 'login' (str): The login of the user to modify (mandatory). Cannot be modified.
                                         - 'displayName' (str): The user's display name.
                                         - 'email' (str): The user's email address.
@@ -562,7 +566,8 @@ class DSSClient(object):
                                         - 'userProperties' (dict): Custom user properties for the user.
                                         - 'secrets' (list): A list of user-specific secrets.
                                         - 'preferences' (dict): A dictionary of user preferences:
-                                            - 'uiLanguage' (str): UI language code (e.g., 'en', 'ja').
+                                        
+                                            - 'uiLanguage' (str): UI language code (e.g., 'en', 'ja', 'fr').
                                             - 'mentionEmails' (bool): Email notifications for mentions.
                                             - 'discussionEmails' (bool): Email notifications for discussions.
                                             - 'accessRequestEmails' (bool): Email notifications for access requests.
@@ -586,8 +591,8 @@ class DSSClient(object):
                                             - 'scenarioRunNotifications' (bool): Notifications for scenario runs.
 
         :rtype: list[dict]
-        :return: A list of dictionaries, one for each attempted modification, indicating the status.
-                 Each dictionary contains the following keys:
+        :return: A list of dictionaries, one for each attempted modification, indicating the status. Each dictionary contains the following keys:
+                 
                  - 'login' (str): The login of the user that was modified.
                  - 'status' (str): The result of the operation, either 'SUCCESS' or 'FAILURE'.
                  - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
@@ -602,15 +607,15 @@ class DSSClient(object):
         Bulk deletes multiple users.
 
         Note: This call requires an API key with admin rights.
+
         Note: this call is not available to Dataiku Cloud users
 
-        :param list[str] user_logins : A list of logins for the users to be deleted.
-        :param bool allow_self_deletion : Allow the use of this function to delete your own user.
-                                          Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
+        :param list[str] user_logins: A list of logins for the users to be deleted.
+        :param bool allow_self_deletion: Allow the use of this function to delete your own user. Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
 
         :rtype: list[dict]
-        :return: A list of dictionaries, one for each attempted deletion, indicating the status.
-                 Each dictionary contains the following keys:
+        :return: A list of dictionaries, one for each attempted deletion, indicating the status. Each dictionary contains the following keys:
+                 
                  - 'login' (str): The login of the user that was deleted.
                  - 'status' (str): The result of the deletion, either 'SUCCESS' or 'FAILURE'.
                  - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
@@ -625,6 +630,7 @@ class DSSClient(object):
     def get_own_user(self):
         """
         Get a handle to interact with the current user
+
         :return: A :class:`dataikuapi.dss.admin.DSSOwnUser` user handle
         """
         return DSSOwnUser(self)
@@ -1745,7 +1751,8 @@ class DSSClient(object):
                 params=params, data=body,
                 files=files,
                 stream=stream,
-                headers=headers)
+                headers=headers,
+                verify=self._session.verify)
         handle_http_exception(http_res)
         return http_res
 
@@ -1764,7 +1771,8 @@ class DSSClient(object):
     def _perform_json_upload(self, method, path, name, f):
         http_res = self._session.request(
             method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})} )
+            files = {'file': (name, f, {'Expires': '0'})},
+            verify=self._session.verify)
 
         handle_http_exception(http_res)
         return http_res

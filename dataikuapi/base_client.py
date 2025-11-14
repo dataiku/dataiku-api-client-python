@@ -42,7 +42,8 @@ class DSSBaseClient(object):
         http_res = self._session.request(
                     method, "%s/%s" % (self.base_uri, path),
                     params=params, data=body, headers=headers,
-                    auth=auth, stream = stream)
+                    auth=auth, stream = stream,
+                    verify=self._session.verify)
         handle_http_exception(http_res)
         return http_res
 
