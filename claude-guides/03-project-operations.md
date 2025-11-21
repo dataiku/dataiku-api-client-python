@@ -829,15 +829,23 @@ print(f"✓ Audited {len(audit)} projects")
 
 ## Common Gotchas
 
-### 1. Project Keys Must Be Uppercase
+### 1. Project Keys - Use UPPERCASE (Best Practice)
+
+**Note:** Dataiku accepts both uppercase and lowercase project keys, but **UPPERCASE is strongly recommended** because:
+- Snowflake datasets REQUIRE uppercase table/column names
+- Many SQL databases are case-sensitive
+- Mixing cases causes confusing errors
+- Consistency prevents mistakes
 
 ```python
-# ❌ WRONG
-client.create_project("my_project", "My Project", "owner")  # Will fail!
-
-# ✓ CORRECT
+# ✓ RECOMMENDED - UPPERCASE for consistency
 client.create_project("MY_PROJECT", "My Project", "owner")
+
+# ⚠️ WORKS BUT NOT RECOMMENDED - May cause issues with Snowflake
+client.create_project("my_project", "My Project", "owner")
 ```
+
+**See `00-project-planning-guide.md` for complete naming conventions.**
 
 ### 2. Owner Must Be Valid User
 

@@ -44,17 +44,23 @@ settings.save()  # Critical!
 
 ---
 
-### 3. Project Keys Must Be Uppercase
+### 3. Project Keys - Use UPPERCASE (Best Practice)
 
 ```python
-# ❌ WRONG
-client.create_project("my_project", "My Project", "owner")  # Fails!
-
-# ✓ CORRECT
+# ✓ RECOMMENDED - UPPERCASE for consistency (especially with Snowflake)
 client.create_project("MY_PROJECT", "My Project", "owner")
+
+# ⚠️ WORKS BUT NOT RECOMMENDED - May cause Snowflake issues later
+client.create_project("my_project", "My Project", "owner")
 ```
 
-**Why:** Dataiku enforces uppercase for project keys.
+**Why:** While Dataiku accepts both cases, **UPPERCASE is strongly recommended** because:
+- Snowflake datasets REQUIRE uppercase table/column names
+- SQL databases are often case-sensitive
+- Prevents confusing case-related errors
+- Maintains consistency across your projects
+
+**See `00-project-planning-guide.md` for detailed naming conventions.**
 
 ---
 

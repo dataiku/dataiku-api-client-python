@@ -8,6 +8,16 @@
 
 ## Guide Structure
 
+### **CRITICAL: Start Here**
+
+0. **[00-project-planning-guide.md](00-project-planning-guide.md)** ⭐ **READ THIS FIRST!**
+   - **Why planning matters** for Claude Code (prevents getting lost!)
+   - Creating detailed project plans BEFORE coding
+   - Naming conventions (UPPERCASE for Snowflake compatibility)
+   - Phase-by-phase implementation workflow
+   - Visual flow planning and dependencies
+   - Progress tracking and checkpoints
+
 ### Getting Started
 
 1. **[01-prerequisites-and-setup.md](01-prerequisites-and-setup.md)**
@@ -75,13 +85,15 @@
 
 ## Quick Start
 
-**First time?** Read in order:
-1. Prerequisites and Setup
-2. Authentication and Connection
-3. Project Operations
-4. Dataset Operations
+**First time or starting a new project?** Read in order:
+0. **Project Planning Guide** ⭐ (00-project-planning-guide.md) - **START HERE!**
+1. Prerequisites and Setup (01-prerequisites-and-setup.md)
+2. Authentication and Connection (02-authentication-and-connection.md)
+3. Project Operations (03-project-operations.md)
+4. Dataset Operations (04-dataset-operations.md)
 
 **Need specific help?** Jump to:
+- Planning → 00-project-planning-guide.md ⭐
 - Recipes → 05-recipe-workflows.md
 - Automation → 06-scenario-automation.md
 - ML → 07-ml-workflows.md
@@ -122,9 +134,15 @@ settings.save()  # Critical!
 
 Many operations (builds, scenarios, training) are asynchronous. You must wait for completion.
 
-### 4. Project Keys Must Be Uppercase
+### 4. Use UPPERCASE Naming (Best Practice)
 
-`MY_PROJECT` ✓ not `my_project` ❌
+**Strongly recommended:** Use UPPERCASE for project keys, dataset names, and column names (especially with Snowflake):
+- `MY_PROJECT` ✓ (recommended)
+- `RAW_CUSTOMERS`, `CLEAN_ORDERS` ✓ (recommended for Snowflake)
+- Snowflake requires uppercase table/column names
+- Prevents case-sensitivity issues
+
+See `00-project-planning-guide.md` for complete naming conventions.
 
 ### 5. Variables Are Strings
 
@@ -232,7 +250,7 @@ These guides are maintained for Claude Code sessions. When updating:
 
 1. ⚠️ **Scope hierarchy** - Must go through project
 2. ⚠️ **Save settings** - Always call `.save()`
-3. ⚠️ **Uppercase project keys** - `MY_PROJECT` not `my_project`
+3. ⚠️ **Use UPPERCASE naming** - Especially for Snowflake: `MY_PROJECT`, `RAW_CUSTOMERS`
 4. ⚠️ **Variables are strings** - Convert types!
 5. ⚠️ **Async operations** - Wait for completion
 6. ⚠️ **Schema updates** - Call `compute_schema_updates().apply()`
