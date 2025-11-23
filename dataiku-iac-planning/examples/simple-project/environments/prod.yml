@@ -1,0 +1,47 @@
+# Production Environment Configuration
+
+environment:
+  name: prod
+  dataiku_host: https://dataiku-prod.company.com
+
+# Environment-specific variables
+variables:
+  # Database connections
+  DATABASE_CONNECTION: POSTGRES_PROD
+  STORAGE_CONNECTION: S3_PROD_BUCKET
+
+  # Code environment
+  PYTHON_ENV: python39_prod
+
+  # Notifications
+  NOTIFICATION_CHANNEL: slack_prod_notifications
+
+  # Dynamic variables
+  TODAY: ${date:YYYY-MM-DD}
+  YESTERDAY: ${date:YYYY-MM-DD:-1d}
+
+# Production settings
+settings:
+  # Require tests before deployment
+  require_tests: true
+
+  # Require Govern approval
+  require_approval: true
+
+  # Alert on drift but don't auto-correct
+  drift_policy: alert_only
+
+  # Enable audit logging
+  audit_log:
+    enabled: true
+    destination: s3://company-audit-logs/dataiku-iac/
+
+# Production-specific resource allocation
+overrides:
+  recipes:
+    prep_data:
+      resources:
+        memory: 4G
+        cores: 4
+      # Use dedicated cluster in production
+      cluster: prod_large_cluster
