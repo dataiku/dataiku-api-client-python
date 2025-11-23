@@ -1,0 +1,53 @@
+# Development Environment Configuration
+
+environment:
+  name: dev
+  dataiku_host: https://dataiku-dev.company.com
+
+# Environment-specific variables
+variables:
+  # Database connections
+  DATABASE_CONNECTION: POSTGRES_DEV
+  STORAGE_CONNECTION: S3_DEV_BUCKET
+
+  # Code environment
+  PYTHON_ENV: python39_dev
+
+  # Notifications
+  NOTIFICATION_CHANNEL: slack_dev_channel
+
+  # Dynamic variables
+  TODAY: ${date:YYYY-MM-DD}
+  YESTERDAY: ${date:YYYY-MM-DD:-1d}
+
+# Development-specific overrides
+overrides:
+  # Use sampling in dev to speed up development
+  datasets:
+    RAW_DATA:
+      params:
+        sampling: first_records
+        sample_size: 10000
+
+  # Manual triggers only in dev (no automated runs)
+  scenarios:
+    daily_refresh:
+      triggers: []  # Remove schedule, manual only
+
+  # Use smaller resources in dev
+  recipes:
+    "*":  # All recipes
+      resources:
+        memory: 1G
+        cores: 1
+
+# Development settings
+settings:
+  # Don't require tests in dev
+  require_tests: false
+
+  # No approval needed in dev
+  require_approval: false
+
+  # Auto-correct drift in dev
+  drift_policy: auto_correct

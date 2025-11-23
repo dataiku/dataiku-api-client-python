@@ -1,0 +1,117 @@
+# Simple Dataiku Project Configuration
+# This is a minimal example showing basic IaC concepts
+
+metadata:
+  version: "1.0"
+  description: "Hello Dataiku - Simple ETL pipeline example"
+  owner: data_team
+
+# Project definition
+project:
+  key: HELLO_DATAIKU
+  name: Hello Dataiku Example
+  description: A simple ETL pipeline to demonstrate Dataiku IaC
+
+  settings:
+    # Enable Git integration
+    git:
+      enabled: false  # Set to true if using Git for recipes
+
+    # Project permissions
+    permissions:
+      - group: data_engineers
+        role: write
+      - group: analysts
+        role: read
+
+# Datasets
+datasets:
+  # Input dataset from SQL database
+  - name: RAW_DATA
+    type: sql
+    connection: ${DATABASE_CONNECTION}
+    params:
+      schema: PUBLIC
+      table: source_data
+      mode: table
+
+    # Define expected schema
+    schema:
+      columns:
+        - name: id
+          type: bigint
+          nullable: false
+        - name: value
+          type: numeric
+        - name: created_at
+          type: timestamp
+
+    # Data quality checks
+    checks:
+      - type: not_null
+        columns: [id]
+      - type: unique
+        columns: [id]
+
+  # Output dataset (managed)
+  - name: PREPARED_DATA
+    type: managed
+    connection: ${STORAGE_CONNECTION}
+    format: parquet
+    params:
+      # Partition by date for efficient querying
+      partition_by: [created_date]
+      compression: snappy
+
+# Recipes
+recipes:
+  # Python recipe to transform data
+  - name: prep_data
+    type: python
+    inputs:
+      - RAW_DATA
+    outputs:
+      - PREPARED_DATA
+    code_file: recipes/prep_data.py
+    code_env: ${PYTHON_ENV}
+
+    # Resource allocation
+    resources:
+      memory: 2G
+      cores: 2
+
+# Scenarios
+scenarios:
+  # Daily data refresh scenario
+  - name: daily_refresh
+    type: step_based
+    description: Daily data refresh pipeline
+
+    # Schedule to run at 2 AM UTC
+    triggers:
+      - type: schedule
+        cron: "0 2 * * *"
+        timezone: UTC
+
+    # Pipeline steps
+    steps:
+      # Step 1: Build raw data
+      - type: build_dataset
+        name: build_raw
+        dataset: RAW_DATA
+
+      # Step 2: Run preparation recipe
+      - type: run_recipe
+        name: prepare_data
+        recipe: prep_data
+
+      # Step 3: Build prepared data
+      - type: build_dataset
+        name: build_prepared
+        dataset: PREPARED_DATA
+
+      # Step 4: Send notification on completion
+      - type: notification
+        name: notify_success
+        channel: ${NOTIFICATION_CHANNEL}
+        message: "✓ Daily refresh completed successfully"
