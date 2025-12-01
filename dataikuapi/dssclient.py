@@ -14,6 +14,7 @@ from requests.auth import HTTPBasicAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
+from .dss.data_directories_footprint import DSSDataDirectoriesFootprint
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
@@ -1642,6 +1643,7 @@ class DSSClient(object):
     def build_cde_plugins_image(self):
         """
         Build and Push the image for containerized dss engine (CDE) with plugins
+
         :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
         """
         resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
@@ -2140,6 +2142,18 @@ class DSSClient(object):
         """
         ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
         return DSSAzureADSettings(self, ldap)
+
+    ########################################################
+    # Data directories
+    ########################################################
+
+    def get_data_directories_footprint(self):
+        """
+        Gets a handle to work with Data Directories Footprint
+
+        :rtype: :class:`dataikuapi.dss.data_directories_footprint.DSSDataDirectoriesFootprint`
+        """
+        return DSSDataDirectoriesFootprint(self)
 
     ########################################################
     # LLM Cost limiting
