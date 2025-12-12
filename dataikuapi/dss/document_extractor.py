@@ -66,7 +66,7 @@ class DocumentExtractor(object):
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
 
-    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine=None, languages="en"):
+    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine=None, languages="en", llm_id=None, llm_prompt=None,output_managed_folder=None):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -75,18 +75,25 @@ class DocumentExtractor(object):
         :param max_section_depth: Maximum depth of sections to extract - consider deeper sections as plain text.
                                   If set to 0, extract the whole document as one single section.
         :type max_section_depth: int
-        :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR'.
+        :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR', 'VLM_ANNOTATE'.
         :type image_handling_mode: str
         :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used.
         :type ocr_engine: str
         :param languages: OCR languages that will be used for recognition. ISO639 languages codes separated by commas are expected
         :type languages: str
+        :param llm_id: ID of the (vision-capable) LLM to use for annotating images when image_handling_mode is 'VLM_ANNOTATE'
+        :type llm_id: str
+        :param llm_prompt: Custom prompt to extract text from the images
+        :type llm_prompt: str
+        :param output_managed_folder: id of a managed folder to store the image in the document.
+                              When unspecified, return inline images in the response.
+        :type output_managed_folder: str
 
         :returns: Structured content of the document
         :rtype: :class:`StructuredExtractorResponse`
         """
-        if image_handling_mode not in ["IGNORE", "OCR"]:
-            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
+        if image_handling_mode not in ["IGNORE", "OCR", "VLM_ANNOTATE"]:
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
 
         extractor_request = {
             "inputs": {
@@ -106,8 +113,15 @@ class DocumentExtractor(object):
                 "ocrEngine": ocr_engine,
                 "ocrLanguages": languages
             }
+        elif image_handling_mode == "VLM_ANNOTATE":
+            extractor_request["settings"]["imageHandlingMode"] = "VLM_ANNOTATE"
+            extractor_request["settings"]["vlmAnnotationSettings"] = {
+                "llmId": llm_id,
+                "llm_prompt": llm_prompt,
+                "outputManagedFolderId": output_managed_folder
+            }
         else:
-            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
 
         ret = self.client._perform_json("POST", "/projects/%s/document-extractors/structured" % self.project_key,
                                         raw_body={"json": json.dumps(extractor_request)},

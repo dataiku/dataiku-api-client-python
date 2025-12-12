@@ -2324,13 +2324,13 @@ class DSSGlobalApiKey(object):
             If the secure API keys feature is enabled, the secret key of this
             API key will not be present in the returned dict
 
-        :return: the API key definition, as a dict. The dict additionally contains the definition of the
-                 permissions attached to the key.
+        :return: the API key definition
 
-        :rtype: dict
+        :rtype: :class:DSSGlobalApiKeyDefinition
         """
-        return self.client._perform_json(
+        data = self.client._perform_json(
             "GET", "/admin/global-api-keys/%s" % self.id_)
+        return DSSGlobalApiKeyDefinition(self.client, data)
 
     def set_definition(self, definition):
         """
@@ -2342,17 +2342,17 @@ class DSSGlobalApiKey(object):
 
         .. important::
 
-            You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+            You should only :meth:`set_definition` using a dict that you obtained through :meth:`get_definition`,
             not create a new dict. You may not use this method to update the 'key' field.
 
         Usage example
 
         .. code-block:: python
 
-            # make an API key able to create projects
-            key = client.get_global_api_key('my_api_key_secret')
+            # add a group to an API key
+            key = client.get_global_api_key_by_id("my_api_key_id")
             definition = key.get_definition()
-            definition["globalPermissions"]["mayCreateProjects"] = True
+            definition["groups"].append("new_group_name")
             key.set_definition(definition)
 
         :param dict definition: the definition for the API key
@@ -2360,6 +2360,133 @@ class DSSGlobalApiKey(object):
         return self.client._perform_empty(
             "PUT", "/admin/global-api-keys/%s" % self.id_,
             body = definition)
+
+
+class DSSGlobalApiKeyDefinition(dict):
+
+    """
+    The definition of a global API key.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSGlobalApiKey.get_definition` instead.
+    """
+    def __init__(self, client, data):
+        super(DSSGlobalApiKeyDefinition, self).__init__(data)
+        self.client = client
+
+    @property
+    def id(self):
+        """
+        Get the identifier of the API key
+
+        :rtype: string
+        """
+        return self["id"]
+
+    @property
+    def label(self):
+        """
+        Get or set the label of the API key
+
+        :rtype: string
+        """
+        return self["label"]
+
+    @label.setter
+    def label(self, new_value):
+        self["label"] = new_value
+
+    @property
+    def description(self):
+        """
+        Get or set the description of the API key
+
+        :rtype: string
+        """
+        return self.get("description")
+
+    @description.setter
+    def description(self, new_value):
+        self["description"] = new_value
+
+    @property
+    def user_for_impersonation(self):
+        """
+        Get the user associated to the API key
+
+        :rtype: string
+        """
+        return self.get("dssUserForImpersonation")
+
+    @user_for_impersonation.setter
+    def user_for_impersonation(self, new_value):
+        self["dssUserForImpersonation"] = new_value
+
+    @property
+    def groups(self):
+        """
+        Get or set the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
+
+    @groups.setter
+    def groups(self, new_value):
+        self["groups"] = new_value
+
+    @property
+    def created_on(self):
+        """
+        Get the timestamp of when the API key was created
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self["createdOn"]
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def created_by(self):
+        """
+        Get the login of the user who created the API key
+
+        :rtype: string
+        """
+        return self.get("createdBy")
+
+    @property
+    def expires_on(self):
+        """
+        Get the timestamp of when the API key will expire, or None if the API key never expires
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self.get("expiresOn")
+        if timestamp is None or timestamp == 0:
+            return None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def lifetime(self):
+        """
+        Get or set the lifetime in days of the API key
+
+        :rtype: string
+        """
+        return self.get("expiry")
+
+    @lifetime.setter
+    def lifetime(self, new_value):
+        self["expiry"] = new_value
+
+    def save(self):
+        """
+        Save the changes to the API key's definition
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/global-api-keys/%s" % self.id,
+            body = self)
 
 
 class DSSGlobalApiKeyListItem(dict):
@@ -2446,7 +2573,16 @@ class DSSGlobalApiKeyListItem(dict):
 
         :rtype: string
         """
-        return self["createdBy"]
+        return self.get("createdBy")
+
+    @property
+    def groups(self):
+        """
+        Get the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
 
 class DSSPersonalApiKey(object):
     """

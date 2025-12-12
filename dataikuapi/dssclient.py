@@ -184,7 +184,7 @@ class DSSClient(object):
         List the projects
 
         :param bool include_location: whether to include project locations (slower)
-        :returns: a list of projects, each as a dict. Each dictcontains at least a 'projectKey' field
+        :returns: a list of projects, each as a dict. Each dict contains at least a 'projectKey' field
         :rtype: list of dicts
         """
         return self._perform_json("GET", "/projects/", params={"includeLocation": include_location})
@@ -205,7 +205,7 @@ class DSSClient(object):
         import dataiku
         return DSSProject(self, dataiku.default_project_key())
 
-    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None, permissions=None):
         """
         Creates a new project, and return a project handle to interact with it.
 
@@ -217,19 +217,23 @@ class DSSClient(object):
         :param str description: a description for the project.
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
+        :param list[dict] permissions: Initial permissions for the project (can be modified later). Each dict contains a 'group' and permissions given to that group.
 
         :returns: A :class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
         params = {}
         if project_folder_id is not None:
             params["projectFolderId"] = project_folder_id
+        if permissions is None:
+            permissions = []
         resp = self._perform_text(
                "POST", "/projects/", body={
                    "projectKey" : project_key,
                    "name" : name,
                    "owner" : owner,
                    "settings" : settings,
-                   "description" : description
+                   "description" : description,
+                   "permissions" : permissions
                }, params=params)
         return DSSProject(self, project_key)
 
@@ -317,7 +321,7 @@ class DSSClient(object):
     def start_install_plugin_from_archive(self, fp):
         """
         Install a plugin from a plugin archive (as a file object)
-        Returns immediately with a future representing the process done asycnhronously
+        Returns immediately with a future representing the process done asynchronously
 
         :param object fp: A file-like object pointing to a plugin archive zip
         :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
@@ -830,7 +834,7 @@ class DSSClient(object):
         """
         return DSSConnection(self, name)
 
-    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None):
+    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None, description=None):
         """
         Create a connection, and return a handle to interact with it
 
@@ -843,6 +847,7 @@ class DSSClient(object):
             or 'ALLOWED' (=access restricted to users of a list of groups)
         :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
             of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
+        :param str description: (optional) a description of the new connection
 
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
@@ -853,6 +858,7 @@ class DSSClient(object):
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
                    "name" : name,
+                   "description" : description,
                    "type" : type,
                    "params" : params,
                    "usableBy" : usable_by,
@@ -900,7 +906,7 @@ class DSSClient(object):
 
             env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
 
-        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV` or `RAG_CODE_ENV`.
+        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV` or `DOCUMENT_EXTRACTION_CODE_ENV`.
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
@@ -1097,9 +1103,23 @@ class DSSClient(object):
             "GET", "/admin/global-api-keys/%s" % id_)
         return DSSGlobalApiKey(self, resp["key"], id_)
 
+    def _create_global_api_key(self, request_body):
+        resp = self._perform_json(
+            "POST", "/admin/global-api-keys/", body=request_body)
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+        return DSSGlobalApiKey(self, resp.get('key', ''), resp['id'])
+
     def create_global_api_key(self, label=None, description=None, admin=False):
         """
-        Create a Global API key, and return a handle to interact with it
+        Create a Global API key, and return a handle to interact with it.
+
+        Use :meth:`DSSClient.create_global_api_key_with_groups` to create global API keys that use groups
+        to manage their permissions.
 
         .. note::
 
@@ -1116,21 +1136,43 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
-        resp = self._perform_json(
-            "POST", "/admin/global-api-keys/", body={
-                "label": label,
-                "description": description,
-                "globalPermissions": {
-                    "admin": admin
-                }
-            })
-        if resp is None:
-            raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-        if not resp.get('id', False):
-            raise Exception('API key creation returned no key')
-        return DSSGlobalApiKey(self, resp.get('key', ''), resp['id'])
+
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "globalPermissions": {
+                "admin": admin
+            }
+        })
+
+    def create_global_api_key_with_groups(self, label=None, description=None, groups=None):
+        """
+        Create a Global API key, and return a handle to interact with it.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param list groups: the groups the new API key belongs to
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+
+        if groups is None:
+            groups = []
+
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "groups": groups
+        })
 
     ########################################################
     # Personal API Keys
@@ -1240,8 +1282,6 @@ class DSSClient(object):
         """
         List all user-defined meanings on the DSS instance
 
-        Note: this call requires an API key with admin rights
-
         :returns: A list of meanings. Each meaning is a dict
         :rtype: list of dicts
         """
@@ -1251,8 +1291,6 @@ class DSSClient(object):
     def get_meaning(self, id):
         """
         Get a handle to interact with a specific user-defined meaning
-
-        Note: this call requires an API key with admin rights
 
         :param str id: the ID of the desired meaning
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
@@ -1722,7 +1760,7 @@ class DSSClient(object):
 
     def get_govern_client(self):
         """
-        Return the Govern Client handle corresponding to the Dataiku Govern integration settigns, or None if not enabled or misconfigured.
+        Return the Govern Client handle corresponding to the Dataiku Govern integration settings, or None if not enabled or misconfigured.
 
         This call requires an API key with admin rights.
 
@@ -1735,6 +1773,39 @@ class DSSClient(object):
         else:
             return GovernClient(resp['nodeUrl'], resp['apiKey'], no_check_certificate=resp.get('trustAllSSLCertificates', False))
 
+    def govern_dss_sync(self, project_key=None):
+        """
+        Sync all DSS elements to Govern, or only one DSS project.
+        Returns immediately with a future representing the process done asynchronously.
+
+        This call requires an API key with admin rights.
+        
+        :param str project_key: restricts the sync to one project, identified by the project_key
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        params = {}
+        if project_key is not None:
+            params["projectKey"] = project_key
+        f = self._perform_json(
+            "POST",
+            "/admin/govern-integration-sync",
+            params=params
+            )
+        return DSSFuture.from_resp(self, f)
+
+    def govern_deployer_sync(self):
+        """
+        Sync all Deployer elements to Govern.
+        Returns immediately with a future representing the process done asynchronously.
+
+        This call requires an API key with admin rights.
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        f = self._perform_json("POST", "/admin/govern-integration-deployer-sync")
+        return DSSFuture.from_resp(self, f)
 
     ########################################################
     # Internal Request handling

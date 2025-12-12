@@ -30,7 +30,7 @@ class GovernClient(object):
             api_key (str, optional): API key for authentication. Can be managed in Dataiku Govern global settings.
             internal_ticket (str, optional): Internal ticket for authentication.
             extra_headers (dict, optional): Additional HTTP headers to include in requests.
-            no_check_certificate (bool, optional): If True, disables SSL certificate verification. 
+            no_check_certificate (bool, optional): If True, disables SSL certificate verification.
                 Defaults to False.
             client_certificate (str or tuple, optional): Path to client certificate file or tuple of (cert, key) paths.
             **kwargs: Additional keyword arguments. Note: 'insecure_tls' is deprecated in favor of no_check_certificate.
@@ -53,7 +53,7 @@ class GovernClient(object):
             self._session.verify = False
         if client_certificate:
             self._session.cert = client_certificate
-            
+
         if self.api_key is not None:
             self._session.auth = HTTPBasicAuth(self.api_key, "")
         elif self.internal_ticket is not None:
@@ -495,9 +495,23 @@ class GovernClient(object):
             "GET", "/admin/global-api-keys/%s" % id_)
         return GovernGlobalApiKey(self, resp["key"], id_)
 
+    def _create_global_api_key(self, request_body):
+        resp = self._perform_json(
+            "POST", "/admin/global-api-keys/", body=request_body)
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+        return GovernGlobalApiKey(self, resp.get('key', ''), resp['id'])
+
     def create_global_api_key(self, label=None, description=None, admin=False):
         """
         Create a Global API key, and return a handle to interact with it
+
+        Use :meth:`GovernClient.create_global_api_key_with_groups` to create global API keys that use groups
+        to manage their permissions.
 
         .. note::
 
@@ -514,21 +528,42 @@ class GovernClient(object):
 
         :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
         """
-        resp = self._perform_json(
-            "POST", "/admin/global-api-keys/", body={
-                "label": label,
-                "description": description,
-                "globalPermissions": {
-                    "admin": admin
-                }
-            })
-        if resp is None:
-            raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-        if not resp.get('id', False):
-            raise Exception('API key creation returned no key')
-        return GovernGlobalApiKey(self, resp.get('key', ''), resp['id'])
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "globalPermissions": {
+                "admin": admin
+            }
+        })
+
+    def create_global_api_key_with_groups(self, label=None, description=None, groups=None):
+        """
+        Create a Global API key, and return a handle to interact with it.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param list groups: the groups the new API key belongs to
+
+        :returns: A :class:`dataikuapi.govern.admin.GovernGlobalApiKey` API key handle
+        """
+
+        if groups is None:
+            groups = []
+
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "groups": groups
+        })
 
     ########################################################
     # Logs

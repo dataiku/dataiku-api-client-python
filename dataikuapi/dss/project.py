@@ -1,8 +1,11 @@
+import logging
 import os.path as osp
 import warnings
-import logging
 
+from . import agent_tool
 from . import recipe
+from .agent import DSSAgent, DSSAgentListItem
+from .agent_tool import DSSAgentTool, DSSAgentToolListItem, DSSAgentToolCreator
 from .analysis import DSSAnalysis
 from .apiservice import DSSAPIService, DSSAPIServiceListItem
 from .app import DSSAppManifest
@@ -17,7 +20,9 @@ from .future import DSSFuture
 from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
 from .job import DSSJob, DSSJobWaiter
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
+from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from .labeling_task import DSSLabelingTask
+from .llm import DSSLLM, DSSLLMListItem
 from .macro import DSSMacro
 from .managedfolder import DSSManagedFolder
 from .ml import DSSMLTask, DSSMLTaskQueues
@@ -29,6 +34,7 @@ from .plugin import DSSPluginUsagesListItem
 from .project_standards import DSSProjectStandardsRunReport, DSSProjectStandardsScope
 from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
+from .retrieval_augmented_llm import DSSRetrievalAugmentedLLM, DSSRetrievalAugmentedLLMListItem
 from .savedmodel import DSSSavedModel
 from .scenario import DSSScenario, DSSScenarioListItem, DSSTestingStatus
 from .sqlnotebook import DSSSQLNotebook, DSSSQLNotebookListItem
@@ -36,12 +42,6 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
     DSSManagedStreamingEndpointCreationHelper
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
-from .llm import DSSLLM, DSSLLMListItem
-from .agent_tool import DSSAgentTool, DSSAgentToolListItem, DSSAgentToolCreator
-from . import agent_tool
-from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
-from .retrieval_augmented_llm import DSSRetrievalAugmentedLLM, DSSRetrievalAugmentedLLMListItem
-from .agent import DSSAgent, DSSAgentListItem
 from ..dss_plugin_mlflow import MLflowHandle
 
 logger = logging.getLogger(__name__)
@@ -2673,11 +2673,18 @@ class DSSProject(object):
         else:
             return DSSAgentToolCreator(self, type, name, id)
 
-    def list_agent_tools(self, as_type="listitems"):
+    def list_agent_tools(self, as_type="listitems", include_shared=False):
         """
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param boolean include_shared: If **True**, also lists the agent tools from other projects that are shared in this project (defaults to **False**).
+        :returns: The list of the agent tools. If "as_type" is "listitems",
+            each one as a :class:`dataikuapi.dss.dataset.DSSAgentToolListItem`. If "as_type" is "objects",
+            each one as a :class:`dataikuapi.dss.dataset.DSSAgentTool`
         :rtype: list
         """
-        ret = self.client._perform_json("GET", "/projects/%s/agents/tools?includeDescriptions=false" % (self.project_key))
+        ret = self.client._perform_json("GET",
+                                        "/projects/%s/agents/tools?includeDescriptions=false" % (self.project_key),
+                                        params={"foreign": include_shared})
         if as_type == "listitems":
             return [DSSAgentToolListItem(self.client, self.project_key, item) for item in ret["tools"]]
         elif as_type == "objects":
@@ -3158,10 +3165,29 @@ class DSSProjectGit(object):
 
     def get_status(self):
         """
-        Get the current state of the project's git repository
+        Get the current state of the project's git repository.
 
-        :return: A dict containing the following keys: 'currentBranch', 'remotes', 'trackingCount', 'clean', 'hasUncommittedChanges',
-          'added', 'changed', 'removed', 'missing', 'modified', 'conflicting', 'untracked' and 'untrackedFolders'
+        :return: A dict containing the following keys:
+            - **currentBranch** (*str*): The currently checked-out Git branch.
+            - **remotes** (*list*): A list of configured remotes, each being a dict with:
+                - **name** (*str*): The remote name (e.g. "origin").
+                - **url** (*str*): The remote repository URL.
+            - **trackingCount** (*dict*): The number of commits the local branch is ahead/behind its tracked remote branch.
+            - **clean** (*bool*): Whether the working directory is clean (no changes).
+            - **hasUncommittedChanges** (*bool*): Whether there are uncommitted changes.
+            - **added** (*list*): Files staged as newly added.
+            - **changed** (*list*): Files staged as modified.
+            - **removed** (*list*): Files staged as removed.
+            - **missing** (*list*): Files missing from disk but still tracked.
+            - **modified** (*list*): Files modified but not staged.
+            - **conflicting** (*list*): Files with merge conflicts.
+            - **untracked** (*list*): Untracked files.
+            - **untrackedFolders** (*list*): Untracked folders.
+            - **originProjectKey** (*str*): The key of the origin project from which this project was duplicated from.
+            - **trackingCountWithOriginProject** (*dict*): The number of commits ahead/behind relative to the origin project repository, with keys:
+                - **ahead** (*int*): Number of commits ahead of the origin project.
+                - **behind** (*int*): Number of commits behind the origin project.
+
         :rtype: dict
         """
         return self.client._perform_json("GET", "/projects/%s/git/status" % self.project_key)
