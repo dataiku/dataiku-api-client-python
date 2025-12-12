@@ -517,8 +517,6 @@ class DSSFlowZone(object):
 
         .. note ::
             The "default" zone content is defined as all items that are not explicitly in another zone.
-            It cannot directly be listed with the ``items`` property.
-            To get the list of items including those in the default zone, use the :meth:`get_graph` method.
 
 
         :returns: the items in the zone

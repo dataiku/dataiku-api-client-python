@@ -96,6 +96,16 @@ class DSSLLM(object):
     def new_images_generation(self):
         return DSSLLMImageGenerationQuery(self)
 
+
+    def new_reranking(self):
+        """
+        Create a new reranking query.
+
+        :returns: A handle on the generated reranking query.
+        :rtype: :class:`DSSLLMRerankingQuery`
+        """
+        return DSSLLMRerankingQuery(self)
+
     def as_langchain_llm(self, **data):
         """
         Create a langchain-compatible LLM object for this LLM.
@@ -1094,3 +1104,73 @@ class DSSLLMImageGenerationResponse(object):
         :rtype: List[bytes]
         """
         return self.get_images(as_type="bytes")
+
+class DSSLLMRerankingQuery(object):
+    """
+    A handle to interact with a reranking query.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_reranking` instead.
+    """
+    def __init__(self, llm):
+        self.llm = llm
+        self.rq = {
+            "query": "",
+            "documents": [],
+        }
+
+    def with_query(self, query):
+        """
+        Sets the reranking query.
+
+        :param str query: The reranking query.
+        """
+        self.rq["query"] = query
+        return self
+
+    def with_document(self, document):
+        """
+        Adds a text document to the list of documents to be reranked.
+
+        :param str document: The text document to be reranked.
+        """
+        self.rq["documents"].append ({"content": document})
+        return self
+
+
+    def execute(self):
+        """
+        Run the reranking query and retrieve the LLM response.
+
+        :returns: The LLM response.
+        :rtype: :class:`DSSLLMRerankingResponse`
+        """
+        reranking_query = {
+            "llmId": self.llm.llm_id,
+            "queries": [self.rq]
+        }
+        ret = self.llm.client._perform_json("POST", "/projects/%s/llms/rerankings" % (self.llm.project_key), body=reranking_query)
+        return DSSLLMRerankingResponse(ret)
+
+class DSSLLMRerankingResponse(object):
+    def __init__(self, raw_resp):
+        self._raw = raw_resp
+
+    @property
+    def success(self):
+        """
+        :return: The outcome of the reranking query.
+        :rtype: bool
+        """
+        try:
+            return self._raw["responses"][0]["ok"]
+        except:
+            return False
+
+    @property
+    def documents(self):
+        """
+        The array of reranked documents.
+        :rtype: list
+        """
+        return self._raw["responses"][0]["documents"]

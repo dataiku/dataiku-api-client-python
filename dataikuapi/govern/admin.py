@@ -117,7 +117,7 @@ class GovernUser(object):
 
         .. important::
 
-            You should only use :meth:`set_definition` with an object that you obtained through :meth:`get_definition`, 
+            You should only use :meth:`set_definition` with an object that you obtained through :meth:`get_definition`,
             not create a new dict.
 
         .. note::
@@ -166,7 +166,7 @@ class GovernUser(object):
 class GovernOwnUser(object):
     """
     A handle to interact with your own user
-    
+
     .. important::
 
         Do not instantiate directly, use :meth:`dataikuapi.GovernClient.get_own_user` instead.
@@ -190,7 +190,7 @@ class GovernOwnUser(object):
 class GovernUserSettingsBase(object):
     """
     Settings for a Dataiku Govern user.
-    
+
     .. important::
 
         Do not instantiate directly, use :meth:`GovernUser.get_settings` or :meth:`GovernOwnUser.get_settings` instead.
@@ -217,7 +217,7 @@ class GovernUserSettingsBase(object):
     @property
     def user_properties(self):
         """
-        Get the user properties for this user. 
+        Get the user properties for this user.
 
         .. important::
 
@@ -272,13 +272,13 @@ class GovernGlobalApiKey(object):
             If the secure API keys feature is enabled, the secret key of this
             API key will not be present in the returned dict
 
-        :return: the API key definition, as a dict. The dict additionally contains the definition of the
-                 permissions attached to the key.
+        :return: the API key definition
 
-        :rtype: dict
+        :rtype: :class:GovernGlobalApiKeyDefinition
         """
-        return self.client._perform_json(
+        data = self.client._perform_json(
             "GET", "/admin/global-api-keys/%s" % self.id_)
+        return GovernGlobalApiKeyDefinition(self.client, data)
 
     def set_definition(self, definition):
         """
@@ -290,17 +290,17 @@ class GovernGlobalApiKey(object):
 
         .. important::
 
-            You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+            You should only :meth:`set_definition` using a dict that you obtained through :meth:`get_definition`,
             not create a new dict. You may not use this method to update the 'key' field.
 
         Usage example
 
         .. code-block:: python
 
-            # make an API key able to admin Dataiku Govern
-            key = client.get_global_api_key('my_api_key_secret')
+            # add a group to an API key
+            key = client.get_global_api_key_by_id("my_api_key_id")
             definition = key.get_definition()
-            definition["globalPermissions"]["admin"] = True
+            definition["groups"].append("new_group_name")
             key.set_definition(definition)
 
         :param dict definition: the definition for the API key
@@ -326,7 +326,7 @@ class GovernUserSettings(GovernUserSettingsBase):
     @property
     def admin_properties(self):
         """
-        Get the admin properties for this user. 
+        Get the admin properties for this user.
 
         .. important::
 
@@ -342,7 +342,7 @@ class GovernUserSettings(GovernUserSettingsBase):
     def enabled(self):
         """
         Whether this user is enabled.
-        
+
         :rtype: boolean
         """
         return self.settings["enabled"]
@@ -374,7 +374,7 @@ class GovernUserSettings(GovernUserSettingsBase):
 class GovernOwnUserSettings(GovernUserSettingsBase):
     """
     Settings for the current Dataiku Govern user.
-    
+
     .. important::
 
         Do not instantiate directly, use :meth:`GovernOwnUser.get_settings()` instead.
@@ -449,7 +449,7 @@ class GovernUserActivity(object):
         """
         Get the last session activity of the user
 
-        The last session activity is the last time the user opened a new Dataiku Govern tab or 
+        The last session activity is the last time the user opened a new Dataiku Govern tab or
         refreshed his session.
 
         Returns None if there is no session activity yet.
@@ -464,7 +464,7 @@ class GovernUserActivity(object):
 class GovernUserInfo(object):
     """
     Basic information about a Dataiku Govern user
-    
+
     .. important::
 
         Do not instantiate directly, use :meth:`GovernUser.get_info` or :meth:`GovernClient.list_users_info`
@@ -502,7 +502,7 @@ class GovernUserInfo(object):
 class GovernGroupInfo(object):
     """
     Basic information about a Dataiku Govern group
-    
+
     .. important::
 
         Do not instantiate directly, use :meth:`GovernClient.list_groups_info`
@@ -555,23 +555,23 @@ class GovernGroup(object):
     def __init__(self, client, name):
         self.client = client
         self.name = name
-    
+
     ########################################################
     # Group deletion
     ########################################################
-    
+
     def delete(self):
         """
         Deletes the group
         """
         return self.client._perform_empty(
             "DELETE", "/admin/groups/%s" % self.name)
-    
+
 
     def get_definition(self):
         """
         Get the group's definition (name, description, admin abilities, type, ldap name mapping)
-        
+
         :return: the group's definition. Top-level fields are:
 
                     * **name** : name of the group
@@ -581,14 +581,14 @@ class GovernGroup(object):
         """
         return self.client._perform_json(
             "GET", "/admin/groups/%s" % self.name)
-    
+
     def set_definition(self, definition):
         """
         Set the group's definition.
 
         .. important::
 
-            You should only use :meth:`set_definition` with an object that you obtained through :meth:`get_definition`, 
+            You should only use :meth:`set_definition` with an object that you obtained through :meth:`get_definition`,
             not create a new dict.
 
         :param dict definition: the definition for the group, as a dict
@@ -609,11 +609,11 @@ class GovernGeneralSettings(object):
     def __init__(self, client):
         self.client = client
         self.settings = self.client._perform_json("GET", "/admin/general-settings")
-    
+
     ########################################################
     # Update settings on instance
     ########################################################
-    
+
     def save(self):
         """
         Save the changes that were made to the settings on the Dataiku Govern instance
@@ -627,7 +627,7 @@ class GovernGeneralSettings(object):
     ########################################################
     # Value accessors
     ########################################################
-    
+
     def get_raw(self):
         """
         Get the settings as a dictionary
@@ -636,6 +636,133 @@ class GovernGeneralSettings(object):
         :rtype: dict
         """
         return self.settings
+
+
+class GovernGlobalApiKeyDefinition(dict):
+
+    """
+    The definition of a global API key.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`GovernGlobalApiKey.get_definition` instead.
+    """
+    def __init__(self, client, data):
+        super(GovernGlobalApiKeyDefinition, self).__init__(data)
+        self.client = client
+
+    @property
+    def id(self):
+        """
+        Get the identifier of the API key
+
+        :rtype: string
+        """
+        return self["id"]
+
+    @property
+    def label(self):
+        """
+        Get or set the label of the API key
+
+        :rtype: string
+        """
+        return self["label"]
+
+    @label.setter
+    def label(self, new_value):
+        self["label"] = new_value
+
+    @property
+    def description(self):
+        """
+        Get or set the description of the API key
+
+        :rtype: string
+        """
+        return self.get("description")
+
+    @description.setter
+    def description(self, new_value):
+        self["description"] = new_value
+
+    @property
+    def user_for_impersonation(self):
+        """
+        Get the user associated to the API key
+
+        :rtype: string
+        """
+        return self.get("dssUserForImpersonation")
+
+    @user_for_impersonation.setter
+    def user_for_impersonation(self, new_value):
+        self["dssUserForImpersonation"] = new_value
+
+    @property
+    def groups(self):
+        """
+        Get or set the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
+
+    @groups.setter
+    def groups(self, new_value):
+        self["groups"] = new_value
+
+    @property
+    def created_on(self):
+        """
+        Get the timestamp of when the API key was created
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self["createdOn"]
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def created_by(self):
+        """
+        Get the login of the user who created the API key
+
+        :rtype: string
+        """
+        return self.get("createdBy")
+
+    @property
+    def expires_on(self):
+        """
+        Get the timestamp of when the API key will expire, or None if the API key never expires
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self.get("expiresOn")
+        if timestamp is None or timestamp == 0:
+            return None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def lifetime(self):
+        """
+        Get or set the lifetime in days of the API key
+
+        :rtype: string
+        """
+        return self.get("expiry")
+
+    @lifetime.setter
+    def lifetime(self, new_value):
+        self["expiry"] = new_value
+
+    def save(self):
+        """
+        Save the changes to the API key's definition
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/global-api-keys/%s" % self.id,
+            body = self)
 
 
 class GovernGlobalApiKeyListItem(dict):
@@ -722,7 +849,16 @@ class GovernGlobalApiKeyListItem(dict):
 
         :rtype: string
         """
-        return self["createdBy"]
+        return self.get("createdBy")
+
+    @property
+    def groups(self):
+        """
+        Get the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
 
 
 class GovernGlobalUsageSummary(object):
