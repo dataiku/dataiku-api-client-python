@@ -196,12 +196,12 @@ def _convert_to_langchain_structured_tool_single(dku_tool, base_desc, subtool_de
             return desc["inputSchema"]
 
     name = base_desc["name"]
-    description = base_desc["description"]
+    description = base_desc.get("description", "")
     if subtool_desc:
         name +=  "__" + subtool_desc["name"]
         if description:
             description += "\n\n"
-        description += subtool_desc["description"]
+        description += subtool_desc.get("description", "")
 
     tool = DKUStructuredTool.dku_from_function(
         func=run_tool_func,
