@@ -1,7 +1,11 @@
 from .future import DSSFuture
-import json, warnings
+import json
+import warnings
+import logging
 from datetime import datetime
 from ..utils import _timestamp_ms_to_zoned_datetime
+
+logger = logging.getLogger("dataikuapi.dss.admin")
 
 
 class DSSConnectionListItem(dict):
@@ -295,6 +299,19 @@ class DSSConnection(object):
             "POST", "/admin/connections/%s/sync" % self.name,
             body = {'root':True})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+    
+    def test(self):
+        """
+        Test if the current connection is available.
+
+        Will return an error if there testing is not supported for this connection type.
+
+        :return: a test result as a dict, with **connectionOK** field that is True if the connection is available and False otherwise
+        :rtype: dict
+
+        """
+        return self.client._perform_json(
+            "GET", "/connections/%s/test" % self.name)
 
 
 class DSSConnectionSettings(object):
@@ -430,7 +447,7 @@ class DSSConnectionSettings(object):
         Set who can use the connection.
 
         :param boolean all: if True, anybody can use the connection
-        :param \*string groups: a list of groups that can use the connection
+        :param list[string] groups: a list of groups that can use the connection
         """
         if all:
             self.settings["usableBy"] = 'ALL' 
@@ -487,7 +504,7 @@ class DSSConnectionDetailsReadability(object):
         To make the details readable by nobody, pass all=False and no group.
 
         :param boolean all: if True, anybody can use the connection
-        :param \*string groups: a list of groups that can use the connection
+        :param list[string] groups: a list of groups that can use the connection
         """
         if all:
             self._data["readableBy"] = 'ALL' 
@@ -510,12 +527,18 @@ class DSSUser(object):
         self.client = client
         self.login = login
 
-    def delete(self):
+    def delete(self, allow_self_deletion=False):
         """
         Deletes the user
+
+        :param bool allow_self_deletion : Allow the use of this function to delete your own user.
+                                          Warning: this is very dangerous and used in a loop could lead to the deletion of all users/admins.
         """
+        params = {
+            'allowSelfDeletion': allow_self_deletion
+        }
         return self.client._perform_empty(
-            "DELETE", "/admin/users/%s" % self.login)
+            "DELETE", "/admin/users/%s" % self.login, params=params)
 
     def get_settings(self):
         """
@@ -840,7 +863,7 @@ class DSSUserPreferences(object):
     @property
     def ui_language(self):
         """
-        Get or set the language used in the Web User Interface for this user. Valid values are "en" (English) and "ja" (Japanese)
+        Get or set the language used in the Web User Interface for this user. Valid values are "en" (English), "ja" (Japanese) and "fr" (French).
 
         :rtype: str
         """
@@ -1189,6 +1212,8 @@ class DSSUserSettings(DSSUserSettingsBase):
     def save(self):
         """
         Saves the settings
+
+        Note: this call is not available to Dataiku Cloud users
         """
         self.client._perform_json("PUT", "/admin/users/%s" % self.login, body = self.settings)
 
@@ -2014,7 +2039,7 @@ class DSSCodeEnvPackageListBearer(object):
 
         :param list[string] spec: a list of packages specifications
         """
-        self.settings["specCondaEnvironment"] = '\n'.join(packages)
+        self.settings["specCondaEnvironment"] = '\n'.join(spec)
 
 class DSSCodeEnvContainerConfsBearer(object):
     def get_built_for_all_container_confs(self):
@@ -2073,6 +2098,85 @@ class DSSCodeEnvContainerConfsBearer(object):
         if not all:
             self.settings['sparkKubernetesConfs'] = configs
 
+    def get_cache_busting_location(self):
+        """
+        Get the location of the cache busting statement for the code env image
+
+        :return: the location of the cache busting statement (defaults to 'AFTER_START_DOCKERFILE')
+        :rtype: string
+        """
+        return self.settings.get("containerCacheBustingLocation", 'AFTER_START_DOCKERFILE')
+
+    def set_cache_busting_location(self, container_cache_busting_location='AFTER_START_DOCKERFILE'):
+        """
+        Set the location of the cache busting statement for the code env image
+        Valid values are:
+        * BEGINNING
+        * AFTER_START_DOCKERFILE
+        * AFTER_PACKAGES
+        * AFTER_AFTER_PACKAGES_DOCKERFILE
+        * END
+        * NONE
+
+        :param string location: the location of the cache busting statement (defaults to 'AFTER_START_DOCKERFILE')
+        """
+        self.settings["containerCacheBustingLocation"] = container_cache_busting_location
+
+    def set_dockerfile_fragment(self, dockerfile_fragment, location):
+        """
+        Set a fragment to insert into the code env image Dockerfile at a specific location
+        Valid locations are:
+        * dockerfileAtStart
+        * dockerfileBeforePackages
+        * dockerfileAfterCondaPackages
+        * dockerfileAfterPackages
+        * dockerfileAtEnd
+
+        :param string dockerfile_fragment: the Dockerfile fragment to insert
+        :param string location: the location of the provided fragment in the Dockerfile
+        """
+        self.settings[location] = dockerfile_fragment
+
+    def get_dockerfile_fragment(self, location):
+        """
+        Get the fragment inserted into the code env image Dockerfile at the specified location
+
+        :param string location: the location of the fragment in the Dockerfile
+
+        :return: the Dockerfile fragment, or an empty string if no fragment is set for this location
+        :rtype: string
+        """
+        return self.settings.get(location, "")
+
+    def add_container_runtime_addition(self, container_runtime_addition):
+        """
+        Add a container runtime addition to the code env settings.
+        Valid values for the container_runtime_addition are:
+        * SYSTEM_LEVEL_CUDA_112_CUDNN_811
+        * SYSTEM_LEVEL_CUDA_122_CUDNN_897
+        * CUDA_SUPPORT_FOR_TORCH2_WITH_PYPI_NVIDIA_PACKAGES
+        * BASIC_GPU_ENABLING
+        * PYTHON36_SUPPORT
+        * PYTHON37_SUPPORT
+        * PYTHON38_SUPPORT
+
+        :param dict container_runtime_addition: a dict with the container runtime addition definition
+        """
+        if "predefinedContainerHooks" not in self.settings:
+            self.settings["predefinedContainerHooks"] = []
+
+        self.settings["predefinedContainerHooks"].append(
+            {"type": container_runtime_addition}
+        )
+
+    def get_container_runtime_additions(self):
+        """
+        Get the list of container runtime additions for the code env
+
+        :return: a list of container runtime additions, each addition is a dict with at least a **type** field
+        :rtype: list[dict]
+        """
+        return self.settings.get("predefinedContainerHooks", [])
 
 class DSSDesignCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvPackageListBearer, DSSCodeEnvContainerConfsBearer):
     """
@@ -2220,13 +2324,13 @@ class DSSGlobalApiKey(object):
             If the secure API keys feature is enabled, the secret key of this
             API key will not be present in the returned dict
 
-        :return: the API key definition, as a dict. The dict additionally contains the definition of the
-                 permissions attached to the key.
+        :return: the API key definition
 
-        :rtype: dict
+        :rtype: :class:DSSGlobalApiKeyDefinition
         """
-        return self.client._perform_json(
+        data = self.client._perform_json(
             "GET", "/admin/global-api-keys/%s" % self.id_)
+        return DSSGlobalApiKeyDefinition(self.client, data)
 
     def set_definition(self, definition):
         """
@@ -2238,17 +2342,17 @@ class DSSGlobalApiKey(object):
 
         .. important::
 
-            You should only :meth:`set_definition` using an object that you obtained through :meth:`get_definition`, 
+            You should only :meth:`set_definition` using a dict that you obtained through :meth:`get_definition`,
             not create a new dict. You may not use this method to update the 'key' field.
 
         Usage example
 
         .. code-block:: python
 
-            # make an API key able to create projects
-            key = client.get_global_api_key('my_api_key_secret')
+            # add a group to an API key
+            key = client.get_global_api_key_by_id("my_api_key_id")
             definition = key.get_definition()
-            definition["globalPermissions"]["mayCreateProjects"] = True
+            definition["groups"].append("new_group_name")
             key.set_definition(definition)
 
         :param dict definition: the definition for the API key
@@ -2256,6 +2360,133 @@ class DSSGlobalApiKey(object):
         return self.client._perform_empty(
             "PUT", "/admin/global-api-keys/%s" % self.id_,
             body = definition)
+
+
+class DSSGlobalApiKeyDefinition(dict):
+
+    """
+    The definition of a global API key.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSGlobalApiKey.get_definition` instead.
+    """
+    def __init__(self, client, data):
+        super(DSSGlobalApiKeyDefinition, self).__init__(data)
+        self.client = client
+
+    @property
+    def id(self):
+        """
+        Get the identifier of the API key
+
+        :rtype: string
+        """
+        return self["id"]
+
+    @property
+    def label(self):
+        """
+        Get or set the label of the API key
+
+        :rtype: string
+        """
+        return self["label"]
+
+    @label.setter
+    def label(self, new_value):
+        self["label"] = new_value
+
+    @property
+    def description(self):
+        """
+        Get or set the description of the API key
+
+        :rtype: string
+        """
+        return self.get("description")
+
+    @description.setter
+    def description(self, new_value):
+        self["description"] = new_value
+
+    @property
+    def user_for_impersonation(self):
+        """
+        Get the user associated to the API key
+
+        :rtype: string
+        """
+        return self.get("dssUserForImpersonation")
+
+    @user_for_impersonation.setter
+    def user_for_impersonation(self, new_value):
+        self["dssUserForImpersonation"] = new_value
+
+    @property
+    def groups(self):
+        """
+        Get or set the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
+
+    @groups.setter
+    def groups(self, new_value):
+        self["groups"] = new_value
+
+    @property
+    def created_on(self):
+        """
+        Get the timestamp of when the API key was created
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self["createdOn"]
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def created_by(self):
+        """
+        Get the login of the user who created the API key
+
+        :rtype: string
+        """
+        return self.get("createdBy")
+
+    @property
+    def expires_on(self):
+        """
+        Get the timestamp of when the API key will expire, or None if the API key never expires
+
+        :rtype: :class:`datetime.datetime`
+        """
+        timestamp = self.get("expiresOn")
+        if timestamp is None or timestamp == 0:
+            return None
+        return _timestamp_ms_to_zoned_datetime(timestamp)
+
+    @property
+    def lifetime(self):
+        """
+        Get or set the lifetime in days of the API key
+
+        :rtype: string
+        """
+        return self.get("expiry")
+
+    @lifetime.setter
+    def lifetime(self, new_value):
+        self["expiry"] = new_value
+
+    def save(self):
+        """
+        Save the changes to the API key's definition
+        """
+        return self.client._perform_empty(
+            "PUT", "/admin/global-api-keys/%s" % self.id,
+            body = self)
 
 
 class DSSGlobalApiKeyListItem(dict):
@@ -2342,7 +2573,16 @@ class DSSGlobalApiKeyListItem(dict):
 
         :rtype: string
         """
-        return self["createdBy"]
+        return self.get("createdBy")
+
+    @property
+    def groups(self):
+        """
+        Get the groups this API key belongs to
+
+        :rtype: list or None if this key is not using group-based permissions
+        """
+        return self.get("groups")
 
 class DSSPersonalApiKey(object):
     """

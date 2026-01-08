@@ -441,6 +441,7 @@ class DSSProjectStandardsRunReport(object):
         data = data if data else {}
         self.data = data
         self.project_key = data.get("projectKey")
+        self.bundle_id = data.get("bundleId")
         self.scope = data.get("scope")
         self.requester = data.get("requester")
         self.start_time = data.get("startTime")

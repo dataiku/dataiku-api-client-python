@@ -390,6 +390,7 @@ class FMClient(object):
                 data=body,
                 files=files,
                 stream=stream,
+                verify=self._session.verify
             )
         handle_http_exception(http_res)
         return http_res

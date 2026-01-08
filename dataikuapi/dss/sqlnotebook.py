@@ -261,7 +261,7 @@ class DSSNotebookQueryRunListItem(object):
 
     .. important::
 
-        Do not instantiate directly, use :meth:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory.get_query_result`
+        Do not instantiate directly, use :meth:`dataikuapi.dss.sqlnotebook.DSSNotebookHistory.get_query_runs`
     """
     def __init__(self, query_runs, query_run):
         self.query_runs = query_runs

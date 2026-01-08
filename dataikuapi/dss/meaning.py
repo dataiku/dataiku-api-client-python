@@ -15,9 +15,6 @@ class DSSMeaning(object):
         """
         Get the meaning's definition.
 
-        .. attention::
-            This call requires an API key with admin rights
-
         :returns: the meaning definition. The precise structure of the dict depends on the meaning type and is not documented.
         :rtype: dict
         """

@@ -14,6 +14,7 @@ from requests.auth import HTTPBasicAuth
 from .iam.settings import DSSSSOSettings, DSSLDAPSettings, DSSAzureADSettings
 
 from .dss.data_collection import DSSDataCollection, DSSDataCollectionListItem
+from .dss.data_directories_footprint import DSSDataDirectoriesFootprint
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
@@ -178,14 +179,15 @@ class DSSClient(object):
         """
         return [x["projectKey"] for x in self._perform_json("GET", "/projects/")]
 
-    def list_projects(self):
+    def list_projects(self, include_location=False):
         """
         List the projects
 
-        :returns: a list of projects, each as a dict. Each dictcontains at least a 'projectKey' field
+        :param bool include_location: whether to include project locations (slower)
+        :returns: a list of projects, each as a dict. Each dict contains at least a 'projectKey' field
         :rtype: list of dicts
         """
-        return self._perform_json("GET", "/projects/")
+        return self._perform_json("GET", "/projects/", params={"includeLocation": include_location})
 
     def get_project(self, project_key):
         """
@@ -203,7 +205,7 @@ class DSSClient(object):
         import dataiku
         return DSSProject(self, dataiku.default_project_key())
 
-    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None, permissions=None):
         """
         Creates a new project, and return a project handle to interact with it.
 
@@ -215,19 +217,23 @@ class DSSClient(object):
         :param str description: a description for the project.
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
+        :param list[dict] permissions: Initial permissions for the project (can be modified later). Each dict contains a 'group' and permissions given to that group.
 
         :returns: A :class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
         params = {}
         if project_folder_id is not None:
             params["projectFolderId"] = project_folder_id
+        if permissions is None:
+            permissions = []
         resp = self._perform_text(
                "POST", "/projects/", body={
                    "projectKey" : project_key,
                    "name" : name,
                    "owner" : owner,
                    "settings" : settings,
-                   "description" : description
+                   "description" : description,
+                   "permissions" : permissions
                }, params=params)
         return DSSProject(self, project_key)
 
@@ -315,7 +321,7 @@ class DSSClient(object):
     def start_install_plugin_from_archive(self, fp):
         """
         Install a plugin from a plugin archive (as a file object)
-        Returns immediately with a future representing the process done asycnhronously
+        Returns immediately with a future representing the process done asynchronously
 
         :param object fp: A file-like object pointing to a plugin archive zip
         :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the install process
@@ -429,16 +435,24 @@ class DSSClient(object):
     # Users
     ########################################################
 
-    def list_users(self, as_objects=False):
+    def list_users(self, as_objects=False, include_settings=False):
         """
         List all users setup on the DSS instance
 
         Note: this call requires an API key with admin rights
 
+        :param bool as_objects: Return a list of :class:`dataikuapi.dss.admin.DSSUser` instead of dictionaries. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False, as
+               :class:`dataikuapi.dss.admin.DSSUser` already includes settings by default. Defaults to False.
+
         :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
         :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
         """
-        users = self._perform_json("GET", "/admin/users/")
+
+        params = {
+            "includeSettings": include_settings
+        }
+        users = self._perform_json("GET", "/admin/users/", params=params)
 
         if as_objects:
             return [DSSUser(self, user["login"]) for user in users]
@@ -460,6 +474,8 @@ class DSSClient(object):
         Create a user, and return a handle to interact with it
 
         Note: this call requires an API key with admin rights
+
+        Note: this call is not available to Dataiku Cloud users
 
         :param str login: the login of the new user
         :param str password: the password of the new user
@@ -485,9 +501,141 @@ class DSSClient(object):
                })
         return DSSUser(self, login)
 
+    def create_users(self, users):
+        """
+        Create multiple users, and return a list of creation status
+
+        Note: this call requires an API key with admin rights
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+                           
+                           - 'login' (str): the login of the new user
+                           - 'password' (str): the password of the new user
+                           - 'displayName' (str): the displayed name for the new user
+                           - 'sourceType' (str): the type of new user. Admissible values are 'LOCAL' or 'LDAP'. Defaults to 'LOCAL'
+                           - 'groups' (list): the names of the groups the new user belongs to
+                           - 'userProfile' (str): The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ... Defaults to 'DATA_SCIENTIST'
+                           - 'email' (str): The email for the new user. Defaults to None
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, where each dictionary represents the creation status of a user. It should contain the following keys:
+                 
+                 - 'login' (str): the login of the created user
+                 - 'status' (str): the creation status of the user. Can be 'SUCCESS' or 'FAILURE'
+                 - 'error' (str): the error that occurred during that user's creation. Empty if status is not 'FAILURE'.
+        """
+        for user in users:
+            user.setdefault('login', '')
+            user.setdefault('displayName', '')
+            user.setdefault('sourceType', 'LOCAL')
+            user.setdefault('groups', [])
+            user.setdefault('userProfile', 'DATA_SCIENTIST')
+            user.setdefault('email', None)
+            if user['groups'] is None:
+                user['groups'] = []
+
+        response = self._perform_text("POST", "/admin/users/actions/bulk", body=users)
+        user_statuses = json.loads(response)
+        return user_statuses
+
+    def edit_users(self, user_changes):
+        """
+        Edits multiple users in a single bulk operation. This method is very permissive and is intended
+        for mass operations. If you are modifying a small number of users, it is advised to get a handle
+        from the get_user method and interact directly with a `DSSUser` object.
+
+        A valid workflow is to get the full users dictionaries from `list_users(include_settings=True)`,
+        modify them and use this method to apply the modifications.
+
+        Note: This call requires an API key with admin rights.
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the
+                                        changes for a single user. Each dictionary **must** contain the
+                                        'login' key to identify the user. Other keys can be included
+                                        to modify the user's properties, matching the structure of a
+                                        user settings object (see the output of
+                                        `list_users(include_settings=True))`. Available keys include:
+
+                                        - 'login' (str): The login of the user to modify (mandatory). Cannot be modified.
+                                        - 'displayName' (str): The user's display name.
+                                        - 'email' (str): The user's email address.
+                                        - 'groups' (list[str]): The list of groups for the user.
+                                        - 'userProfile' (str): The user's profile (e.g., 'FULL_DESIGNER').
+                                        - 'enabled' (bool): Whether the user is enabled.
+                                        - 'sourceType': User provisioning source type. Admissible values are 'LOCAL' or 'LDAP'.
+                                        - 'adminProperties' (dict): Custom admin properties for the user.
+                                        - 'userProperties' (dict): Custom user properties for the user.
+                                        - 'secrets' (list): A list of user-specific secrets.
+                                        - 'preferences' (dict): A dictionary of user preferences:
+                                        
+                                            - 'uiLanguage' (str): UI language code (e.g., 'en', 'ja', 'fr').
+                                            - 'mentionEmails' (bool): Email notifications for mentions.
+                                            - 'discussionEmails' (bool): Email notifications for discussions.
+                                            - 'accessRequestEmails' (bool): Email notifications for access requests.
+                                            - 'grantedAccessEmails' (bool): Email notifications when access is granted.
+                                            - 'grantedPluginRequestEmails' (bool): Email notifications when a plugin request is granted.
+                                            - 'pluginRequestEmails' (bool): Email notifications for plugin requests.
+                                            - 'instanceAccessRequestsEmails' (bool): Email notifications for instance access requests.
+                                            - 'profileUpgradeRequestsEmails' (bool): Email notifications for profile upgrade requests.
+                                            - 'codeEnvCreationRequestEmails' (bool): Email notifications for code env creation requests.
+                                            - 'grantedCodeEnvCreationRequestEmails' (bool): Email notifications when a code env request is granted.
+                                            - 'dailyDigestsEmails' (bool): Daily digest emails.
+                                            - 'offlineActivityEmails' (bool): Offline activity summary emails.
+                                            - 'rememberPositionFlow' (bool): Remember position in the Flow.
+                                            - 'loginLogoutNotifications' (bool): Notifications for login/logout.
+                                            - 'watchedObjectsEditionsNotifications' (bool): Notifications for edits on watched objects.
+                                            - 'objectOnCurrentProjectCreatedDeletedNotifications' (bool): Notifications for object creation/deletion in the current project.
+                                            - 'anyObjectOnCurrentProjectEditedNotifications' (bool): Notifications for any object edit in the current project.
+                                            - 'watchStarOnCurrentProjectNotifications' (bool): Notifications for watch/star actions in the current project.
+                                            - 'otherUsersJobsTasksNotifications' (bool): Notifications for jobs/tasks from other users.
+                                            - 'requestAccessNotifications' (bool): Notifications for access requests.
+                                            - 'scenarioRunNotifications' (bool): Notifications for scenario runs.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted modification, indicating the status. Each dictionary contains the following keys:
+                 
+                 - 'login' (str): The login of the user that was modified.
+                 - 'status' (str): The result of the operation, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+
+        response = self._perform_text("PUT", "/admin/users/actions/bulk", body=user_changes)
+        user_statuses = json.loads(response)
+        return user_statuses
+
+    def delete_users(self, user_logins, allow_self_deletion=False):
+        """
+        Bulk deletes multiple users.
+
+        Note: This call requires an API key with admin rights.
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[str] user_logins: A list of logins for the users to be deleted.
+        :param bool allow_self_deletion: Allow the use of this function to delete your own user. Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted deletion, indicating the status. Each dictionary contains the following keys:
+                 
+                 - 'login' (str): The login of the user that was deleted.
+                 - 'status' (str): The result of the deletion, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+        params = {
+            'allowSelfDeletion': allow_self_deletion
+        }
+        response = self._perform_text("DELETE", "/admin/users/actions/bulk", body=user_logins, params=params)
+        user_statuses = json.loads(response)
+        return user_statuses
+
     def get_own_user(self):
         """
         Get a handle to interact with the current user
+
         :return: A :class:`dataikuapi.dss.admin.DSSOwnUser` user handle
         """
         return DSSOwnUser(self)
@@ -686,7 +834,7 @@ class DSSClient(object):
         """
         return DSSConnection(self, name)
 
-    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None):
+    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None, description=None):
         """
         Create a connection, and return a handle to interact with it
 
@@ -699,6 +847,7 @@ class DSSClient(object):
             or 'ALLOWED' (=access restricted to users of a list of groups)
         :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
             of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
+        :param str description: (optional) a description of the new connection
 
         :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
         """
@@ -709,6 +858,7 @@ class DSSClient(object):
         resp = self._perform_text(
                "POST", "/admin/connections/", body={
                    "name" : name,
+                   "description" : description,
                    "type" : type,
                    "params" : params,
                    "usableBy" : usable_by,
@@ -756,8 +906,8 @@ class DSSClient(object):
 
             env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
 
-        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV` or `RAG_CODE_ENV`.
-        :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311` or `PYTHON312`. If None, DSS will try to select a supported & available interpreter.
+        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV` or `DOCUMENT_EXTRACTION_CODE_ENV`.
+        :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
         """
@@ -953,9 +1103,23 @@ class DSSClient(object):
             "GET", "/admin/global-api-keys/%s" % id_)
         return DSSGlobalApiKey(self, resp["key"], id_)
 
+    def _create_global_api_key(self, request_body):
+        resp = self._perform_json(
+            "POST", "/admin/global-api-keys/", body=request_body)
+        if resp is None:
+            raise Exception('API key creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not resp.get('id', False):
+            raise Exception('API key creation returned no key')
+        return DSSGlobalApiKey(self, resp.get('key', ''), resp['id'])
+
     def create_global_api_key(self, label=None, description=None, admin=False):
         """
-        Create a Global API key, and return a handle to interact with it
+        Create a Global API key, and return a handle to interact with it.
+
+        Use :meth:`DSSClient.create_global_api_key_with_groups` to create global API keys that use groups
+        to manage their permissions.
 
         .. note::
 
@@ -972,21 +1136,43 @@ class DSSClient(object):
 
         :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
         """
-        resp = self._perform_json(
-            "POST", "/admin/global-api-keys/", body={
-                "label": label,
-                "description": description,
-                "globalPermissions": {
-                    "admin": admin
-                }
-            })
-        if resp is None:
-            raise Exception('API key creation returned no data')
-        if resp.get('messages', {}).get('error', False):
-            raise Exception('API key creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
-        if not resp.get('id', False):
-            raise Exception('API key creation returned no key')
-        return DSSGlobalApiKey(self, resp.get('key', ''), resp['id'])
+
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "globalPermissions": {
+                "admin": admin
+            }
+        })
+
+    def create_global_api_key_with_groups(self, label=None, description=None, groups=None):
+        """
+        Create a Global API key, and return a handle to interact with it.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param list groups: the groups the new API key belongs to
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+
+        if groups is None:
+            groups = []
+
+        return self._create_global_api_key(request_body={
+            "label": label,
+            "description": description,
+            "groups": groups
+        })
 
     ########################################################
     # Personal API Keys
@@ -1096,8 +1282,6 @@ class DSSClient(object):
         """
         List all user-defined meanings on the DSS instance
 
-        Note: this call requires an API key with admin rights
-
         :returns: A list of meanings. Each meaning is a dict
         :rtype: list of dicts
         """
@@ -1107,8 +1291,6 @@ class DSSClient(object):
     def get_meaning(self, id):
         """
         Get a handle to interact with a specific user-defined meaning
-
-        Note: this call requires an API key with admin rights
 
         :param str id: the ID of the desired meaning
         :returns: A :class:`dataikuapi.dss.meaning.DSSMeaning` meaning  handle
@@ -1499,6 +1681,7 @@ class DSSClient(object):
     def build_cde_plugins_image(self):
         """
         Build and Push the image for containerized dss engine (CDE) with plugins
+
         :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
         """
         resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
@@ -1577,7 +1760,7 @@ class DSSClient(object):
 
     def get_govern_client(self):
         """
-        Return the Govern Client handle corresponding to the Dataiku Govern integration settigns, or None if not enabled or misconfigured.
+        Return the Govern Client handle corresponding to the Dataiku Govern integration settings, or None if not enabled or misconfigured.
 
         This call requires an API key with admin rights.
 
@@ -1590,6 +1773,39 @@ class DSSClient(object):
         else:
             return GovernClient(resp['nodeUrl'], resp['apiKey'], no_check_certificate=resp.get('trustAllSSLCertificates', False))
 
+    def govern_dss_sync(self, project_key=None):
+        """
+        Sync all DSS elements to Govern, or only one DSS project.
+        Returns immediately with a future representing the process done asynchronously.
+
+        This call requires an API key with admin rights.
+        
+        :param str project_key: restricts the sync to one project, identified by the project_key
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        params = {}
+        if project_key is not None:
+            params["projectKey"] = project_key
+        f = self._perform_json(
+            "POST",
+            "/admin/govern-integration-sync",
+            params=params
+            )
+        return DSSFuture.from_resp(self, f)
+
+    def govern_deployer_sync(self):
+        """
+        Sync all Deployer elements to Govern.
+        Returns immediately with a future representing the process done asynchronously.
+
+        This call requires an API key with admin rights.
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`~dataikuapi.dss.future.DSSFuture`
+        """
+        f = self._perform_json("POST", "/admin/govern-integration-deployer-sync")
+        return DSSFuture.from_resp(self, f)
 
     ########################################################
     # Internal Request handling
@@ -1608,7 +1824,8 @@ class DSSClient(object):
                 params=params, data=body,
                 files=files,
                 stream=stream,
-                headers=headers)
+                headers=headers,
+                verify=self._session.verify)
         handle_http_exception(http_res)
         return http_res
 
@@ -1627,7 +1844,8 @@ class DSSClient(object):
     def _perform_json_upload(self, method, path, name, f):
         http_res = self._session.request(
             method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})} )
+            files = {'file': (name, f, {'Expires': '0'})},
+            verify=self._session.verify)
 
         handle_http_exception(http_res)
         return http_res
@@ -1995,6 +2213,18 @@ class DSSClient(object):
         """
         ldap = self._perform_json("GET", "/admin/iam/azure-ad-settings")
         return DSSAzureADSettings(self, ldap)
+
+    ########################################################
+    # Data directories
+    ########################################################
+
+    def get_data_directories_footprint(self):
+        """
+        Gets a handle to work with Data Directories Footprint
+
+        :rtype: :class:`dataikuapi.dss.data_directories_footprint.DSSDataDirectoriesFootprint`
+        """
+        return DSSDataDirectoriesFootprint(self)
 
     ########################################################
     # LLM Cost limiting

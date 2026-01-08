@@ -255,6 +255,204 @@ class DSSFilterOperator(Enum):
     Test if a column matches a regular expression.
     """
 
+    IN_ANY_OF_STRING = "in [string]"
+    """
+    Test if a string is in list of values.
+    """
+
+    IN_NONE_OF_STRING = "not in [string]"
+    """
+    Test if a string is not in list of values.
+    """
+
+    IN_ANY_OF_NUMBER = "in [number]"
+    """
+    Test if a number is in list of values.
+    """
+
+    IN_NONE_OF_NUMBER = "not in [number]"
+    """
+    Test if a number is not in list of values.
+    """
+
+class DSSSimpleFilterOperator(Enum):
+    """
+    Operators for the :class:`DSSSimpleFilter`.
+    """
+    EQUALS = "EQUALS"
+    NOT_EQUALS = "NOT_EQUALS"
+    GREATER_THAN = "GREATER_THAN"
+    LESS_THAN = "LESS_THAN"
+    GREATER_OR_EQUAL = "GREATER_OR_EQUAL"
+    LESS_OR_EQUAL = "LESS_OR_EQUAL"
+    DEFINED = "DEFINED"
+    NOT_DEFINED = "NOT_DEFINED"
+    CONTAINS = "CONTAINS"
+    MATCHES = "MATCHES"
+    IN_ANY_OF = "IN_ANY_OF"
+    IN_NONE_OF = "IN_NONE_OF"
+    AND = "AND"
+    OR = "OR"
+
+
+class DSSSimpleFilter(object):
+    """
+    A simplified representation of a DSS filter. It can be built from scratch or from an existing :class:`DSSFilter`.
+
+    A simple filter is a dictionary with the following keys:
+
+    - `operator`: one of the values of :class:`DSSSimpleFilterOperator`
+    - `column`: the column to apply the filter on (for unary and binary operators)
+    - `value`: the value to compare with (for binary operators)
+    - `clauses`: a list of other simple filters (for AND/OR operators)
+    """
+    def __init__(self, operator, column=None, value=None, clauses=None):
+        if clauses is None:
+            clauses = []
+        if isinstance(operator, DSSSimpleFilterOperator):
+            self.operator = operator.value
+        else:
+            self.operator = operator
+        self.column = column
+        self.value = value
+        self.clauses = clauses
+
+    def to_dss_filter(self):
+        """
+        Converts the simple filter to a DSS filter dictionary.
+
+        :return: A DSS filter dictionary that can be used in visual recipes.
+        :rtype: dict
+        """
+        return DSSFilter.from_simple_filter(self)
+
+    @staticmethod
+    def from_dss_filter(dss_filter):
+        """
+        Converts a DSS filter dictionary to a simple filter.
+
+        :param dict dss_filter: A DSS filter dictionary.
+        :return: A simple filter object.
+        :rtype: DSSSimpleFilter
+        """
+        if dss_filter.get("uiData") is None:
+            raise ValueError("Cannot convert a non-UI filter to a simple filter.")
+
+        mode = dss_filter["uiData"].get("mode")
+        conditions = dss_filter["uiData"].get("conditions", [])
+
+        def condition_to_simple_filter(condition):
+            if "subCondition" in condition:
+                return DSSSimpleFilter.from_dss_filter(condition["subCondition"])
+
+            operator_map = {
+                DSSFilterOperator.EQUALS_STRING.value: (DSSSimpleFilterOperator.EQUALS.value, "string"),
+                DSSFilterOperator.EQUALS_NUMBER.value: (DSSSimpleFilterOperator.EQUALS.value, "num"),
+                DSSFilterOperator.NOT_EMPTY_STRING.value: (DSSSimpleFilterOperator.NOT_EQUALS.value, "string"),
+                DSSFilterOperator.NOT_EQUALS_NUMBER.value: (DSSSimpleFilterOperator.NOT_EQUALS.value, "num"),
+                DSSFilterOperator.GREATER_NUMBER.value: (DSSSimpleFilterOperator.GREATER_THAN.value, "num"),
+                DSSFilterOperator.LESS_NUMBER.value: (DSSSimpleFilterOperator.LESS_THAN.value, "num"),
+                DSSFilterOperator.GREATER_OR_EQUAL_NUMBER.value: (DSSSimpleFilterOperator.GREATER_OR_EQUAL.value, "num"),
+                DSSFilterOperator.LESS_OR_EQUAL_NUMBER.value: (DSSSimpleFilterOperator.LESS_OR_EQUAL.value, "num"),
+                DSSFilterOperator.EMPTY.value: (DSSSimpleFilterOperator.NOT_DEFINED.value, None),
+                DSSFilterOperator.NOT_EMPTY.value: (DSSSimpleFilterOperator.DEFINED.value, None),
+                DSSFilterOperator.CONTAINS_STRING.value: (DSSSimpleFilterOperator.CONTAINS.value, "string"),
+                DSSFilterOperator.REGEX.value: (DSSSimpleFilterOperator.MATCHES.value, "string"),
+                DSSFilterOperator.IN_ANY_OF_STRING.value: (DSSSimpleFilterOperator.IN_ANY_OF.value, "items_string"),
+                DSSFilterOperator.IN_ANY_OF_NUMBER.value: (DSSSimpleFilterOperator.IN_ANY_OF.value, "items_num"),
+                DSSFilterOperator.IN_NONE_OF_STRING.value: (DSSSimpleFilterOperator.IN_NONE_OF.value, "items_string"),
+                DSSFilterOperator.IN_NONE_OF_NUMBER.value: (DSSSimpleFilterOperator.IN_NONE_OF.value, "items_num")
+            }
+            op = condition.get("operator")
+            if op not in operator_map:
+                raise ValueError("Unsupported operator for simple filter conversion: %s" % op)
+
+            simple_op, value_key = operator_map[op]
+            value = None
+            if value_key == "items_string":
+                value = [item["string"] for item in condition.get("items", [])]
+            elif value_key == "items_num":
+                value = [item["num"] for item in condition.get("items", [])]
+            elif value_key is not None:
+                value = condition.get(value_key)
+
+            return DSSSimpleFilter(simple_op, column=condition.get("input"), value=value)
+
+        if mode == "&&" or mode == "||":
+            clauses = [condition_to_simple_filter(c) for c in conditions]
+            return DSSSimpleFilter(DSSSimpleFilterOperator.AND if mode == "&&" else DSSSimpleFilterOperator.OR, clauses=clauses)
+        else:
+            raise ValueError("Cannot convert filter with mode '%s' to simple filter" % mode)
+
+    def to_dict(self):
+        """
+        Converts the simple filter to a serializable dictionary.
+
+        :return: A dictionary representation of the simple filter.
+        :rtype: dict
+        """
+        return {
+            "operator": self.operator,
+            "column": self.column,
+            "value": self.value,
+            "clauses": [c.to_dict() if isinstance(c, DSSSimpleFilter) else c for c in self.clauses]
+        }
+
+    @staticmethod
+    def and_(clauses):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.AND, clauses=clauses).to_dict()
+
+    @staticmethod
+    def or_(clauses):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.OR, clauses=clauses).to_dict()
+
+    @staticmethod
+    def eq(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.EQUALS, column, value).to_dict()
+
+    @staticmethod
+    def neq(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.NOT_EQUALS, column, value).to_dict()
+
+    @staticmethod
+    def gt(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.GREATER_THAN, column, value).to_dict()
+
+    @staticmethod
+    def gte(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.GREATER_OR_EQUAL, column, value).to_dict()
+
+    @staticmethod
+    def lt(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.LESS_THAN, column, value).to_dict()
+
+    @staticmethod
+    def lte(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.LESS_OR_EQUAL, column, value).to_dict()
+
+    @staticmethod
+    def empty(column):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.NOT_DEFINED, column).to_dict()
+
+    @staticmethod
+    def not_empty(column):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.DEFINED, column).to_dict()
+
+    @staticmethod
+    def contains(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.CONTAINS, column, value).to_dict()
+
+    @staticmethod
+    def matches(column, value):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.MATCHES, column, value).to_dict()
+
+    @staticmethod
+    def in_any_of(column, values):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.IN_ANY_OF, column, values).to_dict()
+
+    @staticmethod
+    def in_none_of(column, values):
+        return DSSSimpleFilter(DSSSimpleFilterOperator.IN_NONE_OF, column, values).to_dict()
 
 class DSSFilter(object):
     """
@@ -370,6 +568,74 @@ class DSSFilter(object):
             },
             "expression": sql_expression
         }
+
+    @staticmethod
+    def from_simple_filter(simple_filter):
+        """
+        Create a filter from a :class:`DSSSimpleFilter` object.
+
+        :param DSSSimpleFilter simple_filter: a simple filter object
+        :return: a filter, as a dict
+        :rtype: dict
+        """
+        def simple_to_condition(sf):
+            if isinstance(sf, dict):
+                sf = DSSSimpleFilter(**sf)
+
+            if sf.operator in [DSSSimpleFilterOperator.AND.value, DSSSimpleFilterOperator.OR.value]:
+                sub_filter = {
+                    "enabled": True,
+                    "uiData": {
+                        "mode": "&&" if sf.operator  == DSSSimpleFilterOperator.AND.value else "||",
+                        "conditions": [simple_to_condition(c) for c in sf.clauses]
+                    }
+                }
+                return {"subCondition": sub_filter}
+
+            cond = {"input": sf.column}
+            value = sf.value
+            if sf.operator == DSSSimpleFilterOperator.EQUALS.value:
+                cond["operator"] = DSSFilterOperator.EQUALS_NUMBER.value if isinstance(value, (int, float)) else DSSFilterOperator.EQUALS_STRING.value
+                if isinstance(value, (int, float)): cond["num"] = value
+                else: cond["string"] = value
+            elif sf.operator == DSSSimpleFilterOperator.NOT_EQUALS.value:
+                cond["operator"] = DSSFilterOperator.NOT_EQUALS_NUMBER.value if isinstance(value, (int, float)) else DSSFilterOperator.NOT_EQUALS_STRING.value
+                if isinstance(value, (int, float)): cond["num"] = value
+                else: cond["string"] = value
+            elif sf.operator == DSSSimpleFilterOperator.GREATER_THAN.value: cond.update({"operator": DSSFilterOperator.GREATER_NUMBER.value, "num": value})
+            elif sf.operator == DSSSimpleFilterOperator.LESS_THAN.value: cond.update({"operator": DSSFilterOperator.LESS_NUMBER.value, "num": value})
+            elif sf.operator == DSSSimpleFilterOperator.GREATER_OR_EQUAL.value: cond.update({"operator": DSSFilterOperator.GREATER_OR_EQUAL_NUMBER.value, "num": value})
+            elif sf.operator == DSSSimpleFilterOperator.LESS_OR_EQUAL.value: cond.update({"operator": DSSFilterOperator.LESS_NUMBER.value, "num": value})
+            elif sf.operator == DSSSimpleFilterOperator.DEFINED.value: cond["operator"] = DSSFilterOperator.NOT_EMPTY.value
+            elif sf.operator == DSSSimpleFilterOperator.NOT_DEFINED.value: cond["operator"] = DSSFilterOperator.EMPTY.value
+            elif sf.operator == DSSSimpleFilterOperator.CONTAINS.value: cond.update({"operator": DSSFilterOperator.CONTAINS_STRING.value, "string": value})
+            elif sf.operator == DSSSimpleFilterOperator.MATCHES.value: cond.update({"operator": DSSFilterOperator.REGEX.value, "string": value})
+            elif sf.operator in [DSSSimpleFilterOperator.IN_ANY_OF.value, DSSSimpleFilterOperator.IN_NONE_OF.value]:
+                is_numeric = len(value) > 0 and isinstance(value[0], (int, float))
+                if is_numeric:
+                    cond["operator"] = DSSFilterOperator.IN_ANY_OF_NUMBER.value if sf.operator == DSSSimpleFilterOperator.IN_ANY_OF.value else DSSFilterOperator.IN_NONE_OF_NUMBER.value
+                    cond["items"] = [{"num": v} for v in value]
+                else:
+                    cond["operator"] = DSSFilterOperator.IN_ANY_OF_STRING.value if sf.operator == DSSSimpleFilterOperator.IN_ANY_OF.value else DSSFilterOperator.IN_NONE_OF_STRING.value
+                    cond["items"] = [{"string": v} for v in value]
+            else:
+                raise ValueError("Unsupported simple filter operator: %s" % sf.operator)
+            cond["operator"] = cond["operator"]
+            return cond
+
+        if isinstance(simple_filter, dict):
+            simple_filter = DSSSimpleFilter(**simple_filter)
+
+        if simple_filter.operator in [DSSSimpleFilterOperator.AND.value, DSSSimpleFilterOperator.OR.value]:
+            return {
+                "enabled": True,
+                "uiData": {
+                    "mode": "&&" if simple_filter.operator == "AND" else "||",
+                    "conditions": [simple_to_condition(c) for c in simple_filter.clauses]
+                }
+            }
+        else:
+            return DSSFilter.of_and_conditions([simple_to_condition(simple_filter)])
 
     @staticmethod
     def condition(column, operator, string=None, num=None, date=None, time=None, date2=None, time2=None, unit=None):

@@ -477,7 +477,7 @@ class DSSStreamingEndpoint(object):
             recipe_creator.with_new_output_streaming_endpoint('something', 'my_kafka_connection', 'avro')
             recipe = recipe_creator.create()
 
-        :param string type: type of the recipe. Can be 'cpython', 'streaming_spark_scala' or 'ksql'; the
+        :param string type: type of the recipe. Can be 'cpython' or 'streaming_spark_scala'; the
                             non-continuous type 'python' is also possible
         :param string code: (optional) The script of the recipe
         :param string recipe_name: (optional) base name for the new recipe.
@@ -508,7 +508,7 @@ class DSSStreamingEndpoint(object):
             recipe_creator.with_new_output('my_dataset_name', 'filesystem_managed')
             recipe = recipe_creator.create()
 
-        :param string type: type of the recipe. Possible values are 'csync', 'cpython', 'python', 'ksql', 'streaming_spark_scala'
+        :param string type: type of the recipe. Possible values are 'csync', 'cpython', 'python', 'streaming_spark_scala'
         :param string recipe_name: (optional) base name for the new recipe.
 
         :returns: A new DSS Recipe Creator handle

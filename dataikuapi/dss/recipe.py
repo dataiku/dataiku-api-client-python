@@ -1430,7 +1430,75 @@ class SortRecipeSettings(DSSRecipeSettings):
 
         Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
     """
-    pass # TODO: Write helpers for sort
+    @property
+    def row_number_column_enabled(self):
+        """
+        Get or set whether to add a row number column.
+
+        - **Getter**: Returns `True` if the row number column is enabled, `False` otherwise.
+        - **Setter**: Sets whether to add the row number column.
+
+        :returns: whether the row number column is enabled
+        :rtype: bool
+        """
+        return self.obj_payload["rowNumber"]
+    
+    @row_number_column_enabled.setter
+    def row_number_column_enabled(self, enabled):
+        self.obj_payload["rowNumber"] = enabled
+
+    @property
+    def rank_column_enabled(self):
+        """
+        Get or set whether to add a rank column.
+
+        - **Getter**: Returns `True` if the rank column is enabled, `False` otherwise.
+        - **Setter**: Sets whether to add the rank column.
+
+        :returns: whether the rank column is enabled
+        :rtype: bool
+        """
+        return self.obj_payload["rank"]
+    
+    @rank_column_enabled.setter
+    def rank_column_enabled(self, enabled):
+        self.obj_payload["rank"] = enabled
+
+    @property
+    def dense_rank_column_enabled(self):
+        """
+        Get or set whether to add a dense rank column.
+
+        - **Getter**: Returns `True` if the dense rank column is enabled, `False` otherwise.
+        - **Setter**: Sets whether to add the dense rank column.
+
+        :returns: whether the dense rank column is enabled
+        :rtype: bool
+        """
+        return self.obj_payload["denseRank"]
+    
+    @dense_rank_column_enabled.setter
+    def dense_rank_column_enabled(self, enabled):
+        self.obj_payload["denseRank"] = enabled
+
+    def clear_sorting_keys(self):
+        """
+        Removes all sorting keys from the recipe settings.
+        """
+        self.obj_payload["orders"] = []
+
+    def add_sorting_key(self, column, ascending=True):
+        """
+        Adds a column to the sorting keys.
+
+        :param str column: Name of the column to sort by.
+        :param bool ascending: Whether to sort in ascending order. Defaults to True.
+        """
+        if column is not None:
+            self.obj_payload["orders"].append({
+                "column": column,
+                "desc": not ascending
+            })
 
 class SortRecipeCreator(SingleOutputRecipeCreator):
     """
@@ -1800,7 +1868,145 @@ class StackRecipeSettings(DSSRecipeSettings):
 
         Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
     """
-    pass # TODO: Write helpers for stack
+    @property
+    def raw_virtual_inputs(self):
+        """
+        Get the list of virtual inputs.
+
+        This method returns a reference to the list of inputs, not a copy. Modifying the list
+        then calling :meth:`DSSRecipeSettings.save()` commits the changes.
+
+        :return: a list of virtual inputs, each one a dict. The field **index** holds the index of
+                 the dataset of this virtual input in the recipe's list of inputs. Pre-filter, computed
+                 columns and column selection properties (if applicable) are defined in each virtual input.
+        :rtype: list[dict]
+        """
+        return self.obj_payload["virtualInputs"]
+    
+    @property
+    def columns_selection_mode(self):
+        """
+        Gets the current column selection mode.
+
+        Mode can either be UNION | INTERSECT | FROM_DATASET | REMAP | CUSTOM | FROM_INDEX.
+
+        :return: The current selection mode.
+        :rtype: str
+        """
+        return self.obj_payload["mode"]
+    
+    def set_union_input_schema_mode(self):
+        """
+        Sets the schema mode to 'UNION'.
+
+        In this mode, the output schema is the union of all columns from all 
+        input datasets.
+        """
+        self.obj_payload["mode"] = "UNION"
+
+    def set_intersection_input_schema_mode(self):
+        """
+        Sets the schema mode to 'INTERSECT'.
+
+        In this mode, the output schema is the intersection of columns 
+        present in all input datasets.
+        """
+        self.obj_payload["mode"] = "INTERSECT"
+
+    def set_from_dataset_input_schema_mode(self, dataset_name):
+        """
+        Sets the schema mode to 'FROM_DATASET'.
+
+        In this mode, the output schema is copied from a specific input dataset.
+
+        :param str dataset_name: The name of the input dataset 
+                                 to copy the schema from.
+        """
+        self.obj_payload["mode"] = "FROM_DATASET"
+        self.obj_payload["copySchemaFromDatasetWithName"] = dataset_name
+    
+    def set_custom_remapping_mode(self, columns_mapping):
+        """
+        Sets the schema mode to 'REMAP' for custom column mapping.
+
+        This mode allows you to define a specific output schema and map columns
+        from various input datasets to the new output columns.
+
+        The `columns_mapping` dictionary defines the output columns as keys.
+        The value for each key is another dictionary mapping the *index* of a 
+        virtual input (as an integer) to the specific column name from that 
+        input dataset.
+
+        Example:
+        
+        .. code-block:: python
+
+            {
+                "output_col_1": {
+                    0: "source_col_a", # maps "source_col_a" from virtual input 0
+                    1: "source_col_b"  # maps "source_col_b" from virtual input 1
+                },
+                "output_col_2": {
+                    2: "other_col",    # maps "other_col" from virtual input 2
+                    1: "another_col" # maps "another_col" from virtual input 1
+                }
+            }
+
+        :param dict columns_mapping: A dictionary defining the output columns 
+                                     and their corresponding input dataset 
+                                     index-to-column-name mappings.
+        """
+        self.obj_payload["mode"] = "REMAP"
+        self.obj_payload["selectedColumns"] = list(columns_mapping.keys())
+        virtual_inputs = self.obj_payload["virtualInputs"]
+        for input in virtual_inputs:
+            input["columnsMatch"] = ["" for _ in range(len(columns_mapping.keys()))]
+        for k, value in enumerate(list(columns_mapping.keys())):
+            mapping_columns_k = columns_mapping[value]
+            for index, column in mapping_columns_k.items():
+                if index >= len(virtual_inputs):
+                    warnings.warn("There is only {} inputs, cannot add column for input number {}, skipping it".format(len(virtual_inputs), index + 1))
+                else:
+                    virtual_inputs[index]["columnsMatch"][k] = column
+
+    def add_origin_column(self, column_name, dataset_origin_mapping):
+        """
+        Adds an 'origin' column to the output, indicating which input dataset each row came from.
+
+        By default, if an input dataset's index is not in the map, its 
+        original name will be used as the value.
+
+        Example `dataset_origin_mapping`:
+        
+        .. code-block:: python
+        
+            {
+                0: "dataset_origin_test", # Rows from input 0 get "dataset_origin_test"
+                2: "dataset_origin_validation" # Rows from input 2 get "dataset_origin_validation"
+            }
+
+        :param str column_name: The name for the new origin column.
+        :param dict dataset_origin_mapping: A dictionary mapping the virtual 
+                                            input index (int) to the string 
+                                            value to use in the origin column.
+        """
+        self.obj_payload["addOriginColumn"] = True
+        self.obj_payload["originColumnName"] = column_name
+        virtual_inputs = self.obj_payload["virtualInputs"]
+        for k in dataset_origin_mapping.keys():
+            if k > len(virtual_inputs) - 1:
+                warnings.warn("There is only {} inputs, cannot rename origin column for input number {}, skipping it".format(len(virtual_inputs), k + 1))
+            else:
+                virtual_inputs[k]["originLabel"] = dataset_origin_mapping[k]
+
+    def remove_origin_column(self):
+        """
+        Remove the 'addOriginColumn' setting.
+        
+        This prevents the origin column from being added to the output dataset.
+        """
+        self.obj_payload["addOriginColumn"] = False
+
 
 class StackRecipeCreator(VirtualInputsSingleOutputRecipeCreator):
     """
@@ -2199,11 +2405,19 @@ class EmbedDatasetRecipeSettings(_BaseEmbedRecipeSettings):
 
     @property
     def embedding_column(self):
-        return self.get_json_payload()["knowledgeColumn"]
+        return self.get_json_payload().get("knowledgeColumn")
+
     @embedding_column.setter
     def embedding_column(self, column):
         self.get_json_payload()["knowledgeColumn"] = column
 
+    @property
+    def max_records(self):
+        return self.get_json_payload().get("maxRecords")
+
+    @max_records.setter
+    def max_records(self, column):
+        self.get_json_payload()["maxRecords"] = column
 
 class EmbedDatasetRecipeCreator(_BaseEmbedRecipeCreator):
 
