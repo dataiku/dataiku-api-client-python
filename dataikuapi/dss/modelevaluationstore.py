@@ -242,7 +242,10 @@ class DSSModelEvaluationStore(object):
         setup on the model evaluation store are used.
 
         :param str evaluation_id: (optional) id of evaluation on which checks should be run. Last evaluation is used if not specified.
-        :param list[string] checks: (optional) ids of the checks to run.
+        :param list[str] | dict checks: (optional) The checks to run. This can be:
+
+                       - A **list of strings**: The labels of the checks to run.
+                       - A **dictionary**: The full definition of the checks (e.g., ``{"checks": [...]}``).
 
         :returns: a checks computation report, as a dict.
         :rtype: dict
@@ -267,6 +270,7 @@ class DSSModelEvaluationStore(object):
     def add_custom_model_evaluation(self, metrics, evaluation_id=None, name=None, labels=None, model=None):
         """
         Adds a model evaluation with custom metrics to the model evaluation store.
+
         :param list[DSSModelEvaluationStore.MetricDefinition] metrics: the metrics to add.
         :param str evaluation_id: the id of the evaluation (optional)
         :param str name: the human-readable name of the evaluation (optional)
