@@ -205,7 +205,7 @@ class DSSClient(object):
         import dataiku
         return DSSProject(self, dataiku.default_project_key())
 
-    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None, permissions=None):
+    def create_project(self, project_key, name, owner, description=None, settings=None, project_folder_id=None, permissions=None, tags=[]):
         """
         Creates a new project, and return a project handle to interact with it.
 
@@ -218,6 +218,7 @@ class DSSClient(object):
         :param dict settings: Initial settings for the project (can be modified later). The exact possible settings are not documented.
         :param str project_folder_id: the project folder ID in which the project will be created (root project folder if not specified)
         :param list[dict] permissions: Initial permissions for the project (can be modified later). Each dict contains a 'group' and permissions given to that group.
+        :param list[str] tags: a list of tags for the project
 
         :returns: A :class:`dataikuapi.dss.project.DSSProject` project handle to interact with this project
         """
@@ -233,7 +234,8 @@ class DSSClient(object):
                    "owner" : owner,
                    "settings" : settings,
                    "description" : description,
-                   "permissions" : permissions
+                   "permissions" : permissions,
+                   "tags": tags
                }, params=params)
         return DSSProject(self, project_key)
 
@@ -1657,7 +1659,7 @@ class DSSClient(object):
          :returns: a string
          :rtype: string
          """
-         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)["msg"]
 
 
     ########################################################
@@ -2286,7 +2288,7 @@ class TemporaryImportHandle(object):
         :param dict settings: Dict of import settings (defaults to `{}`). The following settings are available:
 
             * targetProjectKey (string): Key to import under. Defaults to the original project key
-            * remapping (dict): Dictionary of connection and code env remapping settings.
+            * remapping (dict): Dictionary of connection, code env and container execution context remapping settings.
 
                 See example of remapping dict:
 
@@ -2300,6 +2302,11 @@ class TemporaryImportHandle(object):
                       "codeEnvs" : [
                         { "source": "src_codeenv1", "target": "target_codeenv1" },
                         { "source": "src_codeenv2", "target": "target_codeenv2" }
+                      ],
+                      "enableContainerExecRemapping": True,
+                      "containerExecs" : [
+                        { "source": "src_container_exec1", "target": "target_container_exec1" },
+                        { "source": "src_container_exec2", "target": "target_container_exec2" }
                       ]
                     }
 

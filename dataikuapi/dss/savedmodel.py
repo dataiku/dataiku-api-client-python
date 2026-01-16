@@ -133,7 +133,7 @@ class DatabricksRepositoryContextManager(object):
         if self.use_unity_catalog:
             mlflow.set_registry_uri("databricks-uc")
         else:
-            mlflow.set_registry_uri(None)
+            mlflow.set_registry_uri("databricks")
 
         os.environ["MLFLOW_TRACKING_URI"] = "databricks"
         os.environ["DATABRICKS_HOST"] = databricks_host
@@ -725,7 +725,7 @@ class DSSSavedModel(object):
 
         model_version = self._create_external_model_version(version_id, configuration, set_active,
                                                          binary_classification_threshold)
-        model_version._set_core_external_metadata(target_column_name, class_labels, features_list, input_dataset,
+        model_version._set_core_external_metadata(target_column_name, class_labels, features_list, input_dataset, selection,
                                         container_exec_config_name=container_exec_config_name,
                                         input_format=input_format,
                                         output_format=output_format)
@@ -921,7 +921,7 @@ class ExternalModelVersionHandler:
         return MLFlowVersionSettings(self, metadata)
 
     def _init_model_version_info(self, target_column_name, class_labels=None,
-                                 get_features_from_dataset=None, features_list=None):
+                                 get_features_from_dataset=None, get_features_from_dataset_sampling=None, features_list=None):
         if features_list is not None and get_features_from_dataset is not None:
             raise Exception("The information of the features should come either from the features_list or get_features_from_dataset, but not both.")
 
@@ -935,6 +935,9 @@ class ExternalModelVersionHandler:
 
         if get_features_from_dataset is not None:
             metadata["gatherFeaturesFromDataset"] = get_features_from_dataset
+        
+        if get_features_from_dataset_sampling is not None:
+            metadata["guessingDatasetSamplingParam"] = get_features_from_dataset_sampling
 
         # TODO: add support for get_features_from_signature=False,
         # if get_features_from_signature:
@@ -949,7 +952,7 @@ class ExternalModelVersionHandler:
 
     def _set_core_external_metadata(self,
             target_column_name, class_labels=None,
-            features_list=None, input_dataset=None, container_exec_config_name="NONE",
+            features_list=None, input_dataset=None, input_dataset_sampling=None, container_exec_config_name="NONE",
             input_format="GUESS", output_format="GUESS"):
         """
             Sets core metadata of external models, see :meth:`DSSSavedModel.create_external_model_version` for details about parameters.
@@ -962,9 +965,9 @@ class ExternalModelVersionHandler:
             raise Exception("Regression requires class_labels to be unset or an empty list.")
 
         if features_list is not None:
-            model_version_info = self._init_model_version_info(target_column_name, class_labels, None, features_list)
+            model_version_info = self._init_model_version_info(target_column_name, class_labels, None, None, features_list)
         else:
-            model_version_info = self._init_model_version_info(target_column_name, class_labels, input_dataset, None)
+            model_version_info = self._init_model_version_info(target_column_name, class_labels, input_dataset, input_dataset_sampling, None)
         protocol = model_version_info["proxyModelVersionConfiguration"]["protocol"]
         if protocol == "vertex-ai":
             model_version_info["inputFormat"] = "INPUT_VERTEX_DEFAULT"
@@ -987,7 +990,7 @@ class ExternalModelVersionHandler:
     def set_core_metadata(self,
             target_column_name, class_labels=None,
             get_features_from_dataset=None, features_list=None,
-            container_exec_config_name="LOCAL-CONFIG"):
+            container_exec_config_name="LOCAL-CONFIG", get_features_from_dataset_sampling=None):
         """
         Sets metadata for this MLFlow model version
 
@@ -1009,8 +1012,11 @@ class ExternalModelVersionHandler:
             * If value is "NONE", local execution will be used (no container)
 
             (defaults to **LOCAL-CONFIG**)
+        :param get_features_from_dataset_sampling: sampling method for `get_features_from_dataset`, see :meth:`dataiku.core.dataset.create_sampling_argument`.
+            If None, a default sampling with method: 'head', limit: 500 will be used (first 500 rows)
+        :type get_features_from_dataset_sampling: dict, optional
         """
-        model_version_info = self._init_model_version_info(target_column_name, class_labels, get_features_from_dataset, features_list)
+        model_version_info = self._init_model_version_info(target_column_name, class_labels, get_features_from_dataset, get_features_from_dataset_sampling, features_list)
 
         if self.saved_model.get_settings().prediction_type == "MULTICLASS" and not isinstance(class_labels, list):
             raise Exception("Multiclass classification requires a list of classes in class_labels.")
