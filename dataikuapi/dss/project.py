@@ -104,28 +104,17 @@ class DSSProject(object):
         :param bool clear_managed_datasets: Should the data of managed datasets be cleared (defaults to **False**)
         :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared (defaults to **False**)
         :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared (defaults to **True**)
-        :param bool wait: Whether to wait for the deletion to complete (defaults to **True**)
-
-        :return: if `wait` is True, a dict containing messages about the deletion if errors arose. If `wait` is False,
-                   a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the deletion. Call
-                   :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
-                   to wait for completion (or failure).
-        :rtype: dict or :class:`dataikuapi.dss.future.DSSFuture`
         """
         # For backwards compatibility
         if 'drop_data' in kwargs and kwargs['drop_data']:
             clear_managed_datasets = True
 
-        wait = 'wait' not in kwargs or kwargs['wait'] # default for wait is True
-        ret = self.client._perform_json(
+        return self.client._perform_empty(
             "DELETE", "/projects/%s" % self.project_key, params={
                 "clearManagedDatasets": clear_managed_datasets,
                 "clearOutputManagedFolders": clear_output_managed_folders,
-                "clearJobAndScenarioLogs": clear_job_and_scenario_logs,
-                "wait": wait
+                "clearJobAndScenarioLogs": clear_job_and_scenario_logs
             })
-        # no need to wait python-side, it's done java-side
-        return DSSFuture.from_resp(self.client, ret)
 
     ########################################################
     # Project export
@@ -2664,7 +2653,7 @@ class DSSProject(object):
         .. code-block:: python
 
             vector_search_tool_creator = project.new_agent_tool("VectorStoreSearch")
-            vector_search_tool_creator.with_knowledge_bank("kb_id")
+            vector_search_tool_creator.with_kb("kb_id")
             vector_search_tool = vector_search_tool_creator.create()
            
             # After the tool is created, you can edit its settings
@@ -2892,7 +2881,7 @@ class DSSProject(object):
     # Project Standards
     ########################################################
 
-    def start_run_project_standards_checks(self, check_ids=None):
+    def start_run_project_standards_checks(self, check_ids=None, bundle_id=None):
         """
         Run the Project Standards checks associated to the project.
 
@@ -2901,6 +2890,8 @@ class DSSProject(object):
 
         :param check_ids: List of explicit checks to run. If None, the scope associated to the project will be used to fetch the check ids.
         :type check_ids: (List[str] | None)
+        :param bundle_id: The id of the bundle on which to run the checks. If None, the checks will be run on the project itself.
+        :type bundle_id: (str | None)
         :return: a :class:`dataikuapi.dss.future.DSSFuture` tracking the progress of the checks. Call
                    :meth:`~dataikuapi.dss.future.DSSFuture.wait_for_result` on the returned object
                    to wait for completion (or failure). The completed object will be an instance of :class:`.DSSProjectStandardsRunReport`
@@ -2909,7 +2900,7 @@ class DSSProject(object):
         future_response = self.client._perform_json(
             "POST",
             "/projects/{}/project-standards/actions/run".format(self.project_key),
-            params={"checkIds": check_ids},
+            params={"checkIds": check_ids, "bundleId": bundle_id},
         )
         return DSSFuture(
             self.client,

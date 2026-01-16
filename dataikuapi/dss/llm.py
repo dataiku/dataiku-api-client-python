@@ -1108,8 +1108,6 @@ class DSSLLMImageGenerationResponse(object):
 class DSSLLMRerankingQuery(object):
     """
     A handle to interact with a reranking query.
-    Reranking queries allow you to send a text query and a list of documents to a DSS-managed ranking model
-    and retrieve the documents ranked according to their relevance to the query.
 
     .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_reranking` instead.
@@ -1117,27 +1115,28 @@ class DSSLLMRerankingQuery(object):
     def __init__(self, llm):
         self.llm = llm
         self.rq = {
-            "queryParts": [],
+            "query": "",
             "documents": [],
         }
 
-    def with_query(self, text):
+    def with_query(self, query):
         """
-        Sets the reranking text query.
+        Sets the reranking query.
 
-        :param str text: The reranking text query.
+        :param str query: The reranking query.
         """
-        self.rq["queryParts"].append({ "text": text, "type": "TEXT" })
+        self.rq["query"] = query
         return self
 
-    def with_document(self, text):
+    def with_document(self, document):
         """
         Adds a text document to the list of documents to be reranked.
 
-        :param str text: The text document to be reranked.
+        :param str document: The text document to be reranked.
         """
-        self.rq["documents"].append({"parts": [ { "text": text, "type": "TEXT" } ] })
+        self.rq["documents"].append ({"content": document})
         return self
+
 
     def execute(self):
         """
@@ -1154,15 +1153,8 @@ class DSSLLMRerankingQuery(object):
         return DSSLLMRerankingResponse(ret)
 
 class DSSLLMRerankingResponse(object):
-    """
-    A handle to interact with a ranking query result.
-
-    .. important::
-        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMRerankingQuery.execute` instead.
-    """
     def __init__(self, raw_resp):
         self._raw = raw_resp
-        self._resp = self._raw["responses"][0]
 
     @property
     def success(self):
@@ -1170,52 +1162,15 @@ class DSSLLMRerankingResponse(object):
         :return: The outcome of the reranking query.
         :rtype: bool
         """
-        return self._resp["ok"]
-
-    @property
-    def error_message(self):
-        """
-        :return: The error message if the reranking query failed, None otherwise.
-        :rtype: Union[str, None]
-        """
-        if not self.success:
-            return self._resp.get("errorMessage", "Unknown error")
-        return None
+        try:
+            return self._raw["responses"][0]["ok"]
+        except:
+            return False
 
     @property
     def documents(self):
         """
         The array of reranked documents.
-        :rtype: list[:class:`DSSLLMRerankingResponse.RankedDocument`]
+        :rtype: list
         """
-        if not self.success:
-            raise Exception("Reranking request failed: %s" % self.error_message)
-        return [self.RankedDocument(raw_doc=ranked_doc) for ranked_doc in self._resp["documents"]]
-
-    @property
-    def trace(self):
-        """
-        :return: The trace of the reranking query if available, None otherwise.
-        :rtype: Union[dict, None]
-        """
-        return self._resp.get("trace")
-
-    class RankedDocument(object):
-        def __init__(self, raw_doc):
-            self._raw_doc = raw_doc
-
-        @property
-        def index(self):
-            """
-            :return: The index of the document in the original request.
-            :rtype: int
-            """
-            return self._raw_doc["index"]
-
-        @property
-        def relevance_score(self):
-            """
-            :return: The relevance score assigned to the document by the ranking model.
-            :rtype: float
-            """
-            return self._raw_doc["relevanceScore"]
+        return self._raw["responses"][0]["documents"]
