@@ -277,7 +277,9 @@ class DSSMLflowExtension(object):
 
         model_version_info_obj = {}
         if evaluation_dataset is not None:
+            # evaluation dataset (and its sampling) is used for all the guessings
             model_version_info_obj["gatherFeaturesFromDataset"] = evaluation_dataset
+            model_version_info_obj["guessingDatasetSamplingParam"] = sampling_param
         if target_column_name is not None:
             model_version_info_obj["targetColumnName"] = target_column_name
         if output_labels is not None:

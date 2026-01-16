@@ -66,7 +66,7 @@ class DocumentExtractor(object):
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
 
-    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine=None, languages="en", llm_id=None, llm_prompt=None,output_managed_folder=None):
+    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None, output_managed_folder=None, image_validation=True):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -77,7 +77,7 @@ class DocumentExtractor(object):
         :type max_section_depth: int
         :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR', 'VLM_ANNOTATE'.
         :type image_handling_mode: str
-        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used.
+        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used. Default is 'AUTO'.
         :type ocr_engine: str
         :param languages: OCR languages that will be used for recognition. ISO639 languages codes separated by commas are expected
         :type languages: str
@@ -88,7 +88,8 @@ class DocumentExtractor(object):
         :param output_managed_folder: id of a managed folder to store the image in the document.
                               When unspecified, return inline images in the response.
         :type output_managed_folder: str
-
+        :param image_validation: Whether to validate images before processing. If True, images classified as barcodes, icons, logos, QR codes, signatures, or stamps are skipped.
+        :type image_validation: boolean
         :returns: Structured content of the document
         :rtype: :class:`StructuredExtractorResponse`
         """
@@ -101,6 +102,8 @@ class DocumentExtractor(object):
             },
             "settings": {
                 "maxSectionDepth": max_section_depth,
+                "imageValidation": image_validation,
+                "outputManagedFolderId": output_managed_folder,
             }
         }
         if image_handling_mode == "IGNORE":
@@ -118,7 +121,6 @@ class DocumentExtractor(object):
             extractor_request["settings"]["vlmAnnotationSettings"] = {
                 "llmId": llm_id,
                 "llm_prompt": llm_prompt,
-                "outputManagedFolderId": output_managed_folder
             }
         else:
             raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
@@ -352,7 +354,7 @@ class StructuredExtractorResponse(object):
                 if not "description" in node or not node["description"]:
                     return []
                 return [{"text": node["description"], "outline": current_outline}]
-            elif node["type"] not in ["document", "section"]:
+            elif node["type"] not in ["document", "section", "slide"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
             if not "content" in node:
                 return []
