@@ -1,8 +1,7 @@
-from .utils import DSSTaggableObjectListItem
 import json
-import os
-import logging
 import threading
+
+from .utils import DSSTaggableObjectListItem
 
 _dku_bypass_guardrail_ls = threading.local()
 
@@ -543,6 +542,16 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         self.q = q
         self.msg = {"role": role, "parts" : []}
 
+    @staticmethod
+    def _encode_image(image):
+        img_b64 = None
+        if isinstance(image, str):
+            img_b64 = image
+        elif isinstance(image, bytes):
+            import base64
+            img_b64 = base64.b64encode(image).decode("utf8")
+        return img_b64
+
     def with_text(self, text):
         """
         Add a text part to the multipart message
@@ -557,12 +566,7 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         :param Union[str, bytes] image: The image
         :param str mime_type: None for default
         """
-        img_b64 = None
-        if isinstance(image, str):
-            img_b64 = image
-        elif isinstance(image, bytes):
-            import base64
-            img_b64 = base64.b64encode(image).decode("utf8")
+        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
 
         part = {
             "type": "IMAGE_INLINE",
@@ -573,6 +577,33 @@ class DSSLLMCompletionQueryMultipartMessage(object):
             part["imageMimeType"] = mime_type
 
         self.msg["parts"].append(part)
+        return self
+
+    def with_captioned_image_inline(self, caption, image, mime_type=None):
+        """
+        Add a captioned image part to the multipart message
+
+        :param str caption: Image caption
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
+
+        image_part = {
+            "type": "IMAGE_INLINE",
+            "inlineImage": img_b64
+        }
+
+        if mime_type is not None:
+            image_part["imageMimeType"] = mime_type
+
+        text_part = {
+            "type": "TEXT",
+            "text": caption,
+        }
+
+        self.msg["parts"].append(text_part)
+        self.msg["parts"].append(image_part)
         return self
 
     def with_image_url(self, image):

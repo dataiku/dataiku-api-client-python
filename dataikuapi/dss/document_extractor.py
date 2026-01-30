@@ -134,7 +134,6 @@ class DocumentExtractor(object):
     def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True):
         """
         Generate per-page screenshots of a document, returning an iterable over the screenshots.
-        In most cases, a screenshot corresponds to a single page of a document.
 
         Usage example:
 
@@ -143,8 +142,23 @@ class DocumentExtractor(object):
             doc_extractor = DocumentExtractor(client, "project_key")
             document_ref = ManagedFolderDocumentRef('path_in_folder/document.pdf', folder_id)
 
-            for image in doc_extractor.generate_pages_screenshots(document_ref):
-                print(image.get_raw())
+            fetch_size = 10
+            response = doc_extractor.generate_pages_screenshots(document_ref, fetch_size=fetch_size)
+            # The first 10 screenshots (fetch_size) are computed & retrieved immediately within the response.
+
+            first_screenshot = response.fetch_screenshot(0)  # InlineImageRef or ManagedFolderImageRef
+
+            # Iterating through the first 10 items is instantaneous as they are already fetched.
+            # Iterating from the 11th item triggers new backend requests (processing pages 11-20, fetch screenshots).
+            for idx, screenshot in enumerate(response):
+                if (idx % fetch_size == 0) and idx != 0:
+                    print(f"Computing the next {fetch_size} screenshots")
+                print(f"Screenshot #{idx}: {screenshot.as_json()}")
+
+            # Alternatively, response being an iterable, you can compute & fetch all screenshots at once:
+            response = doc_extractor.generate_pages_screenshots(document_ref)
+            screenshots = list(response)  # list of InlineImageRef or ManagedFolderImageRef objects
+
 
         :param document: input document (txt | pdf | docx | doc | odt | pptx | ppt | odp | xlsx | xls | xlsm | xlsb | ods | png | jpg | jpeg).
         :type document: :class:`DocumentRef`
