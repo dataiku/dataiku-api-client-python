@@ -377,6 +377,18 @@ class DSSKnowledgeBankSearchResultDocument(object):
             if key not in {'DKU_MULTIMODAL_CONTENT', 'DKU_DOCUMENT_INFO'}
         }
 
+    def _images(self, multimodal):
+        if "parts" in multimodal:
+            return [image for part in multimodal["parts"] for image in self._images(part)]
+        if "content" not in multimodal:
+            return []
+        if multimodal.get("type") == "images" or multimodal.get("type") == "captioned_images":
+            return [
+            ManagedFolderImageRef(self._result.managed_folder_id, path) for path in multimodal.get("content")
+            ]
+        return []
+
+
     @property
     def images(self):
         """
@@ -393,14 +405,9 @@ class DSSKnowledgeBankSearchResultDocument(object):
         except ValueError as e:
             logger.error("Failed to decode JSON payload for multimodal content: {}, {}".format(e, multimodal_raw))
             return None
-        if multimodal.get("type") != "images":
-            return None
-        if multimodal.get("content") is None:
-            return None
-        return [
-            ManagedFolderImageRef(self._result.managed_folder_id, path) for path in multimodal["content"]
-        ]
-    
+        results = self._images(multimodal)
+        return results if len(results) > 0 else None
+
     @property
     def file_ref(self):
         """
@@ -421,16 +428,28 @@ class DSSKnowledgeBankSearchResultDocument(object):
         source_file_info = document_info.get("source_file")
         if source_file_info is None:
             return None
-        
-        folder_full_id = source_file_info.get("folder_full_id")
+
         path = source_file_info.get("path")
-        if folder_full_id is None or path is None:
-            return None
-        
-        try:
-            folder_loc = AnyLoc.from_full(folder_full_id)
-        except ValueError as e:
-            logger.error("Invalid folder_full_id in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))
+        if path is None:
             return None
 
-        return ManagedFolderDocumentRef(path, folder_loc.object_id)
+        folder_smart_id = source_file_info.get("folder_ref")
+        folder_full_id = source_file_info.get("folder_full_id") # deprecated but to support existing KBs
+        folder_loc = None
+
+        if folder_smart_id is not None:
+            try:
+                folder_loc = AnyLoc.from_ref("donotmatter", folder_smart_id) # unused, just to check format
+                return ManagedFolderDocumentRef(path, folder_smart_id)
+            except ValueError as e:
+                logger.error("Invalid folder_ref in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))
+                return None
+        elif folder_full_id is not None:
+            try:
+                folder_loc = AnyLoc.from_full(folder_full_id) # unused, just to check format
+                return ManagedFolderDocumentRef(path, folder_full_id)
+            except ValueError as e:
+                logger.error("Invalid folder_full_id in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))
+                return None
+        else:
+            return None # no folder specified

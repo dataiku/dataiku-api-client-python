@@ -12,11 +12,11 @@ def random_string(length):
 
 class DSSAppListItem(DSSTaggableObjectListItem):
     """
-    An item in a list of apps. 
+    An app item in a list of apps. 
 
     .. important::
 
-        Do not instantiate this class, use :meth:`dataikuapi.DSSClient.list_apps` instead
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.DSSClient.list_apps`.
     """
     def __init__(self, client, data):
         super(DSSAppListItem, self).__init__(data)
@@ -26,7 +26,7 @@ class DSSAppListItem(DSSTaggableObjectListItem):
         """
         Get a handle corresponding to this app.
 
-        :return: a handle to interact with the app
+        :return: a handle to interact with the app.
         :rtype: :class:`dataikuapi.dss.app.DSSApp`
         """
         return DSSApp(self.client, self._data["appId"])
@@ -37,7 +37,7 @@ class DSSApp(object):
 
     .. important::
     
-        Do not instantiate this class directly, instead use :meth:`dataikuapi.DSSClient.get_app`
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.DSSClient.get_app`.
 
     """
     def __init__(self, client, app_id):
@@ -52,14 +52,13 @@ class DSSApp(object):
         """
         Create a new instance of this application. 
 
-        Each instance must have a globally unique instance key, separate from any other project
-        key across the whole DSS instance.
+        Each instance requires a unique instance_key, distinct from all other project keys throughout the DSS instance.
 
-        :param string instance_key: project key for the new created app instance
-        :param string instance_name: name for the new created app instance
+        :param string instance_key: project key for the newly created app instance
+        :param string instance_name: name for the newly created app instance
         :param boolean wait: if False, the method returns immediately with a :class:`dataikuapi.dss.future.DSSFuture`
                              on which to wait for the app instance to be created
-        :param boolean is_temporary_instance: whether this instance will be temporary (in that case we disable git and its indexing in the catalog)
+        :param boolean is_temporary_instance: whether this instance will be temporary (in which case git and its indexing in the catalog is disabled)
 
         :return: a handle to interact with the app instance
         :rtype: :class:`~DSSAppInstance`
@@ -125,7 +124,7 @@ class DSSApp(object):
 
     def get_instance(self, instance_key):
         """
-        Get a particular instance of this app.
+        Get an instance of this app by instance key.
 
         :return: an app instance
         :rtype: :class:`~DSSAppInstance`
@@ -150,8 +149,8 @@ class DSSAppManifest(object):
 
     .. important::
 
-        Do not instantiate this class directly, use :meth:`dataikuapi.dss.app.DSSApp.get_manifest()` or
-        :meth:`dataikuapi.dss.app.DSSAppInstance.get_manifest()`
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.app.DSSApp.get_manifest()` or
+        :meth:`dataikuapi.dss.app.DSSAppInstance.get_manifest()`.
 
     """
 
@@ -187,12 +186,12 @@ class DSSAppManifest(object):
         """
         Get the flat list of all actions.
 
-        :return: a list of action defintions, each one a dict. Each action has fields
+        :return: a list of action defintions, each one a dict. Each action has these fields:
 
                             * **type** : the type of the action
                             * **prompt** : label of the action in the form
                             * **help** and **helpTitle** : metadata for showing a help button on the action
-                            * ... and additional fields depending on the type, to hold the action's setup
+                            * ... and depending on the type of action, other fields that hold the action's setup.
 
         :rtype: list
         """
@@ -209,7 +208,7 @@ class DSSAppManifest(object):
 
     def save(self):
         """
-        Save the changes to this manifest object back to the template project.
+        Save the changes of this manifest object in the template project.
         """
         if self.project_key is None:
             raise Exception("This manifest object wasn't created from a project, cannot be saved back")
@@ -222,7 +221,7 @@ class DSSAppInstance(object):
 
     .. important::
 
-        Do not instantiate this class directly, use :meth:`dataikuapi.dss.app.DSSApp.get_instance()`
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.app.DSSApp.get_instance()`.
     """
 
     def __init__(self, client, project_key):
@@ -233,7 +232,7 @@ class DSSAppInstance(object):
         """
         Get a handle on the project corresponding to this application instance.
 
-        :return: a handle on a DSS prohect
+        :return: a handle on a DSS project
         :rtype: :class:`dataikuapi.dss.project.DSSProject`
         """
         return self.client.get_project(self.project_key)
@@ -255,7 +254,7 @@ class TemporaryDSSAppInstance(DSSAppInstance):
 
     .. important::
 
-        Do not instantiate this class directly, use :meth:`dataikuapi.dss.app.DSSApp.create_temporary_instance()`
+        Do not instantiate this class directly, instead use :meth:`dataikuapi.dss.app.DSSApp.create_temporary_instance()`
     """
 
     def __init__(self, client, project_key):
@@ -263,7 +262,7 @@ class TemporaryDSSAppInstance(DSSAppInstance):
 
     def close(self):
         """
-        Delete the app instance.
+        Delete this app instance.
         """
         self.get_as_project().delete(clear_managed_datasets=True)
 

@@ -66,7 +66,7 @@ class DocumentExtractor(object):
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
 
-    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine=None, languages="en", llm_id=None, llm_prompt=None,output_managed_folder=None):
+    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None, output_managed_folder=None, image_validation=True):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -77,7 +77,7 @@ class DocumentExtractor(object):
         :type max_section_depth: int
         :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR', 'VLM_ANNOTATE'.
         :type image_handling_mode: str
-        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used.
+        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used. Default is 'AUTO'.
         :type ocr_engine: str
         :param languages: OCR languages that will be used for recognition. ISO639 languages codes separated by commas are expected
         :type languages: str
@@ -88,7 +88,8 @@ class DocumentExtractor(object):
         :param output_managed_folder: id of a managed folder to store the image in the document.
                               When unspecified, return inline images in the response.
         :type output_managed_folder: str
-
+        :param image_validation: Whether to validate images before processing. If True, images classified as barcodes, icons, logos, QR codes, signatures, or stamps are skipped.
+        :type image_validation: boolean
         :returns: Structured content of the document
         :rtype: :class:`StructuredExtractorResponse`
         """
@@ -101,6 +102,8 @@ class DocumentExtractor(object):
             },
             "settings": {
                 "maxSectionDepth": max_section_depth,
+                "imageValidation": image_validation,
+                "outputManagedFolderId": output_managed_folder,
             }
         }
         if image_handling_mode == "IGNORE":
@@ -118,7 +121,6 @@ class DocumentExtractor(object):
             extractor_request["settings"]["vlmAnnotationSettings"] = {
                 "llmId": llm_id,
                 "llm_prompt": llm_prompt,
-                "outputManagedFolderId": output_managed_folder
             }
         else:
             raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
@@ -132,7 +134,6 @@ class DocumentExtractor(object):
     def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True):
         """
         Generate per-page screenshots of a document, returning an iterable over the screenshots.
-        In most cases, a screenshot corresponds to a single page of a document.
 
         Usage example:
 
@@ -141,8 +142,23 @@ class DocumentExtractor(object):
             doc_extractor = DocumentExtractor(client, "project_key")
             document_ref = ManagedFolderDocumentRef('path_in_folder/document.pdf', folder_id)
 
-            for image in doc_extractor.generate_pages_screenshots(document_ref):
-                print(image.get_raw())
+            fetch_size = 10
+            response = doc_extractor.generate_pages_screenshots(document_ref, fetch_size=fetch_size)
+            # The first 10 screenshots (fetch_size) are computed & retrieved immediately within the response.
+
+            first_screenshot = response.fetch_screenshot(0)  # InlineImageRef or ManagedFolderImageRef
+
+            # Iterating through the first 10 items is instantaneous as they are already fetched.
+            # Iterating from the 11th item triggers new backend requests (processing pages 11-20, fetch screenshots).
+            for idx, screenshot in enumerate(response):
+                if (idx % fetch_size == 0) and idx != 0:
+                    print(f"Computing the next {fetch_size} screenshots")
+                print(f"Screenshot #{idx}: {screenshot.as_json()}")
+
+            # Alternatively, response being an iterable, you can compute & fetch all screenshots at once:
+            response = doc_extractor.generate_pages_screenshots(document_ref)
+            screenshots = list(response)  # list of InlineImageRef or ManagedFolderImageRef objects
+
 
         :param document: input document (txt | pdf | docx | doc | odt | pptx | ppt | odp | xlsx | xls | xlsm | xlsb | ods | png | jpg | jpeg).
         :type document: :class:`DocumentRef`
@@ -352,7 +368,7 @@ class StructuredExtractorResponse(object):
                 if not "description" in node or not node["description"]:
                     return []
                 return [{"text": node["description"], "outline": current_outline}]
-            elif node["type"] not in ["document", "section"]:
+            elif node["type"] not in ["document", "section", "slide"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
             if not "content" in node:
                 return []

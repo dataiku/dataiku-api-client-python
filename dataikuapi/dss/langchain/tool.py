@@ -1,13 +1,28 @@
+import warnings
 from typing import Optional, Callable, Literal, Type, Any, Dict
 
-from langchain.tools import BaseTool, StructuredTool, tool
+try:
+    from langchain_core.tools import StructuredTool
+except ModuleNotFoundError:
+    from langchain.tools import StructuredTool
+
 from pydantic import BaseModel
 
 from dataiku.langchain.dku_tracer import dku_span_builder_for_callbacks
 
 
 class DKUStructuredTool(StructuredTool):
-    
+    # backward compat for langchain<1
+    def __call__(self, tool_input: str, callbacks=None) -> str:
+        try:
+            return super().__call__(tool_input, callbacks=callbacks)
+        except AttributeError:
+            warnings.warn(
+                f"The StructuredTool class does not implement __call__ since langchain 1.0. Use the invoke() method instead.",
+                DeprecationWarning
+            )
+            return self.run(tool_input, callbacks=callbacks)
+
     @property
     def tool_call_schema(self):
         return self.get_input_schema()

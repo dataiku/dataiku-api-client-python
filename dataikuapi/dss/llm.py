@@ -1,8 +1,7 @@
-from .utils import DSSTaggableObjectListItem
 import json
-import os
-import logging
 import threading
+
+from .utils import DSSTaggableObjectListItem
 
 _dku_bypass_guardrail_ls = threading.local()
 
@@ -543,6 +542,16 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         self.q = q
         self.msg = {"role": role, "parts" : []}
 
+    @staticmethod
+    def _encode_image(image):
+        img_b64 = None
+        if isinstance(image, str):
+            img_b64 = image
+        elif isinstance(image, bytes):
+            import base64
+            img_b64 = base64.b64encode(image).decode("utf8")
+        return img_b64
+
     def with_text(self, text):
         """
         Add a text part to the multipart message
@@ -557,12 +566,7 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         :param Union[str, bytes] image: The image
         :param str mime_type: None for default
         """
-        img_b64 = None
-        if isinstance(image, str):
-            img_b64 = image
-        elif isinstance(image, bytes):
-            import base64
-            img_b64 = base64.b64encode(image).decode("utf8")
+        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
 
         part = {
             "type": "IMAGE_INLINE",
@@ -573,6 +577,33 @@ class DSSLLMCompletionQueryMultipartMessage(object):
             part["imageMimeType"] = mime_type
 
         self.msg["parts"].append(part)
+        return self
+
+    def with_captioned_image_inline(self, caption, image, mime_type=None):
+        """
+        Add a captioned image part to the multipart message
+
+        :param str caption: Image caption
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
+
+        image_part = {
+            "type": "IMAGE_INLINE",
+            "inlineImage": img_b64
+        }
+
+        if mime_type is not None:
+            image_part["imageMimeType"] = mime_type
+
+        text_part = {
+            "type": "TEXT",
+            "text": caption,
+        }
+
+        self.msg["parts"].append(text_part)
+        self.msg["parts"].append(image_part)
         return self
 
     def with_image_url(self, image):
@@ -1108,6 +1139,8 @@ class DSSLLMImageGenerationResponse(object):
 class DSSLLMRerankingQuery(object):
     """
     A handle to interact with a reranking query.
+    Reranking queries allow you to send a text query and a list of documents to a DSS-managed ranking model
+    and retrieve the documents ranked according to their relevance to the query.
 
     .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_reranking` instead.
@@ -1115,28 +1148,27 @@ class DSSLLMRerankingQuery(object):
     def __init__(self, llm):
         self.llm = llm
         self.rq = {
-            "query": "",
+            "queryParts": [],
             "documents": [],
         }
 
-    def with_query(self, query):
+    def with_query(self, text):
         """
-        Sets the reranking query.
+        Sets the reranking text query.
 
-        :param str query: The reranking query.
+        :param str text: The reranking text query.
         """
-        self.rq["query"] = query
+        self.rq["queryParts"].append({ "text": text, "type": "TEXT" })
         return self
 
-    def with_document(self, document):
+    def with_document(self, text):
         """
         Adds a text document to the list of documents to be reranked.
 
-        :param str document: The text document to be reranked.
+        :param str text: The text document to be reranked.
         """
-        self.rq["documents"].append ({"content": document})
+        self.rq["documents"].append({"parts": [ { "text": text, "type": "TEXT" } ] })
         return self
-
 
     def execute(self):
         """
@@ -1153,8 +1185,15 @@ class DSSLLMRerankingQuery(object):
         return DSSLLMRerankingResponse(ret)
 
 class DSSLLMRerankingResponse(object):
+    """
+    A handle to interact with a ranking query result.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMRerankingQuery.execute` instead.
+    """
     def __init__(self, raw_resp):
         self._raw = raw_resp
+        self._resp = self._raw["responses"][0]
 
     @property
     def success(self):
@@ -1162,15 +1201,52 @@ class DSSLLMRerankingResponse(object):
         :return: The outcome of the reranking query.
         :rtype: bool
         """
-        try:
-            return self._raw["responses"][0]["ok"]
-        except:
-            return False
+        return self._resp["ok"]
+
+    @property
+    def error_message(self):
+        """
+        :return: The error message if the reranking query failed, None otherwise.
+        :rtype: Union[str, None]
+        """
+        if not self.success:
+            return self._resp.get("errorMessage", "Unknown error")
+        return None
 
     @property
     def documents(self):
         """
         The array of reranked documents.
-        :rtype: list
+        :rtype: list[:class:`DSSLLMRerankingResponse.RankedDocument`]
         """
-        return self._raw["responses"][0]["documents"]
+        if not self.success:
+            raise Exception("Reranking request failed: %s" % self.error_message)
+        return [self.RankedDocument(raw_doc=ranked_doc) for ranked_doc in self._resp["documents"]]
+
+    @property
+    def trace(self):
+        """
+        :return: The trace of the reranking query if available, None otherwise.
+        :rtype: Union[dict, None]
+        """
+        return self._resp.get("trace")
+
+    class RankedDocument(object):
+        def __init__(self, raw_doc):
+            self._raw_doc = raw_doc
+
+        @property
+        def index(self):
+            """
+            :return: The index of the document in the original request.
+            :rtype: int
+            """
+            return self._raw_doc["index"]
+
+        @property
+        def relevance_score(self):
+            """
+            :return: The relevance score assigned to the document by the ranking model.
+            :rtype: float
+            """
+            return self._raw_doc["relevanceScore"]
