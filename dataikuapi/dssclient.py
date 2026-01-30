@@ -896,7 +896,7 @@ class DSSClient(object):
         """
         return DSSCodeEnv(self, env_lang, env_name)
 
-    def create_internal_code_env(self, internal_env_type, python_interpreter=None, code_env_version=None):
+    def create_internal_code_env(self, internal_env_type, python_interpreter=None, code_env_version=None, wait=True):
         """
         Create a Python internal code environment, and return a handle to interact with it.
 
@@ -911,12 +911,14 @@ class DSSClient(object):
         :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV` or `DOCUMENT_EXTRACTION_CODE_ENV`.
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
-        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
+        :param bool wait: wait for the code env to be created or return a future
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle or a `dataikuapi.dss.future.DSSFuture` if `wait` is False
         """
         request_params = {
             'dssInternalCodeEnvType': internal_env_type,
             'pythonInterpreter': python_interpreter,
             'codeEnvVersion': code_env_version,
+            'wait': wait
         }
 
         response = self._perform_json("POST", "/admin/code-envs/internal-env/create", params=request_params)
@@ -925,10 +927,11 @@ class DSSClient(object):
             raise Exception('Env creation returned no data')
         if response.get('messages', {}).get('error', False):
             raise Exception('Env creation failed : %s' % (json.dumps(response.get('messages', {}).get('messages', {}))))
-
+        if not wait:
+            return DSSFuture.from_resp(self, response)
         return DSSCodeEnv(self, "python", response["envName"])
 
-    def create_code_env(self, env_lang, env_name, deployment_mode, params=None):
+    def create_code_env(self, env_lang, env_name, deployment_mode, params=None, wait=True):
         """
         Create a code env, and return a handle to interact with it
 
@@ -938,16 +941,19 @@ class DSSClient(object):
         :param env_name: the name of the new code env
         :param deployment_mode: the type of the new code env
         :param params: the parameters of the new code env, as a JSON object
+        :param bool wait: wait for the code env to be created or return a future
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
         """
-        params = params if params is not None else {}
-        params['deploymentMode'] = deployment_mode
+        body_params = params if params is not None else {}
+        body_params['deploymentMode'] = deployment_mode
         resp = self._perform_json(
-               "POST", "/admin/code-envs/%s/%s" % (env_lang, env_name), body=params)
+               "POST", "/admin/code-envs/%s/%s" % (env_lang, env_name), params={"wait": wait}, body=body_params)
         if resp is None:
             raise Exception('Env creation returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not wait:
+            return DSSFuture.from_resp(self, resp)
         return DSSCodeEnv(self, env_lang, env_name)
 
     def list_code_env_usages(self):
@@ -958,13 +964,17 @@ class DSSClient(object):
         """
         return self._perform_json("GET", "/admin/code-envs/usages")
 
-    def create_code_env_from_python_preset(self, preset_name, allow_update=True, interpreter=None, prefix=None):
+    def create_code_env_from_python_preset(self, preset_name, allow_update=True, interpreter=None, prefix=None, wait=True):
         request_params = {
             'allowUpdate': allow_update,
             'interpreter': interpreter,
-            'prefix': prefix
+            'prefix': prefix,
+            'wait': wait
         }
-        return self._perform_json("POST", "/admin/code-envs/from-python-preset/%s" % (preset_name), params=request_params)
+        resp = self._perform_json("POST", "/admin/code-envs/from-python-preset/%s" % (preset_name), params=request_params)
+        if not wait:
+            return DSSFuture.from_resp(self, resp)
+        return resp
 
     ########################################################
     # Clusters

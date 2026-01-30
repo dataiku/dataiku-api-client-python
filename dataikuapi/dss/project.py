@@ -15,6 +15,8 @@ from .dashboard import DSSDashboard, DSSDashboardListItem, DASHBOARDS_URI_FORMAT
 from .dataset import DSSDataset, DSSDatasetListItem, DSSManagedDatasetCreationHelper
 from .discussion import DSSObjectDiscussions
 from .document_extractor import DocumentExtractor
+from .evaluationcomparison import DSSEvaluationComparison
+from .evaluationstore import DSSEvaluationStore
 from .flow import DSSProjectFlow
 from .future import DSSFuture
 from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
@@ -1290,6 +1292,10 @@ class DSSProject(object):
     # Model evaluation stores
     ########################################################
 
+    def _fetch_evaluation_stores(self, flavor):
+        url = "/projects/%s/evaluationstores/" % self.project_key
+        return self.client._perform_json("GET", url, params={"flavor": flavor})
+
     def list_model_evaluation_stores(self):
         """
         List the model evaluation stores in this project.
@@ -1297,8 +1303,28 @@ class DSSProject(object):
         :returns: The list of the model evaluation stores
         :rtype: list of :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
-        items = self.client._perform_json("GET", "/projects/%s/modelevaluationstores/" % self.project_key)
-        return [DSSModelEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
+        items = self._fetch_evaluation_stores(flavor=None)
+        ret = []
+        for item in items:
+            flavor = item.get("mesFlavor")
+            if flavor == "TABULAR":
+                ret.append(DSSModelEvaluationStore(self.client, self.project_key, item["id"]))
+            else:
+                ret.append(DSSEvaluationStore(self.client, self.project_key, item["id"]))
+        return ret
+
+    def list_evaluation_stores(self, flavor=None):
+        """
+        List the evaluation stores in this project.
+
+        :param str flavor: either "TABULAR", "LLM" or "AGENT"  (optional). If specified, will only return evaluation
+            stores of that flavor. If not, will return evaluation stores of flavors "TABULAR" and "LLM"
+
+        :returns: The list of the model evaluation stores
+        :rtype: list of :class:`dataikuapi.dss.evaluationstore.DSSEvaluationStore`
+        """
+        items = self._fetch_evaluation_stores(flavor=flavor)
+        return [DSSEvaluationStore(self.client, self.project_key, item["id"]) for item in items]
 
     def get_model_evaluation_store(self, mes_id):
         """
@@ -1311,6 +1337,23 @@ class DSSProject(object):
         """
         return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
 
+    def get_evaluation_store(self, evaluation_store_id):
+        """
+        Get a handle to interact with a specific evaluation store
+
+        :param str evaluation_store_id: the id of the desired evaluation store
+
+        :returns: A model evaluation store handle
+        :rtype: :class:`dataikuapi.dss.evaluationstore.DSSEvaluationStore`
+        """
+        return DSSEvaluationStore(self.client, self.project_key, evaluation_store_id)
+
+    def _create_evaluation_store(self, name, flavor):
+        obj = {"projectKey": self.project_key, "name": name}
+        return self.client._perform_json(
+            "POST", "/projects/%s/evaluationstores/" % self.project_key, params={"flavor": flavor}, body=obj
+        )
+
     def create_model_evaluation_store(self, name):
         """
         Create a new model evaluation store in the project, and return a handle to interact with it.
@@ -1320,18 +1363,29 @@ class DSSProject(object):
         :returns: A model evaluation store handle
         :rtype: :class:`dataikuapi.dss.modelevaluationstore.DSSModelEvaluationStore`
         """
-        obj = {
-            "projectKey": self.project_key,
-            "name": name
-        }
-        res = self.client._perform_json("POST", "/projects/%s/modelevaluationstores/" % self.project_key,
-                                        body=obj)
-        mes_id = res['id']
-        return DSSModelEvaluationStore(self.client, self.project_key, mes_id)
+        res = self._create_evaluation_store(name, flavor="TABULAR")
+        return DSSModelEvaluationStore(self.client, self.project_key, res["id"])
+
+    def create_evaluation_store(self, name, flavor):
+        """
+        Create a new evaluation store in the project, and return a handle to interact with it.
+
+        :param str name: the name for the new model evaluation store
+        :param str flavor: the flavor of evaluation store that should be created. Either "TABULAR", "AGENT", or "LLM"
+
+        :returns: An evaluation store handle
+        :rtype: :class:`dataikuapi.dss.evaluationstore.DSSEvaluationStore`
+        """
+        res = self._create_evaluation_store(name, flavor=flavor)
+        return DSSModelEvaluationStore(self.client, self.project_key, res["id"])
 
     ########################################################
     # Model comparisons
     ########################################################
+
+    def _fetch_evaluation_comparisons(self, model_task_types):
+        url = "/projects/%s/evaluationcomparisons/" % self.project_key
+        return self.client._perform_json("GET", url, params={"modelTaskTypes": model_task_types})
 
     def list_model_comparisons(self):
         """
@@ -1340,8 +1394,33 @@ class DSSProject(object):
         :returns: The list of the model comparisons
         :rtype: list
         """
-        items = self.client._perform_json("GET", "/projects/%s/modelcomparisons/" % self.project_key)
-        return [DSSModelComparison(self.client, self.project_key, item["id"]) for item in items]
+        items = self._fetch_evaluation_comparisons(model_task_types=None)
+
+        ret = []
+        for item in items:
+            model_task_type = item.get("modelTaskType", item.get("predictionType"))
+            if model_task_type == "LLM":
+                ret.append(DSSEvaluationComparison(self.client, self.project_key, item["id"]))
+            else:
+                ret.append(DSSModelComparison(self.client, self.project_key, item["id"]))
+        return ret
+
+    def list_evaluation_comparisons(self, model_task_types=None):
+        """
+        List the evaluation comparisons in this project.
+
+        :param list[str] model_task_types: (optional) a list comprised of one or more of the following:
+            "BINARY_CLASSIFICATION", "REGRESSION", "MULTICLASS", "TIMESERIES_FORECASTING",
+            "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION", "LLM", "AGENT". If specified, will only return
+            evaluation comparisons of the given types. If not, will return comparisons of types
+            "BINARY_CLASSIFICATION", "REGRESSION", "MULTICLASS", "TIMESERIES_FORECASTING",
+            "CAUSAL_BINARY_CLASSIFICATION", "CAUSAL_REGRESSION" and "LLM"
+
+        :returns: The list of the evaluation comparisons
+        :rtype: list
+        """
+        items = self._fetch_evaluation_comparisons(model_task_types=model_task_types)
+        return [DSSEvaluationComparison(self.client, self.project_key, item["id"]) for item in items]
 
     def get_model_comparison(self, mec_id):
         """
@@ -1354,6 +1433,17 @@ class DSSProject(object):
         """
         return DSSModelComparison(self.client, self.project_key, mec_id)
 
+    def get_evaluation_comparison(self, comparison_id):
+        """
+        Get a handle to interact with a specific evaluation comparison
+
+        :param str comparison_id: the id of the desired evaluation comparison
+
+        :returns: A model comparison handle
+        :rtype: :class:`dataikuapi.dss.evaluationcomparison.DSSEvaluationComparison`
+        """
+        return DSSEvaluationComparison(self.client, self.project_key, comparison_id)
+
     def create_model_comparison(self, name, prediction_type):
         """
         Create a new model comparison in the project, and return a handle to interact with it.
@@ -1365,15 +1455,26 @@ class DSSProject(object):
         :returns: A new model comparison handle
         :rtype: :class:`dataikuapi.dss.modelcomparison.DSSModelComparison`
         """
-        obj = {
-            "projectKey": self.project_key,
-            "displayName": name,
-            "predictionType": prediction_type
-        }
-        res = self.client._perform_json("POST", "/projects/%s/modelcomparisons/" % self.project_key,
-                                        body=obj)
-        mec_id = res['id']
+        obj = {"projectKey": self.project_key, "displayName": name, "predictionType": prediction_type}
+        res = self.client._perform_json("POST", "/projects/%s/modelcomparisons/" % self.project_key, body=obj)
+        mec_id = res["id"]
         return DSSModelComparison(self.client, self.project_key, mec_id)
+
+    def create_evaluation_comparison(self, name, model_task_type):
+        """
+        Create a new evaluation comparison in the project, and return a handle to interact with it.
+
+        :param str name: the name for the new model comparison
+        :param str model_task_type: one of BINARY_CLASSIFICATION, REGRESSION, MULTICLASS, TIMESERIES_FORECAST,
+                                    CAUSAL_BINARY_CLASSIFICATION, CAUSAL_REGRESSION, LLM, AGENT
+
+        :returns: A new evaluation comparison handle
+        :rtype: :class:`dataikuapi.dss.evaluation.DSSEvaluationComparison`
+        """
+        obj = {"projectKey": self.project_key, "displayName": name, "predictionType": model_task_type}
+        res = self.client._perform_json("POST", "/projects/%s/evaluationcomparisons/" % self.project_key, body=obj)
+        mec_id = res['id']
+        return DSSEvaluationComparison(self.client, self.project_key, mec_id)
 
     ########################################################
     # Jobs

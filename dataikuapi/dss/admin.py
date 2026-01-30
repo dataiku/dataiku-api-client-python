@@ -1708,20 +1708,25 @@ class DSSCodeEnv(object):
     # Env deletion
     ########################################################
     
-    def delete(self):
+    def delete(self, wait=True):
         """
         Delete the code env
         
         .. note::
 
             This call requires an API key with `Manage all code envs` permission
+
+        :param bool wait: wait for the code env to be deleted or return a future
         """
         resp = self.client._perform_json(
-            "DELETE", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name))
+            "DELETE", "/admin/code-envs/%s/%s" % (self.env_lang, self.env_name),
+            params={"wait": wait})
         if resp is None:
             raise Exception('Env deletion returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env deletion failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not wait:
+            return DSSFuture.from_resp(self.client, resp)
         return resp
 
         
@@ -1846,7 +1851,7 @@ class DSSCodeEnv(object):
     # Code env actions
     ########################################################
 
-    def set_jupyter_support(self, active):
+    def set_jupyter_support(self, active, wait=True):
         """
         Update the code env jupyter support
         
@@ -1855,17 +1860,20 @@ class DSSCodeEnv(object):
             This call requires an API key with `Create code envs` or `Manage all code envs` permission
         
         :param boolean active: True to activate jupyter support, False to deactivate
+        :param bool wait: wait for the code env update or return a future
         """
         resp = self.client._perform_json(
             "POST", "/admin/code-envs/%s/%s/jupyter" % (self.env_lang, self.env_name),
-            params = {'active':active})
+            params = {'active':active, "wait": wait})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not wait:
+            return DSSFuture.from_resp(self.client, resp)
         return resp
 
-    def update_packages(self, force_rebuild_env=False, version=None):
+    def update_packages(self, force_rebuild_env=False, version=None, wait=True):
         """
         Update the code env packages so that it matches its spec
         
@@ -1875,6 +1883,7 @@ class DSSCodeEnv(object):
 
         :param boolean force_rebuild_env: whether to rebuild the code env from scratch
         :param boolean version: version to rebuild (applies only to version code envs on automation nodes)
+        :param bool wait: wait for the code env update or return a future
 
         :return: list of messages collected during the operation. Fields are:
 
@@ -1886,14 +1895,16 @@ class DSSCodeEnv(object):
         """
         resp = self.client._perform_json(
             "POST", "/admin/code-envs/%s/%s/packages" % (self.env_lang, self.env_name),
-            params={"forceRebuildEnv": force_rebuild_env, "versionToUpdate": version})
+            params={"forceRebuildEnv": force_rebuild_env, "versionToUpdate": version, "wait": wait})
         if resp is None:
             raise Exception('Env update returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env update failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not wait:
+            return DSSFuture.from_resp(self.client, resp)
         return resp
 
-    def update_images(self, env_version=None):
+    def update_images(self, env_version=None, wait=True):
         """
         Rebuild the docker image of the code env
         
@@ -1902,6 +1913,7 @@ class DSSCodeEnv(object):
             This call requires an API key with admin rights
 
         :param string env_version: (optional) version of the code env. Applies only to versioned code envs.
+        :param bool wait: wait for the images to be rebuilt or return a future
 
         :return: list of messages collected during the operation. Fields are:
 
@@ -1913,11 +1925,13 @@ class DSSCodeEnv(object):
         """
         resp = self.client._perform_json(
             "POST", "/admin/code-envs/%s/%s/images" % (self.env_lang, self.env_name),
-            params={"envVersion": env_version})
+            params={"envVersion": env_version, "wait": wait})
         if resp is None:
             raise Exception('Env image build returned no data')
         if resp.get('messages', {}).get('error', False):
             raise Exception('Env image build failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        if not wait:
+            return DSSFuture.from_resp(self.client, resp)
         return resp
 
     def list_usages(self):
