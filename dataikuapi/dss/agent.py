@@ -80,6 +80,46 @@ class DSSAgent(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/agents/%s" % (self.project_key, self.id))
 
+    def shutdown(self, version_id=None, force=False):
+        """
+        Shutdown all instances of the given version of this agent
+
+        :param version_id: If unspecified, uses the active version.
+        :type version_id: str | None
+        :param force: If True, cancel requests being processed and stop the instances. If False, let those active requests complete before stopping.
+        :type force: bool
+        """
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/shutdown" % (self.project_key, self.id), body={
+                "versionId": version_id,
+                "force": force
+            })
+
+    def status(self, version_id=None):
+        """
+        Query status of instances of the given version of this agent
+
+        :param version_id: If unspecified, uses the active version.
+        :type version_id: str | None
+        :return: A dict holding the list of the status for each instance.
+        """
+        return self.client._perform_json(
+            "GET", "/projects/%s/agents/%s/status" % (self.project_key, self.id), body={
+                "versionId": version_id
+            })
+
+    def wake_up(self, version_id=None):
+        """
+        Start an instance of an agent if none is started
+
+        :param version_id: If unspecified, uses the active version.
+        :type version_id: str | None
+        """
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/wakeup" % (self.project_key, self.id), body={
+                "versionId": version_id
+            })
+
 class DSSAgentSettings(DSSTaggableObjectSettings):
     """
     Settings for a agent

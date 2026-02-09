@@ -21,21 +21,21 @@ class Footprint(dict):
         if unit == 'B':
             return v
         elif unit == 'KB':
-            return 1.0 * v / 1024
+            return 1.0 * v / 1000
         elif unit == 'MB':
-            return 1.0 * v / (1024 * 1024)
+            return 1.0 * v / (1000 * 1000)
         elif unit == 'GB':
-            return 1.0 * v / (1024 * 1024 * 1024)
+            return 1.0 * v / (1000 * 1000 * 1000)
         else:
             # smart mode
             if v < 1500:
                 return '%d B' % v
-            elif v < 1500 * 1024:
-                return '%.2f KB' % (1.0 * v / 1024)
-            elif v < 1500 * 1024 * 1024:
-                return '%.2f MB' % (1.0 * v / (1024 * 1024))
+            elif v < 1500 * 1000:
+                return '%.2f KB' % (1.0 * v / 1000)
+            elif v < 1500 * 1000 * 1000:
+                return '%.2f MB' % (1.0 * v / (1000 * 1000))
             else:
-                return '%.2f GB' % (1.0 * v / (1024 * 1024 * 1024))
+                return '%.2f GB' % (1.0 * v / (1000 * 1000 * 1000))
 
     @property
     def size(self):
