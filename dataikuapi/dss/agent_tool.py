@@ -64,8 +64,15 @@ class DSSAgentTool(object):
         return self.tool_id
 
     def get_descriptor(self):
+        """
+        Get the descriptor of the tool
+
+        :return: a descriptor of the tool
+        :rtype: dict
+        """
+
         if self._descriptor is None:
-            self._descriptor =  self.client._perform_json("GET", "/projects/%s/agents/tools/%s/descriptor" % (self.project_key, self.tool_id))
+            self._descriptor = self.client._perform_json("GET", "/projects/%s/agents/tools/%s/descriptor" % (self.project_key, self.tool_id))
         return self._descriptor
 
     def get_settings(self):
@@ -93,13 +100,25 @@ class DSSAgentTool(object):
         from dataikuapi.dss.langchain.tool import convert_to_langchain_structured_tool
         return convert_to_langchain_structured_tool(self, context)
 
-    def run(self, input, context=None, subtool_name=None):
+    def run(self, input, context=None, subtool_name=None, memory_fragment=None, tool_validation_responses=None, tool_validation_requests=None):
+        """
+        Execute a tool call
+        """
+
         invocation = {
             "toolId" : self.tool_id,
             "input" : {
                 "input" : input
             }
         }
+
+        if tool_validation_responses:
+            invocation["input"]["toolValidationResponses"] = tool_validation_responses
+        if tool_validation_requests:
+            invocation["input"]["toolValidationRequests"] = tool_validation_requests
+        if memory_fragment:
+            invocation["input"]["memoryFragment"] = memory_fragment
+
         if subtool_name is not None:
             invocation["input"]["subtoolName"] = subtool_name
 
@@ -107,6 +126,33 @@ class DSSAgentTool(object):
             invocation["input"]["context"] = context
 
         return self.client._perform_json("POST", "/projects/%s/agents/tools/%s/invocations" % (self.project_key, self.tool_id), body=invocation)
+
+    def describe_tool_call(self, input, descriptor, context=None, subtool_name=None):
+        """
+        Get a description for a tool call before it is executed
+
+        :return: a string description of the tool call
+        :rtype: Optional[str]
+        """
+
+        description_request = {
+            "input" : {
+                "input" : input
+            },
+            "descriptor": descriptor
+        }
+
+        if subtool_name is not None:
+            description_request["input"]["subtoolName"] = subtool_name
+
+        if context is not None:
+            description_request["input"]["context"] = context
+
+        tool_call_descriptor = self.client._perform_json("POST", "/projects/%s/agents/tools/%s/describe-tool-call" % (self.project_key, self.tool_id), body=description_request)
+        if tool_call_descriptor is None:
+            return None
+
+        return tool_call_descriptor.get("description", None)
 
 
 

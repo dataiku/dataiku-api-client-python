@@ -1,6 +1,9 @@
+import base64
+
 import copy
 import json
 
+from dataikuapi.utils import _write_response_content_to_file
 
 class DocumentExtractor(object):
     """
@@ -66,7 +69,8 @@ class DocumentExtractor(object):
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
 
-    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None, output_managed_folder=None, image_validation=True):
+    def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None,
+                           output_managed_folder=None, image_validation=True):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -77,10 +81,10 @@ class DocumentExtractor(object):
         :type max_section_depth: int
         :param image_handling_mode: How to handle images in the document. Can be one of: 'IGNORE', 'OCR', 'VLM_ANNOTATE'.
         :type image_handling_mode: str
-        :param ocr_engine: Engine that will perform the OCR. Can be either 'AUTO', 'EASYOCR' or 'TESSERACT'. If set to 'AUTO', tesseract will be used if available, otherwise easyOCR will be used. Default is 'AUTO'.
+        :param ocr_engine: Engine to perform the OCR, either 'AUTO', 'EASYOCR' or 'TESSERACT'. Auto uses tesseract if available, otherwise easyOCR.
         :type ocr_engine: str
-        :param languages: OCR languages that will be used for recognition. ISO639 languages codes separated by commas are expected
-        :type languages: str
+        :param languages: OCR languages to use for recognition. List (either a comma-separated string, or list of strings) of ISO639 languages codes.
+        :type languages: str | list
         :param llm_id: ID of the (vision-capable) LLM to use for annotating images when image_handling_mode is 'VLM_ANNOTATE'
         :type llm_id: str
         :param llm_prompt: Custom prompt to extract text from the images
@@ -112,6 +116,8 @@ class DocumentExtractor(object):
             if ocr_engine not in ["TESSERACT", "EASYOCR", "AUTO"]:
                 raise ValueError("Invalid ocr_engine, it must be set to 'TESSERACT', 'EASYOCR' or 'AUTO'")
             extractor_request["settings"]["imageHandlingMode"] = "OCR"
+            if type(languages) is list:
+                languages = ",".join(languages)
             extractor_request["settings"]["ocrSettings"] = {
                 "ocrEngine": ocr_engine,
                 "ocrLanguages": languages
@@ -126,10 +132,63 @@ class DocumentExtractor(object):
             raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
 
         ret = self.client._perform_json("POST", "/projects/%s/document-extractors/structured" % self.project_key,
-                                        raw_body={"json": json.dumps(extractor_request)},
+                                        raw_body={"extractionRequest": json.dumps(extractor_request)},
                                         files={"file": document.file} if isinstance(document, LocalFileDocumentRef) else None)
 
         return StructuredExtractorResponse(ret)
+
+    def text_extract(self, document, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en"):
+        """
+        Extract raw text from a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg).
+
+        Some documents like PDF or PowerPoint have an inherent structure (page, bookmarks or slides); for those documents, the returned results contain this structure.
+        Otherwise, the document's structure is not inferred, resulting in one or more text item(s).
+
+        PDF files are converted to images and processed using OCR if `image_handling_mode` is set to 'OCR', recommended for scanned PDFs.
+        Otherwise, their text content is extracted.
+
+        :param document: document to split
+        :type document: :class:`DocumentRef`
+        :param image_handling_mode: How to handle images in the document, either 'IGNORE' or 'OCR'.
+        :type image_handling_mode: str
+        :param ocr_engine: Engine to perform the OCR, either 'AUTO', 'EASYOCR' or 'TESSERACT'. Auto uses tesseract if available, otherwise easyOCR.
+        :type ocr_engine: str
+        :param languages: OCR languages to use for recognition. List (either a comma-separated string, or list of strings) of ISO639 languages codes.
+        :type languages: str | list
+
+        :returns: Text content of the document
+        :rtype: :class:`TextExtractorResponse`
+        """
+        if image_handling_mode not in ["IGNORE", "OCR"]:
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
+
+        extractor_request = {
+            "inputs": {
+                "document": document.as_json()
+            },
+            "settings": {
+            }
+        }
+        if image_handling_mode == "IGNORE":
+            extractor_request["settings"]["imageHandlingMode"] = "IGNORE"
+        elif image_handling_mode == "OCR":
+            if ocr_engine not in ["TESSERACT", "EASYOCR", "AUTO"]:
+                raise ValueError("Invalid ocr_engine, it must be set to 'TESSERACT', 'EASYOCR' or 'AUTO'")
+            extractor_request["settings"]["imageHandlingMode"] = "OCR"
+            if type(languages) is list:
+                languages = ",".join(languages)
+            extractor_request["settings"]["ocrSettings"] = {
+                "ocrEngine": ocr_engine,
+                "ocrLanguages": languages
+            }
+        else:
+            raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
+
+        ret = self.client._perform_json("POST", "/projects/%s/document-extractors/text" % self.project_key,
+                                        raw_body={"extractionRequest": json.dumps(extractor_request)},
+                                        files={"file": document.file} if isinstance(document, LocalFileDocumentRef) else None)
+
+        return TextExtractorResponse(ret)
 
     def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True):
         """
@@ -167,7 +226,8 @@ class DocumentExtractor(object):
         :type output_managed_folder: str
         :param int offset: start extraction from `offset` screenshots.
         :type offset: int
-        :param fetch_size: number of screenshots to fetch in each request, iterating on the next result automatically sends a new request for another `fetch_size` screenshots
+        :param fetch_size: number of screenshots to fetch in each request, iterating on the next result automatically sends a new request for another
+                           `fetch_size` screenshots
         :type fetch_size: int
         :param keep_fetched: whether to keep previous screenshots requests within this response object when fetching next ones.
         :type keep_fetched: boolean
@@ -179,11 +239,35 @@ class DocumentExtractor(object):
         screenshotter_request = ScreenshotterRequest(document, output_managed_folder, offset, fetch_size)
         return ScreenshotterResponse(self.client, self.project_key, screenshotter_request, keep_fetched)
 
+
+    def convert_to_pdf(self, document, output_managed_folder=None, path_in_output_folder=None):
+        """
+        Convert a document to PDF format.
+
+        :param document: input document (docx | doc | odt | pptx | ppt | odp | xlsx | xls | xlsm | xlsb | ods | png | jpg | jpeg).
+        :type document: :class:`DocumentRef`
+        :param output_managed_folder: id of an optional managed folder to store the generated PDF document.
+            If unspecified, the document is not stored and should be downloaded from the returned :class:`PDFConversionResponse`
+        :type output_managed_folder: str
+        :param path_in_output_folder: optional path of the generated PDF document in the output managed folder.
+            If unspecified and the input document is in a managed folder, defaults to the input document path (with a .pdf extension).
+        :type path_in_output_folder: str
+
+        :returns: A :class:`PDFConversionResponse`, to reference & download the resulting PDF.
+        :rtype: :class:`PDFConversionResponse`
+        """
+        if path_in_output_folder is not None and output_managed_folder is None:
+            raise ValueError("The output_managed_folder must be specified when path_in_output_folder is specified.")
+
+        return PDFConversionResponse(self.client, self.project_key, document, output_managed_folder, path_in_output_folder)
+
+
 class ScreenshotterRequest(object):
     """
     A screenshotter request based on pagination and query settings
 
     """
+
     def __init__(self, document, output_managed_folder, offset, fetch_size):
         self.document = document
         self.output_managed_folder = output_managed_folder
@@ -208,15 +292,17 @@ class ScreenshotterResponse(object):
     A handle to interact with a screenshotter result. Iterable over the :class:`ImageRef` screenshots.
 
     .. important::
-        Do not create this class directly, use :meth:`generate_page_screenshots` instead.
+        Do not create this class directly, use :meth:`~DocumentExtractor.generate_pages_screenshots` instead.
     """
+
     def __init__(self, client, project_key, screenshotter_request, keep_fetched):
         self.client = client
         self.project_key = project_key
         self.screenshotter_request = screenshotter_request
         self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                       raw_body={"json": json.dumps(screenshotter_request.as_json())},
-                                                       files={"file": screenshotter_request.document.file} if isinstance(screenshotter_request.document, LocalFileDocumentRef) else None)
+                                                       raw_body={"screenshotRequest": json.dumps(screenshotter_request.as_json())},
+                                                       files={"file": screenshotter_request.document.file} if isinstance(screenshotter_request.document,
+                                                                                                                         LocalFileDocumentRef) else None)
         self._fail_unless_success()
         self._screenshots = [None] * self.total_count
         self.initial_offset = screenshotter_request.offset
@@ -238,7 +324,7 @@ class ScreenshotterResponse(object):
             self.screenshotter_request.offset = screenshot_index
             self.screenshotter_request.document = self.document
             self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                           raw_body={"json": json.dumps(self.screenshotter_request.as_json())},
+                                                           raw_body={"screenshotRequest": json.dumps(self.screenshotter_request.as_json())},
                                                            files={"file": self.document.file} if isinstance(self.document, LocalFileDocumentRef) else None)
             self._fail_unless_success()
             self._update_screenshot_list_at_index(screenshot_index)
@@ -246,7 +332,8 @@ class ScreenshotterResponse(object):
 
     def _update_screenshot_list_at_index(self, index):
         if self._current_data["imagesRefs"]["type"] == "inline":
-            res =  [InlineImageRef(image["content"], image["mimeType"] if "mimeType" in image else None) for image in self._current_data["imagesRefs"]["inlineImages"]]
+            res = [InlineImageRef(image["content"], image["mimeType"] if "mimeType" in image else None) for image in
+                   self._current_data["imagesRefs"]["inlineImages"]]
         elif self._current_data["imagesRefs"]["type"] == "managed_folder":
             res = [ManagedFolderImageRef(self._current_data["imagesRefs"]["managedFolderId"], path) for path in self._current_data["imagesRefs"]["imagesPaths"]]
         else:
@@ -308,8 +395,9 @@ class ScreenshotIterator(object):
     Iterator over the :class:`ImageRef` screenshots.
 
     .. important::
-        Do not create this class directly, use `:meth:`generate_page_screenshots` instead.
+        Do not create this class directly, use `:meth:`~DocumentExtractor.generate_pages_screenshots` instead.
     """
+
     def __init__(self, screenshotter_response):
         self.screenshotter_response = screenshotter_response
         self.current_index = screenshotter_response.initial_offset
@@ -320,12 +408,79 @@ class ScreenshotIterator(object):
         return res
 
 
+class TextExtractorResponse(object):
+    """
+    A handle to interact with a document text extractor result.
+
+    .. important::
+        Do not create this class directly, use :meth:`~DocumentExtractor.text_extract` instead.
+    """
+
+    def __init__(self, data):
+        self._data = data
+
+    def get_raw(self):
+        return self._data
+
+    @property
+    def success(self):
+        """
+        :returns: The outcome of the text extraction request.
+        :rtype: bool
+        """
+        return self._data.get("ok")
+
+    @property
+    def content(self):
+        """
+        The content of the document as extracted by :meth:`text_extract` can contain some structure inherent to the document. For instance, PDF documents are
+        extracted page by page, and PowerPoint documents slide by slide.
+        Some PDF documents contain bookmarks that can be used to separate them into sections.
+        For other documents, a single section with one or more text item(s).
+
+        This property returns a dict that represents this structure.
+
+        :returns: The structure of the document as a dictionary
+        :rtype: dict
+        """
+        return self._data["content"]
+
+    @property
+    def text_content(self):
+        """
+        :returns: The textual content of the document as a string.
+        :rtype: str
+        """
+        if "content" in self.content:
+            return "\n".join([TextExtractorResponse._text(item) for item in self.content["content"]])
+
+        return ""
+
+
+    @staticmethod
+    def _text(structured):
+        if "text" in structured.keys():
+            return structured["text"]
+        elif "description" in structured.keys():
+            return structured["description"]
+        return ""
+
+
+
+    def _fail_unless_success(self):
+        if not self.success:
+            error_message = "Document failed to be extracted - request failed: {}".format(
+                self._data.get("errorMessage", "An unknown error occurred")
+            )
+            raise Exception(error_message)
+
+
 class StructuredExtractorResponse(object):
     """
     A handle to interact with a document structured extractor result.
 
     .. important::
-        Do not create this class directly, use :meth:`structured_extract` instead.
+        Do not create this class directly, use :meth:`~DocumentExtractor.structured_extract` instead.
     """
 
     def __init__(self, data):
@@ -389,13 +544,111 @@ class StructuredExtractorResponse(object):
             )
             raise Exception(error_message)
 
+class PDFConversionResponse(object):
+    """
+    A handle to interact with a document PDF conversion result.
+
+    .. important::
+        Do not create this class directly, use :meth:`~DocumentExtractor.convert_to_pdf` instead.
+    """
+
+    def __init__(self, client, project_key, document, output_managed_folder, path_in_output_folder=None):
+        self.client = client
+        self.project_key = project_key
+        self.output_managed_folder = output_managed_folder
+        self.path_in_output_folder = path_in_output_folder
+        pdf_convert_request = {
+            "inputs": {
+                "document": document.as_json()
+            }
+        }
+        if output_managed_folder is not None:
+            pdf_convert_request["outputManagedFolderRef"] = output_managed_folder
+            if path_in_output_folder is not None:
+                pdf_convert_request["outputFilePath"] = path_in_output_folder
+            self._data = self.client._perform_json("POST", "/projects/%s/document-extractors/convert/to-pdf" % self.project_key,
+                                                   raw_body={"conversionRequest": json.dumps(pdf_convert_request)},
+                                                   files={"file": document.file} if isinstance(document, LocalFileDocumentRef) else None)
+        else:
+            self._data = self.client._perform_raw("POST", "/projects/%s/document-extractors/convert/to-pdf/download" % self.project_key,
+                                            raw_body={"conversionRequest": json.dumps(pdf_convert_request)},
+                                            files={"file": document.file} if isinstance(document, LocalFileDocumentRef) else None)
+
+    def get_raw(self):
+        return self._data
+
+    def stream(self):
+        """
+        Download the converted PDF as a binary stream.
+
+        :returns: The converted PDF file as a binary stream.
+        :rtype: :class:`requests.Response`
+        """
+        self._fail_unless_success()
+        if self.output_managed_folder is not None:
+            project = self.client.get_project(self.project_key)
+            folder = project.get_managed_folder(self.output_managed_folder)
+            return folder.get_file(self.document.file_path)
+        else:
+            return self._data
+
+    def download_to_file(self, path):
+        """
+        Download the converted PDF to a local file.
+
+        :param path: the path where to download the PDF file
+        :type path: str
+        :returns: None
+        """
+        self._fail_unless_success()
+        if self.output_managed_folder is not None:
+            project = self.client.get_project(self.project_key)
+            folder = project.get_managed_folder(self.output_managed_folder)
+            file = folder.get_file(self.document.file_path)
+            _write_response_content_to_file(file, path)
+        else:
+            _write_response_content_to_file(self._data, path)
+
+    @property
+    def document(self):
+        """
+        :returns: The reference to the stored PDF if applicable, otherwise None
+        :rtype: :class:`ManagedFolderDocumentRef`
+        """
+        self._fail_unless_success()
+        if self.output_managed_folder is None:
+            return None
+        else:
+            return ManagedFolderDocumentRef(self._data.get("documentRef").get("filePath"), self._data.get("documentRef").get("managedFolderId"))
+
+    @property
+    def success(self):
+        """
+        :returns: The outcome of the PDF conversion request.
+        :rtype: bool
+        """
+        if self.output_managed_folder:
+            return self._data.get("ok")
+        else:
+            return self._data.ok
+
+    def _fail_unless_success(self):
+        if not self.success:
+            if self.output_managed_folder:
+                error_message = "Document failed to be converted - request failed: {}".format(
+                    self._data.get("errorMessage", "An unknown error occurred")
+                )
+                raise Exception(error_message)
+            else:
+                self._data.raise_for_status()
+
 
 class VlmExtractorResponse(object):
     """
     A handle to interact with a VLM extractor result.
 
     .. important::
-        Do not create this class directly, use :meth:`vlm_extract`
+        Do not create this class directly, use :meth:`~DocumentExtractor.vlm_extract`
     """
 
     def __init__(self, data):
@@ -445,8 +698,10 @@ class DocumentRef(InputRef):
             * :class:`LocalFileDocumentRef` for a local file to be uploaded
             * :class:`ManagedFolderDocumentRef` for a file inside a DSS-managed folder
     """
-    def __init__(self):
+
+    def __init__(self, mime_type=None):
         self.type = None
+        self.mime_type = mime_type
 
     def as_json(self):
         raise NotImplementedError
@@ -466,17 +721,20 @@ class LocalFileDocumentRef(DocumentRef):
                 # upload the document & generate images of the document's pages:
                 images = list(doc_ex.generate_pages_screenshots(file_ref))
     """
-    def __init__(self, fp):
+
+    def __init__(self, fp, mime_type=None):
         """
          :param fp: File-like object or stream
+         :param str mime_type: MIME type of the file, optional
         """
-        super(LocalFileDocumentRef, self).__init__()
+        super(LocalFileDocumentRef, self).__init__(mime_type)
         self.type = "local_file"
         self.file = fp
 
     def as_json(self):
         return {
             "type": self.type,
+            "mimeType": self.mime_type,
         }
 
 
@@ -485,15 +743,16 @@ class _TmpDocumentRef(DocumentRef):
     A reference to interact with a document in the tmp/docextraction folder.
 
     .. important::
-        Do not create this class directly, use :meth:`generate_pages_screenshots` instead.
+        Do not create this class directly, use :meth:`~DocumentExtractor.generate_pages_screenshots` instead.
     """
 
-    def __init__(self, tmp_file_name, original_file_name):
+    def __init__(self, tmp_file_name, original_file_name, mime_type=None):
         """
          :param str tmp_file_name: File name that is returned when the file is uploaded
          :param str original_file_name: File name before upload
+         :param str mime_type: MIME type of the file, optional
         """
-        super(_TmpDocumentRef, self).__init__()
+        super(_TmpDocumentRef, self).__init__(mime_type)
         self.type = "tmp_file"
         self.tmp_file_name = tmp_file_name
         self.original_file_name = original_file_name
@@ -503,6 +762,7 @@ class _TmpDocumentRef(DocumentRef):
             "type": self.type,
             "tmpFileName": self.tmp_file_name,
             "originalFileName": self.original_file_name,
+            "mimeType": self.mime_type,
         }
 
 
@@ -519,12 +779,14 @@ class ManagedFolderDocumentRef(DocumentRef):
             # generate images of the document's pages:
             resp = doc_ex.generate_pages_screenshots(file_ref)
     """
-    def __init__(self, file_path, managed_folder_id):
+
+    def __init__(self, file_path, managed_folder_id, mime_type=None):
         """
-        :param file_path: path to the document file inside the managed folder
-        :param managed_folder_id: identifier of the folder containing the file
+        :param str file_path: path to the document file inside the managed folder
+        :param str managed_folder_id: identifier of the folder containing the file
+        :param str mime_type: MIME type of the file, optional
         """
-        super(ManagedFolderDocumentRef, self).__init__()
+        super(ManagedFolderDocumentRef, self).__init__(mime_type)
         self.type = "managed_folder"
         self.file_path = file_path
         self.managed_folder_id = managed_folder_id
@@ -533,8 +795,49 @@ class ManagedFolderDocumentRef(DocumentRef):
         return {
             "type": self.type,
             "filePath": self.file_path,
-            "managedFolderId": self.managed_folder_id
+            "managedFolderId": self.managed_folder_id,
+            "mimeType": self.mime_type,
         }
+
+
+class InlineDocumentRef(DocumentRef):
+    CONTENT_TYPE_PLAIN_TEXT = "PLAIN_TEXT"
+    CONTENT_TYPE_BASE64_BYTES = "BASE64_BYTES"
+
+    """ A document with content stored in memory.
+    """
+    def __init__(self, content, content_type, mime_type=None):
+        """
+        :param str content: contents of the document as text or base64 string
+        :param str content_type: either PLAIN_TEXT or BASE64_BYTES
+        :param str mime_type: MIME type of the document, optional
+        """
+        super(InlineDocumentRef, self).__init__(mime_type)
+        self.type = "inline_document"
+        self.content = content
+        self.content_type = content_type
+
+    def as_json(self):
+        return {
+            "type": self.type,
+            "content": self.content,
+            "contentType": self.content_type,
+            "mimeType": self.mime_type,
+        }
+
+    def is_base64(self):
+        return self.content_type == self.CONTENT_TYPE_BASE64_BYTES
+
+    def as_bytes(self):
+        assert self.is_base64(), "as_bytes requires the document to be base64-encoded"
+        return base64.b64decode(self.content)
+
+    def is_text(self):
+        return self.content_type == self.CONTENT_TYPE_PLAIN_TEXT
+
+    def as_string(self):
+        assert self.is_text(), "as_string requires the document to be plain text"
+        return self.content
 
 
 class ImageRef(InputRef):
@@ -546,6 +849,7 @@ class ImageRef(InputRef):
             * :class:`InlineImageRef` for an inline (bytes / base64 string) image
             * :class:`ManagedFolderImageRef` for an image stored in a DSS-managed folder
     """
+
     def __init__(self):
         super(ImageRef, self).__init__()
         self.type = None
@@ -569,6 +873,7 @@ class InlineImageRef(ImageRef):
         resp = doc_ex.vlm_extract([image_ref], 'llm_id')
 
     """
+
     def __init__(self, image, mime_type=None):
         """
         :param str | bytes image: image content as bytes or base64 string
@@ -608,6 +913,7 @@ class ManagedFolderImageRef(ImageRef):
         # Extract a text summary from the image using a vision LLM:
         resp = doc_ex.vlm_extract([managed_img], 'llm_id')
     """
+
     def __init__(self, managed_folder_id, image_path):
         """
         :param str managed_folder_id: identifier of the folder containing the image

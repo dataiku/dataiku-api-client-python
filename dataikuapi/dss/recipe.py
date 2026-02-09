@@ -1,9 +1,14 @@
+import datetime
+
+import dateutil.parser
+
 from ..utils import DataikuException
-from .utils import DSSTaggableObjectSettings
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, DSSFilterOperator, DSSFilter
 from .discussion import DSSObjectDiscussions
 from .llm import DSSLLM, DSSLLMListItem
+from copy import deepcopy
 import json, logging, warnings
-from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
+
 try:
     basestring
 except NameError:
@@ -235,7 +240,7 @@ class DSSRecipe(object):
         elif type == "sampling":
             return SamplingRecipeSettings(self, data)
         elif type == "split":
-            return SplitRecipeSettings(self, data)
+            return SplitRecipeSettings(self, data, self.client.get_project(self.project_key))
         elif type == "prepare" or type == "shaker":
             return PrepareRecipeSettings(self, data)
         #elif type == "prediction_scoring":
@@ -252,6 +257,8 @@ class DSSRecipe(object):
             return EmbedDatasetRecipeSettings(self, data)
         elif type == "embed_documents":
             return EmbedDocumentsRecipeSettings(self, data)
+        elif type == "extract_content":
+            return ExtractContentRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)
 
@@ -1105,6 +1112,100 @@ class VirtualInputsSingleOutputRecipeCreator(SingleOutputRecipeCreator):
         super(VirtualInputsSingleOutputRecipeCreator, self)._finish_creation_settings()
         self.creation_settings['virtualInputs'] = self.virtual_inputs
 
+class _MultipleOutputRecipeCreator(DSSRecipeCreator):
+    """
+    Create a recipe that has a multiple outputs.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+    """
+
+    def __init__(self, type, name, project):
+        DSSRecipeCreator.__init__(self, type, name, project)
+        self.output_datasets_settings = {}
+
+    def with_existing_output(self, output_id, append=False):
+        """
+        Add an existing object as output to the recipe-to-be-created.
+
+        The output dataset must already exist.
+
+        :param string output_id: name of the dataset, or identifier of the managed folder
+                                 or identifier of the saved model
+        :param boolean append: whether the recipe should append or overwrite the output when running
+                               (note: not available for all dataset types)
+        """
+        self._with_output(output_id, append)
+        return self
+
+    def with_new_output(self, name, connection, type=None, format=None,
+                        override_sql_schema=None, partitioning_option_id=None,
+                        append=False, overwrite=False, **kwargs):
+        """
+        Create a new dataset or managed folder as output to the recipe-to-be-created.
+
+        The dataset or managed folder is not created immediately, but when the recipe
+        is created (ie in the create() method). Whether a dataset is created or a managed
+        folder is created, depends on the recipe type.
+
+        :param string name: name of the dataset or identifier of the managed folder
+        :param string connection: name of the connection to create the dataset or managed folder on
+        :param string type: sub-type of dataset or managed folder, for connections where the type
+                            could be ambiguous. Typically applies to SSH connections, where sub-types
+                            can be SCP or SFTP
+        :param string format: name of a format preset relevant for the dataset type. Possible values are: CSV_ESCAPING_NOGZIP_FORHIVE,
+                              CSV_UNIX_GZIP, CSV_EXCEL_GZIP, CSV_EXCEL_GZIP_BIGQUERY, CSV_NOQUOTING_NOGZIP_FORPIG, PARQUET_HIVE,
+                              AVRO, ORC
+        :param boolean override_sql_schema: schema to force dataset, for SQL dataset. If left empty, will be autodetected
+        :param string partitioning_option_id: to copy the partitioning schema of an existing dataset 'foo', pass a
+                                              value of 'copy:dataset:foo'. If unset, then the output will be non-partitioned
+        :param boolean append: whether the recipe should append or overwrite the output when running
+                               (note: not available for all dataset types)
+        :param boolean overwrite: If the dataset being created already exists, overwrite it (and delete data)
+        """
+        for k in kwargs: #for retrop comp
+            if k == "connection_id":
+                connection = kwargs.get("connection_id")
+            elif k == "format_option_id":
+                format = kwargs.get("format_option_id")
+            elif k == "typeOptionId":
+                type = kwargs.get("typeOptionId")
+            elif k == "type_option_id":
+                type = kwargs.get("type_option_id")
+            else:
+                raise Exception("Unknown argument '{}'".format(k))
+
+        dataset = self.project.get_dataset(name)
+        if overwrite and dataset.exists():
+            dataset.delete(drop_data=True)
+
+        self.output_datasets_settings[name] = {
+            'connectionId': connection,
+            'typeOptionId': type,
+            'specificSettings': {
+                'formatOptionId': format,
+                'overrideSQLSchema': override_sql_schema
+            },
+            'partitioningOptionId': partitioning_option_id
+        }
+        self._with_output(name, append)
+        return self
+
+    def with_output(self, output_id, append=False):
+        """
+        Add an existing object as output to the recipe-to-be-created.
+
+        .. note::
+
+            Alias of :meth:`with_existing_output()`
+        """
+        return self.with_existing_output(output_id, append)
+
+    def _finish_creation_settings(self):
+        self.creation_settings['outputDatasetsCreationSettingsByRole'] = {
+            "main": self.output_datasets_settings
+        }
 
 #####################################################
 # Per-recipe-type classes: Visual recipes
@@ -2050,9 +2151,490 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
     """
-    pass # TODO: Write helpers for split
+    def __init__(self, recipe, data, project):
+        DSSRecipeSettings.__init__(self, recipe, data)
+        self.project = project
 
-class SplitRecipeCreator(DSSRecipeCreator):
+    @property
+    def split_mode(self):
+        """
+        Gets the current split mode.
+
+        Mode can either be VALUES | RANGE | RANDOM | RANDOM_COLUMNS | FILTER | CENTILE.
+
+        :return: The current split mode.
+        :rtype: str
+        """
+        return self.obj_payload["mode"]
+
+    def set_split_on_single_column_values(self, column_name, splits, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'VALUES'.
+
+        In this mode, records are mapped to a given output dataset based on the value of the column column_name
+
+        :param str column_name: name of the column used as reference to split records
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **value** : condition to map the record to the given output dataset, which is if the record's **column_name** value is the same as **value**
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+
+        dataset = self.project.get_dataset(self.get_flat_input_refs()[0])
+        schema_column = next((item for item in dataset.get_schema()['columns'] if item.get("name") == column_name), None)
+        if schema_column is None:
+            raise DataikuException("column %s not found in the input dataset schema." % column_name)
+
+        column_type = schema_column.get("type", None)
+
+        self.obj_payload["mode"] = "VALUES"
+        self.obj_payload["column"] = column_name
+        self.obj_payload["valueSplits"] = self._format_value_splits(column_type, splits)
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def set_split_on_single_column_ranges(self, column_name, column_type, splits, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'RANGE'.
+
+        In this mode, records are mapped to a given output dataset based on the value of the input column_name according to range conditions set in **splits**
+
+        :param str column_name: name of the column used as reference to split records
+        :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
+            * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+        self.obj_payload["mode"] = "RANGE"
+        self.obj_payload["column"] = column_name
+        self.obj_payload["rangeSetTime"] = column_type == 'datetime'
+        self.obj_payload["rangeSplits"] = self._format_range_splits(column_type, column_name, splits)
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def set_split_on_random_ratio(self, splits, seed=1337, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'RANDOM'.
+
+        In this mode, records are mapped randomly to a given output dataset based on a ratio of data to be dispatched
+
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+        :param integer seed: Seed used to initialize the random number generator.
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+        self.obj_payload["mode"] = "RANDOM"
+        self.obj_payload["seed"] = seed
+        self.obj_payload["randomSplits"] = self._format_splits(splits, ["share"])
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def set_split_on_random_columns(self, random_columns, splits, seed=1337, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'RANDOM_COLUMNS'.
+
+        In this mode, records are grouped based on one or multiple columns set in random_columns, and the data is randomly split according to given ratios.
+        This mode ensures all records of a single group to end up in the same output dataset.
+        As an example, you can use this mode to create train and test sets containing distinct clients. This would enable training a machine learning model and testing it on previously unseen clients.
+        Group rows with the same values for columns and randomly dispatch on outputs
+        Grouping keys must take sufficiently diverse values, otherwise the split cannot be fair.
+
+        :param list random_columns: list of string corresponding to the list of input columns to group on.
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+        :param integer seed: Seed used to initialize the random number generator.
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+        self.obj_payload["mode"] = "RANDOM_COLUMNS"
+        self.obj_payload["seed"] = seed
+        self.obj_payload["randomColumns"] = random_columns
+        self.obj_payload["randomColumnsSplits"] = self._format_splits(splits, ["share"])
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def set_split_on_filters(self, splits, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'FILTER'.
+
+        In this mode, records are mapped to a given output dataset based on input filters containing conditions to be satisfied
+
+        Use the methods on :class:`dataikuapi.dss.utils.DSSFilter` to build filter definition.
+
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **filter** : DSSFilter filter object to be constructed from the static methods in the helper class dataikuapi.dss.utils.DSSFilter
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+        self.obj_payload["mode"] = "FILTERS"
+        self.obj_payload["filterSplits"] = self._format_splits(splits, ["filter"])
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def set_split_on_centiles(self, centile_orders, splits, default_output_index=None, default_output=None):
+        """
+        Sets the split mode to 'CENTILE'.
+
+        In this mode, records are ordered based on the column name and order listed in centile_orders, then mapped to a given output dataset based on a ratio of data to be dispatched
+
+        :param list centile_orders: list of columns data are ordered by before being dispatched to output datasets
+            each centile_order is a dict with the following keys :
+            * **column** : name of the column used as reference to order records
+            * **desc** : if true, the data is ordered in descending order, otherwise in ascending order
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If set to None, the data is dropped.
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+        """
+        self.obj_payload["mode"] = "CENTILE"
+        self.obj_payload["centileOrders"] = centile_orders
+        self.obj_payload["centileSplits"] = self._format_splits(splits, ["share"])
+        self.obj_payload["defaultOutputIndex"] = self._get_output_index(default_output_index, default_output)
+
+    def _get_available_outputs(self):
+        """
+        Helper method returning the list of names of all the output datasets of the recipe.
+
+        :return: The list of names of all the output datasets of the recipe.
+        :rtype: list
+        """
+        return [output.get('ref', None) for output in self.get_recipe_outputs()['main']['items'] if output.get('ref', None)]
+
+    def _get_output_index_for_split(self, output=None, available_outputs=None):
+        """
+        Helper method to get the index for a split from its mode and value
+
+        * **output** : dict that dictates the behavior of this split with the following values :
+            * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                * if set to 'drop', all the data that matches the conditions of this split are dropped
+                * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+            * **value** : bool|str|None depending on the value of **mode**
+        :param list available_outputs: list of all the available output datasets of the recipe.
+        :return: The index of the output dataset.
+        :rtype: int
+        """
+
+        if output is None:
+            raise ValueError("No output node in split.")
+
+        mode = output.get('mode', None)
+        value = output.get('value', None)
+
+        if mode == 'index':
+            if value is None:
+                raise ValueError("value is not set for output %s." % output)
+            if not isinstance(value, int):
+                raise ValueError("Incompatible type %s for value in output %s. In index mode, the value can only be of type int." % (type(value), output))
+            return value
+        elif mode == 'dataset':
+            if value is None:
+                raise ValueError("value is not set for output %s." % output)
+            if not isinstance(value, str):
+                raise ValueError("Incompatible type %s for value in output %s. In dataset mode, the value can only be of type str." % (type(value), output))
+            if available_outputs is None:
+                available_outputs = self._get_available_outputs()
+            return self._get_output_index(output_name=value, available_outputs=available_outputs)
+        elif mode == 'drop':
+            return -1
+        else:
+            raise ValueError("Unknown mode '%s' for output %s. This parameter can only be equal to 'dataset', 'index' or 'drop'." % (mode, output))
+
+    def _get_output_index(self, output_index=None, output_name=None, available_outputs=None):
+        """
+        Helper method to get the index from either an index or a dataset name. If both are unset, returns -1.
+
+        :param int output_index: index of the output dataset to put the data into, defaults to None.
+        :param str output_name: name of the output dataset to put the data into, defaults to None. If set but no dataset name matches, raises a ValueError exception.
+        :param list available_outputs: list of all the available output datasets of the recipe.
+        :return: The index of the output dataset.
+        :rtype: int
+        """
+        if output_index is not None:
+            return output_index
+
+        if available_outputs is None:
+            available_outputs = self._get_available_outputs()
+
+        if output_name is not None:
+            try:
+                index = available_outputs.index(output_name)
+            except ValueError:
+                raise ValueError("Output dataset '%s' not found in available outputs: %s" % (output_name, available_outputs))
+            return index
+        return -1
+
+    def _format_splits(self, splits, keys):
+        """
+        Helper method to format input splits as used by the recipe
+
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+            * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * [**keys**] : list of keys in the dict corresponding to conditions for the split to be satisfied, depending on the mode of split recipe used.
+        :param list keys: list of dict keys to be copied in the newly created splits
+        :return: The formatted splits.
+        :rtype: list
+        """
+        available_outputs = self._get_available_outputs()
+        output_splits = []
+        for split in splits:
+            new_split = {
+                'outputIndex': self._get_output_index_for_split(split.get('output', None), available_outputs)
+            }
+            for key in keys:
+                if key in split:
+                    new_split[key] = deepcopy(split[key])
+            output_splits.append(new_split)
+        return output_splits
+
+    def _format_value_splits(self, column_type, splits):
+        """
+        Helper method to format input value splits as used by the recipe
+        If it is boolean, the splits are completed to have a split with value true, and a split with value false in this order. Then format like it is done in all others methods.
+        Splits that did not exist are dropped
+
+        :param str column_type: type of the column the data is formatted to
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+            * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+        :return: The formatted splits.
+        :rtype: list
+        """
+
+        if column_type != "boolean":
+            return self._format_splits(splits, ["value"])
+
+        new_splits = []
+        for split in splits:
+            new_split = deepcopy(split)
+            if new_split.get('value') is True:
+                new_split['value'] = "true"
+            elif new_split.get('value') is False:
+                new_split['value'] = "false"
+            new_splits.append(new_split)
+
+        # Check there are no incompatible or duplicate values
+        for split in new_splits:
+            if not "value" in split or (split.get("value") != "true" and split.get("value") != "false"):
+                raise ValueError("Error in split %s : for columns of type boolean, each split must have a value that can be only equal to 'true' or 'false'." % split)
+        values = [split["value"] for split in new_splits]
+        if len(values) != len(set(values)):
+            raise DataikuException("Error : duplicates found in list of splits.")
+
+
+        # Complete the splits by adding a value true and false if missing, and drop data for missing lines
+        if all(item.get("value") != "true" for item in new_splits):
+            new_splits.append({
+                'output': {
+                    'mode': 'drop'
+                },
+                'value': 'true'
+            })
+
+        if all(item.get("value") != "false" for item in new_splits):
+            new_splits.append({
+                'output': {
+                    'mode': 'drop'
+                },
+                'value': 'false'
+            })
+
+        # we want in the UI to always have true in first position
+        if new_splits[0].get("value") == "false":
+            new_splits.reverse()
+
+        return self._format_splits(new_splits, ["value"])
+
+    def _format_range_splits(self, column_type, column_name, splits):
+        """
+        Helper method to format input range splits as used by the recipe
+
+        :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
+        :param str column_name: name of the column used as reference to split records
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled
+            each split is a dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
+            * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
+        :return: The formatted splits.
+        :rtype: list
+        """
+        split_as_filters = []
+        for range_obj in splits:
+            filters = []
+
+            if (column_type == 'date' or column_type=='datetime') and (not 'min' in range_obj or not 'max' in range_obj):
+                raise DataikuException("Error in range split %s : for date or datetime columns, each range split must have a min and a max bound" % range_obj)
+
+            filter_obj = self._format_range_split_as_filter(SplitRecipeSettings.FieldName.MIN, column_type, column_name, range_obj)
+            if filter_obj is not None:
+                filters.append(filter_obj)
+
+            filter_obj = self._format_range_split_as_filter(SplitRecipeSettings.FieldName.MAX, column_type, column_name, range_obj)
+            if filter_obj is not None:
+                filters.append(filter_obj)
+
+            range_filter = DSSFilter.of_and_conditions(filters)
+
+            formatted_range_obj = {
+                'output': range_obj.get('output', None),
+                'filter': range_filter
+            }
+            split_as_filters.append(formatted_range_obj)
+        return self._format_splits(split_as_filters, ["filter"])
+
+    class FieldName(object):
+        MIN = "min"
+        MAX = "max"
+
+    def _format_range_split_as_filter(self, field_name, column_type, column_name, split):
+        """
+        Helper method to format an input splits as a filter (min or max). If the conditions are not met to create a filter, returns None.
+
+        :param FieldName field_name: min or max, to define if the filter is a greater than or lower than type
+        :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
+        :param str column_name: name of the column used as reference to split records
+        :param dict split: dict with the following keys :
+             * **output** : dict that dictates the behavior of this split with the following values :
+                * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+                    * if set to 'drop', all the data that matches the conditions of this split are dropped
+                    * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
+                    * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+                * **value** : bool|str|None depending on the value of **mode**
+            * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
+            * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
+            * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
+        :return: An individual filter or None.
+        :rtype: DSSFilter or None
+        """
+
+        if not field_name in split:
+            return None
+
+        if not field_name in [SplitRecipeSettings.FieldName.MIN, SplitRecipeSettings.FieldName.MAX]:
+            raise ValueError("Invalid field %s to format as filter." % field_name)
+
+        value = split[field_name]
+        if column_type == 'num':
+            if field_name == SplitRecipeSettings.FieldName.MIN:
+                operator = DSSFilterOperator.GREATER_OR_EQUAL_NUMBER if split.get('include_min', True) else DSSFilterOperator.GREATER_NUMBER
+            elif field_name == SplitRecipeSettings.FieldName.MAX:
+                operator = DSSFilterOperator.LESS_OR_EQUAL_NUMBER if split.get('include_max', True) else DSSFilterOperator.LESS_NUMBER
+            filter_obj = DSSFilter.condition(column_name, operator, num=value)
+        elif column_type == 'date':
+            if field_name == SplitRecipeSettings.FieldName.MIN:
+                operator = DSSFilterOperator.GREATER_OR_EQUAL_DATE if split.get('include_min', True) else DSSFilterOperator.GREATER_DATE
+            elif field_name == SplitRecipeSettings.FieldName.MAX:
+                operator = DSSFilterOperator.LESS_OR_EQUAL_DATE if split.get('include_max', True) else DSSFilterOperator.LESS_DATE
+
+            if isinstance(value, datetime.datetime):
+                dt = value.astimezone(datetime.timezone.utc)
+            elif isinstance(value, datetime.date):
+                dt = value
+            elif isinstance(value, str):
+                dt = self._parse_date_str_as_date(value).astimezone(datetime.timezone.utc)
+            else:
+                raise ValueError("for column_type date, %s can only be of type str, date or datetime." % field_name)
+            date = dt.strftime('%Y-%m-%d')
+            filter_obj = DSSFilter.condition(column_name, operator, date=date, time="00:00")
+        elif column_type == 'datetime':
+            if field_name == SplitRecipeSettings.FieldName.MIN:
+                operator = DSSFilterOperator.GREATER_OR_EQUAL_DATE if split.get('include_min', True) else DSSFilterOperator.GREATER_DATE
+            elif field_name == SplitRecipeSettings.FieldName.MAX:
+                operator = DSSFilterOperator.LESS_OR_EQUAL_DATE if split.get('include_max', True) else DSSFilterOperator.LESS_DATE
+
+            if isinstance(value, datetime.datetime):
+                dt = value
+            elif isinstance(value, datetime.date):
+                dt = datetime.datetime.combine(value, datetime.time(0, 0, 0), tzinfo=datetime.timezone.utc)
+            elif isinstance(value, str):
+                dt = self._parse_date_str_as_date(value)
+            else:
+                raise ValueError("for column_type datetime, %s can only be of type str, date or datetime." % field_name)
+            date = dt.astimezone(datetime.timezone.utc).strftime('%Y-%m-%d')
+            time = dt.astimezone(datetime.timezone.utc).strftime('%H:%M')
+            filter_obj = DSSFilter.condition(column_name, operator, date=date, time=time)
+        else:
+            raise DataikuException("column_type can only be equal to date, datetime or num.")
+        return filter_obj
+
+    def _parse_date_str_as_date(self, date_str):
+        """
+        Helper method to read a string and return a date
+
+        :param str date_str: The date to be parsed
+        :return: The date parsed as a datetime
+        :rtype: datetime
+        """
+        dt = dateutil.parser.isoparse(date_str)
+        if dt.tzinfo is None:
+            # Assume naive datetimes are already in UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+
+        return dt
+
+class SplitRecipeCreator(_MultipleOutputRecipeCreator):
     """
     Create a Split recipe
 
@@ -2061,10 +2643,7 @@ class SplitRecipeCreator(DSSRecipeCreator):
         Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
     """
     def __init__(self, name, project):
-        DSSRecipeCreator.__init__(self, "split", name, project)
-
-    def _finish_creation_settings(self):
-        pass
+        _MultipleOutputRecipeCreator.__init__(self, "split", name, project)
 
 
 class DownloadRecipeSettings(DSSRecipeSettings):
@@ -2382,7 +2961,7 @@ class _BaseEmbedRecipeCreator(DSSRecipeCreator):
 
         if isinstance(embedding_llm, DSSLLM):
             self.creation_settings["embeddingLLMId"] = embedding_llm.llm_id
-        elif isinstance(embedding_llm, DSSLLM):
+        elif isinstance(embedding_llm, DSSLLMListItem):
             self.creation_settings["embeddingLLMId"] = embedding_llm.id
         elif isinstance(embedding_llm, str):
             self.creation_settings["embeddingLLMId"] = embedding_llm
@@ -2435,7 +3014,7 @@ class EmbedDocumentsRecipeCreator(_BaseEmbedRecipeCreator):
     def with_vlm(self, vlm):
         if isinstance(vlm, DSSLLM):
             self.creation_settings["VLMId"] = vlm.llm_id
-        elif isinstance(vlm, DSSLLM):
+        elif isinstance(vlm, DSSLLMListItem):
             self.creation_settings["VLMId"] = vlm.id
         elif isinstance(vlm, str):
             self.creation_settings["VLMId"] = vlm
@@ -2443,7 +3022,24 @@ class EmbedDocumentsRecipeCreator(_BaseEmbedRecipeCreator):
             raise Exception("Unknown VLM LLM: %s" % vlm)
         return self
 
+class ExtractContentRecipeSettings(DSSRecipeSettings):
+    pass
 
+class ExtractContentRecipeCreator(SingleOutputRecipeCreator):
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'extract_content', name, project)
+
+    def with_vlm(self, vlm):
+        if isinstance(vlm, DSSLLM):
+            self.creation_settings["VLMId"] = vlm.llm_id
+        elif isinstance(vlm, DSSLLMListItem):
+            self.creation_settings["VLMId"] = vlm.id
+        elif isinstance(vlm, str):
+            self.creation_settings["VLMId"] = vlm
+        else:
+            raise Exception("Unknown VLM LLM: %s" % vlm)
+        return self
 
 #####################################################
 # Per-recipe-type classes: Other recipes
@@ -2648,7 +3244,7 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
 
     .. code-block:: python
 
-        # Create a new evaluation recipe outputing to a new dataset, to a metrics dataset and/or to a model evaluation store
+        # Create a new evaluation recipe outputing to a new dataset, to a metrics dataset and/or to an LLM evaluation store
 
         project = client.get_project("MYPROJECT")
         builder = project.new_recipe("nlp_llm_evaluation", "myrecipe")
@@ -2656,7 +3252,7 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
 
         builder.with_output("output_scored")
         builder.with_output_metrics("output_metrics")
-        builder.with_output_evaluation_store(evaluation_store_id)
+        builder.with_output_evaluation_store(<llm_evaluation_store_id>)
 
         new_recipe = builder.build()
 
@@ -2673,9 +3269,13 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
         payload["groundTruthColumnName"] = "ground_truth"
         payload["contextColumnName"] = "context"
 
-        payload["completionLMMId"] = <your_llm_id>
+        payload["completionLLMId"] = <your_llm_id>
         payload["embeddingLLMId"] = <your_llm_id>
-        payload["envSelection"] = {"envName": <code_env_name>, "envMode": "EXPLICIT_ENV"}
+
+        recipe_settings.get_recipe_params()["envSelection"] = {
+            "envMode": "EXPLICIT_ENV",
+            "envName": <code_env_name>,
+        }
 
         payload["metrics"] = ["answerRelevancy", "faithfulness"]
 
@@ -2703,7 +3303,7 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
         builder.with_store_into(connection)
         dataset = builder.create()
 
-        evaluation_store_id = project.create_model_evaluation_store("mes").mes_id
+        llm_evaluation_store_id = project.create_evaluation_store(<llm_evaluation_store_name>, "LLM").id
     """
 
     def __init__(self, name, project):
@@ -2713,25 +3313,128 @@ class LLMEvaluationRecipeCreator(DSSRecipeCreator):
         """
         Set the output dataset containing the evaluation dataset scored row by row
 
-        :param string output_id: name of the dataset
+        :param string output_id: name of an existing dataset
+        :param boolean append: whether the recipe should append or overwrite the output when running. Defaults to False.
         """
         return self._with_output(output_id, append, role)
 
-    def with_output_metrics(self, name):
+    def with_output_metrics(self, metrics_dataset_name, append=True):
         """
         Set the output dataset containing the metrics
 
-        :param string name: name of an existing dataset
+        :param string metrics_dataset_name: name of an existing dataset
+        :param boolean append: whether the recipe should append or overwrite the output when running. Defaults to True.
         """
-        return self._with_output(name, role="metrics")
+        return self._with_output(metrics_dataset_name, append, role="metrics")
 
-    def with_output_evaluation_store(self, mes_id):
+    def with_output_evaluation_store(self, evaluation_store_id):
         """
         Set the output evaluation store
 
-        :param string mes_id: identifier of a model evaluation store
+        :param string evaluation_store_id: identifier of an LLM evaluation store
         """
-        return self._with_output(mes_id, role="evaluationStore")
+        return self._with_output(evaluation_store_id, role="evaluationStore")
+
+
+class AgentEvaluationRecipeCreator(DSSRecipeCreator):
+    """
+    Create a new Agent Evaluation recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()` instead.
+
+    Usage example:
+
+    .. code-block:: python
+
+        # Create a new agent evaluation recipe outputing to a new dataset, to a metrics dataset and/or to an agent evaluation store
+
+        project = client.get_project(<project_key>)
+        builder = (
+            project.new_recipe("nlp_agent_evaluation", <recipe_name>)
+            .with_input(<input_dataset_name>)
+            .with_output(<output_dataset_name>)
+            .with_output_metrics(<metrics_dataset_name>)
+            .with_output_evaluation_store(<agent_evaluation_store_id>)
+        )
+        new_recipe = builder.create()
+
+        # Access the settings
+
+        recipe_settings = new_recipe.get_settings()
+        payload = recipe_settings.obj_payload
+
+        # Change the settings
+
+        payload["inputFormat"] = "PROMPT_RECIPE"
+        payload["groundTruthColumnName"] = <ground_truth_column_name>
+        payload["referenceToolCallsColumnName"] = <reference_tool_calls_column_name>
+
+        payload["completionLLMId"] = <your_llm_id>
+        payload["embeddingLLMId"] = <your_llm_id>
+
+        recipe_settings.get_recipe_params()["envSelection"] = {
+            "envMode": "EXPLICIT_ENV",
+            "envName": <code_env_name>,
+        }
+
+        payload["metrics"] = ["toolCallExactMatch", "toolCallPartialMatch", "toolCallPrecisionRecallF1", "agentGoalAccuracyWithoutReference"]
+
+        # Manage evaluation labels
+
+        payload["labels"] = [dict(key="label_1", value="value_1"), dict(key="label_2", value="value_2")]
+
+        # Save the settings, update the schema and run the recipe
+
+        recipe_settings.save()
+        new_recipe.compute_schema_updates().apply()
+
+        new_recipe.run()
+
+    Outputs must exist. They can be created using the following:
+
+    .. code-block:: python
+
+        builder = project.new_managed_dataset(<output_dataset_name>)
+        builder.with_store_into(<connection_name>)
+        dataset = builder.create()
+
+        builder = project.new_managed_dataset(<metrics_dataset_name>)
+        builder.with_store_into(<connection_name>)
+        dataset = builder.create()
+
+        agent_evaluation_store_id = project.create_evaluation_store(<agent_evaluation_store_name>, "AGENT").id
+    """
+
+    def __init__(self, name, project):
+        DSSRecipeCreator.__init__(self, "nlp_agent_evaluation", name, project)
+
+    def with_output(self, output_id, append=False, role="main"):
+        """
+        Set the output dataset containing the evaluation dataset scored row by row
+
+        :param string output_id: name of an existing dataset
+        :param boolean append: whether the recipe should append or overwrite the output when running. Defaults to False.
+        """
+        return self._with_output(output_id, append, role)
+
+    def with_output_metrics(self, metrics_dataset_name, append=True):
+        """
+        Set the output dataset containing the metrics
+
+        :param string metrics_dataset_name: name of an existing dataset
+        :param boolean append: whether the recipe should append or overwrite the output when running. Defaults to True.
+        """
+        return self._with_output(metrics_dataset_name, append, role="metrics")
+
+    def with_output_evaluation_store(self, evaluation_store_id):
+        """
+        Set the output evaluation store
+
+        :param string evaluation_store_id: identifier of an agent evaluation store
+        """
+        return self._with_output(evaluation_store_id, role="evaluationStore")
 
 
 class StandaloneEvaluationRecipeCreator(DSSRecipeCreator):
