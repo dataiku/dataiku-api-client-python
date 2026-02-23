@@ -2174,19 +2174,23 @@ class SplitRecipeSettings(DSSRecipeSettings):
         In this mode, records are mapped to a given output dataset based on the value of the column column_name
 
         :param str column_name: name of the column used as reference to split records
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **value** : condition to map the record to the given output dataset, which is if the record's **column_name** value is the same as **value**
         :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
         :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
         """
-
         dataset = self.project.get_dataset(self.get_flat_input_refs()[0])
         schema_column = next((item for item in dataset.get_schema()['columns'] if item.get("name") == column_name), None)
         if schema_column is None:
@@ -2207,20 +2211,29 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         :param str column_name: name of the column used as reference to split records
         :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
             * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
-        :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
-        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
+
+        :param integer default_output_index: All remaining rows that are put in the Dataset
+            corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
+
+        :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output.
+            If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
         """
         self.obj_payload["mode"] = "RANGE"
         self.obj_payload["column"] = column_name
@@ -2234,15 +2247,22 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         In this mode, records are mapped randomly to a given output dataset based on a ratio of data to be dispatched
 
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+
         :param integer seed: Seed used to initialize the random number generator.
         :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
         :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
@@ -2263,15 +2283,21 @@ class SplitRecipeSettings(DSSRecipeSettings):
         Grouping keys must take sufficiently diverse values, otherwise the split cannot be fair.
 
         :param list random_columns: list of string corresponding to the list of input columns to group on.
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+
         :param integer seed: Seed used to initialize the random number generator.
         :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
         :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
@@ -2290,15 +2316,21 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         Use the methods on :class:`dataikuapi.dss.utils.DSSFilter` to build filter definition.
 
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **filter** : DSSFilter filter object to be constructed from the static methods in the helper class dataikuapi.dss.utils.DSSFilter
+
         :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If both default_output_index and default_output are unset, the data is dropped.
         :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
         """
@@ -2312,19 +2344,28 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         In this mode, records are ordered based on the column name and order listed in centile_orders, then mapped to a given output dataset based on a ratio of data to be dispatched
 
-        :param list centile_orders: list of columns data are ordered by before being dispatched to output datasets
-            each centile_order is a dict with the following keys :
+        :param list centile_orders: list of columns data are ordered by before being dispatched to output datasets.
+
+            Each centile_order is a dict with the following keys :
+
             * **column** : name of the column used as reference to order records
             * **desc** : if true, the data is ordered in descending order, otherwise in ascending order
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **share** : float between 0 and 100 that describes the ratio of records to be mapped to this dataset
+
         :param integer default_output_index: All remaining rows that are put in the Dataset corresponding to the default_output_index. If set to None, the data is dropped.
         :param str default_output: All remaining rows that are put in the Dataset whose name corresponds to the default_output. If set but no dataset name matches, raises an Exception. If both default_output_index and default_output are unset, the data is dropped.
         """
@@ -2347,11 +2388,15 @@ class SplitRecipeSettings(DSSRecipeSettings):
         Helper method to get the index for a split from its mode and value
 
         * **output** : dict that dictates the behavior of this split with the following values :
+
             * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                 * if set to 'drop', all the data that matches the conditions of this split are dropped
                 * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                 * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
             * **value** : bool|str|None depending on the value of **mode**
+
         :param list available_outputs: list of all the available output datasets of the recipe.
         :return: The index of the output dataset.
         :rtype: int
@@ -2410,15 +2455,21 @@ class SplitRecipeSettings(DSSRecipeSettings):
         """
         Helper method to format input splits as used by the recipe
 
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
             * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * [**keys**] : list of keys in the dict corresponding to conditions for the split to be satisfied, depending on the mode of split recipe used.
+
         :param list keys: list of dict keys to be copied in the newly created splits
         :return: The formatted splits.
         :rtype: list
@@ -2442,14 +2493,19 @@ class SplitRecipeSettings(DSSRecipeSettings):
         Splits that did not exist are dropped
 
         :param str column_type: type of the column the data is formatted to
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
             * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
         :return: The formatted splits.
         :rtype: list
         """
@@ -2504,18 +2560,24 @@ class SplitRecipeSettings(DSSRecipeSettings):
 
         :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
         :param str column_name: name of the column used as reference to split records
-        :param list splits: list of datasets data are mapped to when conditions are fulfilled
-            each split is a dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+        :param list splits: list of datasets data are mapped to when conditions are fulfilled.
+            Each split is a dict with the following keys :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
             * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
+
         :return: The formatted splits.
         :rtype: list
         """
@@ -2555,16 +2617,22 @@ class SplitRecipeSettings(DSSRecipeSettings):
         :param str column_type: type of the column used as reference to split records, can only be date, datetime or num
         :param str column_name: name of the column used as reference to split records
         :param dict split: dict with the following keys :
-             * **output** : dict that dictates the behavior of this split with the following values :
+
+            * **output** : dict that dictates the behavior of this split with the following values :
+
                 * **mode** : str that can only be equal to 'drop', 'dataset' or 'index'.
+
                     * if set to 'drop', all the data that matches the conditions of this split are dropped
                     * if set to 'dataset', all the data that matches the conditions of this split are sent to the dataset with the name of **value**
                     * if set to 'index', all the data that matches the conditions of this split are dispatched to the dataset at the index of **value**
+
                 * **value** : bool|str|None depending on the value of **mode**
+
             * **min** : lower bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **max** : upper bound of the range split, can be a number, a date, a datetime or a string with format %Y-%m-%d %H:%M or %Y-%m-%d, and must correspond to the type set in column_type
             * **include_min** (optional) : if true, the lower bound value is included in the range split, true by default
             * **include_max** (optional) : if true, the upper bound value is included in the range split, true by default
+
         :return: An individual filter or None.
         :rtype: DSSFilter or None
         """
