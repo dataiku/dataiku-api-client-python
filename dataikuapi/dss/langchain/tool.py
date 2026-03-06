@@ -1,3 +1,4 @@
+import textwrap
 import warnings
 from typing import Optional, Callable, Literal, Type, Any, Dict
 
@@ -31,6 +32,7 @@ class DKUStructuredTool(StructuredTool):
     def dku_from_function(
         cls,
         func: Optional[Callable] = None,
+        coroutine: Optional[Callable] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
         return_direct: bool = False,
@@ -96,12 +98,12 @@ class DKUStructuredTool(StructuredTool):
         name = name or source_function.__name__
         if args_schema is None and infer_schema:
             # schema name is appended within function
-            args_schema = create_schema_from_function(
+            args_schema = create_schema_from_function(  # noqa: F821
                 name,
                 source_function,
                 parse_docstring=parse_docstring,
                 error_on_invalid_docstring=error_on_invalid_docstring,
-                filter_args=_filter_schema_args(source_function),
+                filter_args=_filter_schema_args(source_function),  # noqa: F821
             )
         description_ = description
         if description is None and not parse_docstring:
