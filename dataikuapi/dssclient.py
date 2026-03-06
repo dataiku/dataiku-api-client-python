@@ -21,6 +21,7 @@ from .dss.future import DSSFuture
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
+from .dss.businessapp import DSSBusinessApp, DSSBusinessAppListItem
 from .dss.plugin import DSSPlugin
 from .dss.admin import DSSGlobalApiKeyListItem, DSSPersonalApiKeyListItem, DSSUser, DSSUserActivity, DSSOwnUser, DSSGroup, DSSUserInfo, DSSGroupInfo, DSSConnection, DSSConnectionListItem, DSSGeneralSettings, DSSCodeEnv, DSSGlobalApiKey, DSSCluster, DSSCodeStudioTemplate, DSSCodeStudioTemplateListItem, DSSGlobalUsageSummary, DSSInstanceVariables, DSSPersonalApiKey, DSSAuthorizationMatrix, DSSLLMCostLimitingCounters
 from .dss.messaging_channel import DSSMailMessagingChannel, DSSMessagingChannelListItem, DSSMessagingChannel, SMTPMessagingChannelCreator, AWSSESMailMessagingChannelCreator, MicrosoftGraphMailMessagingChannelCreator, SlackMessagingChannelCreator, MSTeamsMessagingChannelCreator, GoogleChatMessagingChannelCreator, TwilioMessagingChannelCreator, ShellMessagingChannelCreator
@@ -33,6 +34,7 @@ from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
+from .dss.enterprise_asset_library import DSSEnterpriseAssetLibrary
 import os.path as osp
 from .utils import dku_basestring_type, handle_http_exception
 from .govern_client import GovernClient
@@ -273,6 +275,56 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.app.DSSApp` to interact with this project
         """
         return DSSApp(self, app_id)
+
+    ########################################################
+    # Business Applications
+    ########################################################
+
+    def list_business_apps(self, as_type="listitems"):
+        """
+        List the installed Business Applications.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+
+        :returns: The list of the Business Applications. If "as_type" is "listitems", each one as a
+                  :class:`dataikuapi.dss.businessapp.DSSBusinessAppListItem`.
+                  If "as_type" is "objects", each one as a :class:`dataikuapi.dss.businessapp.DSSBusinessApp`
+        :rtype: list
+        """
+        items = self._perform_json("GET", "/business-apps/")
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSBusinessAppListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSBusinessApp(self, item["id"]) for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_business_app(self, business_app_id):
+        """
+        Get a handle to interact with a specific Business Application.
+
+        :param str business_app_id: the id of the desired Business Application
+        :returns: A :class:`dataikuapi.dss.businessapp.DSSBusinessApp` to interact with this Business Application
+        :rtype: :class:`dataikuapi.dss.businessapp.DSSBusinessApp`
+        """
+        return DSSBusinessApp(self, business_app_id)
+
+    def install_business_app_from_archive(self, fp):
+        """
+        Install or upgrade a Business Application from a zip archive.
+        Code-env creation must be done separately by calling DSSClient.create_code_env.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        :param object fp: A file-like object pointing to a Business Application zip
+        :return: a future representing the installation/upgrade process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        files = {'file': fp}
+        resp = self._perform_json("POST", "/business-apps/install-from-archive", files=files)
+        return DSSFuture.from_resp(self, resp)
 
     ########################################################
     # Plugins
@@ -908,7 +960,7 @@ class DSSClient(object):
 
             env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
 
-        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV` or `DOCUMENT_EXTRACTION_CODE_ENV`.
+        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV`, `DOCUMENT_EXTRACTION_CODE_ENV`, `DOCUMENT_TEMPLATING_CODE_ENV`.
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :param bool wait: wait for the code env to be created or return a future
@@ -1699,6 +1751,25 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
         return DSSFuture.from_resp(self, resp)
 
+    def install_jupyter_support(self):
+        """
+        Install or reinstall jupyter kernels support for all container configurations
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/install-jupyter-support")
+        return DSSFuture.from_resp(self, resp)
+
+    def remove_jupyter_support(self):
+        """
+        Remove jupyter kernels support for all container configurations
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/remove-jupyter-support")
+        return DSSFuture.from_resp(self, resp)
+
+
 
     ########################################################
     # Global Instance Info
@@ -2262,6 +2333,17 @@ class DSSClient(object):
         :rtype: DSSPermissionsCheckRequest
         """
         return DSSPermissionsCheckRequest(self)
+
+    ########################################################
+    # Enterprise Asset Library
+    ########################################################
+
+    def get_enterprise_asset_library(self):
+        """Gets a handle to work with the Enterprise Asset Library
+
+        :rtype: :class:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetLibrary`
+        """
+        return DSSEnterpriseAssetLibrary(self)
 
 
 class DSSPermissionsCheckRequest(object):

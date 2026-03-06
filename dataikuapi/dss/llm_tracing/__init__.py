@@ -94,6 +94,13 @@ class SpanBuilder:
             "outputs":  {}
         }
 
+    @staticmethod
+    def create_event(name):
+        sb = SpanBuilder(name)
+        ts = int(time.time() * 1000)
+        sb.span["timestamp"] = datetime.datetime.fromtimestamp(ts / 1000, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return sb
+
     def to_dict(self):
         if "begin" in self.span and not "end" in self.span:
             self.end(int(time.time() * 1000))
@@ -120,13 +127,18 @@ class SpanBuilder:
         self.span["children"].append(sub.span)
         return sub
 
+    def event(self, name):
+        event = self.create_event(name)
+        self.append_trace(event)
+        return event
+
     def append_trace(self, trace_to_append):
         if isinstance(trace_to_append, dict):
             self.span["children"].append(trace_to_append)
         elif isinstance(trace_to_append, SpanBuilder):
             self.span["children"].append(trace_to_append.to_dict())
         else:
-            raise Exception("Cannot happen trace of type %s" % type(trace_to_append))
+            raise Exception("Cannot append trace of type %s" % type(trace_to_append))
 
     def begin(self, begin_time):
         self._begin_ts = begin_time

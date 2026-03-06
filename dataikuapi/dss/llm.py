@@ -272,6 +272,20 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         self.cq["messages"].append(role_message)
         return self
 
+    def with_memory_fragment(self, memory_fragment):
+        """
+        Add a memory fragment to the completion query.
+
+        :param dict memory_fragment: The memory fragment returned by the model on the previous turn.
+        """
+        role_message = {
+            "role": "memoryFragment",
+            "memoryFragment": memory_fragment,
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
     def with_tool_calls(self, tool_calls, role="assistant"):
         """
         Add tool calls to the completion query.
@@ -289,6 +303,51 @@ class DSSLLMCompletionsQuerySingleQuery(object):
 
         self.cq["messages"].append(role_message)
         return self
+
+    def with_tool_validation_requests(self, tool_validation_requests):
+        """
+        Add tool validation requests to the completion query.
+
+        :param list[dict] tool_validation_requests: Validation requests for tools that the agent requested to use.
+        """
+        role_message = {
+            "role": "toolValidationRequests",
+            "toolValidationRequests": tool_validation_requests,
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
+    def with_tool_validation_response(self, validation_request_id, validated, arguments=None):
+        """
+        Add a tool validation response to the completion query.
+
+        :param str validation_request_id: The validation request id, as provided by the agent in the conversation messages.
+        :param bool validated: Whether to validate or reject the tool call.
+        :param str arguments: (optional) The arguments to use for the tool call. If None, uses the arguments from the validation request.
+        """
+        role_message = {
+            "role": "toolValidationResponses",
+            "toolValidationResponses": [{
+                "validationRequestId": validation_request_id,
+                "validated": validated,
+                "arguments": arguments,
+            }],
+        }
+
+        self.cq["messages"].append(role_message)
+        return self
+
+    def new_multipart_tool_output(self, tool_call_id, role="tool", output=""):
+        """
+        Start adding a multipart tool output to the completion query.
+
+        :param str tool_call_id: The tool call id, as provided by the LLM in the conversation messages.
+        :param str role: The message role. Defaults to ``tool``.
+        :param str output: The tool's output. Defaults to an empty string.
+        :rtype: :class:`DSSLLMCompletionQueryMultipartToolOutput`
+        """
+        return DSSLLMCompletionQueryMultipartToolOutput(self, tool_call_id, role, output)
 
     def with_tool_output(self, tool_output, tool_call_id, role="tool"):
         """
@@ -531,16 +590,9 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         return DSSLLMCompletionsResponse(ret["responses"], response_parser=self._response_parser)
 
 
-class DSSLLMCompletionQueryMultipartMessage(object):
-    """
-      .. important::
-        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or
-        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message`.
-
-    """
-    def __init__(self, q, role):
-        self.q = q
-        self.msg = {"role": role, "parts" : []}
+class DSSLLMCompletionQueryMultipartBuilder(object):
+    def __init__(self):
+        self.parts = []
 
     @staticmethod
     def _encode_image(image):
@@ -556,7 +608,7 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         """
         Add a text part to the multipart message
         """
-        self.msg["parts"].append({"type": "TEXT", "text": text})
+        self.parts.append({"type": "TEXT", "text": text})
         return self
 
     def with_inline_image(self, image, mime_type=None):
@@ -576,7 +628,7 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         if mime_type is not None:
             part["imageMimeType"] = mime_type
 
-        self.msg["parts"].append(part)
+        self.parts.append(part)
         return self
 
     def with_captioned_image_inline(self, caption, image, mime_type=None):
@@ -613,11 +665,51 @@ class DSSLLMCompletionQueryMultipartMessage(object):
         :param image: str the image url
         """
 
-        self.msg["parts"].append({"type": "IMAGE_URI", "imageUrl": image})
+        self.parts.append({"type": "IMAGE_URI", "imageUrl": image})
         return self
+
+
+class DSSLLMCompletionQueryMultipartMessage(DSSLLMCompletionQueryMultipartBuilder):
+    """
+      .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or
+        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_message`.
+
+    """
+    def __init__(self, q, role):
+        super().__init__()
+        self.q = q
+        self.msg = {"role": role, "parts" : []}
 
     def add(self):
         """Add this message to the completion query"""
+        self.msg["parts"].extend(self.parts)
+        self.q.cq["messages"].append(self.msg)
+        return self.q
+
+
+class DSSLLMCompletionQueryMultipartToolOutput(DSSLLMCompletionQueryMultipartBuilder):
+    """
+      .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_tool_output` or
+        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuerySingleQuery.new_multipart_tool_output`.
+
+    """
+    def __init__(self, q, tool_call_id, role, output):
+        super().__init__()
+        self.q = q
+        self.msg = {
+            "role": role,
+            "toolOutputs": [{
+                "callId": tool_call_id,
+                "output": output,
+                "parts": [],
+            }],
+        }
+
+    def add(self):
+        """Add this tool output to the completion query"""
+        self.msg["toolOutputs"][-1]["parts"].extend(self.parts)
         self.q.cq["messages"].append(self.msg)
         return self.q
 
@@ -657,6 +749,10 @@ class DSSLLMStreamedCompletionFooter(object):
     @property
     def trace(self):
         return self.data.get("trace", None)
+
+    @property
+    def total_usage(self):
+        return self.data.get("totalUsage", None)
 
     def __repr__(self):
         return "<completion-footer: %s>" % self.data
@@ -781,6 +877,24 @@ class DSSLLMCompletionResponse(object):
         return self._raw.get("toolCalls")
 
     @property
+    def tool_validation_requests(self):
+        """
+        :return: The tool validation requests of the agent response.
+        :rtype: Union[list, None]
+        """
+        self._fail_unless_success()
+        return self._raw.get("toolValidationRequests")
+
+    @property
+    def memory_fragment(self):
+        """
+        :return: Data generated by the model that must be passed back in the next query.
+        :rtype: Union[dict, None]
+        """
+        self._fail_unless_success()
+        return self._raw.get("memoryFragment")
+
+    @property
     def log_probs(self):
         """
         :return: The log probs of the LLM response.
@@ -792,6 +906,10 @@ class DSSLLMCompletionResponse(object):
     @property
     def trace(self):
         return self._raw.get("trace", None)
+
+    @property
+    def total_usage(self):
+        return self._raw.get("totalUsage", None)
 
     def _fail_unless_success(self):
         if not self.success:
@@ -1136,6 +1254,14 @@ class DSSLLMImageGenerationResponse(object):
         """
         return self.get_images(as_type="bytes")
 
+    @property
+    def trace(self):
+        return self._raw.get("trace", None)
+
+    @property
+    def total_usage(self):
+        return self._raw.get("totalUsage", None)
+
 class DSSLLMRerankingQuery(object):
     """
     A handle to interact with a reranking query.
@@ -1216,8 +1342,8 @@ class DSSLLMRerankingResponse(object):
     @property
     def documents(self):
         """
-        The array of reranked documents.
-        :rtype: list[:class:`DSSLLMRerankingResponse.RankedDocument`]
+        :return: The array of reranked documents.
+        :rtype: list of :class:`DSSLLMRerankingResponse.RankedDocument`
         """
         if not self.success:
             raise Exception("Reranking request failed: %s" % self.error_message)

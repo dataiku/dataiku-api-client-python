@@ -1532,6 +1532,25 @@ class LightGBMSettings(PredictionAlgorithmSettings):
         self.use_bagging = self._register_single_value_hyperparameter("use_bagging", accepted_types=[bool])
 
 
+class TabICLSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(TabICLSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
+        self.class_shift = self._register_categorical_hyperparameter("class_shift")
+
+        self.norm_none = self._register_single_value_hyperparameter("norm_none", accepted_types=[bool])
+        self.norm_power = self._register_single_value_hyperparameter("norm_power", accepted_types=[bool])
+        self.norm_quantile = self._register_single_value_hyperparameter("norm_quantile", accepted_types=[bool])
+        self.norm_quantile_rtdl = self._register_single_value_hyperparameter("norm_quantile_rtdl", accepted_types=[bool])
+        self.norm_robust = self._register_single_value_hyperparameter("norm_robust", accepted_types=[bool])
+        self.random_state = self._register_single_value_hyperparameter("random_state")
+        self.n_jobs = self._register_single_value_hyperparameter("n_jobs")
+        self.batch_size = self._register_single_value_hyperparameter("batch_size")
+        self.softmax_temperature = self._register_single_value_hyperparameter("softmax_temperature")
+        self.outlier_threshold = self._register_single_value_hyperparameter("outlier_threshold")
+
+
 class XGBoostSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -2155,7 +2174,8 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
             "MLLIB_DECISION_TREE": PredictionAlgorithmMeta("mllib_dt", MLLibDecisionTreeSettings),
             "VERTICA_LINEAR_REGRESSION": PredictionAlgorithmMeta("vertica_linear_regression"),
             "VERTICA_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("vertica_logistic_regression"),
-            "KERAS_CODE": PredictionAlgorithmMeta("keras")
+            "KERAS_CODE": PredictionAlgorithmMeta("keras"),
+            "TABICL_CLASSIFICATION": PredictionAlgorithmMeta("tabicl_classification", TabICLSettings)
         }
 
     class PredictionTypes:
@@ -4059,6 +4079,60 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
                 "GET", "/projects/%s/savedmodels/%s/versions/%s/timeseries-residuals" %
                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version)
                 )
+
+        return res
+
+    def compute_permutation_importance(self, wait=True, n_iterations=None, per_identifier=None):
+        """
+        Launch computation of permutation importance for this trained timeseries model.
+
+        :param wait: a flag to wait for the operation to complete (defaults to **True**)
+        :returns: if wait is True, a dictionary, else a future to wait on the result
+        :rtype: Union[:class:`dict`, :class:`dataikuapi.dss.future.DSSFuture`]
+        """
+        computation_params = {}
+
+        if n_iterations is not None:
+            computation_params["permutationImportanceIterations"] = n_iterations
+
+        if per_identifier is not None:
+            computation_params["perIdentifierPermutationImportance"] = per_identifier
+
+        if self.mltask is not None:
+            future_response = self.mltask.client._perform_json(
+                "POST", "/projects/%s/models/lab/%s/%s/models/%s/timeseries-permutation-importance" %
+                        (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id), params={"computationParams":json.dumps(computation_params)}
+            )
+            future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
+        else:
+            future_response = self.saved_model.client._perform_json(
+                "POST", "/projects/%s/savedmodels/%s/versions/%s/timeseries-permutation-importance" %
+                        (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version), params={"computationParams":json.dumps(computation_params)}
+            )
+            future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+
+
+    def get_permutation_importance(self):
+        """
+        Retrieve the permutation importance for this trained time-series models
+
+        :returns: A dictionary
+        :rtype: dict
+        """
+        if self.mltask is not None:
+            res = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/timeseries-permutation-importance" %
+                       (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            res = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/timeseries-permutation-importance" %
+                       (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version)
+            )
 
         return res
 

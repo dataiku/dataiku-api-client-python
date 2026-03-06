@@ -774,7 +774,7 @@ class GovernClient(object):
     def get_blueprint_designer(self):
         """
         Return a handle to interact with the blueprint designer
-        Note: this call requires an API key with Govern manager rights
+        Note: this call requires an API key with Govern architect rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_blueprint_designer.GovernAdminBlueprintDesigner`
         """
@@ -787,7 +787,7 @@ class GovernClient(object):
     def get_roles_permissions_handler(self):
         """
         Return a handler to manage the roles and permissions of the Dataiku Govern instance
-        Note: this call requires an API key with Govern manager rights
+        Note: this call requires an API key with Govern architect rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_roles_permissions_handler.GovernAdminRolesPermissionsHandler`
         """
@@ -800,7 +800,7 @@ class GovernClient(object):
     def get_custom_pages_handler(self):
         """
         Return a handler to manage custom pages
-        Note: this call requires an API key with Govern manager rights
+        Note: this call requires an API key with Govern architect rights
 
         :rtype: A :class:`~dataikuapi.govern.admin_custom_pages_handler.GovernAdminCustomPagesHandler`
         """
@@ -897,7 +897,7 @@ class GovernClient(object):
         """
         Create a new time series and push a list of values inside it.
 
-        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timeSeriesId", "timestamp" (an epoch in milliseconds), and "value" (an object)
+        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timestamp" (an epoch in milliseconds), and "value" (an object)
         :return: the created time-series object
         :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
         """

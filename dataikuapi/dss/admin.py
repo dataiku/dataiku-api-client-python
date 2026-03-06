@@ -2266,7 +2266,7 @@ class DSSAutomationCodeEnvSettings(DSSCodeEnvSettings, DSSCodeEnvContainerConfsB
                 if version_id == version.get("versionId"):
                     return DSSAutomationCodeEnvVersionSettings(self.codeenv, version)
             raise Exception("Version %s not found in : %s" % (version_id, ', '.join(version_ids)))
-        elif deployment_mode in ['PLUGIN_NON_MANAGED', 'PLUGIN_MANAGED', 'AUTOMATION_NON_MANAGED_PATH', 'EXTERNAL_CONDA_NAMED']:
+        elif deployment_mode in ['PLUGIN_NON_MANAGED', 'PLUGIN_MANAGED', 'BUSINESS_APP_NON_MANAGED', 'BUSINESS_APP_MANAGED', 'AUTOMATION_NON_MANAGED_PATH', 'EXTERNAL_CONDA_NAMED']:
             return DSSAutomationCodeEnvVersionSettings(self.codeenv, self.settings.get('noVersion', {}))
         else:
             raise Exception("Unexpected deployment mode %s for an automation node code env. Alter the settings directly with get_raw()", deployment_mode)

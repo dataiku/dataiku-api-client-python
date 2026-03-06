@@ -8,3 +8,14 @@ from .apinode_admin_client import APINodeAdminClient
 from .dss.recipe import GroupingRecipeCreator, UpsertRecipeCreator, JoinRecipeCreator, StackRecipeCreator, WindowRecipeCreator, SyncRecipeCreator, SamplingRecipeCreator, SQLQueryRecipeCreator, CodeRecipeCreator, SplitRecipeCreator, SortRecipeCreator, TopNRecipeCreator, DistinctRecipeCreator, DownloadRecipeCreator, PredictionScoringRecipeCreator, ClusteringScoringRecipeCreator
 
 from .dss.admin import DSSUserImpersonationRule, DSSGroupImpersonationRule
+
+import sys
+import warnings
+
+if sys.version_info >= (3, 6):
+    from .launchpad_client import LaunchpadClient
+else:
+    warnings.warn(
+        "dataikuapi.LaunchpadClient is only available for Python 3.6 and above",
+        DeprecationWarning,
+    )
