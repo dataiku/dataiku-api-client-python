@@ -189,13 +189,13 @@ class DSSAgentVersionSettings(object):
         :rtype: :class:`str`
         """
         if not self._agent_settings.type == "TOOLS_USING_AGENT":
-            raise ValueError("Only valid for Visual Agents")
+            raise ValueError("Only valid for Simple Visual Agents")
         return self._version_settings["toolsUsingAgentSettings"]["llmId"]
 
     @llm_id.setter
     def llm_id(self, value):
         if not self._agent_settings.type == "TOOLS_USING_AGENT":
-            raise ValueError("Only valid for Visual Agents")
+            raise ValueError("Only valid for Simple Visual Agents")
         self._version_settings["toolsUsingAgentSettings"]["llmId"] = value
 
     @property
@@ -206,6 +206,8 @@ class DSSAgentVersionSettings(object):
         Each tool is a dict, containing at least "toolRef", which is the identifier of the tool.
         The dict may also contain "additionalDescription" which is added to the description of the tool
         """
+        if not self._agent_settings.type == "TOOLS_USING_AGENT":
+            raise ValueError("Only valid for Simple Visual Agents")
         return self._version_settings["toolsUsingAgentSettings"]["tools"]
 
 

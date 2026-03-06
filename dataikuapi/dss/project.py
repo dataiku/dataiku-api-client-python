@@ -2740,6 +2740,7 @@ class DSSProject(object):
             * FAISS *(not recommended)*
             * QDRANT_LOCAL *(not recommended)*
             * MILVUS_LOCAL
+            * MILVUS_REMOTE
 
         :param str embedding_llm_id: The id of the embedding LLM. It has to have the TEXT_EMBEDDING_EXTRACTION purpose.
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
@@ -2891,7 +2892,7 @@ class DSSProject(object):
         Create a new agent in the project, and return a handle to interact with it
 
         :param str name: The name for the new agent. This does not need to be unique
-        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT or TOOLS_USING_AGENT (Visual Agent)
+        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT, TOOLS_USING_AGENT or STRUCTURED_AGENT (Visual Agent)
         :param str plugin_agent_type: only if type=PLUGIN_AGENT, the id of the custom plugin component
 
         :returns: a :class:`dataikuapi.dss.agent.DSSAgent` handle to interact with the newly-created agent

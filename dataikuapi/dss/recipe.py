@@ -3,7 +3,7 @@ import datetime
 import dateutil.parser
 
 from ..utils import DataikuException
-from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, DSSFilterOperator, DSSFilter
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, DSSFilterOperator, DSSFilter, DSSInfoMessage
 from .discussion import DSSObjectDiscussions
 from .llm import DSSLLM, DSSLLMListItem
 from copy import deepcopy
@@ -2165,6 +2165,8 @@ class SplitRecipeSettings(DSSRecipeSettings):
         :return: The current split mode.
         :rtype: str
         """
+        if "mode" not in self.obj_payload:
+            raise DataikuException("Split mode not set yet, cannot be retrieved.")
         return self.obj_payload["mode"]
 
     def set_split_on_single_column_values(self, column_name, splits, default_output_index=None, default_output=None):

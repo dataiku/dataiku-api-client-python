@@ -1751,6 +1751,25 @@ class DSSClient(object):
         resp = self._perform_json("POST", "/admin/container-exec/actions/build-cde-plugins-image")
         return DSSFuture.from_resp(self, resp)
 
+    def install_jupyter_support(self):
+        """
+        Install or reinstall jupyter kernels support for all container configurations
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/install-jupyter-support")
+        return DSSFuture.from_resp(self, resp)
+
+    def remove_jupyter_support(self):
+        """
+        Remove jupyter kernels support for all container configurations
+
+        :return: A :class:`~dataikuapi.dss.future.DSSFuture` representing the build process
+        """
+        resp = self._perform_json("POST", "/admin/container-exec/actions/remove-jupyter-support")
+        return DSSFuture.from_resp(self, resp)
+
+
 
     ########################################################
     # Global Instance Info

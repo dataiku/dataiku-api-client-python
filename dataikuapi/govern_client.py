@@ -897,7 +897,7 @@ class GovernClient(object):
         """
         Create a new time series and push a list of values inside it.
 
-        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timeSeriesId", "timestamp" (an epoch in milliseconds), and "value" (an object)
+        :param list datapoints: (Optional) a list of Python dict - The list of datapoints as Python dict containing the following keys "timestamp" (an epoch in milliseconds), and "value" (an object)
         :return: the created time-series object
         :rtype: a :class:`~dataikuapi.govern.time_series.GovernTimeSeries`
         """

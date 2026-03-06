@@ -34,7 +34,7 @@ class GovernTimeSeries(object):
         """
         Push a list of values inside the time series.
 
-        :param list datapoints: a list of Python dict - The list of datapoints as Python dict containing the following keys "timeSeriesId", "timestamp" (an epoch in milliseconds), and "value" (an object)
+        :param list datapoints: a list of Python dict - The list of datapoints as Python dict containing the following keys "timestamp" (an epoch in milliseconds), and "value" (an object)
         :param boolean upsert: (Optional) If set to false, values for existing timestamps will not be overridden. Default value is True.
         :return: None
         """
