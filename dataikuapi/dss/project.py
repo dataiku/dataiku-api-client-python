@@ -1829,13 +1829,13 @@ class DSSProject(object):
         if template_ref is not None:
             if not isinstance(template_ref, DocumentRef):
                 raise ValueError("Unsupported template document ref type %s, document templating only supports DocumentRef objects", template_ref.type)
-            payload["templateRef"] = template_ref.as_json()
+            payload["templateRef"] = template_ref.as_dict()
 
         if output_ref is None:
             output_ref = InlineDocumentRef("", InlineDocumentRef.CONTENT_TYPE_PLAIN_TEXT)
         if not isinstance(output_ref, DocumentRef):
             raise ValueError("Unsupported output document ref type %s, document templating only supports DocumentRef objects", template_ref.type)
-        payload["destinationRef"] = output_ref.as_json()
+        payload["destinationRef"] = output_ref.as_dict()
 
         ret = self.client._perform_json(
             "POST",
@@ -2315,7 +2315,8 @@ class DSSProject(object):
             return recipe.EmbedDocumentsRecipeCreator(name, self)
         elif type == "extract_content":
             return recipe.ExtractContentRecipeCreator(name, self)
-
+        elif type == "prompt":
+            return recipe.PromptRecipeCreator(name, self)
 
     ########################################################
     # Flow
@@ -4005,13 +4006,13 @@ class DocumentTemplateRenderingResponse(object):
 
         document_ref = self._raw["documentRef"]
         if document_ref.get("type") == "managed_folder":
-            if not "managedFolderId" in document_ref:
-                raise Exception("No output managed folder id available in the document ref")
+            if not "managedFolderRef" in document_ref:
+                raise Exception("No output managed folder ref available in the document ref")
             if not "filePath" in document_ref:
                 raise Exception("No output file path available in the document ref")
             return ManagedFolderDocumentRef(
                 document_ref["filePath"],
-                document_ref["managedFolderId"],
+                document_ref["managedFolderRef"],
                 mime_type=document_ref.get("mimeType"))
         elif document_ref.get("type") == "inline_document":
             if not "content" in document_ref:
@@ -4037,7 +4038,7 @@ class DocumentTemplateRenderingResponse(object):
         document = self.document
         if isinstance(document, ManagedFolderDocumentRef):
             project = self.client.get_project(self.project_key)
-            folder = project.get_managed_folder(document.managed_folder_id)
+            folder = project.get_managed_folder(document.managed_folder_ref)
             response = folder.get_file(document.file_path)
             response.raise_for_status()
             if document.mime_type == "text/plain":

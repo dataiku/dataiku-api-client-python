@@ -1,9 +1,10 @@
 import base64
-
 import copy
 import json
+import warnings
 
 from dataikuapi.utils import _write_response_content_to_file
+
 
 class DocumentExtractor(object):
     """
@@ -51,14 +52,14 @@ class DocumentExtractor(object):
             extractor_request["inputs"] = {
                 "imagesRef": {
                     "type": images[0].type,
-                    "inlineImages": [ir.as_json() for ir in images]
+                    "inlineImages": [ir.as_dict() for ir in images]
                 }
             }
         elif all(isinstance(ir, ManagedFolderImageRef) for ir in images):
             extractor_request["inputs"] = {
                 "imagesRef": {
                     "type": images[0].type,
-                    "managedFolderId": images[0].managed_folder_id,
+                    "managedFolderRef": images[0].managed_folder_ref,
                     "imagesPaths": [ir.image_path for ir in images]
                 }
             }
@@ -102,12 +103,12 @@ class DocumentExtractor(object):
 
         extractor_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             },
             "settings": {
                 "maxSectionDepth": max_section_depth,
                 "imageValidation": image_validation,
-                "outputManagedFolderId": output_managed_folder,
+                "outputManagedFolderRef": output_managed_folder,
             }
         }
         if image_handling_mode == "IGNORE":
@@ -164,7 +165,7 @@ class DocumentExtractor(object):
 
         extractor_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             },
             "settings": {
             }
@@ -212,7 +213,7 @@ class DocumentExtractor(object):
             for idx, screenshot in enumerate(response):
                 if (idx % fetch_size == 0) and idx != 0:
                     print(f"Computing the next {fetch_size} screenshots")
-                print(f"Screenshot #{idx}: {screenshot.as_json()}")
+                print(f"Screenshot #{idx}: {screenshot.as_dict()}")
 
             # Alternatively, response being an iterable, you can compute & fetch all screenshots at once:
             response = doc_extractor.generate_pages_screenshots(document_ref)
@@ -275,12 +276,30 @@ class ScreenshotterRequest(object):
         self.fetch_size = fetch_size
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ScreenshotterRequest.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "inputs": {
-                "document": self.document.as_json(),
+                "document": self.document.as_dict(),
             },
             "settings": {
-                "outputManagedFolderId": self.output_managed_folder,
+                "outputManagedFolderRef": self.output_managed_folder,
                 "paginationOffset": self.offset,
                 "paginationSize": self.fetch_size,
             }
@@ -300,7 +319,7 @@ class ScreenshotterResponse(object):
         self.project_key = project_key
         self.screenshotter_request = screenshotter_request
         self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                       raw_body={"screenshotRequest": json.dumps(screenshotter_request.as_json())},
+                                                       raw_body={"screenshotRequest": json.dumps(screenshotter_request.as_dict())},
                                                        files={"file": screenshotter_request.document.file} if isinstance(screenshotter_request.document,
                                                                                                                          LocalFileDocumentRef) else None)
         self._fail_unless_success()
@@ -324,7 +343,7 @@ class ScreenshotterResponse(object):
             self.screenshotter_request.offset = screenshot_index
             self.screenshotter_request.document = self.document
             self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                           raw_body={"screenshotRequest": json.dumps(self.screenshotter_request.as_json())},
+                                                           raw_body={"screenshotRequest": json.dumps(self.screenshotter_request.as_dict())},
                                                            files={"file": self.document.file} if isinstance(self.document, LocalFileDocumentRef) else None)
             self._fail_unless_success()
             self._update_screenshot_list_at_index(screenshot_index)
@@ -335,7 +354,7 @@ class ScreenshotterResponse(object):
             res = [InlineImageRef(image["content"], image["mimeType"] if "mimeType" in image else None) for image in
                    self._current_data["imagesRefs"]["inlineImages"]]
         elif self._current_data["imagesRefs"]["type"] == "managed_folder":
-            res = [ManagedFolderImageRef(self._current_data["imagesRefs"]["managedFolderId"], path) for path in self._current_data["imagesRefs"]["imagesPaths"]]
+            res = [ManagedFolderImageRef(self._current_data["imagesRefs"]["managedFolderRef"], path) for path in self._current_data["imagesRefs"]["imagesPaths"]]
         else:
             raise ValueError("Did not return valid images ref")
         if not self.keep_fetched:
@@ -376,7 +395,9 @@ class ScreenshotterResponse(object):
         """
         doc_type = self._current_data.get("documentRef").get("type")
         if doc_type == "managed_folder":
-            return ManagedFolderDocumentRef(self._current_data.get("documentRef").get("filePath"), self._current_data.get("documentRef").get("managedFolderId"))
+            document_ref = self._current_data.get("documentRef")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get("managedFolderId")
+            return ManagedFolderDocumentRef(document_ref.get("filePath"), managed_folder_ref)
         if doc_type == "tmp_file":
             return _TmpDocumentRef(self._current_data.get("documentRef").get("tmpFileName"), self._current_data.get("documentRef").get("originalFileName"))
         else:
@@ -513,19 +534,19 @@ class StructuredExtractorResponse(object):
         """
 
         def _flatten_using_dfs(node, current_outline):
-            if not node or not "type" in node:
+            if not node or "type" not in node:
                 return []
             elif node["type"] == "text" or node["type"] == "table":
-                if not "text" in node or not node["text"]:
+                if "text" not in node or not node["text"]:
                     return []
                 return [{"text": node["text"], "outline": current_outline}]
             elif node["type"] == "image":
-                if not "description" in node or not node["description"]:
+                if "description" not in node or not node["description"]:
                     return []
                 return [{"text": node["description"], "outline": current_outline}]
             elif node["type"] not in ["document", "section", "slide"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
-            if not "content" in node:
+            if "content" not in node:
                 return []
             deeper_outline = copy.deepcopy(current_outline)
             if node["type"] == "section":
@@ -559,7 +580,7 @@ class PDFConversionResponse(object):
         self.path_in_output_folder = path_in_output_folder
         pdf_convert_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             }
         }
         if output_managed_folder is not None:
@@ -619,7 +640,9 @@ class PDFConversionResponse(object):
         if self.output_managed_folder is None:
             return None
         else:
-            return ManagedFolderDocumentRef(self._data.get("documentRef").get("filePath"), self._data.get("documentRef").get("managedFolderId"))
+            document_ref = self._data.get("documentRef")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get("managedFolderId")
+            return ManagedFolderDocumentRef(document_ref.get("filePath"), managed_folder_ref)
 
     @property
     def success(self):
@@ -685,7 +708,7 @@ class VlmExtractorResponse(object):
 
 
 class InputRef(object):
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -703,7 +726,7 @@ class DocumentRef(InputRef):
         self.type = None
         self.mime_type = mime_type
 
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -732,6 +755,19 @@ class LocalFileDocumentRef(DocumentRef):
         self.file = fp
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("LocalFileDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
         return {
             "type": self.type,
             "mimeType": self.mime_type,
@@ -758,6 +794,19 @@ class _TmpDocumentRef(DocumentRef):
         self.original_file_name = original_file_name
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("_TmpDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
         return {
             "type": self.type,
             "tmpFileName": self.tmp_file_name,
@@ -789,13 +838,36 @@ class ManagedFolderDocumentRef(DocumentRef):
         super(ManagedFolderDocumentRef, self).__init__(mime_type)
         self.type = "managed_folder"
         self.file_path = file_path
-        self.managed_folder_id = managed_folder_id
+        self.managed_folder_ref = managed_folder_id
+
+    @property
+    def managed_folder_id(self):
+        warnings.warn("ManagedFolderDocumentRef.managed_folder_id is deprecated, please use managed_folder_ref", DeprecationWarning)
+        return self.managed_folder_ref
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ManagedFolderDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
             "filePath": self.file_path,
-            "managedFolderId": self.managed_folder_id,
+            "managedFolderRef": self.managed_folder_ref,
             "mimeType": self.mime_type,
         }
 
@@ -818,6 +890,23 @@ class InlineDocumentRef(DocumentRef):
         self.content_type = content_type
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
             "content": self.content,
@@ -854,7 +943,7 @@ class ImageRef(InputRef):
         super(ImageRef, self).__init__()
         self.type = None
 
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -891,6 +980,24 @@ class InlineImageRef(ImageRef):
         self.mime_type = mime_type
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("InlineImageRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         res = {
             "type": self.type,
             "content": self.image
@@ -908,25 +1015,48 @@ class ManagedFolderImageRef(ImageRef):
 
     .. code-block:: python
 
-        managed_img = ManagedFolderImageRef('managed_folder_id', 'path_in_folder/image.png')
+        managed_img = ManagedFolderImageRef('managed_folder_ref', 'path_in_folder/image.png')
 
         # Extract a text summary from the image using a vision LLM:
         resp = doc_ex.vlm_extract([managed_img], 'llm_id')
     """
 
-    def __init__(self, managed_folder_id, image_path):
+    def __init__(self, managed_folder_ref, image_path):
         """
-        :param str managed_folder_id: identifier of the folder containing the image
+        :param str managed_folder_ref: identifier of the folder containing the image
         :param str image_path: path to the image file inside the managed folder
         """
         super(ManagedFolderImageRef, self).__init__()
         self.type = "managed_folder"
-        self.managed_folder_id = managed_folder_id
+        self.managed_folder_ref = managed_folder_ref
         self.image_path = image_path
 
+    @property
+    def managed_folder_id(self):
+        warnings.warn("ManagedFolderImageRef.managed_folder_id is deprecated, please use managed_folder_ref", DeprecationWarning)
+        return self.managed_folder_ref
+
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ManagedFolderImageRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
-            "managedFolderId": self.managed_folder_id,
+            "managedFolderRef": self.managed_folder_ref,
             "imagePath": self.image_path
         }
