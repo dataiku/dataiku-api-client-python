@@ -259,6 +259,8 @@ class DSSRecipe(object):
             return EmbedDocumentsRecipeSettings(self, data)
         elif type == "extract_content":
             return ExtractContentRecipeSettings(self, data)
+        elif type == "prompt":
+            return PromptRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)
 
@@ -3636,3 +3638,95 @@ class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
         :param string model_id: identifier of a saved model
         """
         return self._with_input(model_id, self.project.project_key, "model")
+
+
+class PromptRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a Prompt recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+
+    A Prompt recipe allows you to use Large Language Models (LLMs) to process
+    dataset rows, typically for tasks like text summarization, classification,
+    or information extraction.
+
+    The payload of this recipe is a JSON object containing the prompt
+    template, the selected LLM, and various generation parameters
+    """
+    pass
+
+class PromptRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Helper to create a new Prompt recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()`
+        with type 'prompt' instead.
+
+    Usage example:
+
+    .. code-block:: python
+
+        project = client.get_project("MYPROJECT")
+        builder = project.new_recipe("prompt", "my_prompt_recipe")
+
+        # Define the input dataset and the LLM to use
+        builder.with_input("input_dataset")
+
+        # Define the llm to use, it can be an agent or simply an llm
+        builder.with_llm("my-gpt-4-connection")
+        # or using an agent, ra-llm or finetuned model like this
+        builder.with_llm("agent:agentid")
+
+        A `DSSLLMListItem` or `DSSLLM` is also supported as input for `with_llm`
+
+        # Create a new output dataset for the results
+        builder.with_new_output("output_dataset", connection="filesystem_managed")
+
+        recipe = builder.create()
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'prompt', name, project)
+
+    def with_llm(self, llm):
+        """
+        Sets the LLM to be used by the recipe.
+
+        :param llm: the LLM to use. Can be a :class:`dataikuapi.dss.llm.DSSLLM` handle,
+                    a :class:`dataikuapi.dss.llm.DSSLLMListItem`, or the LLM identifier string.
+        :type llm: object or str
+
+        :return: self
+        :rtype: :class:`PromptRecipeCreator`
+        """
+        if isinstance(llm, DSSLLM):
+            llm_id = llm.llm_id
+        elif isinstance(llm, DSSLLMListItem):
+            llm_id = llm.id
+        elif isinstance(llm, str):
+            llm_id = llm
+        else:
+            raise ValueError("Unknown LLM: %s" % llm)
+        initial_payload = self.creation_settings.setdefault("initialPayload", {})
+        initial_payload["llmId"] = llm_id
+        initial_payload["onlySetLLMId"] = False
+
+        chunks = llm_id.split(":")
+        llm_type = chunks[0]
+        type_to_id_index = {
+            "agent": 1,
+            "retrieval-augmented-llm": 1,
+            "saved-model": 3
+        }
+        # For agents, ra llms and finetuned models we also need to add them as input models
+        if llm_type in type_to_id_index:
+            idx = type_to_id_index[llm_type]
+            if len(chunks) <= idx:
+                raise ValueError("Malformed LLM id: %s" % llm_id)
+            model_id = chunks[idx]
+            return self._with_input(model_id, self.project.project_key, "model")
+        return self
