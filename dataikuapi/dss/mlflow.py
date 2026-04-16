@@ -1,5 +1,6 @@
 import json
 import time
+import warnings
 from datetime import datetime
 
 from dataikuapi.dss.savedmodel import ExternalModelVersionHandler
@@ -207,9 +208,10 @@ class DSSMLflowExtension(object):
             body=params
         )
 
-    def deploy_run_model(self, run_id, sm_id, version_id=None, use_inference_info=True, code_env_name=None, evaluation_dataset=None,
-                         target_column_name=None, class_labels=None, model_sub_folder=None, selection=None, activate=True,
-                         binary_classification_threshold=0.5, use_optimal_threshold=True, skip_expensive_reports=False):
+    def deploy_run_model(self, run_id, sm_id, version_id=None, use_inference_info=True, code_env_name=None,
+                         evaluation_dataset=None, target_column_name=None, class_labels=None, model_sub_folder=None,
+                         model_name=None, selection=None, activate=True, binary_classification_threshold=0.5,
+                         use_optimal_threshold=True, skip_expensive_reports=False):
         """
         Deploys a model from an experiment run, with lineage.
 
@@ -230,21 +232,25 @@ class DSSMLflowExtension(object):
         :param version_id: [optional] Unique identifier of a Saved Model Version. If it already exists, existing version is overwritten.
             Whitespaces or dashes are not allowed. If not set, a timestamp will be used as version_id.
         :type version_id: str
-        :param use_inference_info: [optional] default to True. if set, uses the :meth:`set_inference_info` previously done
+        :param use_inference_info: [optional] default to True. if set, uses the :meth:`set_run_inference_info` previously done
             on the run to retrieve the prediction type of the model, its code environment, classes and target.
         :type use_inference_info: bool
         :param evaluation_dataset: [optional] The evaluation dataset, if the deployment of the models can imply an evaluation.
         :type evaluation_dataset: str
-        :param target_column_name: [optional] The target column of the evaluation dataset. Can be set by :meth:`set_inference_info`.
+        :param target_column_name: [optional] The target column of the evaluation dataset. Can be set by :meth:`set_run_inference_info`.
         :type target_column_name: str
-        :param class_labels: [optional] The class labels of the target. Can be set by :meth:`set_inference_info`.
+        :param class_labels: [optional] The class labels of the target. Can be set by :meth:`set_run_inference_info`.
         :type class_labels: list(str)
         :param code_env_name: [optional] The code environment to be used. Must contain a supported version of the mlflow package and the ML libs used to train the model.
-            Can be set by :meth:`set_inference_info`.
+            Can be set by :meth:`set_run_inference_info`.
         :type code_env_name: str
-        :param model_sub_folder: [optional] The name of the subfolder containing the model. Optional if it is unique.
-            Existing values can be retrieved with `project.get_mlflow_extension().list_models(run_id)`
+        :param model_sub_folder:
+            .. deprecated:: 14.5.0
+                Use `model_name` instead.
         :type model_sub_folder: str
+        :param str model_name: [optional] The name of the model. Optional if it is unique.
+            Existing values can be retrieved with `project.get_mlflow_extension().list_models(run_id)`
+        :type model_name: str
         :param selection: [optional] will default to HEAD_SEQUENTIAL with a maxRecords of 10_000. e.g.
 
             * Example 1: ``DSSDatasetSelectionBuilder().with_head_sampling(100)``
@@ -289,12 +295,18 @@ class DSSMLflowExtension(object):
         if prediction_type is not None:
             model_version_info_obj["predictionType"] = prediction_type
 
+        if model_sub_folder is not None:
+            warnings.warn("The 'model_sub_folder' parameter is deprecated. Please use 'model_name' instead.",
+                          DeprecationWarning)
+        if model_name is None:
+            model_name = model_sub_folder
+
         self.client._perform_http("POST", "/api/2.0/mlflow/extension/deploy-run",
                                   headers={"x-dku-mlflow-project-key": self.project_key},
                                   params={"projectKey": self.project_key,
                                           "runId": run_id,
                                           "smId": sm_id,
-                                          "modelSubfolder": model_sub_folder,
+                                          "modelName": model_name,
                                           "versionId": version_id,
                                           "modelVersionInfo": json.dumps(model_version_info_obj),
                                           "samplingParam": sampling_param,

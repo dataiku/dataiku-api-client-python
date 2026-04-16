@@ -2417,6 +2417,11 @@ class SplitRecipeSettings(DSSRecipeSettings):
                 raise ValueError("value is not set for output %s." % output)
             if not isinstance(value, int):
                 raise ValueError("Incompatible type %s for value in output %s. In index mode, the value can only be of type int." % (type(value), output))
+            if available_outputs is None:
+                available_outputs = self._get_available_outputs()
+            max_index = len(available_outputs)
+            if value >= max_index:
+                raise ValueError("Index %i for output %s must be strictly smaller than the number of available outputs : %i." % (value, output, max_index))
             return value
         elif mode == 'dataset':
             if value is None:

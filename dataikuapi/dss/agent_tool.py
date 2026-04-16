@@ -1,5 +1,6 @@
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
+from .llm_tracing import prepare_query_for_nested_llm_mesh_call
 import json
 
 class DSSAgentToolListItem(DSSTaggableObjectListItem):
@@ -121,9 +122,10 @@ class DSSAgentTool(object):
 
         if subtool_name is not None:
             invocation["input"]["subtoolName"] = subtool_name
-
         if context is not None:
             invocation["input"]["context"] = context
+        # Note that 'prepare_query_for_nested_llm_mesh_call' throws an exception when the max LLM mesh stack depth is reached
+        invocation["input"] = prepare_query_for_nested_llm_mesh_call(invocation["input"])
 
         return self.client._perform_json("POST", "/projects/%s/agents/tools/%s/invocations" % (self.project_key, self.tool_id), body=invocation)
 
@@ -144,9 +146,9 @@ class DSSAgentTool(object):
 
         if subtool_name is not None:
             description_request["input"]["subtoolName"] = subtool_name
-
         if context is not None:
             description_request["input"]["context"] = context
+        description_request["input"] = prepare_query_for_nested_llm_mesh_call(description_request["input"])
 
         tool_call_descriptor = self.client._perform_json("POST", "/projects/%s/agents/tools/%s/describe-tool-call" % (self.project_key, self.tool_id), body=description_request)
         if tool_call_descriptor is None:

@@ -2704,7 +2704,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
     @property
     def skip_too_short_timeseries_for_training(self):
         """
-        :return: Whether we skip too short time series during training, or fail the whole training when only one time series is too short.
+        :return: Whether we skip too short and constant time series during training, or fail the whole training when only one time series is too short.
         :rtype: bool
         """
         return self.mltask_settings.get("skipTooShortTimeseriesForTraining")

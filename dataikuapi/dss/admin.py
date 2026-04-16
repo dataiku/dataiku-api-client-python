@@ -1,4 +1,5 @@
 from .future import DSSFuture
+from .local_model import DSSLocalModel
 import json
 import warnings
 import logging
@@ -267,7 +268,35 @@ class DSSConnection(object):
         return self.client._perform_json(
             "PUT", "/admin/connections/%s" % self.name,
             body = definition)
-    
+
+
+    def list_local_models(self):
+        """
+        :returns: List local models defined in this connection.
+        :rtype: list[:class:`~dataikuapi.dss.local_model.DSSLocalModel`]
+        :raises Exception: If this connection is not of type HuggingFaceLocal.
+        """
+        definition = self.get_definition()
+        if definition.get("type") != "HuggingFaceLocal":
+            raise Exception("Connection %s is not a HuggingFaceLocal connection" % self.name)
+        params = definition.get("params") or {}
+        models = params.get("models") or []
+        return [DSSLocalModel(self.client, self.name, model.get("id")) for model in models]
+
+    def get_local_model(self, model_id):
+        """
+        Get a handle on this local model.
+
+        :param str model_id: Identifier of the model.
+        :rtype: :class:`~dataikuapi.dss.local_model.DSSLocalModel`
+        """
+        if not model_id.strip():
+            raise ValueError("model_id must be a non-empty string")
+        if not self.name.strip():
+            raise ValueError("connection_name must be a non-empty string")
+
+        return DSSLocalModel(self.client, self.name, model_id)
+
     ########################################################
     # Security
     ########################################################
@@ -3361,4 +3390,3 @@ class DSSLLMCostLimitingCounters(object):
         :rtype: dict
         """
         return next((counter for counter in self.counters if counter["id"] == id), None)
-

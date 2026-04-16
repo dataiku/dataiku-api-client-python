@@ -605,7 +605,7 @@ class DSSFilter(object):
             elif sf.operator == DSSSimpleFilterOperator.GREATER_THAN.value: cond.update({"operator": DSSFilterOperator.GREATER_NUMBER.value, "num": value})
             elif sf.operator == DSSSimpleFilterOperator.LESS_THAN.value: cond.update({"operator": DSSFilterOperator.LESS_NUMBER.value, "num": value})
             elif sf.operator == DSSSimpleFilterOperator.GREATER_OR_EQUAL.value: cond.update({"operator": DSSFilterOperator.GREATER_OR_EQUAL_NUMBER.value, "num": value})
-            elif sf.operator == DSSSimpleFilterOperator.LESS_OR_EQUAL.value: cond.update({"operator": DSSFilterOperator.LESS_NUMBER.value, "num": value})
+            elif sf.operator == DSSSimpleFilterOperator.LESS_OR_EQUAL.value: cond.update({"operator": DSSFilterOperator.LESS_OR_EQUAL_NUMBER.value, "num": value})
             elif sf.operator == DSSSimpleFilterOperator.DEFINED.value: cond["operator"] = DSSFilterOperator.NOT_EMPTY.value
             elif sf.operator == DSSSimpleFilterOperator.NOT_DEFINED.value: cond["operator"] = DSSFilterOperator.EMPTY.value
             elif sf.operator == DSSSimpleFilterOperator.CONTAINS.value: cond.update({"operator": DSSFilterOperator.CONTAINS_STRING.value, "string": value})
