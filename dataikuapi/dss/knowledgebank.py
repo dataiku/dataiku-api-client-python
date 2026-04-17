@@ -3,7 +3,7 @@ import logging
 
 from .document_extractor import ManagedFolderImageRef, ManagedFolderDocumentRef
 from .managedfolder import DSSManagedFolder
-from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc, DSSFilter, DSSSimpleFilter
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,8 @@ class DSSKnowledgeBank(object):
                max_documents=10, search_type="SIMILARITY",
                similarity_threshold=0.5,
                mmr_documents_count=20, mmr_factor=0.25,
-               hybrid_use_advanced_reranking=False, hybrid_rrf_rank_constant=60, hybrid_rrf_rank_window_size=4):
+               hybrid_use_advanced_reranking=False, hybrid_rrf_rank_constant=60, hybrid_rrf_rank_window_size=4,
+               filter=None):
         """
         Search for documents in a knowledge bank
 
@@ -158,6 +159,9 @@ class DSSKnowledgeBank(object):
         :param bool hybrid_use_advanced_reranking: whether to use proprietary rerankers, valid for Azure AI and ElasticSearch vector stores, defaults to False
         :param int hybrid_rrf_rank_constant: higher values give more weight to lower-ranked documents, valid for ElasticSearch vector stores, defaults to 60
         :param int hybrid_rrf_rank_window_size: number of documents to consider from each search type, valid for ElasticSearch vector stores, defaults to 4
+        :param filter: optional metadata filter as a :class:`~dataikuapi.dss.utils.DSSSimpleFilter`
+            or a simple filter dictionary
+        :type filter: Union[:class:`~dataikuapi.dss.utils.DSSSimpleFilter`, dict], optional
         :returns: a result object with a list of documents that matched the query
         :rtype: :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBankSearchResult`
         """
@@ -174,6 +178,15 @@ class DSSKnowledgeBank(object):
             assert type(hybrid_rrf_rank_constant) is int and hybrid_rrf_rank_constant > 0, "hybrid_rrf_rank_constant should be a positive integer"
             assert type(hybrid_rrf_rank_window_size) is int and hybrid_rrf_rank_window_size > 0, "hybrid_rrf_rank_window_size should be a positive integer"
 
+        perform_filtering = False
+        query_filter = {}
+        if filter is not None:
+            assert isinstance(filter, (DSSSimpleFilter, dict)), "filter should be a DSSSimpleFilter or a simple filter dictionary"
+            if isinstance(filter, dict):
+                assert "operator" in filter, "filter dictionary should be a simple filter dictionary with an 'operator' key"
+            query_filter = DSSFilter.from_simple_filter(filter)
+            perform_filtering = True
+
         response = self.client._perform_json("POST", "/projects/%s/knowledge-banks/%s/search" % (self.project_key, self.id), params={
             "query": query,
             "params": json.dumps({
@@ -186,7 +199,8 @@ class DSSKnowledgeBank(object):
                 "rrfRankConstant": hybrid_rrf_rank_constant,
                 "rrfRankWindowSize": hybrid_rrf_rank_window_size,
                 "includeScore": True,
-                "filter": {},
+                "performFiltering": perform_filtering,
+                "filter": query_filter,
                 "includeMultimodalContent": True
             })
         })

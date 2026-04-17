@@ -2230,6 +2230,9 @@ class DSSProject(object):
         Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         or one of its subclasses to complete the creation of the recipe.
 
+        .. warning::
+            Only works with native recipes, use `create_recipe` for custom recipes.
+
         Usage example:
 
         .. code-block:: python
@@ -2317,6 +2320,9 @@ class DSSProject(object):
             return recipe.ExtractContentRecipeCreator(name, self)
         elif type == "prompt":
             return recipe.PromptRecipeCreator(name, self)
+        else:
+            raise ValueError("Unknown type. Please use create_recipe for custom recipes")
+
 
     ########################################################
     # Flow
@@ -2583,12 +2589,8 @@ class DSSProject(object):
         :param object managed_folder: the managed folder where MLflow artifacts should be stored. Can be either
             a managed folder id as a string, a :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`, or
             a :class:`dataiku.Folder`
-        :param str host: setup a custom host if the backend used is not DSS (defaults to **None**).
+        :param str host: set up a custom host if the backend used is not DSS (defaults to **None**).
         """
-        import mlflow
-        mlflow_version = mlflow.__version__
-        if mlflow_version.startswith("3."):
-            logger.error("MLflow >= 3 (detected: {}) is unsupported and may cause compatibility issues".format(mlflow_version))
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
     def get_mlflow_extension(self):
@@ -2907,6 +2909,25 @@ class DSSProject(object):
         ret = self.client._perform_json("POST", "/projects/%s/agents" % self.project_key, body=settings)
         return DSSAgent(self.client, self.project_key, ret["id"])
 
+    def create_agent_interaction_logging_dataset(self, dataset_name, connection_id, time_partitioning=None):
+        """
+        Create a new agent interaction logging dataset.
+
+        :param dataset_name: Identifier for the dataset to create.
+        :type dataset_name: str
+        :param connection_id: Identifier of the connection to use (SQL or filesystem-like).
+        :type connection_id: str
+        :param time_partitioning: Time period of the partitioning. Can be one of "HOUR", "DAY", "MONTH". Set to None for no partitioning.
+        :type time_partitioning: str | None
+        """
+        params = {
+            "datasetName": dataset_name,
+            "connectionId": connection_id,
+            "timePartitioning": time_partitioning
+        }
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/interaction-logging-dataset" % self.project_key, params=params
+        )
 
     ########################################################
     # Agent Tools
@@ -4006,13 +4027,16 @@ class DocumentTemplateRenderingResponse(object):
 
         document_ref = self._raw["documentRef"]
         if document_ref.get("type") == "managed_folder":
-            if not "managedFolderRef" in document_ref:
-                raise Exception("No output managed folder ref available in the document ref")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get(
+                "managedFolderId"
+            )
+            if not managed_folder_ref:
+                raise Exception("No output managed folder ref/id available in the document ref")
             if not "filePath" in document_ref:
                 raise Exception("No output file path available in the document ref")
             return ManagedFolderDocumentRef(
                 document_ref["filePath"],
-                document_ref["managedFolderRef"],
+                managed_folder_ref,
                 mime_type=document_ref.get("mimeType"))
         elif document_ref.get("type") == "inline_document":
             if not "content" in document_ref:

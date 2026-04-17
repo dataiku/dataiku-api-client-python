@@ -77,8 +77,6 @@ class DSSSQLNotebook(object):
             # collect all the SQL source code of a notebook
             lines = []
             for cell in notebook.get_content().cells:
-                if cell["type"] != "QUERY":
-                    continue
                 lines = lines + cell["code"]
             print('\\n'.join(lines))
 
@@ -183,7 +181,7 @@ class DSSNotebookContent(object):
         :return: A list of cells. Each cell is a dict, with notable fields:
 
             * **id**: id of the cell
-            * **type**: type of the cell, for example "QUERY" or "MARKDOWN"
+            * **type**: deprecated, type of the cell. Only "QUERY" is supported.
             * **name**: name of the cell
             * **code**: content of the cell
 
