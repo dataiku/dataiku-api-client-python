@@ -3017,6 +3017,27 @@ class DSSProject(object):
         """
         return DSSWebApp(self.client, self.project_key, webapp_id)
 
+    def create_webapp(self, name, webapp_type="STANDARD"):
+        """
+        Create a new native code webapp in the project
+
+        :param str name: the name of the webapp
+        :param str webapp_type: the type of webapp to create (defaults to ``STANDARD``)
+            Supported values are ``STANDARD``, ``BOKEH``, ``DASH``, ``STREAMLIT``, and ``SHINY``
+
+        :returns: A webapp handle
+        :rtype: :class:`dataikuapi.dss.webapp.DSSWebApp`
+        :raises Exception: If the DSS backend returns an error.
+        """
+        if webapp_type not in ("STANDARD", "BOKEH", "DASH", "STREAMLIT", "SHINY"):
+            raise ValueError("Webapp type not supported")
+        payload = {
+            "name": name,
+            "type": webapp_type
+        }
+        webapp = self.client._perform_json("POST", "/projects/%s/webapps/" % self.project_key, body=payload)
+        return DSSWebApp(self.client, self.project_key, webapp["webAppId"])
+
 
     ########################################################
     # Dashboards
