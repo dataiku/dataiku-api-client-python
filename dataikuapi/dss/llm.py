@@ -6,7 +6,7 @@ from .utils import DSSTaggableObjectListItem
 from .llm_tracing import (
     prepare_query_for_nested_llm_mesh_call,
 )
-from .llm_utils import _ChunkAggregator, LLMException
+from .llm_utils import _ChunkAggregator, LLMException, _get_json_schema_and_parser_from_pydantic_model
 
 _dku_bypass_guardrail_ls = threading.local()
 
@@ -413,39 +413,11 @@ class SettingsMixin(object):
         :param bool strict: (optional) see :func:`with_json_output`
         :param bool compatible: (optional) see :func:`with_json_output`
         """
-        if hasattr(model_type, "model_json_schema") and hasattr(model_type, "model_validate_json"):
-            schema = model_type.model_json_schema()  # Pydantic 2 BaseModel
-            self._response_parser = model_type.model_validate_json
-        elif hasattr(model_type, "schema") and hasattr(model_type, "parse_raw"):
-            schema = model_type.schema()  # Pydantic 1 BaseModel
-            self._response_parser = model_type.parse_raw
-        else:
-            # 'model_type' is not a Pydantic BaseModel. Derive schema Python type hints.
-            try:
-                import pydantic
-            except ImportError:
-                raise Exception("Pydantic is required to use Python's type hints with structured output")
-
-            if hasattr(pydantic, "TypeAdapter"):
-                # Pydantic 2 provides a TypeAdapter to work with regular Python classes / type hints
-                from pydantic import TypeAdapter
-                adapter = TypeAdapter(model_type)
-                schema = adapter.json_schema()
-                self._response_parser = adapter.validate_json
-            elif hasattr(pydantic, "schema_of") and hasattr(pydantic, "parse_obj_as"):
-                # Pydantic 1 had similar functionality via 'schema_of' and 'parse_obj_as'
-                schema = pydantic.schema_of(model_type)
-
-                def response_parser(json_response):
-                    parsed_json = json.loads(json_response)
-                    return pydantic.parse_obj_as(model_type, parsed_json)
-
-                self._response_parser = response_parser
-            else:
-                # Unsupported Pydantic version
-                raise Exception("Incompatible Pydantic version")
+        schema, response_parser = _get_json_schema_and_parser_from_pydantic_model(model_type)
+        self._response_parser = response_parser
         self.with_json_output(schema=schema, strict=strict, compatible=compatible)
         return self
+
 
 class DSSLLMRequestGuardrailBuilder(object):
     def __init__(self, request, type):

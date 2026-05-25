@@ -3,6 +3,8 @@ import copy
 import json
 import warnings
 
+from dataikuapi.dss.llm_utils import get_json_schema_and_parser
+from dataikuapi.dss.recipe import DSSRecipe
 from dataikuapi.utils import _write_response_content_to_file
 
 
@@ -69,6 +71,89 @@ class DocumentExtractor(object):
         ret = self.client._perform_json("POST", "/projects/%s/document-extractors/vlm" % self.project_key,
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
+
+
+    def vlm_extract_fields(self, images, schema=None, llm_id=None, llm_prompt=None, from_recipe=None, strict=None, compatible=None):
+        """
+        Extract specific fields (structured data) from images (typically screenshots of a document's pages) using a vision LLM.
+        Describe expected fields in ``extraction_schema``, or specify an Extract Fields recipe to use its settings.
+
+        :param images: screenshots of the document's pages from which to extract the fields
+        :type images: iterable(:class:`InlineImageRef`) | iterable(:class:`ManagedFolderImageRef`)
+        :param schema: a JSON schema or a Pydantic model class describing the fields to extract.
+                       JSON schema definitions or Pydantic models referencing other models are unsupported.
+        :type schema: str | dict | pydantic.BaseModel class or Python type hint.
+        :param llm_id: Identifier of a vision LLM
+        :type llm_id: str
+        :param llm_prompt: Custom prompt to extract fields from the images
+        :type llm_prompt: str
+        :param from_recipe: Name of a recipe from which to read the other arguments.
+                            Arguments provided explicitly take precedence.
+        :type from_recipe: str
+        :param strict: Whether to strictly enforce the schema. Support varies across models/providers.
+        :type strict: bool
+        :param compatible: Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
+        :type compatible: bool
+
+        :returns: Extracted fields from images
+        :rtype: :class:`FieldsVlmExtractorResponse`
+        """
+        if from_recipe is not None and (schema is None or llm_id is None or llm_prompt is None or strict is None or compatible is None):
+            recipe_settings = DSSRecipe(self.client, self.project_key, from_recipe).get_settings()
+            recipe_params = recipe_settings.raw_params
+
+            if schema is None:
+                schema = recipe_params.get("extractionSchema")
+            if llm_id is None:
+                llm_id = recipe_params.get("vlmId")
+            if llm_prompt is None:
+                llm_prompt = recipe_params.get("extractionPrompt")
+            if strict is None:
+                strict = recipe_params.get("valueErrorHandling") == "BLANK_VALUE"
+            if compatible is None:
+                compatible = True
+                dku_properties = recipe_settings.get_recipe_raw_definition().get("dkuProperties") or []
+                for prop in dku_properties:
+                    if isinstance(prop, dict) and prop.get("name") == "dku.extractFields.schemaCompatibilityEnhancer" and isinstance(prop.get("value"), bool):
+                        compatible = prop.get("value")
+                        break
+
+        json_schema, parser_method = get_json_schema_and_parser(schema)
+
+        extractor_request = {
+            "settings": {
+                "llmId": llm_id,
+                "llmPrompt": llm_prompt,
+                "extractionSchema" : json.loads(json_schema),
+                "strictSchemaAdherence": strict,
+                "schemaCompatibilityEnhancer": compatible
+            }
+        }
+
+        images = list(images)
+        if not images:
+            raise ValueError("No images provided")
+        if all(isinstance(ir, InlineImageRef) for ir in images):
+            extractor_request["inputs"] = {
+                "imagesRef": {
+                    "type": images[0].type,
+                    "inlineImages": [ir.as_dict() for ir in images]
+                }
+            }
+        elif all(isinstance(ir, ManagedFolderImageRef) for ir in images):
+            extractor_request["inputs"] = {
+                "imagesRef": {
+                    "type": images[0].type,
+                    "managedFolderRef": images[0].managed_folder_ref,
+                    "imagesPaths": [ir.image_path for ir in images]
+                }
+            }
+        else:
+            raise ValueError("Unsupported mix of image types: %s" % set([ir.type for ir in images]))
+
+        ret = self.client._perform_json("POST", "/projects/%s/document-extractors/fields/vlm" % self.project_key,
+                                        body=extractor_request)
+        return FieldsVlmExtractorResponse(ret, parser_method)
 
     def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None,
                            output_managed_folder=None, image_validation=True):
@@ -191,7 +276,8 @@ class DocumentExtractor(object):
 
         return TextExtractorResponse(ret)
 
-    def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True):
+    def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True,
+                                   page_dpi=None, max_memory_per_document=None):
         """
         Generate per-page screenshots of a document, returning an iterable over the screenshots.
 
@@ -232,12 +318,24 @@ class DocumentExtractor(object):
         :type fetch_size: int
         :param keep_fetched: whether to keep previous screenshots requests within this response object when fetching next ones.
         :type keep_fetched: boolean
+        :param page_dpi: DPI used to render pages if memory allows.
+        :type page_dpi: int
+        :param max_memory_per_document: maximum memory budget in MB used while rendering a document.
+            The effective DPI may be reduced to fit this limit depending on page dimensions.
+        :type max_memory_per_document: int
 
         :returns: An iterable over the result screenshots
         :rtype: :class:`ScreenshotterResponse`
         """
 
-        screenshotter_request = ScreenshotterRequest(document, output_managed_folder, offset, fetch_size)
+        screenshotter_request = ScreenshotterRequest(
+            document,
+            output_managed_folder,
+            offset,
+            fetch_size,
+            page_dpi,
+            max_memory_per_document
+        )
         return ScreenshotterResponse(self.client, self.project_key, screenshotter_request, keep_fetched)
 
 
@@ -269,11 +367,13 @@ class ScreenshotterRequest(object):
 
     """
 
-    def __init__(self, document, output_managed_folder, offset, fetch_size):
+    def __init__(self, document, output_managed_folder, offset, fetch_size, page_dpi=None, max_memory_per_document=None):
         self.document = document
         self.output_managed_folder = output_managed_folder
         self.offset = offset
         self.fetch_size = fetch_size
+        self.page_dpi = page_dpi
+        self.max_memory_per_document = max_memory_per_document # MB
 
     def as_json(self):
         """
@@ -302,6 +402,8 @@ class ScreenshotterRequest(object):
                 "outputManagedFolderRef": self.output_managed_folder,
                 "paginationOffset": self.offset,
                 "paginationSize": self.fetch_size,
+                "pageDPI": self.page_dpi,
+                "maxMemoryPerDocMB": self.max_memory_per_document,
             }
         }
 
@@ -683,7 +785,6 @@ class VlmExtractorResponse(object):
     @property
     def success(self):
         """
-        :returns: The outcome of the extractor request.
         :rtype: bool
         """
         return self._data.get("ok")
@@ -698,6 +799,77 @@ class VlmExtractorResponse(object):
         """
         self._fail_unless_success()
         return self._data["chunks"]
+
+    def _fail_unless_success(self):
+        if not self.success:
+            error_message = "Document failed to be extracted - request failed: {}".format(
+                self._data.get("errorMessage", "An unknown error occurred")
+            )
+            raise Exception(error_message)
+
+class FieldsVlmExtractorResponse(object):
+    """
+    A handle to interact with a VLM fields extraction result.
+
+    .. important::
+        Do not create this class directly; use :meth:`~DocumentExtractor.vlm_extract_fields`
+    """
+
+    def __init__(self, data, response_parser=None):
+        self._data = data
+        self._response_parser = response_parser
+        self._parsed_fields = None
+
+    def get_raw(self):
+        return self._data
+
+    @property
+    def success(self):
+        """
+        :rtype: bool
+        """
+        return self._data.get("status", "nok") != "nok"
+
+    @property
+    def fields(self):
+        """
+        Fields extracted from the original document.
+        Follows the structure of the extraction schema, has only the fields that abide by it.
+
+        :returns: extracted fields.
+        :rtype: dict
+        """
+        self._fail_unless_success()
+        return self._data["curatedFields"]
+
+    @property
+    def parsed_fields(self):
+        """
+        Fields extracted from the original document.
+        Follows the structure of the extraction schema, has only the fields that abide by it.
+        Only available for extraction schema given as a Pydantic model or using Python type hint.
+
+        :returns: extracted fields deserialized into a Pydantic model instance.
+        :rtype: pydantic.BaseModel
+        """
+        self._fail_unless_success()
+        if self._parsed_fields is None and self._data["curatedFields"] is not None:
+            if not self._response_parser:
+                raise Exception("Require extraction schema to be given as a Pydantic model or using Python type hint.")
+            else:
+                self._parsed_fields = self._response_parser(json.dumps(self._data["curatedFields"]))
+        return self._parsed_fields
+
+    @property
+    def invalid_fields(self):
+        """
+        Fields in the extraction schema that the Vision LLM could not extract.
+        Follows the structure/hierarchy of the extraction schema, but has only the incorrect or missing fields.
+
+        :rtype: dict
+        """
+        self._fail_unless_success()
+        return self._data["invalidFields"]
 
     def _fail_unless_success(self):
         if not self.success:

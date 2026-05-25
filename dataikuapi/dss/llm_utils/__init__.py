@@ -1,4 +1,8 @@
 import copy
+import json
+
+from six import string_types
+
 from ...utils import DataikuException
 
 _footer_attributes = [
@@ -15,6 +19,59 @@ _footer_attributes = [
     "trace",
     "contextUpsert",
 ]
+
+def get_json_schema_and_parser(schema):
+    """
+    Build JSON schema + parser from str, dict, Pydantic model or Python type hint.
+    str/dict input must be a valid json schema, returned parser is then None.
+    
+    :rtype: Tuple[str, Optional[Callable[[str], Any]]]
+    """
+    if isinstance(schema, string_types) and schema:  # schema given directly as string
+        return schema, None
+    elif isinstance(schema, dict):
+        return json.dumps(schema), None
+    else:  # schema might be given as a pydantic model :
+        json_schema, parser_method = _get_json_schema_and_parser_from_pydantic_model(schema)
+        return json.dumps(json_schema), parser_method
+
+def _get_json_schema_and_parser_from_pydantic_model(model_type):
+    """
+    Build JSON schema and response parser from a Pydantic model or Python type hint.
+
+    :param model_type: Pydantic BaseModel class or Python type hint.
+    :rtype: Tuple[dict, Callable[[str], Any]]
+    """
+    if hasattr(model_type, "model_json_schema") and hasattr(model_type, "model_validate_json"):
+        # Pydantic 2 BaseModel
+        return model_type.model_json_schema(), model_type.model_validate_json
+    elif hasattr(model_type, "schema") and hasattr(model_type, "parse_raw"):
+        # Pydantic 1 BaseModel
+        return model_type.schema(), model_type.parse_raw
+    else:
+        # 'model_type' is not a Pydantic BaseModel. Derive schema from Python type hints.
+        try:
+            import pydantic
+        except ImportError:
+            raise Exception("Pydantic is required to use Python's type hints with structured output")
+
+        if hasattr(pydantic, "TypeAdapter"):
+            # Pydantic 2 provides a TypeAdapter to work with regular Python classes / type hints
+            from pydantic import TypeAdapter
+            adapter = TypeAdapter(model_type)
+            return adapter.json_schema(), adapter.validate_json
+        elif hasattr(pydantic, "schema_of") and hasattr(pydantic, "parse_obj_as"):
+            # Pydantic 1 had similar functionality via 'schema_of' and 'parse_obj_as'
+            schema = pydantic.schema_of(model_type)
+
+            def response_parser(json_response):
+                parsed_json = json.loads(json_response)
+                return pydantic.parse_obj_as(model_type, parsed_json)
+
+            return schema, response_parser
+        else:
+            # Unsupported Pydantic version
+            raise Exception("Incompatible Pydantic version")
 
 
 class LLMException(DataikuException):

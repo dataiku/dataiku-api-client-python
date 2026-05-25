@@ -2,11 +2,8 @@ import textwrap
 import warnings
 from typing import Optional, Callable, Literal, Type, Any, Dict
 
-try:
-    from langchain_core.tools import StructuredTool
-except ModuleNotFoundError:
-    from langchain.tools import StructuredTool
-
+from langchain_core.tools import StructuredTool, create_schema_from_function
+from langchain_core.tools.structured import _filter_schema_args
 from pydantic import BaseModel
 
 from dataiku.langchain.dku_tracer import dku_span_builder_for_callbacks
@@ -98,12 +95,12 @@ class DKUStructuredTool(StructuredTool):
         name = name or source_function.__name__
         if args_schema is None and infer_schema:
             # schema name is appended within function
-            args_schema = create_schema_from_function(  # noqa: F821
+            args_schema = create_schema_from_function(
                 name,
                 source_function,
                 parse_docstring=parse_docstring,
                 error_on_invalid_docstring=error_on_invalid_docstring,
-                filter_args=_filter_schema_args(source_function),  # noqa: F821
+                filter_args=_filter_schema_args(source_function),
             )
         description_ = description
         if description is None and not parse_docstring:

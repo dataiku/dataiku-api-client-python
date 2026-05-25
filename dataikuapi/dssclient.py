@@ -1473,9 +1473,14 @@ class DSSClient(object):
 
     def get_global_variables(self):
         """
-        Get the DSS instance's variables, as a Python dictionary
+        Get the DSS instance's variables as a :class:`dataikuapi.dss.admin.DSSInstanceVariables`
 
-        This call requires an API key with admin rights
+        This call requires an API key with admin rights. 
+        
+        The returned :class:`dataikuapi.dss.admin.DSSInstanceVariables` instance can be used by administrators to read and write the DSS instance's variables.
+
+        .. warning::
+            Instance-level variables are also readable by any user through :func:`dataiku.get_custom_variables`. Do not store confidential information in them.
 
         :returns: A :class:`dataikuapi.dss.admin.DSSInstanceVariables` handle
         """
