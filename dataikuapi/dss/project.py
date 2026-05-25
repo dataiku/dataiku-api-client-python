@@ -1,12 +1,13 @@
+import base64
 import io
 import logging
 import os.path as osp
 import warnings
-import base64
 
 from . import agent_tool
 from . import recipe
 from .agent import DSSAgent, DSSAgentListItem
+from .agent_review import DSSAgentReview, DSSAgentReviewListItem
 from .agent_tool import DSSAgentTool, DSSAgentToolListItem, DSSAgentToolCreator
 from .analysis import DSSAnalysis
 from .apiservice import DSSAPIService, DSSAPIServiceListItem
@@ -35,7 +36,7 @@ from .modelcomparison import DSSModelComparison
 from .modelevaluationstore import DSSModelEvaluationStore
 from .notebook import DSSNotebook
 from .plugin import DSSPluginUsagesListItem
-from .project_standards import DSSProjectStandardsRunReport, DSSProjectStandardsScope
+from .project_standards import DSSProjectStandardsRunReport
 from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
 from .retrieval_augmented_llm import DSSRetrievalAugmentedLLM, DSSRetrievalAugmentedLLMListItem
@@ -48,8 +49,6 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
 from ..dss_plugin_mlflow import MLflowHandle
-from .agent_review import DSSAgentReview, DSSAgentReviewListItem
-
 
 logger = logging.getLogger(__name__)
 
@@ -2318,6 +2317,8 @@ class DSSProject(object):
             return recipe.EmbedDocumentsRecipeCreator(name, self)
         elif type == "extract_content":
             return recipe.ExtractContentRecipeCreator(name, self)
+        elif type == "extract_fields":
+            return recipe.ExtractFieldsRecipeCreator(name, self)
         elif type == "prompt":
             return recipe.PromptRecipeCreator(name, self)
         else:
@@ -2591,6 +2592,10 @@ class DSSProject(object):
             a :class:`dataiku.Folder`
         :param str host: set up a custom host if the backend used is not DSS (defaults to **None**).
         """
+        import mlflow
+        mlflow_version = mlflow.__version__
+        if mlflow_version.startswith("1.") or mlflow_version.startswith("0."):
+            logger.error("MLflow < 2.0.0 (detected: {}) is unsupported and may cause compatibility issues".format(mlflow_version))
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
     def get_mlflow_extension(self):
@@ -2749,8 +2754,8 @@ class DSSProject(object):
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
             * "connection" (str) the connection name, for remote vector stores
-            * "indexName" (str) the index name, for remote vector stores (except Pinecone)
-            * "pineconeIndexName" (str) the index name, for Pinecone vector stores
+            * "indexName" (str) the index name, for remote vector stores, including Pinecone
+            * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
             * "managedFolderId" (str) the id of the managed folder containing the extracted images.
                 The images may be referenced by their path in the knowledge bank, and stored in this folder.
 
@@ -2969,7 +2974,7 @@ class DSSProject(object):
         :returns: The list of the agent tools. If "as_type" is "listitems",
             each one as a :class:`dataikuapi.dss.dataset.DSSAgentToolListItem`. If "as_type" is "objects",
             each one as a :class:`dataikuapi.dss.dataset.DSSAgentTool`
-        :rtype: list
+        :rtype: list[DSSAgentToolListItem | DSSAgentTool]
         """
         ret = self.client._perform_json("GET",
                                         "/projects/%s/agents/tools?includeDescriptions=false" % (self.project_key),
@@ -2984,6 +2989,8 @@ class DSSProject(object):
     def get_agent_tool(self, tool_id):
         """
         Get a handle to interact with a specific tool
+
+        :rtype: DSSAgentTool
         """
         return DSSAgentTool(self.client, self.project_key, tool_id)
 

@@ -241,7 +241,7 @@ class DSSAgentListItem(DSSTaggableObjectListItem):
     @property
     def project_key(self):
         """
-        :returns: The project        
+        :returns: The project
         :rtype: string
         """
         return self._data["projectKey"]
@@ -263,7 +263,10 @@ class DSSAgentListItem(DSSTaggableObjectListItem):
         return self._data["name"]
 
     def as_llm(self):
-        """Returns this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying"""
+        """
+        :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
+        :rtype: dataikuapi.dss.llm.DSSLLM
+        """
         return self.client.get_project(self.project_key).get_llm("agent:%s" % self.id)
 
 
@@ -285,14 +288,15 @@ class DSSAgent(object):
         return self._id
 
     def as_llm(self):
-        """Returns this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying"""
+        """
+        :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
+        :rtype: dataikuapi.dss.llm.DSSLLM
+        """
         return self.client.get_project(self.project_key).get_llm("agent:%s" % self.id)
 
     def get_settings(self):
         """
-        Get the agent's definition
-
-        :return: a handle on the agent definition
+        :return: a handle on the agent's definition
         :rtype: :class:`dataikuapi.dss.agent.DSSAgentSettings`
         """
         settings = self.client._perform_json(
@@ -362,15 +366,26 @@ class DSSAgentSettings(DSSTaggableObjectSettings):
         self._settings = settings
 
     def get_version_ids(self):
+        """
+        List the ids of each version of this agent
+
+        :rtype: list[str]
+        """
         return [v["versionId"] for v in self._settings["versions"]]
 
     @property
     def active_version(self):
-        """Returns the active version of this agent. May return None if no version is declared as active"""
+        """
+        :returns: the active version of this agent, or None if no version is declared as active
+        :rtype: str | None
+        """
         return self._settings.get("activeVersion")
 
     def get_version_settings(self, version_id):
-
+        """
+        :returns: the settings of the given version of this agent
+        :rtype: DSSAgentVersionSettings
+        """
         version_settings = None
         for vs in self._settings["versions"]:
             if vs["versionId"] == version_id:
@@ -387,8 +402,7 @@ class DSSAgentSettings(DSSTaggableObjectSettings):
 
     def get_raw(self):
         """
-        Returns the raw settings of the agent
-        :return: the raw settings of the agent
+        :returns: the raw settings of this agent
         :rtype: dict
         """
         return self._settings
@@ -406,13 +420,18 @@ class DSSAgentVersionSettings(object):
         self._version_settings = version_settings
 
     def get_raw(self):
+        """
+        :returns: the raw settings of this agent version
+        :rtype: dict
+        """
         return self._version_settings
 
     @property
     def llm_id(self):
         """
         Only for Visual Agents
-        :rtype: :class:`str`
+
+        :rtype: str
         """
         if not self._agent_settings.type == "TOOLS_USING_AGENT":
             raise ValueError("Only valid for Simple Visual Agents")

@@ -6,6 +6,7 @@ from ..utils import DataikuException
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, DSSFilterOperator, DSSFilter, DSSInfoMessage
 from .discussion import DSSObjectDiscussions
 from .llm import DSSLLM, DSSLLMListItem
+from .llm_utils import get_json_schema_and_parser
 from copy import deepcopy
 import json, logging, warnings
 
@@ -259,6 +260,8 @@ class DSSRecipe(object):
             return EmbedDocumentsRecipeSettings(self, data)
         elif type == "extract_content":
             return ExtractContentRecipeSettings(self, data)
+        elif type == "extract_fields":
+            return ExtractFieldsRecipeSettings(self, data)
         elif type == "prompt":
             return PromptRecipeSettings(self, data)
         else:
@@ -3116,6 +3119,30 @@ class ExtractContentRecipeCreator(SingleOutputRecipeCreator):
             self.creation_settings["VLMId"] = vlm
         else:
             raise Exception("Unknown VLM LLM: %s" % vlm)
+        return self
+
+
+class ExtractFieldsRecipeSettings(DSSRecipeSettings):
+    pass
+
+class ExtractFieldsRecipeCreator(SingleOutputRecipeCreator):
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'extract_fields', name, project)
+
+    def with_vlm(self, vlm):
+        if isinstance(vlm, DSSLLM):
+            self.creation_settings["VLMId"] = vlm.llm_id
+        elif isinstance(vlm, DSSLLMListItem):
+            self.creation_settings["VLMId"] = vlm.id
+        elif isinstance(vlm, str):
+            self.creation_settings["VLMId"] = vlm
+        else:
+            raise Exception("Unknown VLM LLM: %s" % vlm)
+        return self
+
+    def with_extraction_schema(self, schema):
+        self.creation_settings["extractionSchema"], _ = get_json_schema_and_parser(schema)
         return self
 
 #####################################################
