@@ -1,5 +1,6 @@
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
+from .llm_tracing import prepare_query_for_nested_llm_mesh_call
 import json
 
 class DSSAgentToolListItem(DSSTaggableObjectListItem):
@@ -97,12 +98,22 @@ class DSSAgentTool(object):
         return self.client._perform_empty("DELETE", "/projects/%s/agents/tools/%s" % (self.project_key, self.id))
 
     def as_langchain_structured_tool(self, context = None):
+        """
+        :returns: this tool as a LangChain StructuredTool
+        :rtype: langchain_core.tools.StructuredTool
+        """
         from dataikuapi.dss.langchain.tool import convert_to_langchain_structured_tool
         return convert_to_langchain_structured_tool(self, context)
 
     def run(self, input, context=None, subtool_name=None, memory_fragment=None, tool_validation_responses=None, tool_validation_requests=None):
         """
         Execute a tool call
+
+        :param str input: Text input
+        :param dict context: Additional request context
+        :param str subtool_name: Name of the sub-tool, if applicable (e.g., for a MCP tool)
+        :rtype: dict
+        :returns: The result of running this tool
         """
 
         invocation = {
@@ -121,9 +132,10 @@ class DSSAgentTool(object):
 
         if subtool_name is not None:
             invocation["input"]["subtoolName"] = subtool_name
-
         if context is not None:
             invocation["input"]["context"] = context
+        # Note that 'prepare_query_for_nested_llm_mesh_call' throws an exception when the max LLM mesh stack depth is reached
+        invocation["input"] = prepare_query_for_nested_llm_mesh_call(invocation["input"])
 
         return self.client._perform_json("POST", "/projects/%s/agents/tools/%s/invocations" % (self.project_key, self.tool_id), body=invocation)
 
@@ -144,9 +156,9 @@ class DSSAgentTool(object):
 
         if subtool_name is not None:
             description_request["input"]["subtoolName"] = subtool_name
-
         if context is not None:
             description_request["input"]["context"] = context
+        description_request["input"] = prepare_query_for_nested_llm_mesh_call(description_request["input"])
 
         tool_call_descriptor = self.client._perform_json("POST", "/projects/%s/agents/tools/%s/describe-tool-call" % (self.project_key, self.tool_id), body=description_request)
         if tool_call_descriptor is None:
@@ -199,6 +211,10 @@ class DSSAgentToolSettings(DSSTaggableObjectSettings):
         self._settings = settings
 
     def get_raw(self):
+        """
+        :returns: the raw settings dict for this agent tool
+        :rtype: dict
+        """
         return self._settings
 
     @property
@@ -235,6 +251,10 @@ class DSSVectorStoreSearchAgentToolCreator(DSSAgentToolCreator):
         DSSAgentToolCreator.__init__(self, project, type, name, id)
 
     def with_knowledge_bank(self, kb):
+        """
+        :param kb: Knowledge Bank (object, list item, or identifier) to use in this tool
+        :type kb: DSSKnowledgeBank | DSSKnowledgeBankListItem | str
+        """
         loc = _kb_to_loc(self.project.project_key, kb)
         self.proto["creationParams"]["knowledgeBankRef"] = loc.to_ref(self.project.project_key)
         return self
@@ -244,5 +264,9 @@ class DSSVectorStoreSearchAgentToolSettings(DSSAgentToolSettings):
         DSSAgentToolSettings.__init__(self, agent_tool, settings)
 
     def set_knowledge_bank(self, kb):
+        """
+        :param kb: Knowledge Bank (object, list item, or identifier) to use in this tool
+        :type kb: DSSKnowledgeBank | DSSKnowledgeBankListItem | str
+        """
         loc = _kb_to_loc(self.project.project_key, kb)
         self.settings["params"]["knowledgeBankRef"] = loc.to_ref(self.agent_tool.project_key)

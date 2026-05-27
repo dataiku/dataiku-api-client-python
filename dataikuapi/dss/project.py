@@ -1,12 +1,13 @@
+import base64
 import io
 import logging
 import os.path as osp
 import warnings
-import base64
 
 from . import agent_tool
 from . import recipe
 from .agent import DSSAgent, DSSAgentListItem
+from .agent_review import DSSAgentReview, DSSAgentReviewListItem
 from .agent_tool import DSSAgentTool, DSSAgentToolListItem, DSSAgentToolCreator
 from .analysis import DSSAnalysis
 from .apiservice import DSSAPIService, DSSAPIServiceListItem
@@ -35,7 +36,7 @@ from .modelcomparison import DSSModelComparison
 from .modelevaluationstore import DSSModelEvaluationStore
 from .notebook import DSSNotebook
 from .plugin import DSSPluginUsagesListItem
-from .project_standards import DSSProjectStandardsRunReport, DSSProjectStandardsScope
+from .project_standards import DSSProjectStandardsRunReport
 from .projectlibrary import DSSLibrary
 from .recipe import DSSRecipeListItem, DSSRecipe
 from .retrieval_augmented_llm import DSSRetrievalAugmentedLLM, DSSRetrievalAugmentedLLMListItem
@@ -48,8 +49,6 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
 from ..dss_plugin_mlflow import MLflowHandle
-from .agent_review import DSSAgentReview, DSSAgentReviewListItem
-
 
 logger = logging.getLogger(__name__)
 
@@ -1829,13 +1828,13 @@ class DSSProject(object):
         if template_ref is not None:
             if not isinstance(template_ref, DocumentRef):
                 raise ValueError("Unsupported template document ref type %s, document templating only supports DocumentRef objects", template_ref.type)
-            payload["templateRef"] = template_ref.as_json()
+            payload["templateRef"] = template_ref.as_dict()
 
         if output_ref is None:
             output_ref = InlineDocumentRef("", InlineDocumentRef.CONTENT_TYPE_PLAIN_TEXT)
         if not isinstance(output_ref, DocumentRef):
             raise ValueError("Unsupported output document ref type %s, document templating only supports DocumentRef objects", template_ref.type)
-        payload["destinationRef"] = output_ref.as_json()
+        payload["destinationRef"] = output_ref.as_dict()
 
         ret = self.client._perform_json(
             "POST",
@@ -2230,6 +2229,9 @@ class DSSProject(object):
         Initializes the creation of a new recipe. Returns a :class:`dataikuapi.dss.recipe.DSSRecipeCreator`
         or one of its subclasses to complete the creation of the recipe.
 
+        .. warning::
+            Only works with native recipes, use `create_recipe` for custom recipes.
+
         Usage example:
 
         .. code-block:: python
@@ -2315,6 +2317,12 @@ class DSSProject(object):
             return recipe.EmbedDocumentsRecipeCreator(name, self)
         elif type == "extract_content":
             return recipe.ExtractContentRecipeCreator(name, self)
+        elif type == "extract_fields":
+            return recipe.ExtractFieldsRecipeCreator(name, self)
+        elif type == "prompt":
+            return recipe.PromptRecipeCreator(name, self)
+        else:
+            raise ValueError("Unknown type. Please use create_recipe for custom recipes")
 
 
     ########################################################
@@ -2582,12 +2590,12 @@ class DSSProject(object):
         :param object managed_folder: the managed folder where MLflow artifacts should be stored. Can be either
             a managed folder id as a string, a :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`, or
             a :class:`dataiku.Folder`
-        :param str host: setup a custom host if the backend used is not DSS (defaults to **None**).
+        :param str host: set up a custom host if the backend used is not DSS (defaults to **None**).
         """
         import mlflow
         mlflow_version = mlflow.__version__
-        if mlflow_version.startswith("3."):
-            logger.error("MLflow >= 3 (detected: {}) is unsupported and may cause compatibility issues".format(mlflow_version))
+        if mlflow_version.startswith("1.") or mlflow_version.startswith("0."):
+            logger.error("MLflow < 2.0.0 (detected: {}) is unsupported and may cause compatibility issues".format(mlflow_version))
         return MLflowHandle(client=self.client, project=self, managed_folder=managed_folder, host=host)
 
     def get_mlflow_extension(self):
@@ -2736,6 +2744,7 @@ class DSSProject(object):
             * PINECONE
             * ELASTICSEARCH
             * AZURE_AI_SEARCH
+            * SNOWFLAKE_CORTEX_SEARCH
             * VERTEX_AI_GCS_BASED
             * FAISS *(not recommended)*
             * QDRANT_LOCAL *(not recommended)*
@@ -2746,8 +2755,8 @@ class DSSProject(object):
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
             * "connection" (str) the connection name, for remote vector stores
-            * "indexName" (str) the index name, for remote vector stores (except Pinecone)
-            * "pineconeIndexName" (str) the index name, for Pinecone vector stores
+            * "indexName" (str) the index name, for remote vector stores, including Pinecone
+            * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
             * "managedFolderId" (str) the id of the managed folder containing the extracted images.
                 The images may be referenced by their path in the knowledge bank, and stored in this folder.
 
@@ -2906,6 +2915,46 @@ class DSSProject(object):
         ret = self.client._perform_json("POST", "/projects/%s/agents" % self.project_key, body=settings)
         return DSSAgent(self.client, self.project_key, ret["id"])
 
+    def create_agent_interaction_logging_dataset(self, dataset_name, connection_id, time_partitioning=None):
+        """
+        Create a new agent interaction logging dataset.
+
+        .. caution:: Deprecated. Use :meth:`create_llm_interaction_logging_dataset`
+
+        :param dataset_name: Identifier for the dataset to create.
+        :type dataset_name: str
+        :param connection_id: Identifier of the connection to use (SQL or filesystem-like).
+        :type connection_id: str
+        :param time_partitioning: Time period of the partitioning. Can be one of "HOUR", "DAY", "MONTH". Set to None for no partitioning.
+        :type time_partitioning: str | None
+        """
+        return self.create_llm_interaction_logging_dataset(
+            dataset_name=dataset_name,
+            connection_id=connection_id,
+            time_partitioning=time_partitioning,
+        )
+
+    def create_llm_interaction_logging_dataset(self, dataset_name, connection_id, time_partitioning=None):
+        """
+        Create a new LLM interaction logging dataset.
+
+        This dataset can be used by both agents and retrieval-augmented LLMs.
+
+        :param dataset_name: Identifier for the dataset to create.
+        :type dataset_name: str
+        :param connection_id: Identifier of the connection to use (SQL or filesystem-like).
+        :type connection_id: str
+        :param time_partitioning: Time period of the partitioning. Can be one of "HOUR", "DAY", "MONTH". Set to None for no partitioning.
+        :type time_partitioning: str | None
+        """
+        params = {
+            "datasetName": dataset_name,
+            "connectionId": connection_id,
+            "timePartitioning": time_partitioning
+        }
+        return self.client._perform_empty(
+            "POST", "/projects/%s/llm-interaction-logging-datasets" % self.project_key, params=params
+        )
 
     ########################################################
     # Agent Tools
@@ -2947,7 +2996,7 @@ class DSSProject(object):
         :returns: The list of the agent tools. If "as_type" is "listitems",
             each one as a :class:`dataikuapi.dss.dataset.DSSAgentToolListItem`. If "as_type" is "objects",
             each one as a :class:`dataikuapi.dss.dataset.DSSAgentTool`
-        :rtype: list
+        :rtype: list[DSSAgentToolListItem | DSSAgentTool]
         """
         ret = self.client._perform_json("GET",
                                         "/projects/%s/agents/tools?includeDescriptions=false" % (self.project_key),
@@ -2962,6 +3011,8 @@ class DSSProject(object):
     def get_agent_tool(self, tool_id):
         """
         Get a handle to interact with a specific tool
+
+        :rtype: DSSAgentTool
         """
         return DSSAgentTool(self.client, self.project_key, tool_id)
 
@@ -2994,6 +3045,27 @@ class DSSProject(object):
         :returns: A :class:`dataikuapi.dss.webapp.DSSWebApp` webapp handle
         """
         return DSSWebApp(self.client, self.project_key, webapp_id)
+
+    def create_webapp(self, name, webapp_type="STANDARD"):
+        """
+        Create a new native code webapp in the project
+
+        :param str name: the name of the webapp
+        :param str webapp_type: the type of webapp to create (defaults to ``STANDARD``)
+            Supported values are ``STANDARD``, ``BOKEH``, ``DASH``, ``STREAMLIT``, and ``SHINY``
+
+        :returns: A webapp handle
+        :rtype: :class:`dataikuapi.dss.webapp.DSSWebApp`
+        :raises Exception: If the DSS backend returns an error.
+        """
+        if webapp_type not in ("STANDARD", "BOKEH", "DASH", "STREAMLIT", "SHINY"):
+            raise ValueError("Webapp type not supported")
+        payload = {
+            "name": name,
+            "type": webapp_type
+        }
+        webapp = self.client._perform_json("POST", "/projects/%s/webapps/" % self.project_key, body=payload)
+        return DSSWebApp(self.client, self.project_key, webapp["webAppId"])
 
 
     ########################################################
@@ -4005,13 +4077,16 @@ class DocumentTemplateRenderingResponse(object):
 
         document_ref = self._raw["documentRef"]
         if document_ref.get("type") == "managed_folder":
-            if not "managedFolderId" in document_ref:
-                raise Exception("No output managed folder id available in the document ref")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get(
+                "managedFolderId"
+            )
+            if not managed_folder_ref:
+                raise Exception("No output managed folder ref/id available in the document ref")
             if not "filePath" in document_ref:
                 raise Exception("No output file path available in the document ref")
             return ManagedFolderDocumentRef(
                 document_ref["filePath"],
-                document_ref["managedFolderId"],
+                managed_folder_ref,
                 mime_type=document_ref.get("mimeType"))
         elif document_ref.get("type") == "inline_document":
             if not "content" in document_ref:
@@ -4037,7 +4112,7 @@ class DocumentTemplateRenderingResponse(object):
         document = self.document
         if isinstance(document, ManagedFolderDocumentRef):
             project = self.client.get_project(self.project_key)
-            folder = project.get_managed_folder(document.managed_folder_id)
+            folder = project.get_managed_folder(document.managed_folder_ref)
             response = folder.get_file(document.file_path)
             response.raise_for_status()
             if document.mime_type == "text/plain":

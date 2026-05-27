@@ -6,6 +6,7 @@ from ..utils import DataikuException
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, DSSFilterOperator, DSSFilter, DSSInfoMessage
 from .discussion import DSSObjectDiscussions
 from .llm import DSSLLM, DSSLLMListItem
+from .llm_utils import get_json_schema_and_parser
 from copy import deepcopy
 import json, logging, warnings
 
@@ -259,6 +260,10 @@ class DSSRecipe(object):
             return EmbedDocumentsRecipeSettings(self, data)
         elif type == "extract_content":
             return ExtractContentRecipeSettings(self, data)
+        elif type == "extract_fields":
+            return ExtractFieldsRecipeSettings(self, data)
+        elif type == "prompt":
+            return PromptRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)
 
@@ -2415,6 +2420,11 @@ class SplitRecipeSettings(DSSRecipeSettings):
                 raise ValueError("value is not set for output %s." % output)
             if not isinstance(value, int):
                 raise ValueError("Incompatible type %s for value in output %s. In index mode, the value can only be of type int." % (type(value), output))
+            if available_outputs is None:
+                available_outputs = self._get_available_outputs()
+            max_index = len(available_outputs)
+            if value >= max_index:
+                raise ValueError("Index %i for output %s must be strictly smaller than the number of available outputs : %i." % (value, output, max_index))
             return value
         elif mode == 'dataset':
             if value is None:
@@ -3111,6 +3121,30 @@ class ExtractContentRecipeCreator(SingleOutputRecipeCreator):
             raise Exception("Unknown VLM LLM: %s" % vlm)
         return self
 
+
+class ExtractFieldsRecipeSettings(DSSRecipeSettings):
+    pass
+
+class ExtractFieldsRecipeCreator(SingleOutputRecipeCreator):
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'extract_fields', name, project)
+
+    def with_vlm(self, vlm):
+        if isinstance(vlm, DSSLLM):
+            self.creation_settings["VLMId"] = vlm.llm_id
+        elif isinstance(vlm, DSSLLMListItem):
+            self.creation_settings["VLMId"] = vlm.id
+        elif isinstance(vlm, str):
+            self.creation_settings["VLMId"] = vlm
+        else:
+            raise Exception("Unknown VLM LLM: %s" % vlm)
+        return self
+
+    def with_extraction_schema(self, schema):
+        self.creation_settings["extractionSchema"], _ = get_json_schema_and_parser(schema)
+        return self
+
 #####################################################
 # Per-recipe-type classes: Other recipes
 #####################################################
@@ -3636,3 +3670,95 @@ class ClusteringScoringRecipeCreator(SingleOutputRecipeCreator):
         :param string model_id: identifier of a saved model
         """
         return self._with_input(model_id, self.project.project_key, "model")
+
+
+class PromptRecipeSettings(DSSRecipeSettings):
+    """
+    Settings of a Prompt recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`DSSRecipe.get_settings()`
+
+    A Prompt recipe allows you to use Large Language Models (LLMs) to process
+    dataset rows, typically for tasks like text summarization, classification,
+    or information extraction.
+
+    The payload of this recipe is a JSON object containing the prompt
+    template, the selected LLM, and various generation parameters
+    """
+    pass
+
+class PromptRecipeCreator(SingleOutputRecipeCreator):
+    """
+    Helper to create a new Prompt recipe.
+
+    .. important::
+
+        Do not instantiate directly, use :meth:`dataikuapi.dss.project.DSSProject.new_recipe()`
+        with type 'prompt' instead.
+
+    Usage example:
+
+    .. code-block:: python
+
+        project = client.get_project("MYPROJECT")
+        builder = project.new_recipe("prompt", "my_prompt_recipe")
+
+        # Define the input dataset and the LLM to use
+        builder.with_input("input_dataset")
+
+        # Define the llm to use, it can be an agent or simply an llm
+        builder.with_llm("my-gpt-4-connection")
+        # or using an agent, ra-llm or finetuned model like this
+        builder.with_llm("agent:agentid")
+
+        A `DSSLLMListItem` or `DSSLLM` is also supported as input for `with_llm`
+
+        # Create a new output dataset for the results
+        builder.with_new_output("output_dataset", connection="filesystem_managed")
+
+        recipe = builder.create()
+    """
+
+    def __init__(self, name, project):
+        SingleOutputRecipeCreator.__init__(self, 'prompt', name, project)
+
+    def with_llm(self, llm):
+        """
+        Sets the LLM to be used by the recipe.
+
+        :param llm: the LLM to use. Can be a :class:`dataikuapi.dss.llm.DSSLLM` handle,
+                    a :class:`dataikuapi.dss.llm.DSSLLMListItem`, or the LLM identifier string.
+        :type llm: object or str
+
+        :return: self
+        :rtype: :class:`PromptRecipeCreator`
+        """
+        if isinstance(llm, DSSLLM):
+            llm_id = llm.llm_id
+        elif isinstance(llm, DSSLLMListItem):
+            llm_id = llm.id
+        elif isinstance(llm, str):
+            llm_id = llm
+        else:
+            raise ValueError("Unknown LLM: %s" % llm)
+        initial_payload = self.creation_settings.setdefault("initialPayload", {})
+        initial_payload["llmId"] = llm_id
+        initial_payload["onlySetLLMId"] = False
+
+        chunks = llm_id.split(":")
+        llm_type = chunks[0]
+        type_to_id_index = {
+            "agent": 1,
+            "retrieval-augmented-llm": 1,
+            "saved-model": 3
+        }
+        # For agents, ra llms and finetuned models we also need to add them as input models
+        if llm_type in type_to_id_index:
+            idx = type_to_id_index[llm_type]
+            if len(chunks) <= idx:
+                raise ValueError("Malformed LLM id: %s" % llm_id)
+            model_id = chunks[idx]
+            return self._with_input(model_id, self.project.project_key, "model")
+        return self

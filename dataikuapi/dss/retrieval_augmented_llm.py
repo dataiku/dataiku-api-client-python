@@ -1,3 +1,4 @@
+from .agent import DSSLLMInteractionLoggingSelection
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
 
 class DSSRetrievalAugmentedLLMListItem(DSSTaggableObjectListItem):
@@ -137,6 +138,17 @@ class DSSRetrievalAugmentedLLMVersionSettings(object):
     def get_raw(self):
         return self._version_settings
 
+    def _get_or_create_interaction_logging_selection(self):
+        rag_settings = self._version_settings["ragllmSettings"]
+        interaction_logging_selection = rag_settings.get("interactionLoggingSelection")
+        if interaction_logging_selection is None:
+            interaction_logging_selection = {
+                "mode": DSSLLMInteractionLoggingSelection.MODE_INHERIT,
+                "explicitSettings": {},
+            }
+            rag_settings["interactionLoggingSelection"] = interaction_logging_selection
+        return interaction_logging_selection
+
     @property
     def llm_id(self):
         """
@@ -149,3 +161,76 @@ class DSSRetrievalAugmentedLLMVersionSettings(object):
     @llm_id.setter
     def llm_id(self, value):
         self._version_settings["ragllmSettings"]["llmId"] = value
+
+    @property
+    def interaction_logging_selection(self):
+        """
+        Get the interaction logging selection for this version.
+
+        Before configuring interaction logging on a retrieval-augmented LLM version,
+        create the target dataset on the project:
+
+        .. code-block:: python
+
+            project = client.get_project("MYPROJECT")
+            project.create_llm_interaction_logging_dataset(
+                "llm_logs",
+                connection_id="filesystem_managed",
+                time_partitioning="DAY",
+            )
+
+        Example using inherited settings:
+
+        .. code-block:: python
+
+            rag = project.get_retrieval_augmented_llm("my_rag")
+            rag_settings = rag.get_settings()
+            version_settings = rag_settings.get_version_settings("v1")
+
+            logging_selection = version_settings.interaction_logging_selection
+            logging_selection.inherit()
+
+            rag_settings.save()
+
+        Example using explicit settings:
+
+        .. code-block:: python
+
+            rag = project.get_retrieval_augmented_llm("my_rag")
+            rag_settings = rag.get_settings()
+            version_settings = rag_settings.get_version_settings("v1")
+
+            logging_selection = version_settings.interaction_logging_selection
+            logging_selection.enable(
+                "llm_logs",
+                settings={
+                    "flushEveryS": 60,
+                    "flushEveryBytes": 1_000_000,
+                    "contentMode": "FULL",
+                },
+            )
+
+            rag_settings.save()
+
+        Example disabling interaction logging:
+
+        .. code-block:: python
+
+            rag = project.get_retrieval_augmented_llm("my_rag")
+            rag_settings = rag.get_settings()
+            version_settings = rag_settings.get_version_settings("v1")
+
+            logging_selection = version_settings.interaction_logging_selection
+            logging_selection.disable()
+
+            rag_settings.save()
+
+        :rtype: :class:`dataikuapi.dss.agent.DSSLLMInteractionLoggingSelection`
+        """
+        return DSSLLMInteractionLoggingSelection(self._get_or_create_interaction_logging_selection())
+
+    @interaction_logging_selection.setter
+    def interaction_logging_selection(self, value):
+        if isinstance(value, DSSLLMInteractionLoggingSelection):
+            value = value.get_raw()
+        self._version_settings["ragllmSettings"]["interactionLoggingSelection"] = value

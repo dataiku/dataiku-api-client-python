@@ -10,6 +10,13 @@ from dataikuapi import DSSClient
 if sys.version_info > (3, 0):  # MLflow only work for python3 (in > 1.18.0)
     from pathlib import PurePosixPath, Path
 
+"""
+Implementation of the MLflow `ArtifactRepository` abstract base class.
+
+References:
+- Interface: mlflow.store.artifact.artifact_repo.ArtifactRepository
+- Example implementation (Local): mlflow.store.artifact.local_artifact_repo.LocalArtifactRepository
+"""
 
 def parse_dss_managed_folder_uri(uri):
     parsed = urllib.parse.urlparse(uri)
@@ -23,7 +30,12 @@ def parse_dss_managed_folder_uri(uri):
 
 class PluginDSSManagedFolderArtifactRepository:
 
-    def __init__(self, artifact_uri):
+    def __init__(self, artifact_uri, tracking_uri=None, registry_uri=None):
+        """
+        :param str artifact_uri: storage URI for the artifacts.
+        :param str | None tracking_uri: URI of the MLflow tracking server
+        :param str | None registry_uri: URI of the MLflow model registry
+        """
         self.client = DSSClient(
             os.environ.get("DSS_MLFLOW_HOST"),
             api_key=os.environ.get("DSS_MLFLOW_APIKEY"),
@@ -98,9 +110,10 @@ class PluginDSSManagedFolderArtifactRepository:
         Return all the artifacts for this run_id directly under path. If path is a file, returns
         an empty list. Will error if path is neither a file nor directory.
 
-        :param path: Relative source path that contains desired artifacts
+        :param str | None path: Relative source path that contains desired artifacts
 
         :return: List of artifacts as FileInfo listed directly under path.
+        :rtype: list
         """
         from mlflow.entities import FileInfo
         param_path = path

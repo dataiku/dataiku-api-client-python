@@ -1493,11 +1493,9 @@ class PredictionAlgorithmSettings(dict):
                              "To update the search strategy, use <HyperparameterSearchSettings object>.strategy = ..., "
                              "obtained with <DSSPredictionMLTaskSettings object>.get_hyperparameter_search_settings()")
 
-
-class RandomForestSettings(PredictionAlgorithmSettings):
-
+class _RandomForestSettingsBase(PredictionAlgorithmSettings):
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        super(_RandomForestSettingsBase, self).__init__(raw_settings, hyperparameter_search_params)
         self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
         self.min_samples_leaf = self._register_numerical_hyperparameter("min_samples_leaf")
         self.max_tree_depth = self._register_numerical_hyperparameter("max_tree_depth")
@@ -1507,10 +1505,19 @@ class RandomForestSettings(PredictionAlgorithmSettings):
         self.selection_mode = self._register_single_category_hyperparameter("selection_mode", accepted_values=["sqrt", "log2", "number", "prop"])
 
 
-class LightGBMSettings(PredictionAlgorithmSettings):
+class TimeseriesRandomForestSettings(_RandomForestSettingsBase):
+    pass
 
+
+class RandomForestSettings(_RandomForestSettingsBase):
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(LightGBMSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        super(RandomForestSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.allow_sparse_matrices = self._register_single_value_hyperparameter("allow_sparse_matrices", accepted_types=[bool])
+
+
+class _LightGBMSettingsBase(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(_LightGBMSettingsBase, self).__init__(raw_settings, hyperparameter_search_params)
         self.boosting_type = self._register_categorical_hyperparameter("boosting_type")
         self.num_leaves = self._register_numerical_hyperparameter("num_leaves")
         self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
@@ -1521,15 +1528,24 @@ class LightGBMSettings(PredictionAlgorithmSettings):
         self.colsample_bytree = self._register_numerical_hyperparameter("colsample_bytree")
         self.reg_alpha = self._register_numerical_hyperparameter("reg_alpha")
         self.reg_lambda = self._register_numerical_hyperparameter("reg_lambda")
-
-        self.early_stopping = self._register_single_value_hyperparameter("early_stopping", accepted_types=[bool])
-        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
         self.random_state = self._register_single_value_hyperparameter("random_state", accepted_types=[int])
         self.n_jobs = self._register_single_value_hyperparameter("n_jobs", accepted_types=[int])
         self.max_depth = self._register_single_value_hyperparameter("max_depth", accepted_types=[int])
         self.subsample = self._register_single_value_hyperparameter("subsample", accepted_types=[float])
         self.subsample_freq = self._register_single_value_hyperparameter("subsample_freq", accepted_types=[int])
         self.use_bagging = self._register_single_value_hyperparameter("use_bagging", accepted_types=[bool])
+
+
+class TimeseriesLightGBMSettings(_LightGBMSettingsBase):
+    pass
+
+
+class LightGBMSettings(_LightGBMSettingsBase):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(LightGBMSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.early_stopping = self._register_single_value_hyperparameter("early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+        self.allow_sparse_matrices = self._register_single_value_hyperparameter("allow_sparse_matrices", accepted_types=[bool])
 
 
 class TabICLSettings(PredictionAlgorithmSettings):
@@ -1551,10 +1567,10 @@ class TabICLSettings(PredictionAlgorithmSettings):
         self.outlier_threshold = self._register_single_value_hyperparameter("outlier_threshold")
 
 
-class XGBoostSettings(PredictionAlgorithmSettings):
+class _XGBoostSettingsBase(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        super(_XGBoostSettingsBase, self).__init__(raw_settings, hyperparameter_search_params)
         self.max_depth = self._register_numerical_hyperparameter("max_depth")
         self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
         self.gamma = self._register_numerical_hyperparameter("gamma")
@@ -1575,8 +1591,6 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         self.missing = self._register_single_value_hyperparameter("missing", accepted_types=[int, float])
         self.tree_method = self._register_single_category_hyperparameter("tree_method", accepted_values=["auto", "exact", "approx", "hist"])
         self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
-        self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
-        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
         self.tweedie_variance_power = self._register_single_value_hyperparameter("tweedie_variance_power", accepted_types=[int, float])
 
     @property
@@ -1612,6 +1626,18 @@ class XGBoostSettings(PredictionAlgorithmSettings):
         else:
             logger.warning("Unexpected value for tree_method")
             self.tree_method.set_value(value)
+
+
+class TimeseriesXGBoostSettings(_XGBoostSettingsBase):
+    pass
+
+
+class XGBoostSettings(_XGBoostSettingsBase):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(XGBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+        self.allow_sparse_matrices = self._register_single_value_hyperparameter("allow_sparse_matrices", accepted_types=[bool])
 
 
 class GradientBoostedTreesSettings(PredictionAlgorithmSettings):
@@ -1864,6 +1890,71 @@ class AutoArimaSettings(PredictionAlgorithmSettings):
         self.max_order = self._register_single_value_hyperparameter("max_order", accepted_types=[int])
         self.stationary = self._register_single_value_hyperparameter("stationary", accepted_types=[bool])
         self.maxiter = self._register_single_value_hyperparameter("maxiter", accepted_types=[int])
+
+
+class ArimaSettings(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(ArimaSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.p = self._register_single_value_hyperparameter("p", accepted_types=[int])
+        self.d = self._register_single_value_hyperparameter("d", accepted_types=[int])
+        self.q = self._register_single_value_hyperparameter("q", accepted_types=[int])
+        self.P = self._register_single_value_hyperparameter("P", accepted_types=[int])
+        self.D = self._register_single_value_hyperparameter("D", accepted_types=[int])
+        self.Q = self._register_single_value_hyperparameter("Q", accepted_types=[int])
+        self.s = self._register_single_value_hyperparameter("s", accepted_types=[int])
+        self.trend = self._register_single_category_hyperparameter("trend", accepted_values=["n", "c", "t", "ct"])
+        self.trend_offset = self._register_single_value_hyperparameter("trend_offset", accepted_types=[int])
+        self.enforce_stationarity = self._register_single_value_hyperparameter("enforce_stationarity", accepted_types=[bool])
+        self.enforce_invertibility = self._register_single_value_hyperparameter("enforce_invertibility", accepted_types=[bool])
+        self.concentrate_scale = self._register_single_value_hyperparameter("concentrate_scale", accepted_types=[bool])
+
+
+class CrostonSettings(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(CrostonSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.variant = self._register_categorical_hyperparameter("variant")
+        self.alpha_d = self._register_numerical_hyperparameter("alpha_d")
+        self.alpha_p = self._register_numerical_hyperparameter("alpha_p")
+
+
+class ETSSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(ETSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.trend = self._register_categorical_hyperparameter("trend")
+        self.damped_trend = self._register_categorical_hyperparameter("damped_trend")
+        self.seasonal = self._register_categorical_hyperparameter("seasonal")
+        self.error = self._register_categorical_hyperparameter("error")
+        self.seasonal_periods = self._register_single_value_hyperparameter("seasonal_periods", accepted_types=[int])
+        self.include_unstable = self._register_single_value_hyperparameter("include_unstable", accepted_types=[bool])
+        self.seed = self._register_single_value_hyperparameter("seed", accepted_types=[int])
+
+
+class NHITSSettings(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(NHITSSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.max_steps = self._register_single_value_hyperparameter("max_steps", accepted_types=[int])
+        self.patience = self._register_single_value_hyperparameter("patience", accepted_types=[int])
+        self.random_state = self._register_single_value_hyperparameter("random_state", accepted_types=[int])
+
+
+class TFTSettings(PredictionAlgorithmSettings):
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(TFTSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.context_length = self._register_numerical_hyperparameter("context_length")
+        self.hidden_size_factor = self._register_numerical_hyperparameter("hidden_size_factor")
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.n_rnn_layers = self._register_numerical_hyperparameter("n_rnn_layers")
+        self.n_head = self._register_numerical_hyperparameter("n_head")
+        self.batch_size = self._register_single_value_hyperparameter("batch_size", accepted_types=[int])
+        self.max_steps = self._register_single_value_hyperparameter("max_steps", accepted_types=[int])
+        self.patience = self._register_single_value_hyperparameter("patience", accepted_types=[int])
+        self.random_state = self._register_single_value_hyperparameter("random_state", accepted_types=[int])
+        self.max_hidden_size = self._register_single_value_hyperparameter("max_hidden_size", accepted_types=[int])
+        self.limit_hidden_size = self._register_single_value_hyperparameter("limit_hidden_size", accepted_types=[bool])
 
 
 class SeasonalLoessSettings(PredictionAlgorithmSettings):
@@ -2377,6 +2468,15 @@ class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
 class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
     __doc__ = []
     _algorithm_remap = {
+        "ARIMA": PredictionAlgorithmMeta("arima_timeseries", ArimaSettings),
+        "CROSTON": PredictionAlgorithmMeta("croston_timeseries", CrostonSettings),
+        "ETS": PredictionAlgorithmMeta("ets_timeseries", ETSSettings),
+        "NHITS": PredictionAlgorithmMeta("nhits_timeseries", NHITSSettings),
+        "TFT": PredictionAlgorithmMeta("tft_timeseries", TFTSettings),
+        "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", TimeseriesRandomForestSettings),
+        "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", TimeseriesXGBoostSettings),
+        "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+        "LIGHTGBM_REGRESSION": PredictionAlgorithmMeta("lightgbm_regression", TimeseriesLightGBMSettings),
         "TRIVIAL_IDENTITY_TIMESERIES": PredictionAlgorithmMeta("trivial_identity_timeseries"),
         "SEASONAL_NAIVE": PredictionAlgorithmMeta("seasonal_naive_timeseries", SeasonalNaiveSettings),
         "AUTO_ARIMA": PredictionAlgorithmMeta("autoarima_timeseries", AutoArimaSettings),
@@ -2704,7 +2804,7 @@ class DSSTimeseriesForecastingMLTaskSettings(AbstractTabularPredictionMLTaskSett
     @property
     def skip_too_short_timeseries_for_training(self):
         """
-        :return: Whether we skip too short time series during training, or fail the whole training when only one time series is too short.
+        :return: Whether we skip too short and constant time series during training, or fail the whole training when only one time series is too short.
         :rtype: bool
         """
         return self.mltask_settings.get("skipTooShortTimeseriesForTraining")

@@ -1,3 +1,166 @@
+ENTERPRISE_ASSET_LIBRARY_PROMPTS_URI_FORMAT = "/enterprise-asset-library/collections/%s/prompts"
+ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT = ENTERPRISE_ASSET_LIBRARY_PROMPTS_URI_FORMAT + "/%s"
+
+class EnterpriseAssetLibraryPrompt(object):
+    """
+    A handle to interact with an Enterprise Prompt on the DSS instance.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetCollection.create_prompt` or
+    :meth:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetCollection.get_prompt`
+    """
+    def __init__(self, collection, prompt):
+        self.collection = collection
+        self.prompt = prompt
+
+    def delete(self):
+        """
+        Delete this Enterprise Prompt
+
+        This call requires at least contributor rights on the Enterprise Asset Collection.
+        """
+        return self.collection.client._perform_empty("DELETE", ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT % (self.collection.id, self.prompt["id"]))
+
+    def get_raw(self):
+        """
+        Get the raw prompt. This returns a reference to the raw prompt, not a copy,
+        so changes made to the returned object will be reflected when saving.
+
+        :return: the raw Enterprise Prompt
+        :rtype: :class:`dict`
+        """
+        return self.prompt
+
+    @property
+    def id(self):
+        """
+        The Enterprise Asset Collection id (read-only)
+
+        :rtype: str
+        """
+        return self.prompt['id']
+
+    @property
+    def name(self):
+        """
+        Get or set the name of the Enterprise Asset Collection
+
+        :rtype: str
+        """
+        return self.prompt['name']
+
+    @name.setter
+    def name(self, value):
+        self.prompt['name'] = value
+
+    @property
+    def description(self):
+        """
+        Get or set the description of the Enterprise Asset Collection
+
+        :rtype: str
+        """
+        return self.prompt['description']
+
+    @description.setter
+    def description(self, value):
+        self.prompt['description'] = value
+
+    @property
+    def tags(self):
+        """
+        Get or set the tags of the Enterprise Asset Collection
+
+        :rtype: list[string]
+        """
+        return self.prompt['tags']
+
+    @tags.setter
+    def tags(self, value):
+        self.prompt['tags'] = value
+
+    @property
+    def content(self):
+        """
+        Get or set the content of the Enterprise Asset Collection
+
+        :rtype: string
+        """
+        return self.prompt['content']
+
+    @content.setter
+    def content(self, value):
+        self.prompt['content'] = value
+
+
+    def save(self):
+        """
+        Save the changes made on the prompt
+
+        This call requires at least contributor rights on the Enterprise Asset Collection.
+        """
+        self.collection.client._perform_empty("PUT", ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT % (self.collection.id, self.prompt["id"]), body=self.prompt)
+
+class DSSEnterpriseAssetCollection:
+    """
+    A handle to interact with an Enterprise Asset Collection on the DSS instance.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetLibrary.get_collection`
+    """
+
+    def __init__(self, client, collection_id):
+        self.client = client
+        self.id = collection_id
+
+    def get_prompt(self, prompt_id):
+        """
+        Get a prompt from the Enterprise Asset Collection.
+
+        :param prompt_id: id of the Enterprise Prompt
+        :type prompt_id: str
+
+        :return: the Enterprise Prompt
+        :rtype: :class:`dataikuapi.dss.enterprise_asset_library.EnterpriseAssetLibraryPrompt`
+        """
+        return EnterpriseAssetLibraryPrompt(self, self.client._perform_json("GET", ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT % (self.id, prompt_id)))
+
+    def create_prompt(self, name=None, description=None, content=None, tags=None, prompt=None):
+        """
+        Add a prompt to this Enterprise Asset Collection.
+        This call requires at least contributor rights on the Enterprise Asset Collection.
+
+        :param str name: name of the prompt to create
+        :param str description: description of the prompt to create
+        :param str content: content of the prompt to create
+        :param list[string] tags: tags of the prompt to create
+        :param prompt: prompt to add to the Enterprise Asset Collection.
+                       If not provided, a prompt is built from ``name``, ``description``,
+                       ``content`` and ``tags`` parameters. If both are provided, keyword arguments
+                       override values from ``prompt``.
+        :type prompt: :class:`dict`
+
+        :return: the newly created Enterprise Prompt
+        :rtype: :class:`dataikuapi.dss.enterprise_asset_library.EnterpriseAssetLibraryPrompt`
+        """
+        if prompt is None:
+            prompt = {}
+        if name is not None:
+            prompt["name"] = name
+        if description is not None:
+            prompt["description"] = description
+        if content is not None:
+            prompt["content"] = content
+        if tags is not None:
+            prompt["tags"] = tags
+
+        if "name" not in prompt:
+            raise ValueError("name is required to create a prompt")
+        if "content" not in prompt:
+            raise ValueError("content is required to create a prompt")
+
+        prompt_id = self.client._perform_json("POST", ENTERPRISE_ASSET_LIBRARY_PROMPTS_URI_FORMAT % self.id, body=prompt)["id"]
+        return self.get_prompt(prompt_id)
+
+
 
 class DSSEnterpriseAssetLibrary(object):
     """
@@ -31,3 +194,12 @@ class DSSEnterpriseAssetLibrary(object):
         if restrict_collections is None:
             restrict_collections = []
         return self.client._perform_json("GET", "/enterprise-asset-library/prompts", {"restrictCollections": restrict_collections})
+
+    def get_collection(self, collection_id):
+        """
+        Get a handle to interact with a specific Enterprise Asset Collection
+
+        :param str collection_id: the id of the Enterprise Asset Collection to fetch
+        :rtype: :class:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetCollection`
+        """
+        return DSSEnterpriseAssetCollection(self.client, collection_id)

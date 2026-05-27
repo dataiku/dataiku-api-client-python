@@ -1,9 +1,12 @@
 import base64
-
 import copy
 import json
+import warnings
 
+from dataikuapi.dss.llm_utils import get_json_schema_and_parser
+from dataikuapi.dss.recipe import DSSRecipe
 from dataikuapi.utils import _write_response_content_to_file
+
 
 class DocumentExtractor(object):
     """
@@ -51,14 +54,14 @@ class DocumentExtractor(object):
             extractor_request["inputs"] = {
                 "imagesRef": {
                     "type": images[0].type,
-                    "inlineImages": [ir.as_json() for ir in images]
+                    "inlineImages": [ir.as_dict() for ir in images]
                 }
             }
         elif all(isinstance(ir, ManagedFolderImageRef) for ir in images):
             extractor_request["inputs"] = {
                 "imagesRef": {
                     "type": images[0].type,
-                    "managedFolderId": images[0].managed_folder_id,
+                    "managedFolderRef": images[0].managed_folder_ref,
                     "imagesPaths": [ir.image_path for ir in images]
                 }
             }
@@ -68,6 +71,89 @@ class DocumentExtractor(object):
         ret = self.client._perform_json("POST", "/projects/%s/document-extractors/vlm" % self.project_key,
                                         body=extractor_request)
         return VlmExtractorResponse(ret)
+
+
+    def vlm_extract_fields(self, images, schema=None, llm_id=None, llm_prompt=None, from_recipe=None, strict=None, compatible=None):
+        """
+        Extract specific fields (structured data) from images (typically screenshots of a document's pages) using a vision LLM.
+        Describe expected fields in ``extraction_schema``, or specify an Extract Fields recipe to use its settings.
+
+        :param images: screenshots of the document's pages from which to extract the fields
+        :type images: iterable(:class:`InlineImageRef`) | iterable(:class:`ManagedFolderImageRef`)
+        :param schema: a JSON schema or a Pydantic model class describing the fields to extract.
+                       JSON schema definitions or Pydantic models referencing other models are unsupported.
+        :type schema: str | dict | pydantic.BaseModel class or Python type hint.
+        :param llm_id: Identifier of a vision LLM
+        :type llm_id: str
+        :param llm_prompt: Custom prompt to extract fields from the images
+        :type llm_prompt: str
+        :param from_recipe: Name of a recipe from which to read the other arguments.
+                            Arguments provided explicitly take precedence.
+        :type from_recipe: str
+        :param strict: Whether to strictly enforce the schema. Support varies across models/providers.
+        :type strict: bool
+        :param compatible: Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
+        :type compatible: bool
+
+        :returns: Extracted fields from images
+        :rtype: :class:`FieldsVlmExtractorResponse`
+        """
+        if from_recipe is not None and (schema is None or llm_id is None or llm_prompt is None or strict is None or compatible is None):
+            recipe_settings = DSSRecipe(self.client, self.project_key, from_recipe).get_settings()
+            recipe_params = recipe_settings.raw_params
+
+            if schema is None:
+                schema = recipe_params.get("extractionSchema")
+            if llm_id is None:
+                llm_id = recipe_params.get("vlmId")
+            if llm_prompt is None:
+                llm_prompt = recipe_params.get("extractionPrompt")
+            if strict is None:
+                strict = recipe_params.get("valueErrorHandling") == "BLANK_VALUE"
+            if compatible is None:
+                compatible = True
+                dku_properties = recipe_settings.get_recipe_raw_definition().get("dkuProperties") or []
+                for prop in dku_properties:
+                    if isinstance(prop, dict) and prop.get("name") == "dku.extractFields.schemaCompatibilityEnhancer" and isinstance(prop.get("value"), bool):
+                        compatible = prop.get("value")
+                        break
+
+        json_schema, parser_method = get_json_schema_and_parser(schema)
+
+        extractor_request = {
+            "settings": {
+                "llmId": llm_id,
+                "llmPrompt": llm_prompt,
+                "extractionSchema" : json.loads(json_schema),
+                "strictSchemaAdherence": strict,
+                "schemaCompatibilityEnhancer": compatible
+            }
+        }
+
+        images = list(images)
+        if not images:
+            raise ValueError("No images provided")
+        if all(isinstance(ir, InlineImageRef) for ir in images):
+            extractor_request["inputs"] = {
+                "imagesRef": {
+                    "type": images[0].type,
+                    "inlineImages": [ir.as_dict() for ir in images]
+                }
+            }
+        elif all(isinstance(ir, ManagedFolderImageRef) for ir in images):
+            extractor_request["inputs"] = {
+                "imagesRef": {
+                    "type": images[0].type,
+                    "managedFolderRef": images[0].managed_folder_ref,
+                    "imagesPaths": [ir.image_path for ir in images]
+                }
+            }
+        else:
+            raise ValueError("Unsupported mix of image types: %s" % set([ir.type for ir in images]))
+
+        ret = self.client._perform_json("POST", "/projects/%s/document-extractors/fields/vlm" % self.project_key,
+                                        body=extractor_request)
+        return FieldsVlmExtractorResponse(ret, parser_method)
 
     def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None,
                            output_managed_folder=None, image_validation=True):
@@ -102,12 +188,12 @@ class DocumentExtractor(object):
 
         extractor_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             },
             "settings": {
                 "maxSectionDepth": max_section_depth,
                 "imageValidation": image_validation,
-                "outputManagedFolderId": output_managed_folder,
+                "outputManagedFolderRef": output_managed_folder,
             }
         }
         if image_handling_mode == "IGNORE":
@@ -164,7 +250,7 @@ class DocumentExtractor(object):
 
         extractor_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             },
             "settings": {
             }
@@ -190,7 +276,8 @@ class DocumentExtractor(object):
 
         return TextExtractorResponse(ret)
 
-    def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True):
+    def generate_pages_screenshots(self, document, output_managed_folder=None, offset=0, fetch_size=10, keep_fetched=True,
+                                   page_dpi=None, max_memory_per_document=None):
         """
         Generate per-page screenshots of a document, returning an iterable over the screenshots.
 
@@ -212,7 +299,7 @@ class DocumentExtractor(object):
             for idx, screenshot in enumerate(response):
                 if (idx % fetch_size == 0) and idx != 0:
                     print(f"Computing the next {fetch_size} screenshots")
-                print(f"Screenshot #{idx}: {screenshot.as_json()}")
+                print(f"Screenshot #{idx}: {screenshot.as_dict()}")
 
             # Alternatively, response being an iterable, you can compute & fetch all screenshots at once:
             response = doc_extractor.generate_pages_screenshots(document_ref)
@@ -231,12 +318,24 @@ class DocumentExtractor(object):
         :type fetch_size: int
         :param keep_fetched: whether to keep previous screenshots requests within this response object when fetching next ones.
         :type keep_fetched: boolean
+        :param page_dpi: DPI used to render pages if memory allows.
+        :type page_dpi: int
+        :param max_memory_per_document: maximum memory budget in MB used while rendering a document.
+            The effective DPI may be reduced to fit this limit depending on page dimensions.
+        :type max_memory_per_document: int
 
         :returns: An iterable over the result screenshots
         :rtype: :class:`ScreenshotterResponse`
         """
 
-        screenshotter_request = ScreenshotterRequest(document, output_managed_folder, offset, fetch_size)
+        screenshotter_request = ScreenshotterRequest(
+            document,
+            output_managed_folder,
+            offset,
+            fetch_size,
+            page_dpi,
+            max_memory_per_document
+        )
         return ScreenshotterResponse(self.client, self.project_key, screenshotter_request, keep_fetched)
 
 
@@ -268,21 +367,43 @@ class ScreenshotterRequest(object):
 
     """
 
-    def __init__(self, document, output_managed_folder, offset, fetch_size):
+    def __init__(self, document, output_managed_folder, offset, fetch_size, page_dpi=None, max_memory_per_document=None):
         self.document = document
         self.output_managed_folder = output_managed_folder
         self.offset = offset
         self.fetch_size = fetch_size
+        self.page_dpi = page_dpi
+        self.max_memory_per_document = max_memory_per_document # MB
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ScreenshotterRequest.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "inputs": {
-                "document": self.document.as_json(),
+                "document": self.document.as_dict(),
             },
             "settings": {
-                "outputManagedFolderId": self.output_managed_folder,
+                "outputManagedFolderRef": self.output_managed_folder,
                 "paginationOffset": self.offset,
                 "paginationSize": self.fetch_size,
+                "pageDPI": self.page_dpi,
+                "maxMemoryPerDocMB": self.max_memory_per_document,
             }
         }
 
@@ -300,7 +421,7 @@ class ScreenshotterResponse(object):
         self.project_key = project_key
         self.screenshotter_request = screenshotter_request
         self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                       raw_body={"screenshotRequest": json.dumps(screenshotter_request.as_json())},
+                                                       raw_body={"screenshotRequest": json.dumps(screenshotter_request.as_dict())},
                                                        files={"file": screenshotter_request.document.file} if isinstance(screenshotter_request.document,
                                                                                                                          LocalFileDocumentRef) else None)
         self._fail_unless_success()
@@ -324,7 +445,7 @@ class ScreenshotterResponse(object):
             self.screenshotter_request.offset = screenshot_index
             self.screenshotter_request.document = self.document
             self._current_data = self.client._perform_json("POST", "/projects/%s/document-extractors/screenshotter" % self.project_key,
-                                                           raw_body={"screenshotRequest": json.dumps(self.screenshotter_request.as_json())},
+                                                           raw_body={"screenshotRequest": json.dumps(self.screenshotter_request.as_dict())},
                                                            files={"file": self.document.file} if isinstance(self.document, LocalFileDocumentRef) else None)
             self._fail_unless_success()
             self._update_screenshot_list_at_index(screenshot_index)
@@ -335,7 +456,7 @@ class ScreenshotterResponse(object):
             res = [InlineImageRef(image["content"], image["mimeType"] if "mimeType" in image else None) for image in
                    self._current_data["imagesRefs"]["inlineImages"]]
         elif self._current_data["imagesRefs"]["type"] == "managed_folder":
-            res = [ManagedFolderImageRef(self._current_data["imagesRefs"]["managedFolderId"], path) for path in self._current_data["imagesRefs"]["imagesPaths"]]
+            res = [ManagedFolderImageRef(self._current_data["imagesRefs"]["managedFolderRef"], path) for path in self._current_data["imagesRefs"]["imagesPaths"]]
         else:
             raise ValueError("Did not return valid images ref")
         if not self.keep_fetched:
@@ -376,7 +497,9 @@ class ScreenshotterResponse(object):
         """
         doc_type = self._current_data.get("documentRef").get("type")
         if doc_type == "managed_folder":
-            return ManagedFolderDocumentRef(self._current_data.get("documentRef").get("filePath"), self._current_data.get("documentRef").get("managedFolderId"))
+            document_ref = self._current_data.get("documentRef")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get("managedFolderId")
+            return ManagedFolderDocumentRef(document_ref.get("filePath"), managed_folder_ref)
         if doc_type == "tmp_file":
             return _TmpDocumentRef(self._current_data.get("documentRef").get("tmpFileName"), self._current_data.get("documentRef").get("originalFileName"))
         else:
@@ -513,19 +636,19 @@ class StructuredExtractorResponse(object):
         """
 
         def _flatten_using_dfs(node, current_outline):
-            if not node or not "type" in node:
+            if not node or "type" not in node:
                 return []
             elif node["type"] == "text" or node["type"] == "table":
-                if not "text" in node or not node["text"]:
+                if "text" not in node or not node["text"]:
                     return []
                 return [{"text": node["text"], "outline": current_outline}]
             elif node["type"] == "image":
-                if not "description" in node or not node["description"]:
+                if "description" not in node or not node["description"]:
                     return []
                 return [{"text": node["description"], "outline": current_outline}]
             elif node["type"] not in ["document", "section", "slide"]:
                 raise ValueError("Unsupported structured content type: " + node["type"])
-            if not "content" in node:
+            if "content" not in node:
                 return []
             deeper_outline = copy.deepcopy(current_outline)
             if node["type"] == "section":
@@ -559,7 +682,7 @@ class PDFConversionResponse(object):
         self.path_in_output_folder = path_in_output_folder
         pdf_convert_request = {
             "inputs": {
-                "document": document.as_json()
+                "document": document.as_dict()
             }
         }
         if output_managed_folder is not None:
@@ -619,7 +742,9 @@ class PDFConversionResponse(object):
         if self.output_managed_folder is None:
             return None
         else:
-            return ManagedFolderDocumentRef(self._data.get("documentRef").get("filePath"), self._data.get("documentRef").get("managedFolderId"))
+            document_ref = self._data.get("documentRef")
+            managed_folder_ref = document_ref.get("managedFolderRef") or document_ref.get("managedFolderId")
+            return ManagedFolderDocumentRef(document_ref.get("filePath"), managed_folder_ref)
 
     @property
     def success(self):
@@ -660,7 +785,6 @@ class VlmExtractorResponse(object):
     @property
     def success(self):
         """
-        :returns: The outcome of the extractor request.
         :rtype: bool
         """
         return self._data.get("ok")
@@ -683,9 +807,80 @@ class VlmExtractorResponse(object):
             )
             raise Exception(error_message)
 
+class FieldsVlmExtractorResponse(object):
+    """
+    A handle to interact with a VLM fields extraction result.
+
+    .. important::
+        Do not create this class directly; use :meth:`~DocumentExtractor.vlm_extract_fields`
+    """
+
+    def __init__(self, data, response_parser=None):
+        self._data = data
+        self._response_parser = response_parser
+        self._parsed_fields = None
+
+    def get_raw(self):
+        return self._data
+
+    @property
+    def success(self):
+        """
+        :rtype: bool
+        """
+        return self._data.get("status", "nok") != "nok"
+
+    @property
+    def fields(self):
+        """
+        Fields extracted from the original document.
+        Follows the structure of the extraction schema, has only the fields that abide by it.
+
+        :returns: extracted fields.
+        :rtype: dict
+        """
+        self._fail_unless_success()
+        return self._data["curatedFields"]
+
+    @property
+    def parsed_fields(self):
+        """
+        Fields extracted from the original document.
+        Follows the structure of the extraction schema, has only the fields that abide by it.
+        Only available for extraction schema given as a Pydantic model or using Python type hint.
+
+        :returns: extracted fields deserialized into a Pydantic model instance.
+        :rtype: pydantic.BaseModel
+        """
+        self._fail_unless_success()
+        if self._parsed_fields is None and self._data["curatedFields"] is not None:
+            if not self._response_parser:
+                raise Exception("Require extraction schema to be given as a Pydantic model or using Python type hint.")
+            else:
+                self._parsed_fields = self._response_parser(json.dumps(self._data["curatedFields"]))
+        return self._parsed_fields
+
+    @property
+    def invalid_fields(self):
+        """
+        Fields in the extraction schema that the Vision LLM could not extract.
+        Follows the structure/hierarchy of the extraction schema, but has only the incorrect or missing fields.
+
+        :rtype: dict
+        """
+        self._fail_unless_success()
+        return self._data["invalidFields"]
+
+    def _fail_unless_success(self):
+        if not self.success:
+            error_message = "Document failed to be extracted - request failed: {}".format(
+                self._data.get("errorMessage", "An unknown error occurred")
+            )
+            raise Exception(error_message)
+
 
 class InputRef(object):
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -703,7 +898,7 @@ class DocumentRef(InputRef):
         self.type = None
         self.mime_type = mime_type
 
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -732,6 +927,19 @@ class LocalFileDocumentRef(DocumentRef):
         self.file = fp
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("LocalFileDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
         return {
             "type": self.type,
             "mimeType": self.mime_type,
@@ -758,6 +966,19 @@ class _TmpDocumentRef(DocumentRef):
         self.original_file_name = original_file_name
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("_TmpDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
         return {
             "type": self.type,
             "tmpFileName": self.tmp_file_name,
@@ -789,13 +1010,36 @@ class ManagedFolderDocumentRef(DocumentRef):
         super(ManagedFolderDocumentRef, self).__init__(mime_type)
         self.type = "managed_folder"
         self.file_path = file_path
-        self.managed_folder_id = managed_folder_id
+        self.managed_folder_ref = managed_folder_id
+
+    @property
+    def managed_folder_id(self):
+        warnings.warn("ManagedFolderDocumentRef.managed_folder_id is deprecated, please use managed_folder_ref", DeprecationWarning)
+        return self.managed_folder_ref
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+           Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ManagedFolderDocumentRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
             "filePath": self.file_path,
-            "managedFolderId": self.managed_folder_id,
+            "managedFolderRef": self.managed_folder_ref,
             "mimeType": self.mime_type,
         }
 
@@ -818,6 +1062,23 @@ class InlineDocumentRef(DocumentRef):
         self.content_type = content_type
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
             "content": self.content,
@@ -854,7 +1115,7 @@ class ImageRef(InputRef):
         super(ImageRef, self).__init__()
         self.type = None
 
-    def as_json(self):
+    def as_dict(self):
         raise NotImplementedError
 
 
@@ -891,6 +1152,24 @@ class InlineImageRef(ImageRef):
         self.mime_type = mime_type
 
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("InlineImageRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         res = {
             "type": self.type,
             "content": self.image
@@ -908,25 +1187,48 @@ class ManagedFolderImageRef(ImageRef):
 
     .. code-block:: python
 
-        managed_img = ManagedFolderImageRef('managed_folder_id', 'path_in_folder/image.png')
+        managed_img = ManagedFolderImageRef('managed_folder_ref', 'path_in_folder/image.png')
 
         # Extract a text summary from the image using a vision LLM:
         resp = doc_ex.vlm_extract([managed_img], 'llm_id')
     """
 
-    def __init__(self, managed_folder_id, image_path):
+    def __init__(self, managed_folder_ref, image_path):
         """
-        :param str managed_folder_id: identifier of the folder containing the image
+        :param str managed_folder_ref: identifier of the folder containing the image
         :param str image_path: path to the image file inside the managed folder
         """
         super(ManagedFolderImageRef, self).__init__()
         self.type = "managed_folder"
-        self.managed_folder_id = managed_folder_id
+        self.managed_folder_ref = managed_folder_ref
         self.image_path = image_path
 
+    @property
+    def managed_folder_id(self):
+        warnings.warn("ManagedFolderImageRef.managed_folder_id is deprecated, please use managed_folder_ref", DeprecationWarning)
+        return self.managed_folder_ref
+
     def as_json(self):
+        """
+        Get a dictionary representation.
+
+        .. caution::
+
+            Deprecated, use :meth:`as_dict` instead
+
+        :rtype: dict
+        """
+        warnings.warn("ManagedFolderImageRef.as_json is deprecated, please use as_dict", DeprecationWarning)
+        return self.as_dict()
+
+    def as_dict(self):
+        """
+        Get a dictionary representation.
+
+        :rtype: dict
+        """
         return {
             "type": self.type,
-            "managedFolderId": self.managed_folder_id,
+            "managedFolderRef": self.managed_folder_ref,
             "imagePath": self.image_path
         }

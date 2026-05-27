@@ -22,6 +22,7 @@ class DKUKnowledgeBankRetriever(BaseRetriever):
         'hybrid_use_advanced_reranking',
         'hybrid_rrf_rank_constant',
         'hybrid_rrf_rank_window_size',
+        'filter',
     ]
     """ Valid parameter names for the search method
     """

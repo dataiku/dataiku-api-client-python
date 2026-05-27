@@ -168,3 +168,13 @@ def mini_trace_dump(trace):
             _rec(child, level +1)
 
     _rec(SpanReader(trace), 0)
+
+def prepare_query_for_nested_llm_mesh_call(query):
+    try:
+        from dataiku.llm.llm_mesh_stack import prepare_query_for_nested_llm_mesh_call as impl
+    except Exception:
+        # Failsafe fallback: if importing DSS implementation fails, return the query unchanged.
+        # This covers environments without `dataiku`.
+        # In that case we lose LLM mesh stack propagation/tracing, which is acceptable
+        return query
+    return impl(query)
