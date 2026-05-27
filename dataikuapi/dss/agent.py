@@ -226,6 +226,11 @@ class DSSAgentInteractionLoggingSelection(object):
         self.mode = self.MODE_NONE
 
 
+# Neutral aliases for shared LLM interaction logging concepts.
+DSSLLMInteractionLoggingSettings = DSSAgentInteractionLoggingSettings
+DSSLLMInteractionLoggingSelection = DSSAgentInteractionLoggingSelection
+
+
 class DSSAgentListItem(DSSTaggableObjectListItem):
     """
     An item in a list of agents
@@ -521,7 +526,7 @@ class DSSAgentVersionSettings(object):
         .. code-block:: python
 
             project = client.get_project("MYPROJECT")
-            project.create_agent_interaction_logging_dataset(
+            project.create_llm_interaction_logging_dataset(
                 "agent_logs",
                 connection_id="filesystem_managed",
                 time_partitioning="DAY",

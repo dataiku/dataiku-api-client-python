@@ -2744,6 +2744,7 @@ class DSSProject(object):
             * PINECONE
             * ELASTICSEARCH
             * AZURE_AI_SEARCH
+            * SNOWFLAKE_CORTEX_SEARCH
             * VERTEX_AI_GCS_BASED
             * FAISS *(not recommended)*
             * QDRANT_LOCAL *(not recommended)*
@@ -2918,6 +2919,27 @@ class DSSProject(object):
         """
         Create a new agent interaction logging dataset.
 
+        .. caution:: Deprecated. Use :meth:`create_llm_interaction_logging_dataset`
+
+        :param dataset_name: Identifier for the dataset to create.
+        :type dataset_name: str
+        :param connection_id: Identifier of the connection to use (SQL or filesystem-like).
+        :type connection_id: str
+        :param time_partitioning: Time period of the partitioning. Can be one of "HOUR", "DAY", "MONTH". Set to None for no partitioning.
+        :type time_partitioning: str | None
+        """
+        return self.create_llm_interaction_logging_dataset(
+            dataset_name=dataset_name,
+            connection_id=connection_id,
+            time_partitioning=time_partitioning,
+        )
+
+    def create_llm_interaction_logging_dataset(self, dataset_name, connection_id, time_partitioning=None):
+        """
+        Create a new LLM interaction logging dataset.
+
+        This dataset can be used by both agents and retrieval-augmented LLMs.
+
         :param dataset_name: Identifier for the dataset to create.
         :type dataset_name: str
         :param connection_id: Identifier of the connection to use (SQL or filesystem-like).
@@ -2931,7 +2953,7 @@ class DSSProject(object):
             "timePartitioning": time_partitioning
         }
         return self.client._perform_empty(
-            "POST", "/projects/%s/agents/interaction-logging-dataset" % self.project_key, params=params
+            "POST", "/projects/%s/llm-interaction-logging-datasets" % self.project_key, params=params
         )
 
     ########################################################

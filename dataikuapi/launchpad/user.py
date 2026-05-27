@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from .exceptions import DataikuClientException, DataikuResourceDoesNotExistException
 
@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from ..launchpad_client import LaunchpadClient
 
 
-class _BaseLaunchpadUser:
+class BaseLaunchpadUser:
     """
     A base Launchpad user
 
@@ -31,7 +31,7 @@ class _BaseLaunchpadUser:
     @classmethod
     def _list(
         cls, client: "LaunchpadClient", emails: Optional[List[str]] = None
-    ) -> List["_BaseLaunchpadUser"]:
+    ) -> List["BaseLaunchpadUser"]:
         raise NotImplementedError
 
     @classmethod
@@ -41,7 +41,7 @@ class _BaseLaunchpadUser:
         *,
         id: Optional[str] = None,
         email: Optional[str] = None,
-    ) -> "_BaseLaunchpadUser":
+    ) -> "BaseLaunchpadUser":
         if id is not None:
             return cls._get_by_id(client, id)
 
@@ -138,7 +138,7 @@ class _BaseLaunchpadUser:
         return self._data
 
 
-class LaunchpadUser(_BaseLaunchpadUser):
+class LaunchpadUser(BaseLaunchpadUser):
     """
     A user on the Cloud space
 
@@ -178,6 +178,17 @@ class LaunchpadUser(_BaseLaunchpadUser):
         Whether the user is the owner of the space
         """
         return self._data["isOwner"]
+
+    @property
+    def admin_properties(self) -> Dict[str, Any]:
+        """
+        The user's admin properties
+        """
+        return self._data.setdefault("adminProperties", {})
+
+    @admin_properties.setter
+    def admin_properties(self, new_value: Dict[str, Any]) -> None:
+        self._data["adminProperties"] = dict(new_value)
 
     def set_profile(
         self,
@@ -249,8 +260,44 @@ class LaunchpadUser(_BaseLaunchpadUser):
         """
         super().remove_groups(groups)
 
+    def set_admin_property(self, key: str, value: Any) -> None:
+        """
+        Set a single admin property on the user
 
-class LaunchpadInvite(_BaseLaunchpadUser):
+        Usage example:
+
+        .. code-block:: python
+
+            user = client.get_user("user@example.com")
+            user.set_admin_property("key", "value")
+            client.update_users([user])
+
+        :param key: the admin property key to set
+        :type key: str
+        :param value: the admin property value to set
+        :type value: Any
+        """
+        self.admin_properties[key] = value
+
+    def remove_admin_property(self, key: str) -> None:
+        """
+        Remove a single admin property on the user
+
+        Usage example:
+
+        .. code-block:: python
+
+            user = client.get_user("user@example.com")
+            user.remove_admin_property("key")
+            client.update_users([user])
+
+        :param key: the admin property key to set
+        :type key: str
+        """
+        self.admin_properties.pop(key, None)
+
+
+class LaunchpadInvite(BaseLaunchpadUser):
     """
     An invite on the Cloud space
 

@@ -2202,6 +2202,7 @@ class DSSCodeEnvContainerConfsBearer(object):
         * PYTHON36_SUPPORT
         * PYTHON37_SUPPORT
         * PYTHON38_SUPPORT
+        * HUGGING_FACE_LOCAL_GPU
 
         :param dict container_runtime_addition: a dict with the container runtime addition definition
         """
