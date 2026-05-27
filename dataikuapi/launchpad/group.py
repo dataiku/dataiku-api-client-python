@@ -30,7 +30,7 @@ class LaunchpadGroup:
         group = client.build_group("Designers", "Designer group", ["user@example.com"])
         group.launchpad_permissions = {"mayTurnOnSpace": True}
         group.update_permissions({"mayCreateProjects": True}, node_type="dataiku")
-        group.update_permissions({"mayManageGovern": True}, node_type="govern")
+        group.update_permissions({"isGovernArchitect": True}, node_type="govern")
         group.save()
 
         # Get a group

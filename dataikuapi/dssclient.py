@@ -960,7 +960,7 @@ class DSSClient(object):
 
             env_handle = client.create_internal_code_env(internal_env_type="RAG_CODE_ENV", python_interpreter="PYTHON310")
 
-        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV`, `DOCUMENT_EXTRACTION_CODE_ENV`, `DOCUMENT_TEMPLATING_CODE_ENV`.
+        :param str internal_env_type: the internal env type, can be `DEEP_HUB_IMAGE_CLASSIFICATION_CODE_ENV`, `DEEP_HUB_IMAGE_OBJECT_DETECTION_CODE_ENV`, `PROXY_MODELS_CODE_ENV`, `DATABRICKS_UTILS_CODE_ENV`, `PII_DETECTION_CODE_ENV`, `HUGGINGFACE_LOCAL_CODE_ENV`, `RAG_CODE_ENV`, `DOCUMENT_EXTRACTION_CODE_ENV`, `DOCUMENT_TEMPLATING_CODE_ENV`, `HUGGINGFACE_LOCAL_CPU_CODE_ENV`.
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :param bool wait: wait for the code env to be created or return a future
@@ -1828,6 +1828,9 @@ class DSSClient(object):
         """
         Returns a dictionary with information about licensing status of this DSS instance
 
+        Note:
+            The API is not available on Cloud. Use the Launchpad or Launchpad API.
+
         :rtype: dict
         """
         return self._perform_json("GET", "/admin/licensing/status")
@@ -1835,6 +1838,9 @@ class DSSClient(object):
     def set_license(self, license):
         """
         Sets a new licence for DSS
+
+        Note:
+            The API is not available on Cloud. Use the Launchpad or Launchpad API.
 
         :param license: license (content of license file)
         :return: None

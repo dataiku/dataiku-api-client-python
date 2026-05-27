@@ -75,6 +75,7 @@ class FMInstanceCreator(object):
         data_volume_IOPS=None,
         data_volume_encryption=None,
         data_volume_encryption_key=None,
+        data_volume_throughput=None,
     ):
         """
         Set the options of the data volume to use with the DSS Instance
@@ -86,6 +87,7 @@ class FMInstanceCreator(object):
         :param data_volume_encryption: Optional, encryption mode of the data volume
         :type data_volume_encryption: :class:`dataikuapi.fm.instances.FMInstanceEncryptionMode`
         :param str data_volume_encryption_key: Optional, the encryption key to use when data_volume_encryption_key is FMInstanceEncryptionMode.CUSTOM
+        :param int data_volume_throughput: Optional, data volume throughput
         :rtype: :class:`dataikuapi.fm.instances.FMInstanceCreator`
         """
         if not data_volume_encryption:
@@ -99,6 +101,7 @@ class FMInstanceCreator(object):
         self.data["dataVolumeSizeGB"] = data_volume_size
         self.data["dataVolumeSizeMaxGB"] = data_volume_size_max
         self.data["dataVolumeIOPS"] = data_volume_IOPS
+        self.data["dataVolumeThroughput"] = data_volume_throughput
         self.data["volumesEncryption"] = data_volume_encryption.value
         self.data["volumesEncryptionKey"] = data_volume_encryption_key
         return self

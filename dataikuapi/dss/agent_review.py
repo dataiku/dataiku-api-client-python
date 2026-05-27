@@ -214,6 +214,32 @@ class DSSAgentReview(object):
     def nb_executions(self, value):
         self.data["nbExecutions"] = value
 
+    @property
+    def hitl_validation_policy(self):
+        """
+        Review-wide default HITL validation policy used when creating a test.
+        Possible values are ``ACCEPT`` or ``REJECT``.
+        :rtype: str
+        """
+        return self.data.get("hitlValidationPolicy")
+
+    @hitl_validation_policy.setter
+    def hitl_validation_policy(self, value):
+        self.data["hitlValidationPolicy"] = value
+
+    @property
+    def hitl_max_validation_turns(self):
+        """
+        Maximum number of validation turns auto-answered during a test run before stopping.
+        Possible values are integers greater than or equal to ``1``.
+        :rtype: int
+        """
+        return self.data.get("hitlMaxValidationTurns")
+
+    @hitl_max_validation_turns.setter
+    def hitl_max_validation_turns(self, value):
+        self.data["hitlMaxValidationTurns"] = value
+
     def get_trait(self, trait_id):
         """
         Get a specific trait by its ID.
@@ -278,13 +304,14 @@ class DSSAgentReview(object):
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_test(self, query=None, reference_answer=None, expectations=None):
+    def create_test(self, query=None, reference_answer=None, expectations=None, hitl_validation_policy=None):
         """
         Create a new test for this agent review.
 
         :param str query: Query to test the agent. Optional.
         :param str reference_answer: Reference answer. Optional.
         :param str expectations: Expectations on the agent answer. Optional.
+        :param str hitl_validation_policy: Per-test HITL validation policy. Optional.
         :returns: The created test object.
         :rtype: :class:`DSSAgentReviewTest`
         """
@@ -294,13 +321,14 @@ class DSSAgentReview(object):
             "query": query,
             "referenceAnswer": reference_answer,
             "expectations": expectations,
+            "hitlValidationPolicy": hitl_validation_policy,
         }
         test = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/tests" % self.project_key, body=body
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None, expectations_column=None, top_n=None, partitions=None, latest_partitions_n=None):
+    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None, expectations_column=None, top_n=None, partitions=None, latest_partitions_n=None, hitl_validation_policy_column=None):
         """
         Create new tests for this agent review by importing them from a dataset.
 
@@ -311,6 +339,7 @@ class DSSAgentReview(object):
         :param int top_n: Only take the first n rows of the dataset. Optional.
         :param list[str] partitions: For partitioned datasets, only consider the given partitions. Optional.
         :param int latest_partitions_n: For partitioned datasets and if partitions is not set, only consider the latest n partitions. Optional.
+        :param str hitl_validation_policy_column: Name of the column containing per-test HITL validation policy. Optional.
         :returns: A dictionary with keys:
             - "createdTestIds": list of ids of the created tests
             - "error": The error message if any occurred
@@ -324,6 +353,7 @@ class DSSAgentReview(object):
             "queryColumn": query_column,
             "referenceAnswerColumn": reference_answer_column,
             "expectationsColumn": expectations_column,
+            "hitlValidationPolicyColumn": hitl_validation_policy_column,
         }
         if top_n is not None:
             body["samplingMethod"] = "HEAD_SEQUENTIAL"
@@ -588,6 +618,19 @@ class DSSAgentReviewTest(object):
         self.data["expectations"] = value
 
     @property
+    def hitl_validation_policy(self):
+        """
+        Per-test HITL validation policy.
+        Possible values are ``ACCEPT`` or ``REJECT``.
+        :rtype: str
+        """
+        return self.data.get("hitlValidationPolicy")
+
+    @hitl_validation_policy.setter
+    def hitl_validation_policy(self, value):
+        self.data["hitlValidationPolicy"] = value
+
+    @property
     def creation_timestamp(self):
         """
         Timestamp of creation (epoch millis).
@@ -734,6 +777,15 @@ class DSSAgentReviewTestListItem(dict):
         :rtype: str
         """
         return self.get("expectations")
+
+    @property
+    def hitl_validation_policy(self):
+        """
+        Per-test HITL validation policy.
+        Possible values are ``ACCEPT`` or ``REJECT``.
+        :rtype: str
+        """
+        return self.get("hitlValidationPolicy")
 
 
 class DSSAgentReviewRun(object):

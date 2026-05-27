@@ -276,6 +276,7 @@ class DSSSemanticModelVersionSettings(object):
             "entities": [],
             "relationships": [],
             "goldenQueries": [],
+            "crossEntityMetrics": [],
             "glossaryTerms": [],
             "glossaryBindings": [],
             "indexingSettings": {
