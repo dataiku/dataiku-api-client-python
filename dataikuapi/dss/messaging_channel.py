@@ -285,9 +285,9 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
 
             channel = client.get_messaging_channel("other-mail-channel-id")
             for file in paths:
-            with open(file) as f:
-                # Optionally include file type ("text/csv")
-                attachments.append(file, f.read(), "text/csv")
+                with open(file) as f:
+                    # Optionally include file type ("text/csv")
+                    attachments.append([file, f.read(), "text/csv"])
             channel.send("PROJECT_KEY", ["joe@dataiku.com"], "Subject", "Body in plain text",  attachments=attachments, False)
 
         :param project_key: project issuing the email. The user must have "Write content" permission on the specified project.
@@ -299,7 +299,7 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
         :param body: email body (in plain text or HTML format)
         :type body: str
         :param attachments: files to be attached to the mail, defaults to None
-        :type attachments: list[BufferedReader]
+        :type attachments: list[list[str, bytes, str]]
         :param plain_text: True to send email as plain text, False to send it as HTML. Defaults to False.
         :type plain_text: bool
         :param sender: sender email address. Use None to use the sender defined at the channel level.

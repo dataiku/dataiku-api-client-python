@@ -2732,7 +2732,7 @@ class DSSProject(object):
         """
         return DSSKnowledgeBank(self.client, self.project_key, id)
 
-    def create_knowledge_bank(self, name, vector_store_type, embedding_llm_id, settings=None):
+    def create_knowledge_bank(self, name, vector_store_type, embedding_llm_id=None, settings=None):
         """
         Create a new knowledge bank in the project, and return a handle to interact with it
 
@@ -2751,22 +2751,76 @@ class DSSProject(object):
             * MILVUS_LOCAL
             * MILVUS_REMOTE
 
-        :param str embedding_llm_id: The id of the embedding LLM. It has to have the TEXT_EMBEDDING_EXTRACTION purpose.
+        :param Optional[str] embedding_llm_id: The id of the embedding LLM.
+            For managed KBs, must have the TEXT_EMBEDDING_EXTRACTION purpose.
+            For unmanaged KBs, may be omitted when the vector store type does not require embeddings.
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
+            * "managed" (bool) set to False to create an unmanaged knowledge bank
             * "connection" (str) the connection name, for remote vector stores
             * "indexName" (str) the index name, for remote vector stores, including Pinecone
             * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
+            * "columnMapping" (dict) mappings for vector store columns, used only for unmanaged knowledge banks. Expected format:
+              ``{"id": "<column name>", "vector": "<column name>", "content": "<column name>", "metadata": "<column name>"}``
+              (keys depend on the selected vector store type; values are remote schema column names)
+            * "metadataColumnsSchema" (list[dict]) metadata schema, where each item has format:
+              ``{"name": "<column name>", "type": "<column type>"}``
+              Optional per-column keys include ``"filterable"`` (bool) and ``"storageName"`` (str, physical
+              column path when different from ``name``). Validation always prefers ``storageName`` when provided.
+              Without ``storageName``, ``name`` is accepted only when it resolves unambiguously to a single remote
+              column path.
+              If a top-level column and a nested mapped metadata field share the same name, ``storageName`` is
+              required.
             * "managedFolderId" (str) the id of the managed folder containing the extracted images.
                 The images may be referenced by their path in the knowledge bank, and stored in this folder.
 
+            For unmanaged knowledge banks, the caller is responsible for checking index existence and schema
+            compatibility before creation.
+
+        Example managed knowledge bank creation:
+
+        .. code-block:: python
+
+            kb = project.create_knowledge_bank(
+                name="my_managed_kb",
+                vector_store_type="CHROMA",
+                embedding_llm_id="MY_EMBEDDING_LLM_ID"
+            )
+
+        Example unmanaged knowledge bank creation:
+
+        .. code-block:: python
+
+            settings = {
+                "managed": False,
+                "connection": "my_vector_store_connection",
+                "indexName": "my_existing_index",
+                "columnMapping": {
+                    "id": "doc_id",
+                    "vector": "embedding",
+                    "content": "text",
+                    "metadata": "metadata_json"
+                },
+                "metadataColumnsSchema": [
+                    {"name": "source", "type": "string", "storageName": "metadata_json.source", "filterable": True},
+                    {"name": "author", "type": "string", "filterable": True}
+                ]
+            }
+
+            kb = project.create_knowledge_bank(
+                name="my_unmanaged_kb",
+                vector_store_type="ELASTICSEARCH",
+                embedding_llm_id="MY_EMBEDDING_LLM_ID",
+                settings=settings
+            )
+
         :returns: a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank` handle to interact with the newly-created knowledge bank
         """
-        if settings is None:
-            settings = {}
+        settings = dict(settings or {})
         settings['name'] = name
         settings['vectorStoreType'] = vector_store_type
-        settings['embeddingLLMId'] = embedding_llm_id
+        if embedding_llm_id is not None:
+            settings['embeddingLLMId'] = embedding_llm_id
 
         if "managedFolderId" in settings:
             settings["multimodalColumn"] = "DKU_MULTIMODAL_CONTENT"

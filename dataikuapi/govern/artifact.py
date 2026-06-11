@@ -169,8 +169,9 @@ class GovernArtifactSignoff(object):
 
     def update_status(self, signoff_status, users_to_notify=None, reload_conf_for_reset=False):
         """
-        Change the status of the sign-off, takes as input the target status, optionally a list of users to notify and a boolean to indicate if the sign-off configuration should be updated from the blueprint version.
-        Only the users included in the groups of feedback and approval are able to give feedback or approval and can be notified,
+        Change the status of the sign-off, takes as input the target status, optionally the list of users to notify and a boolean to indicate if the sign-off configuration should be updated from the blueprint version.
+        If users_to_notify is not set, all users configured to give feedback or approval will be notified.
+        Additionally, only the users included in the feedback groups and the approval list can be notified (any other user will be ignored),
         the complete list is available using: :meth:`~dataikuapi.govern.artifact.GovernArtifactSignoff.get_details`.
         For the feedback, the users will be notified as part of a chosen group of feedback and the group must be specified.
 
@@ -180,14 +181,13 @@ class GovernArtifactSignoff(object):
             The list should be a list of dict containing two keys "userLogin" and "groupId" for each user to notify.
             The "groupId" key is mandatory for feedback notification and forbidden for the final approval notification.
             All users that are not in the sign-off configuration will be ignored.
-        :param boolean reload_conf_for_reset: (Optional, defaults to **False**) Usefull only when the target status is NOT_STARTED.
+            If no users_to_notify is provided, all users that are configured to give feedback or approval will be notified.
+        :param boolean reload_conf_for_reset: (Optional, defaults to **False**) Useful only when the target status is NOT_STARTED.
             If True the current sign-off configuration will be overwritten by the one coming from the blueprint version, all delegated users will be reset.
             If False the current sign-off configuration will remain the same, allowing all delegated users to be retained but any changes to the sign-off configuration in the blueprint version will not be reflected.
         :type users_to_notify: list of dict
         :return: None
         """
-        if users_to_notify is None:
-            users_to_notify = []
 
         self.client._perform_json("POST", "/artifact/%s/workflow/step/%s/signoff/update-status" % (self.artifact_id, self.step_id),
             body={"targetStatus": signoff_status, "usersToSendEmailTo": users_to_notify, "reloadConfForReset": reload_conf_for_reset})

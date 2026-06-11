@@ -97,6 +97,7 @@ class SpanBuilder:
     @staticmethod
     def create_event(name):
         sb = SpanBuilder(name)
+        sb.span["type"] = "event"
         ts = int(time.time() * 1000)
         sb.span["timestamp"] = datetime.datetime.fromtimestamp(ts / 1000, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         return sb
