@@ -4129,7 +4129,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
 class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetails):
     """
-    Object to read details of a timeseries forecasting model, for instance the per time series metrics
+    Object to read details of a time series forecasting model, for instance the per time series metrics
 
     .. important::
         Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
@@ -4139,10 +4139,10 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
     
     def compute_residuals(self, wait=True):
         """
-        Launch computation of residuals for this trained timeseries model.
+        Launch computation of residuals for this trained time series model.
 
         :param wait: a flag to wait for the operation to complete (defaults to **True**)
-        :returns: if wait is True, a dictionary containing the residuals per-timeseries, else a future to wait on the result
+        :returns: if wait is True, a dictionary containing the residuals per time series, else a future to wait on the result
         :rtype: Union[:class:`dict`, :class:`dataikuapi.dss.future.DSSFuture`]
         """
         if self.mltask is not None:
@@ -4166,7 +4166,7 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
         """
         Retrieve a list of residuals for this trained time-series models
 
-        :returns: A dictionary, which contains a residuals object per-timeseries
+        :returns: A dictionary, which contains a residuals object per time series
         :rtype: dict
         """
         if self.mltask is not None:
@@ -4184,7 +4184,7 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
 
     def compute_permutation_importance(self, wait=True, n_iterations=None, per_identifier=None):
         """
-        Launch computation of permutation importance for this trained timeseries model.
+        Launch feature importance computation (measured using permutation importance) for this trained time series model.
 
         :param wait: a flag to wait for the operation to complete (defaults to **True**)
         :returns: if wait is True, a dictionary, else a future to wait on the result
@@ -4238,7 +4238,7 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
 
     def get_per_timeseries_metrics(self):
             """
-            Returns per timeseries performance metrics for this model.
+            Returns per time series performance metrics for this model.
 
             :returns: a dict of performance metrics values
             :rtype: dict
@@ -4257,9 +4257,9 @@ class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetai
 
     def get_per_timeseries_evaluation_forecasts(self):
         """
-        Returns per timeseries evaluation forecasts for this model.
+        Returns per time series evaluation forecasts for this model.
 
-        :returns: a dict of evaluation forecasts per timeseries identifier
+        :returns: a dict of evaluation forecasts per time series identifier
         :rtype: dict
         """
         if self.mltask is not None:

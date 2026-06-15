@@ -27,7 +27,7 @@ class DSSConnectionListItem(dict):
 
         :rtype: :class:`DSSConnection`
         """
-        return DSSConnection(self.client, self["name"])
+        return DSSConnection(self.client, self.name)
 
     @property
     def name(self):
@@ -36,6 +36,8 @@ class DSSConnectionListItem(dict):
 
         :rtype: string
         """
+        if "name" in self:
+            return self["name"]
         return self["id"]
    
     @property
@@ -46,6 +48,8 @@ class DSSConnectionListItem(dict):
         :return: a DSS connection type, like PostgreSQL, EC2, Azure, ...
         :rtype: string
         """
+        if "type" in self:
+            return self["type"]
         return self["label"]
 
 class DSSConnectionInfo(dict):
@@ -699,6 +703,11 @@ class DSSUser(object):
             return DSSClient(self.client.host, self.client.api_key, extra_headers={"X-DKU-ProxyUser":  self.login}, no_check_certificate=not self.client._session.verify, client_certificate=self.client._session.cert)
         elif self.client.internal_ticket is not None:
             client_as = DSSClient(self.client.host, internal_ticket = self.client.internal_ticket,
+                                         extra_headers={"X-DKU-ProxyUser":  self.login}, client_certificate=self.client._session.cert)
+            client_as._session.verify = self.client._session.verify
+            return client_as
+        elif self.client.jwt_bearer_token is not None:
+            client_as = DSSClient(self.client.host, jwt_bearer_token = self.client.jwt_bearer_token,
                                          extra_headers={"X-DKU-ProxyUser":  self.login}, client_certificate=self.client._session.cert)
             client_as._session.verify = self.client._session.verify
             return client_as
