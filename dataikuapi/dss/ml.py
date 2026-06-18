@@ -3433,6 +3433,7 @@ class DSSMLAssertionCondition(object):
 class DSSMLAssertionsMetrics(object):
     """
     Object that represents the assertions metrics for all assertions on a trained model
+
     .. important::
         Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_assertions_metrics` instead
     """

@@ -49,6 +49,9 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
 from ..dss_plugin_mlflow import MLflowHandle
+from .agent_review import DSSAgentReview, DSSAgentReviewListItem
+from .cobuild import _DSS_objects_to_selected, CobuildUserMessage, DSSCobuildConversation, CobuildAssistantResponse
+
 
 logger = logging.getLogger(__name__)
 
@@ -3211,6 +3214,47 @@ class DSSProject(object):
         return DSSInsight(self.client, self.project_key, insight_id)
 
     ########################################################
+    # Cobuild
+    ########################################################
+
+    def new_cobuild_conversation(self):
+        """
+        Start a new empty Cobuild conversation.
+
+        Cobuild is an AI assistant that can inspect and build Flows, recipes, datasets,
+        dashboards, and other DSS objects.
+
+        Example usage::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message(
+                "Update wiki article 123 to add a one-line banner",
+                allow_edit_project=True,
+            )
+            print(response.message)
+
+        Without ``allow_edit_project=True``, Cobuild asks before using tools that create or edit
+        objects. In the public API, missing permissions are returned as an error response::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message("Update wiki article 123 to add a one-line banner")
+            print(response.message)
+
+        :returns: a handle to the newly created empty conversation
+        :rtype: :class:`dataikuapi.dss.cobuild.DSSCobuildConversation`
+        """
+        raw = self.client._perform_json(
+            "POST",
+            "/projects/%s/cobuild/conversations" % self.project_key,
+            body={},
+        )
+        return DSSCobuildConversation(self.client, self.project_key, raw["conversationId"])
+
+    ########################################################
     # Git
     ########################################################
 
@@ -3618,11 +3662,14 @@ class DSSProjectGit(object):
         """
         Get the current state of the project's git repository.
 
-        :return: A dict containing the following keys:
+        :return: 
+            A dict containing the following keys:
+
             - **currentBranch** (*str*): The currently checked-out Git branch.
             - **remotes** (*list*): A list of configured remotes, each being a dict with:
                 - **name** (*str*): The remote name (e.g. "origin").
                 - **url** (*str*): The remote repository URL.
+
             - **trackingCount** (*dict*): The number of commits the local branch is ahead/behind its tracked remote branch.
             - **clean** (*bool*): Whether the working directory is clean (no changes).
             - **hasUncommittedChanges** (*bool*): Whether there are uncommitted changes.
