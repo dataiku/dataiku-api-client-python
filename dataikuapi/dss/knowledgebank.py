@@ -115,6 +115,16 @@ class DSSKnowledgeBank(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/knowledge-banks/%s" % (self.project_key, self.id))
 
+    def clear(self):
+        """
+        Clear data in this knowledge bank.
+
+        :returns: a dict containing the method call status.
+        :rtype: dict
+        """
+        return self.client._perform_json(
+            "POST", "/projects/%s/knowledge-banks/%s/clear" % (self.project_key, self.id))
+
     def build(self, job_type="NON_RECURSIVE_FORCED_BUILD", wait=True):
         """
         Start a new job to build this knowledge bank and wait for it to complete.
@@ -449,18 +459,17 @@ class DSSKnowledgeBankSearchResultDocument(object):
 
         folder_smart_id = source_file_info.get("folder_ref")
         folder_full_id = source_file_info.get("folder_full_id") # deprecated but to support existing KBs
-        folder_loc = None
 
         if folder_smart_id is not None:
             try:
-                folder_loc = AnyLoc.from_ref("donotmatter", folder_smart_id) # unused, just to check format
+                _ = AnyLoc.from_ref("donotmatter", folder_smart_id) # unused, just to check format
                 return ManagedFolderDocumentRef(path, folder_smart_id)
             except ValueError as e:
                 logger.error("Invalid folder_ref in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))
                 return None
         elif folder_full_id is not None:
             try:
-                folder_loc = AnyLoc.from_full(folder_full_id) # unused, just to check format
+                _ = AnyLoc.from_full(folder_full_id) # unused, just to check format
                 return ManagedFolderDocumentRef(path, folder_full_id)
             except ValueError as e:
                 logger.error("Invalid folder_full_id in DKU_DOCUMENT_INFO: {}, {}".format(e, document_info))

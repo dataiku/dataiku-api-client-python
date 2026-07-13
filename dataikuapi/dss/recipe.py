@@ -98,6 +98,21 @@ class DSSRecipe(object):
         """
         return self.recipe_name
 
+    @property
+    def type(self):
+        """
+        Get the type of the recipe.
+
+        :return: a recipe type, for example 'sync' or 'join'
+        :rtype: string
+        """
+        return self._get_recipe_data()["recipe"]["type"]
+
+    def _get_recipe_data(self):
+        return self.client._perform_json(
+            "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name)
+        )
+
     def compute_schema_updates(self):
         """
         Computes which updates are required to the outputs of this recipe.
@@ -212,57 +227,56 @@ class DSSRecipe(object):
 
         :rtype: :class:`DSSRecipeSettings` or a subclass
         """
-        data = self.client._perform_json(
-                "GET", "/projects/%s/recipes/%s" % (self.project_key, self.recipe_name))
-        type = data["recipe"]["type"]
+        data = self._get_recipe_data()
+        recipe_type = data["recipe"]["type"]
 
-        if type == "generate_features":
+        if recipe_type == "generate_features":
             return GenerateFeaturesRecipeSettings(self, data)
-        if type == "grouping":
+        if recipe_type == "grouping":
             return GroupingRecipeSettings(self, data)
-        if type == "upsert":
+        if recipe_type == "upsert":
             return UpsertRecipeSettings(self, data)
-        elif type == "window":
+        elif recipe_type == "window":
             return WindowRecipeSettings(self, data)
-        elif type == "sync":
+        elif recipe_type == "sync":
             return SyncRecipeSettings(self, data)
-        elif type == "pivot":
+        elif recipe_type == "pivot":
             return PivotRecipeSettings(self, data)
-        elif type == "sort":
+        elif recipe_type == "sort":
             return SortRecipeSettings(self, data)
-        elif type == "topn":
+        elif recipe_type == "topn":
             return TopNRecipeSettings(self, data)
-        elif type == "distinct":
+        elif recipe_type == "distinct":
             return DistinctRecipeSettings(self, data)
-        elif type == "join":
+        elif recipe_type == "join":
             return JoinRecipeSettings(self, data)
-        elif type == "vstack":
+        elif recipe_type == "vstack":
             return StackRecipeSettings(self, data)
-        elif type == "sampling":
+        elif recipe_type == "sampling":
             return SamplingRecipeSettings(self, data)
-        elif type == "split":
+        elif recipe_type == "split":
             return SplitRecipeSettings(self, data, self.client.get_project(self.project_key))
-        elif type == "prepare" or type == "shaker":
+        elif recipe_type == "prepare" or recipe_type == "shaker":
             return PrepareRecipeSettings(self, data)
-        #elif type == "prediction_scoring":
-        #elif type == "clustering_scoring":
-        elif type == "download":
+        #elif recipe_type == "prediction_scoring":
+        #elif recipe_type == "clustering_scoring":
+        elif recipe_type == "download":
             return DownloadRecipeSettings(self, data)
-        elif type == 'export':
+        elif recipe_type == 'export':
             return ExportRecipeSettings(self, data)
-        #elif type == "sql_query":
+        #elif recipe_type == "sql_query":
         #    return WindowRecipeSettings(self, data)
-        elif type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
+        elif recipe_type in ["python", "r", "sql_script", "pyspark", "sparkr", "spark_scala", "shell", "spark_sql_query"]:
             return CodeRecipeSettings(self, data)
-        elif type == "nlp_llm_rag_embedding":
+        elif recipe_type == "nlp_llm_rag_embedding":
             return EmbedDatasetRecipeSettings(self, data)
-        elif type == "embed_documents":
+        elif recipe_type == "embed_documents":
             return EmbedDocumentsRecipeSettings(self, data)
-        elif type == "extract_content":
+        elif recipe_type == "extract_content":
             return ExtractContentRecipeSettings(self, data)
-        elif type == "extract_fields":
+        elif recipe_type == "extract_fields":
             return ExtractFieldsRecipeSettings(self, data)
-        elif type == "prompt":
+        elif recipe_type == "prompt":
             return PromptRecipeSettings(self, data)
         else:
             return DSSRecipeSettings(self, data)

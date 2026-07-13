@@ -3244,6 +3244,23 @@ class DSSProject(object):
             response = conv.send_message("Update wiki article 123 to add a one-line banner")
             print(response.message)
 
+        Cobuild can also pause and request an explicit answer before continuing::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message("Use the best date column for sorting")
+            if response.is_question_request:
+                print("Question:", response.title)
+                print("Choices:", response.predefined_answers)
+                print("Allow custom answer:", response.allow_custom_answer)
+                response = conv.answer_question(
+                    answers=["OrderDate"],
+                    rejected=False,
+                    used_custom_answer=False
+                )
+                print(response.message)
+
         :returns: a handle to the newly created empty conversation
         :rtype: :class:`dataikuapi.dss.cobuild.DSSCobuildConversation`
         """
