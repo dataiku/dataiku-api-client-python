@@ -8,7 +8,10 @@ from ...utils import DataikuException
 _footer_attributes = [
     # usage metadata
     "promptTokens",
+    "cacheReadInputTokens",
+    "cacheWriteInputTokens",
     "completionTokens",
+    "reasoningTokens",
     "totalTokens",
     "totalUsage",
     "tokenCountsAreEstimated",
