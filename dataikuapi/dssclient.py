@@ -43,7 +43,8 @@ from .govern_client import GovernClient
 class DSSClient(object):
     """Entry point for the DSS API client"""
 
-    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, client_certificate=None, **kwargs):
+    def __init__(self, host, api_key=None, internal_ticket=None, extra_headers=None, no_check_certificate=False, client_certificate=None,
+                 jwt_bearer_token=None, **kwargs):
         """Initialize a new DSS API client.
 
         Args:
@@ -68,6 +69,7 @@ class DSSClient(object):
 
         self.api_key = api_key
         self.internal_ticket = internal_ticket
+        self.jwt_bearer_token = jwt_bearer_token
         self.host = host
         self._session = Session()
         if no_check_certificate:
@@ -79,8 +81,10 @@ class DSSClient(object):
             self._session.auth = HTTPBasicAuth(self.api_key, "")
         elif self.internal_ticket is not None:
             self._session.headers.update({"X-DKU-APITicket" : self.internal_ticket})
+        elif jwt_bearer_token is not None:
+            self._session.headers.update({"Authorization": "Bearer " + jwt_bearer_token})
         else:
-            raise ValueError("API Key is required")
+            raise ValueError("Authentication is required. You must provide either api_key, internal_ticket or jwt_bearer_token.")
 
         if extra_headers is not None:
             self._session.headers.update(extra_headers)
@@ -1728,6 +1732,9 @@ class DSSClient(object):
          """
          return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)["msg"]
 
+    def get_ticket(self):
+        """Get a temporary auth ticket for the current user"""
+        return self._perform_json("POST", "/auth/ticket")["ticket"]
 
     ########################################################
     # Container execution
@@ -1828,9 +1835,6 @@ class DSSClient(object):
         """
         Returns a dictionary with information about licensing status of this DSS instance
 
-        Note:
-            The API is not available on Cloud. Use the Launchpad or Launchpad API.
-
         :rtype: dict
         """
         return self._perform_json("GET", "/admin/licensing/status")
@@ -1838,9 +1842,6 @@ class DSSClient(object):
     def set_license(self, license):
         """
         Sets a new licence for DSS
-
-        Note:
-            The API is not available on Cloud. Use the Launchpad or Launchpad API.
 
         :param license: license (content of license file)
         :return: None

@@ -80,6 +80,51 @@ class DSSRetrievalAugmentedLLM(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/retrieval-augmented-llms/%s" % (self.project_key, self.id))
 
+    def get_metrics_series(self, from_timestamp_ms=None, to_timestamp_ms=None, aggregation="MINUTE", timezone=None):
+        """
+        Get the operational metrics series for this retrieval-augmented LLM.
+
+        The returned payload may include the ongoing interval for the requested granularity.
+        As a consequence, the latest datapoint is temporarily inconsistent and may evolve
+        as more raw events are flushed and aggregated at read time.
+        The requested time window is aligned to the bucket boundaries of the selected
+        aggregation before being read.
+
+        :param int from_timestamp_ms: Beginning of the requested window, inclusive, as an
+            epoch timestamp in milliseconds. The effective lower bound is rounded down
+            to the start of its bucket. Optional, defaults to the oldest retained
+            timestamp available for the requested aggregation.
+        :param int to_timestamp_ms: End of the requested window, exclusive, as an epoch
+            timestamp in milliseconds. The effective upper bound is rounded up to the
+            next bucket boundary when it falls inside a bucket.
+            Optional, defaults to the current time when omitted.
+        :param str aggregation: Aggregation granularity. Supported values are ``MINUTE``,
+            ``FIVE_MINUTES``, ``HOUR``, ``DAY`` and ``MONTH``.
+        :param str timezone: Timezone used to align bucket boundaries. Optional,
+            defaults to ``UTC``. Can be a timezone name like ``Europe/Paris``.
+        :return: The list of datapoints. Each datapoint contains a ``timestampMs``
+                 expressed as the start timestamp of its bucket in epoch
+                 milliseconds. For example, with ``HOUR`` aggregation, a datapoint
+                 at ``18:00`` represents the interval ``[18:00, 19:00)``.
+        :rtype: list[dict]
+        """
+        if from_timestamp_ms is not None and not isinstance(from_timestamp_ms, int):
+            raise TypeError("Expected int for from_timestamp_ms, got %s" % type(from_timestamp_ms).__name__)
+        if to_timestamp_ms is not None and not isinstance(to_timestamp_ms, int):
+            raise TypeError("Expected int for to_timestamp_ms, got %s" % type(to_timestamp_ms).__name__)
+        if timezone is not None and not isinstance(timezone, str):
+            raise TypeError("Expected str for timezone, got %s" % type(timezone).__name__)
+
+        return self.client._perform_json(
+            "GET", "/projects/%s/retrieval-augmented-llms/%s/operational-metrics/series" % (self.project_key, self.id),
+            params={
+                "fromTimestampMs": from_timestamp_ms,
+                "toTimestampMs": to_timestamp_ms,
+                "aggregation": aggregation,
+                "timezone": timezone
+            }
+        )
+
 class DSSRetrievalAugmentedLLMSettings(DSSTaggableObjectSettings):
     """
     Settings for a retrieval-augmented LLM

@@ -49,6 +49,9 @@ from .streaming_endpoint import DSSStreamingEndpoint, DSSStreamingEndpointListIt
 from .webapp import DSSWebApp, DSSWebAppListItem
 from .wiki import DSSWiki
 from ..dss_plugin_mlflow import MLflowHandle
+from .agent_review import DSSAgentReview, DSSAgentReviewListItem
+from .cobuild import _DSS_objects_to_selected, CobuildUserMessage, DSSCobuildConversation, CobuildAssistantResponse
+
 
 logger = logging.getLogger(__name__)
 
@@ -2732,7 +2735,7 @@ class DSSProject(object):
         """
         return DSSKnowledgeBank(self.client, self.project_key, id)
 
-    def create_knowledge_bank(self, name, vector_store_type, embedding_llm_id, settings=None):
+    def create_knowledge_bank(self, name, vector_store_type, embedding_llm_id=None, settings=None):
         """
         Create a new knowledge bank in the project, and return a handle to interact with it
 
@@ -2751,22 +2754,76 @@ class DSSProject(object):
             * MILVUS_LOCAL
             * MILVUS_REMOTE
 
-        :param str embedding_llm_id: The id of the embedding LLM. It has to have the TEXT_EMBEDDING_EXTRACTION purpose.
+        :param Optional[str] embedding_llm_id: The id of the embedding LLM.
+            For managed KBs, must have the TEXT_EMBEDDING_EXTRACTION purpose.
+            For unmanaged KBs, may be omitted when the vector store type does not require embeddings.
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
+            * "managed" (bool) set to False to create an unmanaged knowledge bank
             * "connection" (str) the connection name, for remote vector stores
             * "indexName" (str) the index name, for remote vector stores, including Pinecone
             * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
+            * "columnMapping" (dict) mappings for vector store columns, used only for unmanaged knowledge banks. Expected format:
+              ``{"id": "<column name>", "vector": "<column name>", "content": "<column name>", "metadata": "<column name>"}``
+              (keys depend on the selected vector store type; values are remote schema column names)
+            * "metadataColumnsSchema" (list[dict]) metadata schema, where each item has format:
+              ``{"name": "<column name>", "type": "<column type>"}``
+              Optional per-column keys include ``"filterable"`` (bool) and ``"storageName"`` (str, physical
+              column path when different from ``name``). Validation always prefers ``storageName`` when provided.
+              Without ``storageName``, ``name`` is accepted only when it resolves unambiguously to a single remote
+              column path.
+              If a top-level column and a nested mapped metadata field share the same name, ``storageName`` is
+              required.
             * "managedFolderId" (str) the id of the managed folder containing the extracted images.
                 The images may be referenced by their path in the knowledge bank, and stored in this folder.
 
+            For unmanaged knowledge banks, the caller is responsible for checking index existence and schema
+            compatibility before creation.
+
+        Example managed knowledge bank creation:
+
+        .. code-block:: python
+
+            kb = project.create_knowledge_bank(
+                name="my_managed_kb",
+                vector_store_type="CHROMA",
+                embedding_llm_id="MY_EMBEDDING_LLM_ID"
+            )
+
+        Example unmanaged knowledge bank creation:
+
+        .. code-block:: python
+
+            settings = {
+                "managed": False,
+                "connection": "my_vector_store_connection",
+                "indexName": "my_existing_index",
+                "columnMapping": {
+                    "id": "doc_id",
+                    "vector": "embedding",
+                    "content": "text",
+                    "metadata": "metadata_json"
+                },
+                "metadataColumnsSchema": [
+                    {"name": "source", "type": "string", "storageName": "metadata_json.source", "filterable": True},
+                    {"name": "author", "type": "string", "filterable": True}
+                ]
+            }
+
+            kb = project.create_knowledge_bank(
+                name="my_unmanaged_kb",
+                vector_store_type="ELASTICSEARCH",
+                embedding_llm_id="MY_EMBEDDING_LLM_ID",
+                settings=settings
+            )
+
         :returns: a :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank` handle to interact with the newly-created knowledge bank
         """
-        if settings is None:
-            settings = {}
+        settings = dict(settings or {})
         settings['name'] = name
         settings['vectorStoreType'] = vector_store_type
-        settings['embeddingLLMId'] = embedding_llm_id
+        if embedding_llm_id is not None:
+            settings['embeddingLLMId'] = embedding_llm_id
 
         if "managedFolderId" in settings:
             settings["multimodalColumn"] = "DKU_MULTIMODAL_CONTENT"
@@ -3155,6 +3212,64 @@ class DSSProject(object):
         insight_id = self.client._perform_json("POST", INSIGHTS_URI_FORMAT % self.project_key,
                        body = {"insightPrototype": creation_info})['id']
         return DSSInsight(self.client, self.project_key, insight_id)
+
+    ########################################################
+    # Cobuild
+    ########################################################
+
+    def new_cobuild_conversation(self):
+        """
+        Start a new empty Cobuild conversation.
+
+        Cobuild is an AI assistant that can inspect and build Flows, recipes, datasets,
+        dashboards, and other DSS objects.
+
+        Example usage::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message(
+                "Update wiki article 123 to add a one-line banner",
+                allow_edit_project=True,
+            )
+            print(response.message)
+
+        Without ``allow_edit_project=True``, Cobuild asks before using tools that create or edit
+        objects. In the public API, missing permissions are returned as an error response::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message("Update wiki article 123 to add a one-line banner")
+            print(response.message)
+
+        Cobuild can also pause and request an explicit answer before continuing::
+
+            project = client.get_project("MY_PROJECT")
+            conv = project.new_cobuild_conversation()
+
+            response = conv.send_message("Use the best date column for sorting")
+            if response.is_question_request:
+                print("Question:", response.title)
+                print("Choices:", response.predefined_answers)
+                print("Allow custom answer:", response.allow_custom_answer)
+                response = conv.answer_question(
+                    answers=["OrderDate"],
+                    rejected=False,
+                    used_custom_answer=False
+                )
+                print(response.message)
+
+        :returns: a handle to the newly created empty conversation
+        :rtype: :class:`dataikuapi.dss.cobuild.DSSCobuildConversation`
+        """
+        raw = self.client._perform_json(
+            "POST",
+            "/projects/%s/cobuild/conversations" % self.project_key,
+            body={},
+        )
+        return DSSCobuildConversation(self.client, self.project_key, raw["conversationId"])
 
     ########################################################
     # Git
@@ -3564,11 +3679,14 @@ class DSSProjectGit(object):
         """
         Get the current state of the project's git repository.
 
-        :return: A dict containing the following keys:
+        :return: 
+            A dict containing the following keys:
+
             - **currentBranch** (*str*): The currently checked-out Git branch.
             - **remotes** (*list*): A list of configured remotes, each being a dict with:
                 - **name** (*str*): The remote name (e.g. "origin").
                 - **url** (*str*): The remote repository URL.
+
             - **trackingCount** (*dict*): The number of commits the local branch is ahead/behind its tracked remote branch.
             - **clean** (*bool*): Whether the working directory is clean (no changes).
             - **hasUncommittedChanges** (*bool*): Whether there are uncommitted changes.

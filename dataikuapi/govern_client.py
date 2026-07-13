@@ -673,9 +673,6 @@ class GovernClient(object):
         """
         Returns a dictionary with information about licensing status of this Dataiku Govern instance
 
-        Note:
-            The API is not available on Cloud. Use the Launchpad or Launchpad API.
-
         :rtype: dict
         """
         return self._perform_json("GET", "/admin/licensing/status")
@@ -683,9 +680,6 @@ class GovernClient(object):
     def set_license(self, license):
         """
         Sets a new licence for Dataiku Govern
-
-        Note:
-            The API is not available on Cloud. Use the Launchpad or Launchpad API.
 
         :param license: license (content of license file)
         :return: None
