@@ -64,7 +64,7 @@ class DSSAgentTool(object):
         """
         return self.tool_id
 
-    def get_descriptor(self):
+    def get_descriptor(self, context=None):
         """
         Get the descriptor of the tool
 
@@ -73,7 +73,10 @@ class DSSAgentTool(object):
         """
 
         if self._descriptor is None:
-            self._descriptor = self.client._perform_json("GET", "/projects/%s/agents/tools/%s/descriptor" % (self.project_key, self.tool_id))
+            if context is None:
+                self._descriptor = self.client._perform_json("GET", "/projects/%s/agents/tools/%s/descriptor" % (self.project_key, self.tool_id))
+            else:
+                self._descriptor = self.client._perform_json("POST", "/projects/%s/agents/tools/%s/descriptor" % (self.project_key, self.tool_id), body={"context": context})
         return self._descriptor
 
     def get_settings(self):
