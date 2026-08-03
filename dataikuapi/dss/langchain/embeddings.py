@@ -2,16 +2,25 @@
 import asyncio
 import concurrent
 import logging
-import threading 
+import threading
+import itertools
 
 from typing import Callable, List, Any, Union
 
 import pydantic
+
+_thread_pool_executor_counter = itertools.count().__next__
+
+def next_thread_pool_executor_prefix(prefix):
+    return "{}-{}".format(prefix, _thread_pool_executor_counter())
+
 try:
     from langchain_core.embeddings.embeddings import Embeddings
 except ModuleNotFoundError:
     from langchain.embeddings.base import Embeddings
 from langchain_core.callbacks import BaseCallbackHandler, LLMManagerMixin
+
+
 from dataikuapi.dss.llm_tracing import new_trace, SpanBuilder
 
 from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
@@ -121,7 +130,7 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(thread_name_prefix=next_thread_pool_executor_prefix("DKUEmbeddingsAsyncExecutor")) as executor:
             result = await loop.run_in_executor(executor, self.embed_documents, texts)
         return result
 
