@@ -199,6 +199,8 @@ class DSSLLMEmbeddingsQuery(object):
     def new_guardrail(self, type):
         """
         Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+
+        :rtype: :class:`DSSLLMRequestGuardrailBuilder`
         """
         return DSSLLMRequestGuardrailBuilder(self, type)
 
@@ -420,15 +422,27 @@ class SettingsMixin(object):
 
 
 class DSSLLMRequestGuardrailBuilder(object):
+    """
+      .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_guardrail`,
+        :meth:`dataikuapi.dss.llm.DSSLLMCompletionsQuery.new_guardrail`, :meth:`dataikuapi.dss.llm.DSSLLMEmbeddingsQuery.new_guardrail` or
+        :meth:`dataikuapi.dss.llm.DSSLLMImageGenerationQuery.new_guardrail`.
+    """
+
     def __init__(self, request, type):
         self.request = request
-        self.guardrail = { "type" : type, "enabled": True, "params" : {}}
+        self.guardrail = {"type" : type, "enabled": True, "params" : {}}
 
     @property
     def params(self):
+        """
+        :return: The parameters of this guardrail
+        :rtype: dict
+        """
         return self.guardrail["params"]
 
     def add(self):
+        """Add this guardrail to the completion query"""
         if self.request._guardrails is None:
             self.request._guardrails = {"guardrails" : []}
         self.request._guardrails["guardrails"].append(self.guardrail)
@@ -537,6 +551,8 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
     def new_guardrail(self, type):
         """
         Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+
+        :rtype: :class:`DSSLLMRequestGuardrailBuilder`
         """
         return DSSLLMRequestGuardrailBuilder(self, type)
 
@@ -638,6 +654,8 @@ class DSSLLMCompletionsQuery(SettingsMixin):
     def new_guardrail(self, type):
         """
         Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+
+        :rtype: :class:`DSSLLMRequestGuardrailBuilder`
         """
         return DSSLLMRequestGuardrailBuilder(self, type)
 
@@ -664,7 +682,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         return DSSLLMCompletionsResponse(ret["responses"], response_parser=self._response_parser)
 
 
-class DSSLLMCompletionQueryMultipartBuilder(object):
+class _DSSLLMCompletionQueryMultipartBuilder(object):
     def __init__(self):
         self.parts = []
 
@@ -681,6 +699,8 @@ class DSSLLMCompletionQueryMultipartBuilder(object):
     def with_text(self, text):
         """
         Add a text part to the multipart message
+
+        :param str text: The text to add
         """
         self.parts.append({"type": "TEXT", "text": text})
         return self
@@ -692,7 +712,7 @@ class DSSLLMCompletionQueryMultipartBuilder(object):
         :param Union[str, bytes] image: The image
         :param str mime_type: None for default
         """
-        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
+        img_b64 = _DSSLLMCompletionQueryMultipartBuilder._encode_image(image)
 
         part = {
             "type": "IMAGE_INLINE",
@@ -713,7 +733,7 @@ class DSSLLMCompletionQueryMultipartBuilder(object):
         :param Union[str, bytes] image: The image
         :param str mime_type: None for default
         """
-        img_b64 = DSSLLMCompletionQueryMultipartMessage._encode_image(image)
+        img_b64 = _DSSLLMCompletionQueryMultipartBuilder._encode_image(image)
 
         image_part = {
             "type": "IMAGE_INLINE",
@@ -736,14 +756,13 @@ class DSSLLMCompletionQueryMultipartBuilder(object):
         """
         Add an image url part to the multipart message
 
-        :param image: str the image url
+        :param str image: the image url
         """
-
         self.parts.append({"type": "IMAGE_URI", "imageUrl": image})
         return self
 
 
-class DSSLLMCompletionQueryMultipartMessage(DSSLLMCompletionQueryMultipartBuilder):
+class DSSLLMCompletionQueryMultipartMessage(_DSSLLMCompletionQueryMultipartBuilder):
     """
       .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_message` or
@@ -761,8 +780,43 @@ class DSSLLMCompletionQueryMultipartMessage(DSSLLMCompletionQueryMultipartBuilde
         self.q.cq["messages"].append(self.msg)
         return self.q
 
+    def with_text(self, text):
+        """
+        Add a text part to the multipart message
 
-class DSSLLMCompletionQueryMultipartToolOutput(DSSLLMCompletionQueryMultipartBuilder):
+        :param str text: The text to add
+        """
+        return super().with_text(text)
+
+    def with_inline_image(self, image, mime_type=None):
+        """
+        Add an image part to the multipart message
+
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        return super().with_inline_image(image, mime_type)
+
+    def with_captioned_image_inline(self, caption, image, mime_type=None):
+        """
+        Add a captioned image part to the multipart message
+
+        :param str caption: Image caption
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        return super().with_captioned_image_inline(caption, image, mime_type)
+
+    def with_image_url(self, image):
+        """
+        Add an image url part to the multipart message
+
+        :param str image: The image url
+        """
+        return super().with_image_url(image)
+
+
+class DSSLLMCompletionQueryMultipartToolOutput(_DSSLLMCompletionQueryMultipartBuilder):
     """
       .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.new_multipart_tool_output` or
@@ -787,24 +841,75 @@ class DSSLLMCompletionQueryMultipartToolOutput(DSSLLMCompletionQueryMultipartBui
         self.q.cq["messages"].append(self.msg)
         return self.q
 
+    def with_text(self, text):
+        """
+        Add a text part to the multipart tool output
+
+        :param str text: The text to add
+        """
+        return super().with_text(text)
+
+    def with_inline_image(self, image, mime_type=None):
+        """
+        Add an image part to the multipart tool output
+
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        return super().with_inline_image(image, mime_type)
+
+    def with_captioned_image_inline(self, caption, image, mime_type=None):
+        """
+        Add a captioned image part to the multipart tool output
+
+        :param str caption: Image caption
+        :param Union[str, bytes] image: The image
+        :param str mime_type: None for default
+        """
+        return super().with_captioned_image_inline(caption, image, mime_type)
+
+    def with_image_url(self, image):
+        """
+        Add an image url part to the multipart tool output
+
+        :param str image: The image url
+        """
+        return super().with_image_url(image)
+
 
 class DSSLLMStreamedCompletionChunk(object):
+    """
+    A handle to interact with a streamed completion query chunk.
+
+    .. important::
+        Do not create this class directly, iterate over a :class:`dataikuapi.dss.llm.DSSLLMStreamedCompletionChunks` iterator instead to generate the chunks instead.
+    """
+
     def __init__(self, data):
         self.data = data
 
     @property
     def type(self):
-        """Type of this chunk, either "content" or "event" """
+        """
+        :return: Type of this chunk, either "content" or "event"
+        :rtype: Literal["content", "event"]
+        """
         return self.data.get("type", "content")
 
     @property
     def text(self):
-        """If this chunk is content and has text, the (partial) text"""
+        """
+        :return: If this chunk is content and has text, the (partial) text
+        :rtype: bool
+        """
         return self.data.get("text", None)
 
     @property
     def event_kind(self):
-        """If this chunk is an event, its kind"""
+        """
+        :return: If this chunk is an event, its kind
+        :rtype: str
+        """
         return self.data.get("eventKind", None)
 
     def __repr__(self):
@@ -812,16 +917,31 @@ class DSSLLMStreamedCompletionChunk(object):
 
 
 class DSSLLMStreamedCompletionFooter(object):
+    """
+    A handle to interact with a streamed completion query footer.
+
+    .. important::
+        Do not create this class directly, iterate over a :class:`dataikuapi.dss.llm.DSSLLMStreamedCompletionChunks` iterator instead to generate the chunks instead.
+    """
+
     def __init__(self, data):
         self.data = data
 
     # Compatibility for code that just checks for "type""
     @property
     def type(self):
+        """
+        :return: Type of this chunk, to distinguish it from :class:`dataikuapi.dss.llm.DSSLLMStreamedCompletionChunk` chunks. Can only be "footer"
+        :rtype: Literal["footer"]
+        """
         return "footer"
 
     @property
     def trace(self):
+        """
+        :return: The trace of the completion query if available, None otherwise.
+        :rtype: Union[dict, None]
+        """
         return self.data.get("trace", None)
 
     @property
@@ -890,7 +1010,11 @@ class _SSEClient(object):
 
 class DSSLLMCompletionResponse(object):
     """
-    Response to a completion
+    A handle to interact with a completion query result.
+
+    .. important::
+        Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.execute` or
+        :attr:`dataikuapi.dss.llm.DSSLLMCompletionsResponse.responses` or :attr:`dataikuapi.dss.llm.DSSLLMStreamedCompletionChunks.response` instead.
     """
     def __init__(self, raw_resp=None, text=None, finish_reason=None, response_parser=None, trace=None, query=None):
         if raw_resp is not None:
@@ -990,6 +1114,10 @@ class DSSLLMCompletionResponse(object):
 
     @property
     def trace(self):
+        """
+        :return: The trace of the completion query if available, None otherwise.
+        :rtype: Union[dict, None]
+        """
         return self._raw.get("trace", None)
 
     @property
@@ -1157,6 +1285,8 @@ class DSSLLMImageGenerationQuery(object):
     def new_guardrail(self, type):
         """
         Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
+
+        :rtype: :class:`DSSLLMRequestGuardrailBuilder`
         """
         return DSSLLMRequestGuardrailBuilder(self, type)
 
@@ -1381,6 +1511,10 @@ class DSSLLMImageGenerationResponse(object):
 
     @property
     def trace(self):
+        """
+        :return: The trace of the image generation query if available, None otherwise.
+        :rtype: Union[dict, None]
+        """
         return self._raw.get("trace", None)
 
     @property
