@@ -313,7 +313,7 @@ class DSSDataset(object):
     # Dataset data
     ########################################################
 
-    def iter_rows(self, partitions=None):
+    def iter_rows(self, partitions=None, columns=None):
         """
         Get the dataset data as a row-by-row iterator.
 
@@ -329,10 +329,17 @@ class DSSDataset(object):
                 params = {
                     "format" : "tsv-excel-noheader",
                     "partitions" : partitions,
-                    "readSessionId": read_session_id
+                    "readSessionId": read_session_id,
+                    "columns": columns
                 })
 
-        return DataikuStreamedHttpUTF8CSVReader(self.get_schema()["columns"], csv_stream, read_session_id=read_session_id,
+        schema_columns = self.get_schema()["columns"]
+        if columns is not None:
+            # the schema of what the backend returns follows the order of columns in the columns parameter, not the
+            # original order of columns in the dataset schema
+            columns_map = {sc["name"]:sc for sc in schema_columns}
+            schema_columns = [columns_map.get(n) for n in columns]
+        return DataikuStreamedHttpUTF8CSVReader(schema_columns, csv_stream, read_session_id=read_session_id,
                                                 client=self.client, project_key=self.project_key,
                                                 dataset_name=self.dataset_name).iter_rows()
 
@@ -611,6 +618,29 @@ class DSSDataset(object):
                                                                   time_variable=time_variable, timeseries_identifiers=timeseries_identifiers,
                                                                   guess_policy=guess_policy, wait_guess_complete=wait_guess_complete)
 
+    def create_multi_target_prediction_ml_task(self,
+                                               target_variables,
+                                               guess_policy="MULTI_TARGET_DEFAULT",
+                                               wait_guess_complete=True):
+        """Creates a new multi-target regression task in a new visual analysis lab for a dataset.
+
+        :param list target_variables: List of target variables to predict
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: MULTI_TARGET_DEFAULT
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :returns: A ML task handle of type 'PREDICTION'
+        :rtype: :class:`dataikuapi.dss.ml.DSSMLTask`
+        """
+        return self.project.create_multi_target_prediction_ml_task(
+            self.dataset_name,
+            target_variables=target_variables,
+            guess_policy=guess_policy,
+            wait_guess_complete=wait_guess_complete
+        )
+
     def create_causal_prediction_ml_task(self, outcome_variable,
                                          treatment_variable,
                                          prediction_type=None,
@@ -839,7 +869,7 @@ class DSSDataset(object):
     _SQL_TYPES = ["JDBC", "PostgreSQL", "MySQL", "Vertica", "Snowflake", "Redshift",
                 "Greenplum", "Teradata", "Oracle", "SQLServer", "SAPHANA", "Netezza",
                 "BigQuery", "Athena", "hiveserver2", "Synapse", "FabricWarehouse",
-                "Databricks", "DatabricksLakebase"]
+                "Databricks", "DatabricksLakebase", "ClickHouse"]
 
     def test_and_detect(self, infer_storage_types=False):
         """Used internally by :meth:`autodetect_settings` It is not usually required to call this method
@@ -848,7 +878,7 @@ class DSSDataset(object):
         """
         settings = self.get_settings()
 
-        if settings.type in self.__class__._FS_TYPES:
+        if settings.type in self.__class__._FS_TYPES or settings.type.startswith('fsprovider_'):
             future_resp = self.client._perform_json("POST",
                 "/projects/%s/datasets/%s/actions/testAndDetectSettings/fsLike"% (self.project_key, self.dataset_name),
                 body = {"detectPossibleFormats" : True, "inferStorageTypes" : infer_storage_types })
@@ -860,14 +890,20 @@ class DSSDataset(object):
 
         elif settings.type == "ElasticSearch":
             return self.client._perform_json("POST",
-                "/projects/%s/datasets/%s/actions/testAndDetectSettings/elasticsearch"% (self.project_key, self.dataset_name))
+                                             "/projects/%s/datasets/%s/actions/testAndDetectSettings/elasticsearch"% (self.project_key, self.dataset_name))
+
+        elif settings.type.startswith('CustomPython_') or settings.type.startswith('CustomJava_'):
+            return self.client._perform_json("POST",
+                                             "/projects/%s/datasets/%s/actions/testAndDetectSettings/custom"% (self.project_key, self.dataset_name),
+                                             body = {"inferStorageTypes" : infer_storage_types})
 
         else:
             raise ValueError("don't know how to test/detect on dataset type:%s" % settings.type)
 
     def autodetect_settings(self, infer_storage_types=False):
         """
-        Detect appropriate settings for this dataset using Dataiku detection engine
+        Detect appropriate settings for this dataset using Dataiku detection engine.
+        This method may only be used on external datasets, not managed ones.
 
         :param bool infer_storage_types: whether to infer storage types
 
@@ -876,7 +912,7 @@ class DSSDataset(object):
         """
         settings = self.get_settings()
 
-        if settings.type in self.__class__._FS_TYPES:
+        if settings.type in self.__class__._FS_TYPES or settings.type.startswith('fsprovider_'):
             future = self.test_and_detect(infer_storage_types)
             result = future.wait_for_result()
 
@@ -905,6 +941,15 @@ class DSSDataset(object):
                 raise DataikuException("Format detection failed, complete response is " + json.dumps(result))
 
             settings.get_raw()["schema"] = result["schemaDetection"]["newSchema"]
+            return settings
+
+        elif settings.type.startswith('CustomPython_') or settings.type.startswith('CustomJava_'):
+            result = self.test_and_detect(infer_storage_types)
+
+            if not "schema" in result:
+                raise DataikuException("Schema detection failed, complete response is " + json.dumps(result))
+
+            settings.get_raw()["schema"] = result["schema"]
             return settings
 
         else:

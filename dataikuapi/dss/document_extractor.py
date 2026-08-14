@@ -156,7 +156,7 @@ class DocumentExtractor(object):
         return FieldsVlmExtractorResponse(ret, parser_method)
 
     def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None,
-                           output_managed_folder=None, image_validation=True):
+                           output_managed_folder=None, image_validation=True, save_images=None, save_tables=None):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -175,11 +175,15 @@ class DocumentExtractor(object):
         :type llm_id: str
         :param llm_prompt: Custom prompt to extract text from the images
         :type llm_prompt: str
-        :param output_managed_folder: id of a managed folder to store the image in the document.
-                              When unspecified, return inline images in the response.
+        :param output_managed_folder: id of a managed folder to store the images or tables in the document.
+                              When unspecified and image handling allows, return inline images in the response.
         :type output_managed_folder: str
         :param image_validation: Whether to validate images before processing. If True, images classified as barcodes, icons, logos, QR codes, signatures, or stamps are skipped.
         :type image_validation: boolean
+        :param save_images: Whether to store the images in the output managed folder. If True, requires output_managed_folder. Defaults to True when output_managed_folder is provided, False otherwise.
+        :type save_images: boolean
+        :param save_tables: Whether to store the tables in the output managed folder. If True, requires output_managed_folder. Defaults to True when output_managed_folder is provided, False otherwise.
+        :type save_tables: boolean
         :returns: Structured content of the document
         :rtype: :class:`StructuredExtractorResponse`
         """
@@ -194,8 +198,11 @@ class DocumentExtractor(object):
                 "maxSectionDepth": max_section_depth,
                 "imageValidation": image_validation,
                 "outputManagedFolderRef": output_managed_folder,
+                "saveImages": save_images,
+                "saveTables": save_tables
             }
         }
+
         if image_handling_mode == "IGNORE":
             extractor_request["settings"]["imageHandlingMode"] = "IGNORE"
         elif image_handling_mode == "OCR":
@@ -223,7 +230,7 @@ class DocumentExtractor(object):
 
         return StructuredExtractorResponse(ret)
 
-    def text_extract(self, document, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en"):
+    def text_extract(self, document, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", ocr_file_types=None):
         """
         Extract raw text from a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg).
 
@@ -232,6 +239,8 @@ class DocumentExtractor(object):
 
         PDF files are converted to images and processed using OCR if `image_handling_mode` is set to 'OCR', recommended for scanned PDFs.
         Otherwise, their text content is extracted.
+        Use `ocr_file_types` to restrict OCR to selected file types.
+        For DOCX and PPTX, OCR is applied only to images embedded inside the document.
 
         :param document: document to split
         :type document: :class:`DocumentRef`
@@ -241,6 +250,9 @@ class DocumentExtractor(object):
         :type ocr_engine: str
         :param languages: OCR languages to use for recognition. List (either a comma-separated string, or list of strings) of ISO639 languages codes.
         :type languages: str | list
+        :param ocr_file_types: File types where OCR should be applied, among 'PDF', 'PNG', 'JPG', 'DOCX', and 'PPTX'.
+                               If unspecified, OCR applies to 'PDF', 'PNG', and 'JPG'.
+        :type ocr_file_types: list[str]
 
         :returns: Text content of the document
         :rtype: :class:`TextExtractorResponse`
@@ -267,6 +279,12 @@ class DocumentExtractor(object):
                 "ocrEngine": ocr_engine,
                 "ocrLanguages": languages
             }
+            if ocr_file_types is not None:
+                allowed_ocr_file_types = ["PDF", "PNG", "JPG", "DOCX", "PPTX"]
+                invalid_ocr_file_types = [file_type for file_type in ocr_file_types if file_type not in allowed_ocr_file_types]
+                if invalid_ocr_file_types:
+                    raise ValueError("Invalid ocr_file_types, allowed values are %s" % allowed_ocr_file_types)
+                extractor_request["settings"]["ocrSettings"]["ocrFileTypes"] = list(ocr_file_types)
         else:
             raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE' or 'OCR'")
 
@@ -524,6 +542,9 @@ class ScreenshotIterator(object):
     def __init__(self, screenshotter_response):
         self.screenshotter_response = screenshotter_response
         self.current_index = screenshotter_response.initial_offset
+
+    def __iter__(self):
+        return self
 
     def __next__(self):
         res = self.screenshotter_response.fetch_screenshot(self.current_index)

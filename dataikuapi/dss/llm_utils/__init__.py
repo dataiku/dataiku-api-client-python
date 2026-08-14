@@ -216,6 +216,7 @@ class _BaseChunkAggregator(object):
         self._response = None
         self.chunk_data = {}
         self.footer_data = {}
+        self.response_data = {}
         self.error_data = None
 
         self.text_chunks = []
@@ -229,6 +230,7 @@ class _BaseChunkAggregator(object):
     def _extract_data_from_chunk(self, res):
         chunk = res.get("chunk")
         footer = res.get("footer")
+        response_data = res.get("responseData")
         if chunk:
             # text
             if "text" in chunk and chunk["text"]:
@@ -261,6 +263,9 @@ class _BaseChunkAggregator(object):
                 if key in footer and footer[key]:
                     self.footer_data[key] = footer[key]
 
+        if response_data:
+            self.response_data.update(response_data)
+
     @property
     def response(self):
         if self._response is None:
@@ -273,6 +278,7 @@ class _BaseChunkAggregator(object):
         try:
             self._response = {}
             self._response.update(self.footer_data)
+            self._response.update(self.response_data)
 
             if self.error_data is not None:
                 self._response["ok"] = False

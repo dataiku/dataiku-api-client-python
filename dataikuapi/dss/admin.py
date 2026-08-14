@@ -4,6 +4,8 @@ import json
 import warnings
 import logging
 from datetime import datetime
+
+from .utils import DSSInfoMessages
 from ..utils import _timestamp_ms_to_zoned_datetime
 
 logger = logging.getLogger("dataikuapi.dss.admin")
@@ -2208,6 +2210,7 @@ class DSSCodeEnvContainerConfsBearer(object):
         * SYSTEM_LEVEL_CUDA_122_CUDNN_897
         * CUDA_SUPPORT_FOR_TORCH2_WITH_PYPI_NVIDIA_PACKAGES
         * BASIC_GPU_ENABLING
+        * HUGGING_FACE_LOCAL_CPU
         * PYTHON36_SUPPORT
         * PYTHON37_SUPPORT
         * PYTHON38_SUPPORT
@@ -3304,6 +3307,58 @@ class DSSCodeStudioTemplate(object):
             "POST", "/admin/code-studios/%s/build" % (self.template_id),
             params={"withNoCache": disable_docker_cache})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
+
+    def get_export_stream(self):
+        """
+        Export the template as a zip archive.
+
+        :returns: the exported archive as a stream
+        :rtype: file-like object
+        """
+        return self.client._perform_raw(
+            "GET", "/admin/code-studios/%s/export" % (self.template_id)
+        ).raw
+
+    def export_to_file(self, path):
+        """
+        Export the template to a file.
+
+        This produces a zip file with the template's definition and its resources, if any. The zip can be imported with
+        :meth:`dataikuapi.DSSClient.import_code_studio_template`
+
+        :param str path: the destination file path
+        """
+        with open(path, 'wb') as f:
+            export_stream = self.client._perform_raw(
+                "GET", "/admin/code-studios/%s/export" % (self.template_id)
+            )
+            for chunk in export_stream.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+            f.flush()
+
+    ########################################################
+    # Template deletion
+    ########################################################
+
+    def delete(self, delete_runtime=False, delete_images=False):
+        """
+        Delete the template.
+
+        :param bool delete_runtime: if True, also delete the Code Studio runtimes created from this template
+        :param bool delete_images: if True, also delete the Docker images and build folders associated with this template
+
+        :return: backend info/warning/error messages about the deletion
+        :rtype: dict
+        """
+        resp = self.client._perform_json(
+            "DELETE",
+            "/admin/code-studios/%s" % (self.template_id),
+            params={
+                "deleteRuntime": delete_runtime,
+                "deleteImages": delete_images
+            })
+        return DSSInfoMessages(resp)
 
 class DSSCodeStudioTemplateSettings(object):
     """
