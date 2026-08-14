@@ -255,7 +255,7 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
     @property
     def vector_store_type(self):
         """
-        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, VERTEX_AI_GCS_BASED, FAISS, QDRANT_LOCAL)
+        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, DATABRICKS_AI_SEARCH (Databricks AI Search), VERTEX_AI_GCS_BASED, FAISS, QDRANT_LOCAL)
 
         :rtype: str
         """
@@ -272,6 +272,16 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
             {"name": k, "type": v}
             for k, v in schema.items()
         )
+
+    def set_vector_index_type(self, vector_index_type):
+        """
+        Sets the Milvus index type for Milvus Remote knowledge banks.
+
+        Accepted values are ``DEFAULT``, ``FLAT``, ``IVF_FLAT``, and ``HNSW``.
+
+        :param str vector_index_type: Vector index type
+        """
+        self._settings["vectorIndexType"] = vector_index_type
 
     def set_images_folder(self, managed_folder_id, project_key=None):
         """

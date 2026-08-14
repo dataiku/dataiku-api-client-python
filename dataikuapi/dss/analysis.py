@@ -258,6 +258,39 @@ class DSSAnalysis(object):
             mltask.wait_guess_complete()
         return mltask
 
+    def create_multi_target_prediction_ml_task(self,
+                                               target_variables,
+                                               guess_policy="MULTI_TARGET_DEFAULT",
+                                               wait_guess_complete=True):
+        """Creates a new multi-target regression task in this visual analysis lab for a dataset.
+
+        :param list target_variables: List of target variables to predict
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: MULTI_TARGET_DEFAULT
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return :class dataiku.dss.ml.DSSMLTask
+        """
+        obj = {
+            "taskType": "PREDICTION",
+            "targetVariables": target_variables,
+            "backendType": "PY_MEMORY",
+            "guessPolicy":  guess_policy,
+            "predictionType": "MULTI_TARGET_REGRESSION"
+        }
+        ref = self.client._perform_json(
+            "POST",
+            "/projects/{project_key}/lab/{analysis_id}/models/".format(project_key=self.project_key, analysis_id=self.analysis_id),
+            body=obj
+        )
+        mltask = DSSMLTask(self.client, self.project_key, self.analysis_id, ref["mlTaskId"])
+
+        if wait_guess_complete:
+            mltask.wait_guess_complete()
+        return mltask
+
     def create_causal_prediction_ml_task(self,
                                          outcome_variable,
                                          treatment_variable,

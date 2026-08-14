@@ -372,7 +372,7 @@ class DSSEvaluation(object):
 
     def get_metrics(self):
         """
-        Get the metrics for this evaluation. Metrics must be understood here as Metrics in DSS Metrics & Checks
+        Get the metrics for this evaluation. Metrics must be understood here as Metrics in Dataiku Metrics & Checks
 
         :return: the metrics, as a JSON object
         """

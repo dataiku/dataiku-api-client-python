@@ -197,7 +197,7 @@ class DSSRetrievalAugmentedLLMVersionSettings(object):
     @property
     def llm_id(self):
         """
-        Get or set the name of the Data Collection
+        Get or set the name of the Collection
 
         :rtype: :class:`str`
         """

@@ -1,7 +1,8 @@
+import hashlib
+import json
 from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, AnyLoc
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from .llm_tracing import prepare_query_for_nested_llm_mesh_call
-import json
 
 class DSSAgentToolListItem(DSSTaggableObjectListItem):
     """
@@ -55,6 +56,7 @@ class DSSAgentTool(object):
         self.project_key = project_key
         self.tool_id = tool_id
         self._descriptor = descriptor
+        self._subtool_mapping = {}
 
     @property
     def id(self):
@@ -108,11 +110,106 @@ class DSSAgentTool(object):
         from dataikuapi.dss.langchain.tool import convert_to_langchain_structured_tool
         return convert_to_langchain_structured_tool(self, context)
 
+    @staticmethod
+    def _compute_spec_hash(tool_ref, additional_description, subtool_name=None):
+        additional_description = (additional_description or "").strip()
+        subtool_name = (subtool_name or "").strip()
+        fields = [tool_ref, additional_description, subtool_name]
+        serialized_fields = json.dumps(fields, sort_keys=True, ensure_ascii=True)
+        return hashlib.sha256(serialized_fields.encode("utf-8")).hexdigest()[:6]
+
+    @staticmethod
+    def _get_function_tool_descriptor_parts(
+        tool_descriptor,
+        spec_hash,
+        additional_description,
+        subtool_descriptor=None,
+    ):
+
+        name = "{}__{}".format(tool_descriptor['name'], spec_hash)
+
+        if subtool_descriptor:
+            description = subtool_descriptor.get("description", "")
+            parameters = subtool_descriptor["inputSchema"]
+            name += "__" + subtool_descriptor["name"]
+        else:
+            description = tool_descriptor.get("description", "")
+            parameters = tool_descriptor["inputSchema"]
+
+        if additional_description:
+            description = "{}\n\n{}".format(description, additional_description).strip()
+
+        return (
+            name,
+            description,
+            parameters,
+        )
+
+    @staticmethod
+    def _build_function_tool_descriptor(name, description, parameters):
+        return {
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": parameters,
+            }
+        }
+
+    def _as_llm_mesh_tool(self):
+        tool_descriptor = self.get_descriptor()
+        if type(self._descriptor) is not dict:
+            raise Exception("Invalid descriptor type: expected `dict`, got %s" % type(self._descriptor))
+        settings = self.get_settings().get_raw()
+        additional_description = settings.get("additionalDescriptionForLLM") or ""
+        result = []
+        if tool_descriptor.get("multiple"):
+            for subtool in tool_descriptor.get("subtools", []):
+                if not subtool.get("enabled"):
+                    continue
+                subtool_spec_hash = self._compute_spec_hash(
+                    self.tool_id,
+                    additional_description,
+                    subtool.get("name"),
+                )
+                name, description, parameters = self._get_function_tool_descriptor_parts(
+                    tool_descriptor,
+                    subtool_spec_hash,
+                    additional_description,
+                    subtool_descriptor=subtool,
+                )
+                self._subtool_mapping[name] = subtool.get("name")
+                result.append(self._build_function_tool_descriptor(
+                    name=name,
+                    description=description,
+                    parameters=parameters,
+                ))
+        else:
+            computed_spec_hash = self._compute_spec_hash(
+                self.tool_id,
+                additional_description,
+            )
+            name, description, parameters = self._get_function_tool_descriptor_parts(
+                tool_descriptor,
+                computed_spec_hash,
+                additional_description,
+            )
+            result.append(self._build_function_tool_descriptor(
+                name=name,
+                description=description,
+                parameters=parameters,
+            ))
+
+        return result
+
+    def _get_subtool_name(self, tool_name):
+        return self._subtool_mapping.get(tool_name)
+
     def run(self, input, context=None, subtool_name=None, memory_fragment=None, tool_validation_responses=None, tool_validation_requests=None):
         """
         Execute a tool call
 
-        :param str input: Text input
+        :param dict input: Input for the tool
         :param dict context: Additional request context
         :param str subtool_name: Name of the sub-tool, if applicable (e.g., for a MCP tool)
         :rtype: dict

@@ -6,7 +6,7 @@ from dataikuapi.dss.utils import DSSDatasetSelectionBuilder
 from .discussion import DSSObjectDiscussions
 from .managedfolder import DSSManagedFolder
 from .metrics import ComputedMetrics
-from .ml import DSSMLTask, DSSTrainedTimeseriesForecastingModelDetails
+from .ml import DSSMLTask, DSSTrainedMultiTargetPredictionModelDetails, DSSTrainedTimeseriesForecastingModelDetails
 from .ml import DSSTrainedClusteringModelDetails
 from .ml import DSSTrainedPredictionModelDetails
 from ..utils import _make_zipfile, dku_basestring_type
@@ -237,7 +237,7 @@ class DSSSavedModel(object):
 
         :param str version_id: identifier of the version, as returned by :meth:`list_versions`
         :return: details of this trained model
-        :rtype: :class:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails`
+        :rtype: Union[:class:`dataikuapi.dss.ml.DSSTrainedPredictionModelDetails`, :class:`dataikuapi.dss.ml.DSSTrainedMultiTargetPredictionModelDetails`, :class:`dataikuapi.dss.ml.DSSTrainedTimeseriesForecastingModelDetails`, :class:`dataikuapi.dss.ml.DSSTrainedClusteringModelDetails`]
         """
         details = self.client._perform_json(
             "GET", "/projects/%s/savedmodels/%s/versions/%s/details" % (self.project_key, self.sm_id, version_id))
@@ -248,6 +248,8 @@ class DSSSavedModel(object):
             return DSSTrainedClusteringModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
         if snippet.get("predictionType", "") == "TIMESERIES_FORECAST":
             return DSSTrainedTimeseriesForecastingModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
+        if snippet.get("predictionType", "") == "MULTI_TARGET_REGRESSION":
+            return DSSTrainedMultiTargetPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
         return DSSTrainedPredictionModelDetails(details, snippet, saved_model=self, saved_model_version=version_id)
 
     def set_active_version(self, version_id):

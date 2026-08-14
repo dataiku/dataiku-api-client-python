@@ -1113,6 +1113,51 @@ class DSSClient(object):
         """
         return DSSCodeStudioTemplate(self, template_id)
 
+    def create_code_studio_template(self, template_label, template_type):
+        """
+        Create a code studio template, and return a handle to interact with it
+
+        :param string template_label: the name of the new code studio template
+        :param string template_type: the type of the new code studio template ( 'block_based', 'manual' or a plugin-provided type)
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
+
+        """
+        definition = {}
+        definition['label'] = template_label
+        definition['type'] = template_type
+        resp = self._perform_json(
+            "POST", "/admin/code-studios/", body=definition)
+        if resp is None:
+            raise Exception('Code studio template creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Code studio template creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return DSSCodeStudioTemplate(self, resp['id'])
+
+    def import_code_studio_template(self, archive_path, label=None, import_spec=None):
+        """
+        Import a code studio template from an exported archive.
+
+        :param str archive_path: path to the exported template zip archive
+        :param str label: optional label for the imported template. If omitted, the exported template label is reused
+        :param dict import_spec: optional import specification
+
+        :return: backend import result, including the created template id and info messages
+        :rtype: dict
+        """
+        if import_spec is None:
+            import_spec = {}
+        with open(archive_path, 'rb') as fp:
+            files = {
+                "file": fp
+            }
+            params = {}
+            if label is not None:
+                params["label"] = label
+            if import_spec:
+                params["importSpec"] = json.dumps(import_spec)
+            return self._perform_json("POST", "/admin/code-studios/import", params=params, files=files)
+
 
     ########################################################
     # Global API Keys
@@ -1593,7 +1638,8 @@ class DSSClient(object):
         Warning: this method can only be used on a design node.
 
         :param file-like fp: the input stream, as a file-like object
-        :returns: a :class:`TemporaryImportHandle` to interact with the prepared import
+        :returns: a handle to interact with the prepared import
+        :rtype: :class:`~dataikuapi.dssclient.TemporaryImportHandle`
         """
         val = self._perform_json_upload(
                 "POST", "/projects/import/upload",
@@ -1656,7 +1702,7 @@ class DSSClient(object):
         return DSSProjectStandards(self)
 
     ########################################################
-    # Data Catalog
+    # Catalog
     ########################################################
 
     def catalog_index_connections(self, connection_names=None, all_connections=False, indexing_mode="FULL"):
@@ -2031,15 +2077,15 @@ class DSSClient(object):
         return DSSWorkspace(self, workspace_key)
 
     ########################################################
-    # Data Collections
+    # Collections
     ########################################################
 
     def list_data_collections(self, as_type="listitems"):
         """
-        List the accessible data collections
+        List the accessible collections
 
         :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
-        :returns: The list of data collections.
+        :returns: The list of collections.
         :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
             a list of :class:`dataikuapi.dss.data_collection.DSSDataCollection` if as_type is "objects",
             a list of dict if as_type is "dict"
@@ -2054,27 +2100,27 @@ class DSSClient(object):
 
     def get_data_collection(self, id):
         """
-        Get a handle to interact with a specific data collection
+        Get a handle to interact with a specific collection
 
-        :param str id: the id of the data collection to fetch
+        :param str id: the id of the collection to fetch
         :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
         """
         return DSSDataCollection(self, id)
 
     def create_data_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
         """
-        Create a new data collection and return a handle to interact with it
+        Create a new collection and return a handle to interact with it
 
-        :param str displayName: the display name for the data collection.
+        :param str displayName: the display name for the collection.
         :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
         :param tags: The list of tags to use (defaults to *[]*)
         :type tags: list of str
-        :param str description: a description for the data collection
+        :param str description: a description for the collection
         :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
-        :param permissions: Initial permissions for the data collection (can be modified later - current user will always be added as admin).
+        :param permissions: Initial permissions for the collection (can be modified later - current user will always be added as admin).
         :type permissions: a list of :class:`dict`
 
-        :returns: Handle of the newly created Data Collection
+        :returns: Handle of the newly created Collection
         :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
         """
         res = self._perform_json("POST", "/data-collections/", body={
@@ -2086,6 +2132,57 @@ class DSSClient(object):
             "permissions": permissions
         })
         return DSSDataCollection(self, res['id'])
+
+    def list_collections(self, as_type="listitems"):
+        """
+        List the accessible collections.
+
+        This is a compatibility alias for :meth:`list_data_collections`.
+
+        :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
+        :returns: The list of collections.
+        :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
+            a list of :class:`dataikuapi.dss.data_collection.DSSCollection` if as_type is "objects",
+            a list of dict if as_type is "dict"
+        """
+        return self.list_data_collections(as_type=as_type)
+
+    def get_collection(self, id):
+        """
+        Get a handle to interact with a specific collection.
+
+        This is a compatibility alias for :meth:`get_data_collection`.
+
+        :param str id: the id of the collection to fetch
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSCollection`
+        """
+        return self.get_data_collection(id)
+
+    def create_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
+        """
+        Create a new collection and return a handle to interact with it.
+
+        This is a compatibility alias for :meth:`create_data_collection`.
+
+        :param str displayName: the display name for the collection.
+        :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
+        :param tags: The list of tags to use (defaults to *[]*)
+        :type tags: list of str
+        :param str description: a description for the collection
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+        :param permissions: Initial permissions for the collection (can be modified later - current user will always be added as admin).
+        :type permissions: a list of :class:`dict`
+        :returns: Handle of the newly created Collection
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSCollection`
+        """
+        return self.create_data_collection(
+            displayName,
+            id=id,
+            tags=tags,
+            description=description,
+            color=color,
+            permissions=permissions,
+        )
 
     ########################################################
     # Integration Channels
@@ -2426,7 +2523,14 @@ class TemporaryImportHandle(object):
                       ]
                     }
 
-        @warning: You must check the 'success' flag
+        .. warning::
+            The request itself may succeed while the project import fails:
+
+            * Check the ``success`` flag to know whether the import completed successfully.
+            * Inspect ``messages`` for warnings or error details.
+
+        :returns: the import result as a dict.
+        :rtype: dict
         """
         # Empty JSON dicts can't be parsed properly
         if settings is None:

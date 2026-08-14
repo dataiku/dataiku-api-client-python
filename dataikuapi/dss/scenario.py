@@ -705,7 +705,8 @@ class DSSScenarioRun(object):
         """
         updated_run_details = self.client._perform_json("GET", "/projects/%s/scenarios/%s/%s/" % \
                  (self.run["scenario"]["projectKey"], self.run["scenario"]["id"], self.run["runId"]))
-        self.run = updated_run_details["scenarioRun"]
+        if "scenarioRun" in updated_run_details:
+            self.run = updated_run_details["scenarioRun"]
 
     def wait_for_completion(self, no_fail=False):
         """

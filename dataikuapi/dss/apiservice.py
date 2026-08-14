@@ -116,7 +116,7 @@ class DSSAPIServiceSettings(object):
         :return: ist of endpoints, each one a dict. Endpoint have different fields depending on their type, but always have at least:
 
                         * **id** : identifier of the endpoint
-                        * **type** : type of endpoint. Possible values: STD_PREDICTION, STD_CLUSTERING, STD_FORECAST, STD_CAUSAL_PREDICTION, CUSTOM_PREDICTION, CUSTOM_R_PREDICTION, R_FUNCTION, PY_FUNCTION, DATASETS_LOOKUP, SQL_QUERY
+                        * **type** : type of endpoint. Possible values: STD_PREDICTION, STD_CLUSTERING, STD_FORECAST, STD_CAUSAL_PREDICTION, STD_MULTITARGET_PREDICTION, CUSTOM_PREDICTION, CUSTOM_R_PREDICTION, R_FUNCTION, PY_FUNCTION, DATASETS_LOOKUP, SQL_QUERY
 
         :rtype: list[dict]
         """
@@ -132,6 +132,19 @@ class DSSAPIServiceSettings(object):
         self.settings["endpoints"].append({
             "id" : endpoint_id,
             "type" : "STD_PREDICTION",
+            "modelRef": saved_model_id
+        })
+
+    def add_multitarget_prediction_endpoint(self, endpoint_id, saved_model_id):
+        """
+        Add a new "visual multi-target prediction" endpoint to this API service.
+
+        :param string endpoint_id: identifier of the new endpoint to create
+        :param string saved_model_id: identifier of the saved model (that is currently deployed to the Flow) to use
+        """
+        self.settings["endpoints"].append({
+            "id" : endpoint_id,
+            "type" : "STD_MULTITARGET_PREDICTION",
             "modelRef": saved_model_id
         })
 

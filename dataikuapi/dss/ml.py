@@ -1548,6 +1548,30 @@ class LightGBMSettings(_LightGBMSettingsBase):
         self.allow_sparse_matrices = self._register_single_value_hyperparameter("allow_sparse_matrices", accepted_types=[bool])
 
 
+class CatBoostSettings(PredictionAlgorithmSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(CatBoostSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.learning_rate = self._register_numerical_hyperparameter("learning_rate")
+        self.max_depth = self._register_numerical_hyperparameter("max_depth")
+        self.l2_leaf_reg = self._register_numerical_hyperparameter("l2_leaf_reg")
+        self.border_count = self._register_numerical_hyperparameter("border_count")
+        self.random_strength = self._register_numerical_hyperparameter("random_strength")
+        self.min_data_in_leaf = self._register_numerical_hyperparameter("min_data_in_leaf")
+        self.bagging_temperature = self._register_numerical_hyperparameter("bagging_temperature")
+        self.border_count_mode_auto = self._register_single_value_hyperparameter("border_count_mode_auto", accepted_types=[bool])
+        self.bootstrap_type = self._register_single_category_hyperparameter(
+            "bootstrap_type", accepted_values=["Auto", "Bayesian", "Bernoulli", "MVS", "No"]
+        )
+        self.grow_policy = self._register_single_category_hyperparameter(
+            "grow_policy", accepted_values=["SymmetricTree", "Depthwise", "Lossguide"]
+        )
+        self.nthread = self._register_single_value_hyperparameter("nthread", accepted_types=[int])
+        self.n_estimators = self._register_single_value_hyperparameter("n_estimators", accepted_types=[int])
+        self.enable_early_stopping = self._register_single_value_hyperparameter("enable_early_stopping", accepted_types=[bool])
+        self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
+
+
 class TabICLSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
@@ -2189,7 +2213,7 @@ class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
 
     def get_hyperparameter_search_settings(self):
         """
-        Gets the hyperparameter search parameters of the current DSSPredictionMLTaskSettings instance as a
+        Gets the hyperparameter search parameters of the current tabular prediction ML task settings instance as a
         HyperparameterSearchSettings object. This object can be used to both get and set properties relevant to
         hyperparameter search, such as search strategy, cross-validation method, execution limits and parallelism.
 
@@ -2224,7 +2248,7 @@ class AbstractTabularPredictionMLTaskSettings(DSSMLTaskSettings):
 
 class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
     """
-    For classical prediction ML tasks
+    For single-target classical prediction ML tasks
     """
     __doc__ = []
     _algorithm_remap = {
@@ -2250,6 +2274,8 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
             "LARS": PredictionAlgorithmMeta("lars_params", LARSSettings),
             "LIGHTGBM_CLASSIFICATION": PredictionAlgorithmMeta("lightgbm_classification", LightGBMSettings),
             "LIGHTGBM_REGRESSION": PredictionAlgorithmMeta("lightgbm_regression", LightGBMSettings),
+            "CATBOOST_CLASSIFICATION": PredictionAlgorithmMeta("catboost_classification", CatBoostSettings),
+            "CATBOOST_REGRESSION": PredictionAlgorithmMeta("catboost_regression", CatBoostSettings),
             "XGBOOST_CLASSIFICATION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
             "XGBOOST_REGRESSION": PredictionAlgorithmMeta("xgboost", XGBoostSettings),
             "SPARKLING_DEEP_LEARNING": PredictionAlgorithmMeta("deep_learning_sparkling"),
@@ -2315,7 +2341,7 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         algo_names = super(DSSPredictionMLTaskSettings, self).get_enabled_algorithm_names()
 
         # Hide either "XGBOOST_CLASSIFICATION" or "XGBOOST_REGRESSION" which point to the same key "xgboost"
-        if self.mltask_settings["predictionType"] == "REGRESSION":
+        if self.mltask_settings["predictionType"] == self.PredictionTypes.REGRESSION:
             excluded_names = {"XGBOOST_CLASSIFICATION"}
         else:
             excluded_names = {"XGBOOST_REGRESSION"}
@@ -2417,6 +2443,40 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
         :rtype: :class:`DSSMLAssertionsParams`
         """
         return DSSMLAssertionsParams(self.mltask_settings["assertionsParams"])
+
+
+class DSSMultiTargetPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
+    """
+    For multi-target regression ML tasks
+    """
+    __doc__ = []
+    _algorithm_remap = {
+        "RANDOM_FOREST_REGRESSION": PredictionAlgorithmMeta("random_forest_regression", RandomForestSettings),
+        "RIDGE_REGRESSION": PredictionAlgorithmMeta("ridge_regression", RidgeRegressionSettings),
+        "NEURAL_NETWORK": PredictionAlgorithmMeta("neural_network", SingleLayerPerceptronSettings)
+    }
+
+    class PredictionTypes:
+        """
+        Possible prediction types
+        """
+        MULTI_TARGET_REGRESSION = "MULTI_TARGET_REGRESSION"
+
+    def __init__(self, client, project_key, analysis_id, mltask_id, mltask_settings):
+        super(DSSMultiTargetPredictionMLTaskSettings, self).__init__(client, project_key, analysis_id, mltask_id, mltask_settings)
+
+        prediction_type = self.get_prediction_type()
+        if prediction_type != self.PredictionTypes.MULTI_TARGET_REGRESSION:
+            raise ValueError("Unknown prediction type: {}".format(prediction_type))
+
+    def get_target_variables(self):
+        """
+        Gets the target variables for this multi-target prediction ML task.
+
+        :return: The target variables (read-only copy)
+        :rtype: list[str]
+        """
+        return list(self.mltask_settings["multiTargetVariables"])
 
 
 class DSSClusteringMLTaskSettings(DSSMLTaskSettings):
@@ -3151,6 +3211,14 @@ class DSSMLDiagnostic(object):
         """
         return self._internal_dict["message"]
 
+    def get_details(self):
+        """
+        Returns the optional diagnostic details displayed in expanded UI surfaces.
+
+        :rtype: Union[str, None]
+        """
+        return self._internal_dict.get("details")
+
     def __repr__(self):
         return "{cls}(type={type}, message={msg})".format(cls=self.__class__.__name__,
                                                           type=self._internal_dict["type"],
@@ -3722,7 +3790,7 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
             # Both lists have the same length
 
         If K-Fold cross-test was used, most metrics will have a "std" variant, which is the standard deviation
-        accross the K cross-tested folds. For example, "auc" will be accompanied with "aucstd"
+        across the K cross-tested folds. For example, "auc" will be accompanied with "aucstd"
 
         :returns: a dict of performance metrics values
         :rtype: dict
@@ -3981,26 +4049,68 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
 
     ## Post-train computations
 
-    def compute_shapley_feature_importance(self):
+    def compute_shapley_feature_importance(self, n_explanations=None, mc_steps=None, num_samples=None):
         """
-        Launches computation of Shapley feature importance for this trained model
+        Launches computation of Shapley feature importance for this trained model.
 
+        :param int n_explanations: Number of features for which to compute a Shapley importance
+            (the most important features are selected).
+        :param int mc_steps: Number of Monte Carlo steps used to estimate the Shapley values,
+            i.e. the size of the background sample averaged over. Higher values give more
+            stable importances but take longer.
+        :param int num_samples: Number of rows sampled from the dataset to compute the explanations on.
         :returns: A future for the computation task
         :rtype: :class:`dataikuapi.dss.future.DSSFuture`
         """
+        body = None
+        if n_explanations is not None or mc_steps is not None or num_samples is not None:
+            body = {"computationParams": {}}
+            if n_explanations is not None:
+                body["computationParams"]["n_explanations"] = n_explanations
+            if mc_steps is not None:
+                body["computationParams"]["mc_steps"] = mc_steps
+            if num_samples is not None:
+                body["computationParams"]["num_samples"] = num_samples
+
         if self.mltask is not None:
             future_response = self.mltask.client._perform_json(
                 "POST", "/projects/%s/models/lab/%s/%s/models/%s/shapley-feature-importance" %
                         (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id),
+                body=body
             )
             future = DSSFuture(self.mltask.client, future_response.get("jobId", None), future_response)
         else:
             future_response = self.saved_model.client._perform_json(
                 "POST", "/projects/%s/savedmodels/%s/versions/%s/shapley-feature-importance" %
                         (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+                body=body
             )
             future = DSSFuture(self.saved_model.client, future_response.get("jobId", None), future_response)
         return future
+
+    def get_global_explanations(self):
+        """
+        Retrieves all global explanations computed for this trained model.
+
+        :returns: The global explanations
+        :rtype: :class:`dataikuapi.dss.ml.DSSGlobalExplanations`
+        """
+        if self.mltask is not None:
+            data = self.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/global-explanations" %
+                (self.mltask.project_key, self.mltask.analysis_id, self.mltask.mltask_id, self.mltask_model_id)
+            )
+        else:
+            data = self.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/global-explanations" %
+                (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
+            )
+        if len(data) == 0:
+            raise ValueError(
+                "Global explanations have not been computed for this model; "
+                "call compute_shapley_feature_importance() first"
+            )
+        return DSSGlobalExplanations(self, data)
 
     def compute_subpopulation_analyses(self, split_by, wait=True, sample_size=1000, random_state=1337, n_jobs=1, debug_mode=False):
         """
@@ -4126,6 +4236,70 @@ class DSSTrainedPredictionModelDetails(DSSTrainedModelDetails):
                 (self.saved_model.project_key, self.saved_model.sm_id, self.saved_model_version),
             )
         return DSSPartialDependencies(data)
+
+
+class DSSTrainedMultiTargetPredictionModelDetails(DSSTrainedPredictionModelDetails):
+    """
+    Object to read details of a trained multi-target regression model.
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSMLTask.get_trained_model_details()` instead
+    """
+    def __init__(self, details, snippet, saved_model=None, saved_model_version=None, mltask=None, mltask_model_id=None):
+        super(DSSTrainedMultiTargetPredictionModelDetails, self).__init__(
+            details, snippet, saved_model, saved_model_version, mltask, mltask_model_id
+        )
+
+    def get_target_variables(self):
+        """
+        Returns the target variables for this model.
+
+        :returns: the list of target variables
+        :rtype: list[str]
+        """
+        return self.details.get("coreParams", {}).get("multi_target_variables", [])
+
+    def get_performance_metrics(self):
+        """
+        Returns all performance metrics for this model.
+
+        Aggregated metrics across all targets are accessible at the root of the returned object.
+
+        .. code-block:: python
+
+            # Returns aggregated MAPE performance metric across all targets
+            details.get_performance_metrics()["mape"]
+
+        To get access to the per-target values, use the following:
+
+        .. code-block:: python
+
+            # Returns a dict of performance metrics, with the target name as key
+            details.get_performance_metrics()["perTargetMetrics"]
+
+            # Returns MAPE performance metric for a specific target
+            details.get_performance_metrics()["perTargetMetrics"]["target1"]["mape"]
+
+        If K-Fold cross-test was used, most metrics will have a "std" variant, which is the standard deviation
+        across the K cross-tested folds. For example, "mape" will be accompanied with "mapestd"
+
+        :returns: a dict of performance metrics values
+        :rtype: dict
+        """
+        return super(DSSTrainedMultiTargetPredictionModelDetails, self).get_performance_metrics()
+
+    def get_residuals(self):
+        """
+        Returns per-target residuals for this model.
+
+        :returns: the residuals grouped by target variable
+        :rtype: dict
+        """
+        return {
+            target_name: target_perf["residuals"]
+            for target_name, target_perf in self.details.get("perf", {}).get("perTargetPerf", {}).items()
+            if "residuals" in target_perf
+        }
 
 
 class DSSTrainedTimeseriesForecastingModelDetails(DSSTrainedPredictionModelDetails):
@@ -4309,13 +4483,13 @@ class DSSSubpopulationGlobal(object):
         Gets the prediction info of the global population used for the subpopulation analysis
         """
         global_metrics = self._internal_dict["perf"]["globalMetrics"]
-        if self.prediction_type == "BINARY_CLASSIFICATION":
+        if self.prediction_type == DSSPredictionMLTaskSettings.PredictionTypes.BINARY:
             return {
                 "predictedPositiveRatio": global_metrics["predictionAvg"][0],
                 "actualPositiveRatio": global_metrics["targetAvg"][0],
                 "testWeight": global_metrics["testWeight"]
             }
-        elif self.prediction_type == "REGRESSION":
+        elif self.prediction_type == DSSPredictionMLTaskSettings.PredictionTypes.REGRESSION:
             return {
                 "predictedAvg":global_metrics["predictionAvg"][0],
                 "predictedStd":global_metrics["predictionStd"][0],
@@ -4387,13 +4561,13 @@ class DSSSubpopulationModality(object):
         if self.is_excluded():
             raise ValueError("Excluded modalities do not have prediction info")
         global_metrics = self._internal_dict["perf"]["globalMetrics"]
-        if self.prediction_type == "BINARY_CLASSIFICATION":
+        if self.prediction_type == DSSPredictionMLTaskSettings.PredictionTypes.BINARY:
             return {
                 "predictedPositiveRatio": global_metrics["predictionAvg"][0],
                 "actualPositiveRatio": global_metrics["targetAvg"][0],
                 "testWeight": global_metrics["testWeight"]
             }
-        elif self.prediction_type == "REGRESSION":
+        elif self.prediction_type == DSSPredictionMLTaskSettings.PredictionTypes.REGRESSION:
             return {
                 "predictedAvg":global_metrics["predictionAvg"][0],
                 "predictedStd":global_metrics["predictionStd"][0],
@@ -4588,6 +4762,82 @@ class DSSSubpopulationAnalyses(object):
             return next(analysis for analysis in self.analyses if analysis.get_raw()["feature"] == feature)
         except StopIteration:
             raise ValueError("Subpopulation analysis for feature '%s' cannot be found" % feature)
+
+
+class DSSGlobalExplanations(object):
+    """
+    Object to read details of global explanations of a trained model
+
+    .. important::
+        Do not create this object directly, use :meth:`DSSTrainedPredictionModelDetails.get_global_explanations()` instead
+    """
+
+    def __init__(self, model_details, data):
+        self.model_details = model_details
+        self._internal_dict = data
+
+    def get_raw(self):
+        """
+        Gets the raw dictionary of global explanations
+
+        :rtype: dict
+        """
+        return self._internal_dict
+
+    def get_absolute_importance(self):
+        """
+        Gets the absolute importance results of the global explanations
+
+        :rtype: dict
+        """
+        return self._internal_dict.get("absoluteImportance")
+
+    def get_observations(self):
+        """
+        Gets the sampled observations and explanations used for global explanations
+
+        :rtype: dict
+        """
+        return {
+            "explanations": self._internal_dict.get("explanations"),
+            "observations": self._internal_dict.get("observations")
+        }
+
+    def get_facts(self):
+        """
+        Gets the computed facts for the global explanations
+
+        :rtype: dict
+        """
+        if self.model_details.mltask is not None:
+            data = self.model_details.mltask.client._perform_json(
+                "GET", "/projects/%s/models/lab/%s/%s/models/%s/global-explanations-facts" %
+                (self.model_details.mltask.project_key,
+                 self.model_details.mltask.analysis_id,
+                 self.model_details.mltask.mltask_id,
+                 self.model_details.mltask_model_id)
+            )
+        else:
+            data = self.model_details.saved_model.client._perform_json(
+                "GET", "/projects/%s/savedmodels/%s/versions/%s/global-explanations-facts" %
+                (self.model_details.saved_model.project_key,
+                 self.model_details.saved_model.sm_id,
+                 self.model_details.saved_model_version),
+            )
+        if len(data) == 0:
+            raise ValueError(
+                "Global explanations are not available for this model; "
+                "call compute_shapley_feature_importance() first"
+            )
+        return data["perClassFacts"]
+
+    def __repr__(self):
+        importances = self.get_absolute_importance() or {}
+        top = sorted(importances.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        body = ", ".join("{}: {:.3g}".format(f, v) for f, v in top)
+        if len(importances) > len(top):
+            body += ", ..."
+        return "{cls}(top_importances={{{body}}})".format(cls=self.__class__.__name__, body=body)
 
 
 class DSSPartialDependence(object):
@@ -4878,6 +5128,8 @@ class DSSMLTask(object):
             elif settings["predictionType"] in [DSSCausalPredictionMLTaskSettings.PredictionTypes.CAUSAL_BINARY_CLASSIFICATION,
                      DSSCausalPredictionMLTaskSettings.PredictionTypes.CAUSAL_REGRESSION]:
                 return DSSCausalPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
+            elif settings["predictionType"] == DSSMultiTargetPredictionMLTaskSettings.PredictionTypes.MULTI_TARGET_REGRESSION:
+                return DSSMultiTargetPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
             else:
                 return DSSPredictionMLTaskSettings(self.client, self.project_key, self.analysis_id, self.mltask_id, settings)
         else:
@@ -5058,8 +5310,8 @@ class DSSMLTask(object):
         
         :param str id: Identifier of the trained model, as returned by :meth:`get_trained_models_ids`
 
-        :return: A :class:`DSSTrainedPredictionModelDetails` or :class:`DSSTrainedClusteringModelDetails` representing the details of this trained model.
-        :rtype: Union[:class:`DSSTrainedPredictionModelDetails`, :class:`DSSTrainedClusteringModelDetails`, :class:`DSSTrainedTimeseriesForecastingModelDetails`]
+        :return: The details of this trained model.
+        :rtype: Union[:class:`DSSTrainedPredictionModelDetails`, :class:`DSSTrainedMultiTargetPredictionModelDetails`, :class:`DSSTrainedClusteringModelDetails`, :class:`DSSTrainedTimeseriesForecastingModelDetails`]
         """
         ret = self.client._perform_json(
             "GET", "/projects/%s/models/lab/%s/%s/models/%s/details" % (self.project_key, self.analysis_id, self.mltask_id,id))
@@ -5069,6 +5321,8 @@ class DSSMLTask(object):
             return DSSTrainedClusteringModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
         if snippet.get("predictionType", "") == DSSTimeseriesForecastingMLTaskSettings.PredictionTypes.TIMESERIES_FORECAST:
             return DSSTrainedTimeseriesForecastingModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
+        if snippet.get("predictionType", "") == DSSMultiTargetPredictionMLTaskSettings.PredictionTypes.MULTI_TARGET_REGRESSION:
+            return DSSTrainedMultiTargetPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
         return DSSTrainedPredictionModelDetails(ret, snippet, mltask=self, mltask_model_id=id)
 
     def delete_trained_model(self, model_id):
@@ -5178,7 +5432,7 @@ class DSSMLTask(object):
         self.client._perform_empty(
             "POST", "/projects/%s/models/lab/%s/%s/actions/removeAllSplits" % (self.project_key, self.analysis_id, self.mltask_id))
 
-    def guess(self, prediction_type=None, reguess_level=None, target_variable=None, timeseries_identifiers=None, time_variable=None, full_reguess=None):
+    def guess(self, prediction_type=None, reguess_level=None, target_variable=None, timeseries_identifiers=None, time_variable=None, full_reguess=None, target_variables=None):
         """
         Reguess the settings of the ML Task.
 
@@ -5188,17 +5442,20 @@ class DSSMLTask(object):
 
         :param prediction_type: The desired prediction type. Only valid for prediction tasks of either `BINARY_CLASSIFICATION`, `MULTICLASS`
             or `REGRESSION` type, ignored otherwise.
-            Cannot be set if either target_variable, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+            Cannot be set if either target_variable, target_variables, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
         :type prediction_type: str, optional
-        :param target_variable: The desired target variable. Only valid for prediction tasks, ignored for clustering.
-            Cannot be set if either prediction_type, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+        :param target_variable: The desired target variable. Only valid for single-target prediction tasks, ignored for clustering.
+            Cannot be set if either prediction_type, target_variables, time_variable, or timeseries_identifiers is also specified. (defaults to **None**)
         :type target_variable: str, optional
+        :param target_variables: The desired target variables. Only valid for multi-target prediction tasks, ignored otherwise.
+            Cannot be set if either prediction_type, target_variable, time_variable, or timeseries_identifiers is also specified.
+        :type target_variables: list[str], optional
         :param timeseries_identifiers: Only valid for time series forecasting tasks. List of columns to be used as
             time series identifiers.
-            Cannot be set if either prediction_type, target_variable, or time_variable is also specified. (defaults to **None**)
+            Cannot be set if either prediction_type, target_variable, target_variables, or time_variable is also specified. (defaults to **None**)
         :type timeseries_identifiers: list[str], optional
         :param time_variable: The desired time variable column. Only valid for time series forecasting tasks.
-            Cannot be set if either prediction_type, target_variable, or timeseries_identifiers is also specified. (defaults to **None**)
+            Cannot be set if either prediction_type, target_variable, target_variables, or timeseries_identifiers is also specified. (defaults to **None**)
         :type time_variable: str, optional
         :param full_reguess: Scope of the reguess process:
             whether it should reguess all the settings after changing a core parameter, or only reguess impacted
@@ -5227,6 +5484,9 @@ class DSSMLTask(object):
 
         if target_variable is not None:
             obj["targetVariable"] = target_variable
+
+        if target_variables is not None:
+            obj["targetVariables"] = target_variables
 
         if full_reguess is not None:
             obj["fullReguess"] = full_reguess
