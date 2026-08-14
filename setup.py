@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-VERSION = "14.7.3"
+VERSION = "15.0.0"
 
 long_description = (open('README').read() + '\n\n' +
                     open('HISTORY.txt').read())
