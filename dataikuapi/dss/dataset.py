@@ -1073,6 +1073,15 @@ class DSSDatasetSettings(DSSTaggableObjectSettings):
         """
         self.settings["schema"]["columns"].append(column)
 
+    def update_string_column_len(self, column, length):
+        """
+        Update the length of a string column in a Dataset schema
+        """
+        columns = self.settings["schema"]["columns"]
+        for c in columns:
+            if c['name'] == column:
+                c['maxLength'] = length
+
     @property
     def is_feature_group(self):
         """
