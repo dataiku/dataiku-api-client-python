@@ -1379,6 +1379,7 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         cs["sum"] = sum
         cs["concat"] = concat
         cs["stddev"] = stddev
+        cs["avg"] = avg                          
         return cs
 
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
