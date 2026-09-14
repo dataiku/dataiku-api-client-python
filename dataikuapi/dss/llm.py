@@ -966,14 +966,14 @@ class _SSEClient(object):
         """Reads the raw source and yields events. Reassembles events
         that may span multiple HTTP chunks"""
         #logging.debug("SSEClient._read")
-        data = b''
+        data = bytearray()
         for chunk in self.raw_source:
             #logging.info("SSEClient._read: got chunk (len=%s): %s" % (len(chunk), chunk))
             for line in chunk.splitlines(True):
-                data += line
+                data.extend(line)
                 if data.endswith(b'\r\r') or data.endswith(b'\n\n') or data.endswith(b'\r\n\r\n'):
                     yield data
-                    data = b''
+                    data = bytearray()
         #logging.info("SSEClient._read: no more chunk")
         if data:
             yield data
@@ -983,6 +983,7 @@ class _SSEClient(object):
             #logging.info("SSEClient._iterevents: got event")
             evt = _SSEEvent()
 
+            data_lines = []
             for line in event_chunk.splitlines():
                 line = line.decode("utf8")
 
@@ -999,9 +1000,12 @@ class _SSEClient(object):
                     value = ''
 
                 if field == 'data':
-                    evt.__dict__[field] += value + '\n'
+                    data_lines.append(value)
                 else:
                     evt.__dict__[field] = value
+
+            if data_lines:
+                evt.data = '\n'.join(data_lines) + '\n'
 
             if evt.event is not None:
                 #logging.info("Yielding event: %s" % evt.__dict__)
