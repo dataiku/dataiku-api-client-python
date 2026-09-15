@@ -403,7 +403,7 @@ class DSSMLTaskSettings(object):
         """
         Enables or disables an algorithm given its name.
 
-        Exact algorithm names can be found using the :meth:`.get_all_possible_algorithm_names()` method.
+        Exact algorithm names can be found using the :meth:`DSSMLTaskSettings.get_all_possible_algorithm_names()` method.
 
         Please refer to the documentation for further information on available algorithms.
 
