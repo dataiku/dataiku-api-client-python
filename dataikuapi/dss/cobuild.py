@@ -435,7 +435,7 @@ class DSSCobuildConversation(object):
         self._messages.append(response)
         return response
 
-    def answer_question(self, answers=None, rejected=False, used_custom_answer=False):
+    def answer_question(self, answers=None, rejected=False, used_custom_answer=False, selected_objects=None):
         """
         Answer a pending question request and wait for the assistant's next response.
 
@@ -448,6 +448,9 @@ class DSSCobuildConversation(object):
             ``rejected=True``. Defaults to ``[]``.
         :param bool rejected: whether to decline answering the question
         :param bool used_custom_answer: whether one of the answers came from the custom free-text input
+        :param selected_objects: object selection the assistant should focus on. It is reused for
+            subsequent messages and question answers, unless overwritten
+        :type selected_objects: list[:class:`.DSSDataset`, :class:`.DSSRecipe`, :class:`.DSSLabelingTask`, :class:`.DSSManagedFolder`, :class:`.DSSSavedModel`, :class:`.DSSKnowledgeBank`, :class:`.DSSModelEvaluationStore` or :class:`.DSSStreamingEndpoint`]
 
         :returns: the assistant's response after the question answer
         :rtype: :class:`CobuildAssistantResponse`
@@ -458,6 +461,8 @@ class DSSCobuildConversation(object):
             raise ValueError("answers must be a list of strings")
         if self._pending_question_id is None:
             raise ValueError("No pending question request. Call send_message first and check is_question_request.")
+        if selected_objects is not None:
+            self._selected_objects = _DSS_objects_to_selected(self.project_key, selected_objects)
 
         question_id = self._pending_question_id
         self._pending_question_id = None
@@ -472,6 +477,7 @@ class DSSCobuildConversation(object):
                 "rejected": rejected,
                 "answers": answers,
                 "usedCustomAnswer": used_custom_answer,
+                "selectedObjects": self._selected_objects or [],
             },
         )
         response = CobuildAssistantResponse(raw)

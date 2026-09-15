@@ -1595,7 +1595,8 @@ class DSSClient(object):
         READ_ONLY = "READ_ONLY"
         ALL = "ALL"
 
-    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE):
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE,
+                                                 fail_on_missing_users_or_groups=True):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
@@ -1605,18 +1606,22 @@ class DSSClient(object):
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
         :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
+        :param fail_on_missing_users_or_groups: fail the project creation when a propagated user or group is missing on the automation node (default: True)
+        :type fail_on_missing_users_or_groups: bool
         """
         if isinstance(permissions_propagation_policy, DSSClient.PermissionsPropagationPolicy):
             permissions_propagation_policy = permissions_propagation_policy.value
         params = {
             "archivePath": osp.abspath(archive_path),
             "permissionsPropagationPolicy": permissions_propagation_policy,
+            "failOnMissingUsersOrGroups": fail_on_missing_users_or_groups,
         }
         if project_folder is not None:
             params["projectFolderId"] = project_folder.project_folder_id
         return self._perform_json("POST", "/projectsFromBundle/fromArchive", params=params)
 
-    def create_project_from_bundle_archive(self, fp, project_folder=None):
+    def create_project_from_bundle_archive(self, fp, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE,
+                                           fail_on_missing_users_or_groups=True):
         """
         Create a project from a bundle archive (as a file object)
         Warning: this method can only be used on an automation node.
@@ -1624,8 +1629,17 @@ class DSSClient(object):
         :param string fp: A file-like object pointing to a bundle archive zip
         :param project_folder: the project folder in which the project will be created or None for root project folder
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
+        :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
+        :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
+        :param fail_on_missing_users_or_groups: fail the project creation when a propagated user or group is missing on the automation node (default: True)
+        :type fail_on_missing_users_or_groups: bool
         """
-        params = {}
+        if isinstance(permissions_propagation_policy, DSSClient.PermissionsPropagationPolicy):
+            permissions_propagation_policy = permissions_propagation_policy.value
+        params = {
+            "permissionsPropagationPolicy": permissions_propagation_policy,
+            "failOnMissingUsersOrGroups": fail_on_missing_users_or_groups,
+        }
         if project_folder is not None:
             params['projectFolderId'] = project_folder.project_folder_id
         files = {'file': fp }
