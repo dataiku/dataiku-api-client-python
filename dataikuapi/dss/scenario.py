@@ -393,6 +393,9 @@ class DSSScenarioStatus(object):
         This is an approximate indication as scenario run may be delayed, especially in the case of
         multiple triggers or high load.
 
+        The next run excludes past occurrences that remain executable only because of a trigger's
+        tolerance window (about three days for monthly triggers).
+
         :rtype: :class:`datetime.datetime`
         """
         if not "nextRun" in self.data or self.data["nextRun"] == 0:
