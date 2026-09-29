@@ -102,7 +102,7 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self, clear_managed_datasets=False, clear_output_managed_folders=False, clear_job_and_scenario_logs=True,
+    def delete(self, clear_managed_datasets=False, clear_output_managed_folders=False, clear_job_and_scenario_logs=True, clear_managed_knowledge_banks=False,
                **kwargs):
         """
         Delete the project
@@ -113,6 +113,7 @@ class DSSProject(object):
         :param bool clear_managed_datasets: Should the data of managed datasets be cleared (defaults to **False**)
         :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared (defaults to **False**)
         :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared (defaults to **True**)
+        :param bool clear_managed_knowledge_banks: Should the data of managed knowledge banks be cleared (defaults to **False**)
         :param bool wait: Whether to wait for the deletion to complete (defaults to **True**)
 
         :return: if `wait` is True, a dict containing messages about the deletion if errors arose. If `wait` is False,
@@ -131,6 +132,7 @@ class DSSProject(object):
                 "clearManagedDatasets": clear_managed_datasets,
                 "clearOutputManagedFolders": clear_output_managed_folders,
                 "clearJobAndScenarioLogs": clear_job_and_scenario_logs,
+                "clearManagedKnowledgeBanks": clear_managed_knowledge_banks,
                 "wait": wait
             })
         # no need to wait python-side, it's done java-side
@@ -3235,8 +3237,10 @@ class DSSProject(object):
             )
             print(response.message)
 
-        Without ``allow_edit_project=True``, Cobuild asks before using tools that create or edit
-        objects. In the public API, missing permissions are returned as an error response::
+        Without the appropriate edit permission, Cobuild asks before using tools that create or
+        edit objects. Pass ``allow_edit_project=True`` for project objects, or
+        ``allow_edit_managed_folder_contents=["FOLDER_ID"]`` for files in specific managed
+        folders. In the public API, missing permissions are returned as an error response::
 
             project = client.get_project("MY_PROJECT")
             conv = project.new_cobuild_conversation()
@@ -3260,6 +3264,17 @@ class DSSProject(object):
                     used_custom_answer=False
                 )
                 print(response.message)
+
+        Cobuild can draft a plan before making changes. Continue sending messages with
+        ``conversation_mode=CobuildConversationMode.PLAN`` while revising the draft, then
+        approve it to execute the plan and return its final response. Discard an active plan
+        before switching back to plan mode::
+
+            from dataikuapi.dss.cobuild import CobuildConversationMode
+
+            conv = project.new_cobuild_conversation()
+            conv.send_message("Plan a cleanup of stale datasets", conversation_mode=CobuildConversationMode.PLAN)
+            conv.approve_plan()
 
         :returns: a handle to the newly created empty conversation
         :rtype: :class:`dataikuapi.dss.cobuild.DSSCobuildConversation`

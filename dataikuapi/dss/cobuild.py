@@ -7,6 +7,210 @@ from dataikuapi.dss.recipe import DSSRecipe
 from dataikuapi.dss.savedmodel import DSSSavedModel
 from dataikuapi.dss.streaming_endpoint import DSSStreamingEndpoint
 
+import sys
+
+# Only meant to avoid parent modules to fail when importing this module, but this won't work at runtime. We aren't trying to support
+# Python versions older than 3.5 in this module. See this thread (if it still exists: https://dataiku.slack.com/archives/CBZBN0ZCN/p1788265325448089).
+if sys.version_info > (3, 4):
+    from enum import Enum
+else:
+    class Enum(object):
+        pass
+
+
+class CobuildConversationMode(Enum):
+    """Mode used for a Cobuild user message."""
+    BUILD = "BUILD"
+    PLAN = "PLAN"
+
+
+class CobuildPlanStatus(Enum):
+    """Lifecycle state of a :class:`CobuildPlan`."""
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+
+class CobuildPlanMilestoneStatus(Enum):
+    """Execution state of a :class:`CobuildPlanMilestone`."""
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    DONE = "DONE"
+
+
+class CobuildPlanImplementationNotes(object):
+    """
+    Additional implementation context for a Cobuild plan milestone.
+
+    These notes record the tools that Cobuild planned to use and the reasoning it retained while
+    validating and executing the plan. They are provided for inspection only; changing this object
+    does not modify the plan in DSS.
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    @property
+    def tools(self):
+        """
+        Names of the tools Cobuild planned to use.
+
+        :rtype: list[str]
+        """
+        return list(self._raw.get("tools") or [])
+
+    @property
+    def details(self):
+        """
+        Detailed implementation and validation notes.
+
+        :rtype: str or None
+        """
+        return self._raw.get("details")
+
+
+class CobuildPlanMilestone(object):
+    """
+    One ordered unit of work in a :class:`CobuildPlan`.
+
+    Milestones are read-only snapshots of the plan returned by DSS. Their fields describe both the
+    intended work and its current execution state; changing this object does not modify the plan in
+    DSS.
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    @property
+    def id(self):
+        """
+        Identifier of this milestone.
+
+        :rtype: str
+        """
+        return self._raw.get("id")
+
+    @property
+    def status(self):
+        """
+        Current execution state of this milestone.
+
+        :rtype: :class:`CobuildPlanMilestoneStatus`
+        """
+        return CobuildPlanMilestoneStatus(self._raw.get("status"))
+
+    @property
+    def title(self):
+        """
+        Short description of the milestone.
+
+        :rtype: str or None
+        """
+        return self._raw.get("title")
+
+    @property
+    def steps(self):
+        """
+        Markdown description of the work Cobuild intends to carry out.
+
+        :rtype: str or None
+        """
+        return self._raw.get("steps")
+
+    @property
+    def completion_checklist(self):
+        """
+        Checks Cobuild uses to determine whether the milestone is complete.
+
+        :rtype: list[str]
+        """
+        return list(self._raw.get("completionChecklist") or [])
+
+    @property
+    def output_description_summary(self):
+        """
+        Summary of the expected outputs or outcomes of this milestone.
+
+        :rtype: str or None
+        """
+        return self._raw.get("outputDescriptionSummary")
+
+    @property
+    def implementation_notes(self):
+        """
+        Additional implementation context, when Cobuild supplied it.
+
+        :rtype: :class:`CobuildPlanImplementationNotes` or None
+        """
+        raw = self._raw.get("implementationNotes")
+        return CobuildPlanImplementationNotes(raw) if raw is not None else None
+
+class CobuildPlan(object):
+    """
+    Read-only typed snapshot of a Cobuild plan.
+
+    A plan is returned by :attr:`CobuildAssistantResponse.updated_plan` whenever Cobuild updates
+    it while processing a request. The snapshot contains the complete current plan, not a patch.
+    To revise it, send another message in :attr:`CobuildConversationMode.PLAN` mode; to execute a
+    draft, call :meth:`DSSCobuildConversation.approve_plan`.
+
+    For example::
+
+        plan = response.updated_plan
+        if plan is not None:
+            print(plan.title, plan.status.value)
+            for milestone in plan.milestones:
+                print(milestone.title, milestone.status.value)
+    """
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    @property
+    def id(self):
+        """
+        Identifier of this plan.
+
+        :rtype: str
+        """
+        return self._raw.get("id")
+
+    @property
+    def status(self):
+        """
+        Current lifecycle state of this plan.
+
+        :rtype: :class:`CobuildPlanStatus`
+        """
+        return CobuildPlanStatus(self._raw.get("status"))
+
+    @property
+    def title(self):
+        """
+        Short description of the overall plan.
+
+        :rtype: str or None
+        """
+        return self._raw.get("title")
+
+    @property
+    def description(self):
+        """
+        Detailed description of the plan.
+
+        :rtype: str or None
+        """
+        return self._raw.get("description")
+
+    @property
+    def milestones(self):
+        """
+        Ordered milestones making up this plan.
+
+        :rtype: list of :class:`CobuildPlanMilestone`
+        """
+        return [CobuildPlanMilestone(raw) for raw in self._raw.get("milestones") or []]
+
 
 class CobuildMessage(object):
     def __init__(self, raw):
@@ -29,7 +233,7 @@ class CobuildAssistantResponse(CobuildMessage):
     .. important::
         Do not create this class directly, it is returned by :meth:`DSSCobuildConversation.send_message`
         :meth:`DSSCobuildConversation.answer_confirmation`, and
-        :meth:`DSSCobuildConversation.answer_question`.
+        :meth:`DSSCobuildConversation.answer_question`, and :meth:`DSSCobuildConversation.approve_plan`.
     """
 
     @property
@@ -195,6 +399,20 @@ class CobuildAssistantResponse(CobuildMessage):
         """
         return self._raw.get("selectFirstAnswerByDefault")
 
+    @property
+    def updated_plan(self):
+        """
+        The latest non-null plan update emitted while processing this request.
+
+        The returned :class:`CobuildPlan` is a read-only snapshot of the complete current plan,
+        including its status, title, description, and typed milestones. ``None`` when the request
+        did not update a plan or if it got discarded.
+
+        :rtype: :class:`CobuildPlan` or None
+        """
+        raw = self._raw.get("updatedPlan")
+        return CobuildPlan(raw) if raw is not None else None
+
     def __repr__(self):
         return "CobuildAssistantResponse(type=%r, message=%r)" % (self.type, self.message)
 
@@ -333,8 +551,16 @@ class DSSCobuildConversation(object):
             )
             print(response.message)
 
-    If a tool requires edit permission, pass ``allow_edit_project=True`` to
-    :meth:`send_message` to allow Cobuild to create and edit objects for that message.
+    For tools that require project edit permission, pass ``allow_edit_project=True`` to
+    :meth:`send_message`. To allow file operations in specific managed folders, pass their IDs
+    through ``allow_edit_managed_folder_contents``.
+
+    Cobuild can also create plans, iterate with the user and implement them once approved by the user.
+    The conversation can be in one of three states: build mode without a plan, plan mode with a draft plan,
+    and build mode with an active plan. Send messages with
+    ``conversation_mode=CobuildConversationMode.PLAN`` to draft a plan, then call
+    :meth:`approve_plan` to execute it and wait for the final response. Discard a draft plan
+    before returning to build mode, and discard an active plan before returning to plan mode.
     """
 
     def __init__(self, client, project_key, conversation_id, selected_objects=None):
@@ -359,7 +585,7 @@ class DSSCobuildConversation(object):
         """
         return list(self._messages)
 
-    def send_message(self, message, selected_objects=None, allow_edit_project=False):
+    def send_message(self, message, selected_objects=None, allow_edit_project=False, conversation_mode=CobuildConversationMode.BUILD, intelligence_level=None, allow_edit_managed_folder_contents=None):
         """
         Send a message to the assistant and wait for its response.
 
@@ -371,14 +597,30 @@ class DSSCobuildConversation(object):
         :param bool allow_edit_project: whether to allow Cobuild to create and edit everything
             needed in this project to follow this message. This permission applies only to this
             message.
+        :param list[str] allow_edit_managed_folder_contents: list of managed folder ids in which Cobuild is allowed to write, modify or delete files
+            This permission applies only to this message.
+        :param CobuildConversationMode conversation_mode: :attr:`CobuildConversationMode.BUILD`
+            (the default) for normal or plan-execution messages, or
+            :attr:`CobuildConversationMode.PLAN` to draft or revise a plan. A draft plan must
+            be discarded before switching back to build mode; an active plan must be discarded
+            before switching back to plan mode.
+        :param str intelligence_level: optional intelligence level: ``"LIGHT"``, ``"MEDIUM"``,
+            ``"HIGH"``, or ``"VERY_HIGH"``. ``None`` defaults to ``"MEDIUM"``.
 
         :returns: the assistant's response
         :rtype: :class:`CobuildAssistantResponse`
         """
+        if not isinstance(conversation_mode, CobuildConversationMode):
+            raise ValueError("conversation_mode must be a CobuildConversationMode, got %r" % conversation_mode)
         if selected_objects is not None:
             self._selected_objects = _DSS_objects_to_selected(self.project_key, selected_objects)
 
-        self._messages.append(CobuildUserMessage({"type": "request", "message": message, "selected_objects": self._selected_objects}))
+        self._messages.append(CobuildUserMessage({
+            "type": "request",
+            "message": message,
+            "selected_objects": self._selected_objects,
+            "conversation_mode": conversation_mode.value,
+        }))
         raw = self.client._perform_json(
             "POST",
             "/projects/%s/cobuild/conversations/%s/messages" % (self.project_key, self.conversation_id),
@@ -386,6 +628,9 @@ class DSSCobuildConversation(object):
                 "message": message,
                 "selectedObjects": self._selected_objects or [],
                 "allowEditProject": allow_edit_project,
+                "allowEditManagedFolderContents": allow_edit_managed_folder_contents or [],
+                "conversationMode": conversation_mode.value,
+                "intelligenceLevel": intelligence_level,
             },
         )
         response = CobuildAssistantResponse(raw)
@@ -393,6 +638,53 @@ class DSSCobuildConversation(object):
         self._pending_question_id = raw["questionId"] if response.is_question_request else None
         self._messages.append(response)
         return response
+
+    def approve_plan(self, allow_edit_project=False, intelligence_level=None, allow_edit_managed_folder_contents=None):
+        """
+        Approve the current draft plan, wait for its execution, and return its final response.
+
+        A plan can be approved only while it is a draft. Use :meth:`detach_plan` to remove the
+        active plan before returning to plan mode.
+
+        :param bool allow_edit_project: whether to allow Cobuild to create and edit everything
+            needed in this project to execute the plan. This permission applies only to this
+            Cobuild turn. If Cobuild comes back with a message without the plan being fully
+            executed (e.g. after hitting a blocker), the same parameter should be passed on the
+            next turn to retain this behavior.
+        :param list[str] allow_edit_managed_folder_contents: list of managed folder ids in which Cobuild is allowed to write, modify or delete files
+            permission applies to the next turn, as it does for allow_edit_project
+        :param str intelligence_level: optional intelligence level: ``"LIGHT"``, ``"MEDIUM"``,
+            ``"HIGH"``, or ``"VERY_HIGH"``. ``None`` defaults to ``"MEDIUM"``.
+
+        :returns: the final assistant response from plan execution
+        :rtype: :class:`CobuildAssistantResponse`
+        """
+        raw = self.client._perform_json(
+            "POST",
+            "/projects/%s/cobuild/conversations/%s/plan/approve" % (self.project_key, self.conversation_id),
+            body={
+                "allowEditProject": allow_edit_project,
+                "allowEditManagedFolderContents": allow_edit_managed_folder_contents or [],
+                "intelligenceLevel": intelligence_level,
+            },
+        )
+        response = CobuildAssistantResponse(raw)
+        self._pending_confirmation_id = raw["confirmationId"] if response.is_confirmation_request else None
+        self._pending_question_id = raw["questionId"] if response.is_question_request else None
+        self._messages.append(response)
+        return response
+
+    def detach_plan(self):
+        """
+        Detach the current draft/active/completed plan and return the conversation to build mode.
+
+        Call this before leaving plan mode with a draft, or before entering plan mode while an
+        active plan is attached to the conversation.
+        """
+        return self.client._perform_empty(
+            "POST",
+            "/projects/%s/cobuild/conversations/%s/plan/discard" % (self.project_key, self.conversation_id),
+        )
 
     def answer_confirmation(self, choice, options=None):
         """

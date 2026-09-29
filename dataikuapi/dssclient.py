@@ -2372,6 +2372,13 @@ class DSSClient(object):
         """
         return DSSPermissionsCheckRequest(self)
 
+    def get_cobuild_status(self):
+        """Returns whether Cobuild is available to the authenticated caller.
+
+        :rtype: dict
+        """
+        return self._perform_json("GET", "/cobuild/status")
+
     ########################################################
     # Enterprise Asset Library
     ########################################################
