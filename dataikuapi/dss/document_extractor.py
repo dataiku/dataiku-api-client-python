@@ -18,7 +18,8 @@ class DocumentExtractor(object):
         self.client = client
         self.project_key = project_key
 
-    def vlm_extract(self, images, llm_id, llm_prompt=None, window_size=1, window_overlap=0):
+    def vlm_extract(self, images, llm_id, llm_prompt=None, window_size=1, window_overlap=0,
+                    completion_settings=None):
         """
         Extract text content from images using a vision LLM: for each group of 'window_size' consecutive images,
         prompt the given vision LLM to summarize in plain text.
@@ -33,6 +34,8 @@ class DocumentExtractor(object):
         :type window_size: int
         :param int window_overlap: Number of overlapping images between two windows of images. Must be less than window_size.
         :type window_overlap: int
+        :param completion_settings: Optional VLM completion settings.
+        :type completion_settings: dict
 
         :returns: Extracted text content per group of images
         :rtype: :class:`VlmExtractorResponse`
@@ -46,6 +49,9 @@ class DocumentExtractor(object):
                 "llmPrompt": llm_prompt
             }
         }
+
+        if completion_settings is not None:
+            extractor_request["settings"]["completionSettings"] = completion_settings
 
         images = list(images)
         if not images:
@@ -73,7 +79,7 @@ class DocumentExtractor(object):
         return VlmExtractorResponse(ret)
 
 
-    def vlm_extract_fields(self, images, schema=None, llm_id=None, llm_prompt=None, from_recipe=None, strict=None, compatible=None):
+    def vlm_extract_fields(self, images, schema=None, llm_id=None, llm_prompt=None, from_recipe=None, strict=None, compatible=None, completion_settings=None):
         """
         Extract specific fields (structured data) from images (typically screenshots of a document's pages) using a vision LLM.
         Describe expected fields in ``extraction_schema``, or specify an Extract Fields recipe to use its settings.
@@ -94,6 +100,8 @@ class DocumentExtractor(object):
         :type strict: bool
         :param compatible: Allow DSS to modify the schema in order to increase compatibility, depending on known limitations of the model/provider. Defaults to automatic.
         :type compatible: bool
+        :param completion_settings: Optional VLM completion settings.
+        :type completion_settings: dict
 
         :returns: Extracted fields from images
         :rtype: :class:`FieldsVlmExtractorResponse`
@@ -117,6 +125,8 @@ class DocumentExtractor(object):
                     if isinstance(prop, dict) and prop.get("name") == "dku.extractFields.schemaCompatibilityEnhancer" and isinstance(prop.get("value"), bool):
                         compatible = prop.get("value")
                         break
+            if completion_settings is None:
+                completion_settings = recipe_params.get("completionSettings")
 
         json_schema, parser_method = get_json_schema_and_parser(schema)
 
@@ -129,6 +139,8 @@ class DocumentExtractor(object):
                 "schemaCompatibilityEnhancer": compatible
             }
         }
+        if completion_settings is not None:
+            extractor_request["settings"]["completionSettings"] = completion_settings
 
         images = list(images)
         if not images:
@@ -156,7 +168,7 @@ class DocumentExtractor(object):
         return FieldsVlmExtractorResponse(ret, parser_method)
 
     def structured_extract(self, document, max_section_depth=6, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", llm_id=None, llm_prompt=None,
-                           output_managed_folder=None, image_validation=True, save_images=None, save_tables=None):
+                           output_managed_folder=None, image_validation=True, save_images=None, save_tables=None, completion_settings=None):
         """
         Splits a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg) into a structured hierarchy of sections and texts
 
@@ -175,6 +187,8 @@ class DocumentExtractor(object):
         :type llm_id: str
         :param llm_prompt: Custom prompt to extract text from the images
         :type llm_prompt: str
+        :param completion_settings: Optional VLM completion settings.
+        :type completion_settings: dict
         :param output_managed_folder: id of a managed folder to store the images or tables in the document.
                               When unspecified and image handling allows, return inline images in the response.
         :type output_managed_folder: str
@@ -219,8 +233,10 @@ class DocumentExtractor(object):
             extractor_request["settings"]["imageHandlingMode"] = "VLM_ANNOTATE"
             extractor_request["settings"]["vlmAnnotationSettings"] = {
                 "llmId": llm_id,
-                "llm_prompt": llm_prompt,
+                "llmPrompt": llm_prompt,
             }
+            if completion_settings is not None:
+                extractor_request["settings"]["vlmAnnotationSettings"]["completionSettings"] = completion_settings
         else:
             raise ValueError("Invalid image_handling_mode, it must be set to 'IGNORE', 'OCR' or 'VLM_ANNOTATE'")
 
@@ -230,7 +246,8 @@ class DocumentExtractor(object):
 
         return StructuredExtractorResponse(ret)
 
-    def text_extract(self, document, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", ocr_file_types=None):
+    def text_extract(self, document, image_handling_mode='IGNORE', ocr_engine='AUTO', languages="en", ocr_file_types=None,
+                     output_managed_folder=None, save_images=None):
         """
         Extract raw text from a document (txt, md, pdf, docx, pptx, html, png, jpg, jpeg).
 
@@ -253,6 +270,10 @@ class DocumentExtractor(object):
         :param ocr_file_types: File types where OCR should be applied, among 'PDF', 'PNG', 'JPG', 'DOCX', and 'PPTX'.
                                If unspecified, OCR applies to 'PDF', 'PNG', and 'JPG'.
         :type ocr_file_types: list[str]
+        :param output_managed_folder: Managed folder in which to store extracted images.
+        :type output_managed_folder: str
+        :param save_images: Whether to store extracted embedded images.
+        :type save_images: boolean
 
         :returns: Text content of the document
         :rtype: :class:`TextExtractorResponse`
@@ -265,6 +286,8 @@ class DocumentExtractor(object):
                 "document": document.as_dict()
             },
             "settings": {
+                "outputManagedFolderRef": output_managed_folder,
+                "saveImages": save_images,
             }
         }
         if image_handling_mode == "IGNORE":

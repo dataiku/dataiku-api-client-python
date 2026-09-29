@@ -5,7 +5,7 @@ import logging
 import threading
 import itertools
 
-from typing import Callable, List, Any, Union
+from typing import Callable, List, Any, Dict, Optional, Union
 
 import pydantic
 
@@ -51,6 +51,9 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
     llm_id: str
     """LLM identifier to use"""
+
+    context: Optional[Dict[str, Any]] = None
+    """Query context to propagate to embedding requests"""
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
@@ -102,6 +105,8 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
             embeddings = []
             for i in range(0, len(texts), CHUNK_SIZE):
                 query = self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
+                if self.context is not None:
+                    query.with_context(self.context)
 
                 for text in texts[i:i+CHUNK_SIZE]:
                     query.add_text(text)

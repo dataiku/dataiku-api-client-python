@@ -30,7 +30,7 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
-from .dss.mira import DSSMIRA
+from .dss.dam import DAM
 from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
@@ -1683,15 +1683,15 @@ class DSSClient(object):
         return DSSProjectDeployer(self)
 
     ########################################################
-    # MIRA
+    # DAM
     ########################################################
 
-    def get_mira(self):
-        """Gets a handle to work with MIRA
+    def get_dam(self):
+        """Gets a handle to work with DAM
 
-        :rtype: :class:`~dataikuapi.dss.mira.DSSMIRA`
+        :rtype: :class:`~dataikuapi.dss.dam.DAM`
         """
-        return DSSMIRA(self)
+        return DAM(self)
 
     ########################################################
     # Unified Monitoring

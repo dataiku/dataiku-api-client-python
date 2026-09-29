@@ -1330,7 +1330,7 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         return found
 
     def set_column_aggregations(self, column, type=None, min=False, max=False, count=False, count_distinct=False,
-                                sum=False,concat=False,stddev=False,avg=False):
+                                sum=False, concat=False, stddev=False, avg=False, mode=False):
         """
         Set the basic aggregations on a column.
 
@@ -1363,8 +1363,9 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         :param boolean count_distinct: whether the count distinct aggregate is computed
         :param boolean sum: whether the sum aggregate is computed
         :param boolean concat: whether the concat aggregate is computed
-        :param boolean avg: whether the mean aggregate is computed
         :param boolean stddev: whether the standard deviation aggregate is computed
+        :param boolean avg: whether the mean aggregate is computed
+        :param boolean mode: whether the mode aggregate is computed
 
         :return: the settings of the aggregations on a the column, as a dict. The name of the column is in a **column** field.
         :rtype: dict
@@ -1379,6 +1380,8 @@ class GroupingRecipeSettings(DSSRecipeSettings):
         cs["sum"] = sum
         cs["concat"] = concat
         cs["stddev"] = stddev
+        cs["avg"] = avg
+        cs["mode"] = mode
         return cs
 
 class GroupingRecipeCreator(SingleOutputRecipeCreator):
