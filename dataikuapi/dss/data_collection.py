@@ -126,7 +126,7 @@ class DSSDataCollection():
         Add an object to this Catalog Collection.
 
         :param obj: object to add to the Catalog Collection.
-        :type obj: :class:`~dataikuapi.dss.dataset.DSSDataset`, :class:`.DSSDataCollectionItem` or :class:`dict`
+        :type obj: :class:`~dataikuapi.dss.dataset.DSSDataset`, :class:`~dataikuapi.dss.savedmodel.DSSSavedModel`, :class:`~dataikuapi.dss.agent.DSSAgent`, :class:`~dataikuapi.dss.agent_tool.DSSAgentTool`, :class:`~dataikuapi.dss.semantic_model.DSSSemanticModel`, :class:`.DSSDataCollectionItem` or :class:`dict`
         """
         if isinstance(obj, DSSDataset):
             data = ({

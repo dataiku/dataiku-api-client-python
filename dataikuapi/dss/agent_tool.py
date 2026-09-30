@@ -324,6 +324,21 @@ class DSSAgentToolSettings(DSSTaggableObjectSettings):
         """
         return self._settings["params"]
 
+    @property
+    def name(self):
+        """
+        :returns: The name of the tool
+        :rtype: string
+        """
+        return self._settings["name"]
+
+    @property
+    def type(self):
+        """
+        :returns: The type of the tool
+        :rtype: string
+        """
+        return self._settings["type"]
 
     def save(self):
         """

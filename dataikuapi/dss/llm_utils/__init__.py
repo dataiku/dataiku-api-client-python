@@ -108,7 +108,17 @@ def _stream_from_single_response(response):
         yield {"footer": footer}
 
 
-def _process_tool_call_chunk(tool_call_chunk, tool_calls_map, tool_calls_list):
+def _process_tool_call_chunk(
+    tool_call_chunk,
+    tool_calls_map,
+    tool_calls_list,
+):
+    """
+    Processes a single tool call chunk, aggregating it into the
+    tool_calls_map (for streamable tool calls) or tool_calls_list
+    (for non-streamable tool calls).
+    This method should be kept in sync with StreamingConsumer.java, method updateCompleteToolCalls
+    """
     if "index" not in tool_call_chunk or tool_call_chunk["index"] is None:
         # tool call does not have an index, we won't be able to aggregate chunks, so assume it's full
         tool_calls_list.append(tool_call_chunk)
@@ -146,9 +156,9 @@ def _process_tool_call_chunk(tool_call_chunk, tool_calls_map, tool_calls_list):
 
 
 def _process_artifact_chunk(
-        incoming_artifact,
-        artifacts_map,
-        artifacts_list
+    incoming_artifact,
+    artifacts_map,
+    artifacts_list
 ):
     """
     Processes a single artifact chunk, aggregating it into the

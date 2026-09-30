@@ -627,6 +627,10 @@ class DSSLLMEmbeddingsQuery(object):
         self.eq["queries"].append({"text": text})
         return self
 
+    def with_context(self, context):
+        self.eq["settings"]["context"] = context
+        return self
+
     def add_image(self, image, text = None):
         """
         Add an image to the embedding query.
@@ -2318,6 +2322,10 @@ class DSSLLMImageGenerationQuery(object):
         self.gq["prompts"].append({"prompt": prompt, "weight": weight})
         return self
 
+    def with_context(self, context):
+        self.gq["context"] = context
+        return self
+
     def with_negative_prompt(self, prompt, weight=None):
         """
         Add a negative prompt to the image generation query.
@@ -2642,6 +2650,7 @@ class DSSLLMRerankingQuery(object):
             "queryParts": [],
             "documents": [],
         }
+        self.settings = None
 
     def with_query(self, text):
         """
@@ -2661,6 +2670,10 @@ class DSSLLMRerankingQuery(object):
         self.rq["documents"].append({"parts": [ { "text": text, "type": "TEXT" } ] })
         return self
 
+    def with_context(self, context):
+        self.settings = {"context": context}
+        return self
+
     def execute(self):
         """
         Run the reranking query and retrieve the LLM response.
@@ -2672,6 +2685,8 @@ class DSSLLMRerankingQuery(object):
             "llmId": self.llm.llm_id,
             "queries": [self.rq]
         }
+        if self.settings is not None:
+            reranking_query["settings"] = self.settings
         ret = self.llm.client._perform_json("POST", "/projects/%s/llms/rerankings" % (self.llm.project_key), body=reranking_query)
         return DSSLLMRerankingResponse(ret)
 

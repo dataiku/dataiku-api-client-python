@@ -8,6 +8,7 @@ from .apinode_admin_client import APINodeAdminClient
 from .dss.recipe import GroupingRecipeCreator, UpsertRecipeCreator, JoinRecipeCreator, StackRecipeCreator, WindowRecipeCreator, SyncRecipeCreator, SamplingRecipeCreator, SQLQueryRecipeCreator, CodeRecipeCreator, SplitRecipeCreator, SortRecipeCreator, TopNRecipeCreator, DistinctRecipeCreator, DownloadRecipeCreator, PredictionScoringRecipeCreator, ClusteringScoringRecipeCreator
 
 from .dss.admin import DSSUserImpersonationRule, DSSGroupImpersonationRule
+from .dss.dam import DAMAgentFilter
 
 import sys
 import warnings

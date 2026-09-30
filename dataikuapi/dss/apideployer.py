@@ -423,7 +423,8 @@ class DSSAPIDeployerDeployment(object):
         Runs test queries on a deployment and returns results as a dict
 
         :param str endpoint_id: Mandatory if the deployment has multiple endpoints
-        :param list test_queries: Queries as str, formatted as [{"q": {"features": {"feat_1": "value", ...}}, {...}, ... ].
+        :param list test_queries: Queries as str, formatted as [{"q": {"features": {"feat_1": "value", ...}}, "headers": [{"key": "X-Custom-Header", "value": "value"}]}, ... ].
+            The optional ``headers`` list is sent with each query.
             If left to None, the test queries of the current version of the service will be used.
         :rtype: dict
 
@@ -493,7 +494,8 @@ class DSSAPIDeployerDeployment(object):
         Runs queries on a deployment and returns results as a dict
         An authorization to query the deployment through the deployer is needed
 
-        :param list queries: Queries as str, formatted as ``[{"q": {"features": {"feat_1": "value", ...}}, {...}, ... ]``.
+        :param list queries: Queries as str, formatted as ``[{"q": {"features": {"feat_1": "value", ...}}, "headers": [{"key": "X-Custom-Header", "value": "value"}]}, ... ]``.
+            The optional ``headers`` list is sent with each query.
         :param str endpoint_id: Mandatory if the deployment has multiple endpoints
         :param bool adapt_query_for_infra_type: If True, automatically adjusts the query format to be compatible with the target infrastructure type.
             This is mainly applicable to Deploy-Anywhere infrastructures. Defaults to True.
