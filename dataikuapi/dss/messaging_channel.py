@@ -274,7 +274,7 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
         """
         return self._use_current_user_as_sender
 
-    def send(self, project_key, to, subject, body, attachments=None, plain_text=False, sender=None, cc=None, bcc=None):
+    def send(self, project_key, to, subject, body, attachments=None, plain_text=False, sender=None, cc=None, bcc=None, send_as_single_message=False):
         """
         Send an email with or without attachments to a list of recipients
 
@@ -308,6 +308,8 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
         :type cc: list[str]
         :param bcc: email addresses of recipients in blind carbon copy
         :type bcc: list[str]
+        :param send_as_single_message: If True, sends a single message with all addresses in ``to`` as To recipients. If False (default), sends a separate message to each address in ``to``.
+        :type send_as_single_message: bool
         """
         payload = {
             "from": sender,
@@ -325,7 +327,16 @@ class DSSMailMessagingChannel(DSSMessagingChannel):
             for attachment in attachments:
                 files.append(('attachments', attachment))
 
-        self.client._perform_http("POST", "/messaging-channels/%s/actions/send?projectKey=%s" % (self.id, project_key), stream=False, files=files)
+        self.client._perform_http(
+            "POST",
+            "/messaging-channels/%s/actions/send" % self.id,
+            params={
+                "projectKey": project_key,
+                "sendAsSingleMessage": send_as_single_message,
+            },
+            stream=False,
+            files=files,
+        )
 
 
 class DSSMessagingChannelCreator(object):

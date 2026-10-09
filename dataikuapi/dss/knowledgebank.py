@@ -255,7 +255,7 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
     @property
     def vector_store_type(self):
         """
-        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, DATABRICKS_AI_SEARCH (Databricks AI Search), VERTEX_AI_GCS_BASED, FAISS, QDRANT_LOCAL)
+        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, DATABRICKS_AI_SEARCH (Databricks AI Search), VERTEX_AI_GCS_BASED, VERTEX_AGENT_RETRIEVAL, FAISS, QDRANT_LOCAL)
 
         :rtype: str
         """

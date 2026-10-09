@@ -1,7 +1,10 @@
 from datetime import datetime
 
 from .agent import DSSAgent
+from .agent_skill import DSSAgentSkill
 from .agent_tool import DSSAgentTool
+from .knowledgebank import DSSKnowledgeBank
+from .managedfolder import DSSManagedFolder
 from .savedmodel import DSSSavedModel
 from .semantic_model import DSSSemanticModel
 from ..utils import _timestamp_ms_to_zoned_datetime
@@ -105,7 +108,7 @@ class DSSDataCollection():
         List the objects in this Catalog Collection
 
         :param str as_type: How to return the list. Supported values are "objects" and "dict" (defaults to **objects**).
-        :param str filter_type: Which elements to return in the list. Supported values are "DATASET", "SAVED_MODEL", "AGENT", "FINE_TUNED_MODEL", "AGENT_TOOL", "SEMANTIC_MODEL". If set to None or unset, no filtering is applied (defaults to None).
+        :param str filter_type: Which elements to return in the list. Supported values are "DATASET", "SAVED_MODEL", "AGENT", "FINE_TUNED_MODEL", "AGENT_TOOL", "SEMANTIC_MODEL", "KNOWLEDGE_BANK", "AGENT_SKILL", "MANAGED_FOLDER". If set to None or unset, no filtering is applied (defaults to None).
 
         :returns: The list of objects
         :rtype: list of :class:`.DSSCatalogCollectionItem` if as_type is "objects",
@@ -126,7 +129,7 @@ class DSSDataCollection():
         Add an object to this Catalog Collection.
 
         :param obj: object to add to the Catalog Collection.
-        :type obj: :class:`~dataikuapi.dss.dataset.DSSDataset`, :class:`~dataikuapi.dss.savedmodel.DSSSavedModel`, :class:`~dataikuapi.dss.agent.DSSAgent`, :class:`~dataikuapi.dss.agent_tool.DSSAgentTool`, :class:`~dataikuapi.dss.semantic_model.DSSSemanticModel`, :class:`.DSSDataCollectionItem` or :class:`dict`
+        :type obj: :class:`~dataikuapi.dss.dataset.DSSDataset`, :class:`~dataikuapi.dss.savedmodel.DSSSavedModel`, :class:`~dataikuapi.dss.agent.DSSAgent`, :class:`~dataikuapi.dss.agent_tool.DSSAgentTool`, :class:`~dataikuapi.dss.semantic_model.DSSSemanticModel`, :class:`~dataikuapi.dss.knowledgebank.DSSKnowledgeBank`, :class:`~dataikuapi.dss.agent_skill.DSSAgentSkill`, :class:`~dataikuapi.dss.managedfolder.DSSManagedFolder`, :class:`.DSSDataCollectionItem` or :class:`dict`
         """
         if isinstance(obj, DSSDataset):
             data = ({
@@ -149,6 +152,24 @@ class DSSDataCollection():
         elif isinstance(obj, DSSSemanticModel):
             data = ({
                 "type": "SEMANTIC_MODEL",
+                "projectKey": obj.project_key,
+                "id": obj.id,
+            })
+        elif isinstance(obj, DSSKnowledgeBank):
+            data = ({
+                "type": "KNOWLEDGE_BANK",
+                "projectKey": obj.project_key,
+                "id": obj.id,
+            })
+        elif isinstance(obj, DSSAgentSkill):
+            data = ({
+                "type": "AGENT_SKILL",
+                "projectKey": obj.project_key,
+                "id": obj.id,
+            })
+        elif isinstance(obj, DSSManagedFolder):
+            data = ({
+                "type": "MANAGED_FOLDER",
                 "projectKey": obj.project_key,
                 "id": obj.id,
             })
@@ -271,6 +292,51 @@ class DSSDataCollectionItem:
 
         return DSSSemanticModel(self.data_collection.client, self.data["projectKey"], self.data["id"])
 
+    def get_as_knowledge_bank(self):
+        """
+        Gets a handle on the corresponding knowledge bank.
+
+        .. attention::
+            The usability of this handle might be limited by the current user's authorizations.
+
+        :returns: a handle on a knowledge bank
+        :rtype: :class:`dataikuapi.dss.knowledgebank.DSSKnowledgeBank`
+        """
+        if self.data["type"] != "KNOWLEDGE_BANK":
+            raise ValueError("Object is not of type KNOWLEDGE_BANK but %s" % self.data["type"])
+
+        return DSSKnowledgeBank(self.data_collection.client, self.data["projectKey"], self.data["id"])
+
+    def get_as_agent_skill(self):
+        """
+        Gets a handle on the corresponding agent skill.
+
+        .. attention::
+            The usability of this handle might be limited by the current user's authorizations, as seeing an agent skill in a collection doesn't necessarily imply a lot of rights.
+
+        :returns: a handle on an agent skill
+        :rtype: :class:`dataikuapi.dss.agent_skill.DSSAgentSkill`
+        """
+        if self.data["type"] != "AGENT_SKILL":
+            raise ValueError("Object is not of type AGENT_SKILL but %s" % self.data["type"])
+
+        return DSSAgentSkill(self.data_collection.client, self.data["projectKey"], self.data["id"])
+
+    def get_as_managed_folder(self):
+        """
+        Gets a handle on the corresponding managed folder.
+
+        .. attention::
+            The usability of this handle might be limited by the current user's authorizations, as seeing a managed folder in a collection doesn't necessarily imply a lot of rights.
+
+        :returns: a handle on a managed folder
+        :rtype: :class:`dataikuapi.dss.managedfolder.DSSManagedFolder`
+        """
+        if self.data["type"] != "MANAGED_FOLDER":
+            raise ValueError("Object is not of type MANAGED_FOLDER but %s" % self.data["type"])
+
+        return DSSManagedFolder(self.data_collection.client, self.data["projectKey"], self.data["id"])
+
     def remove(self):
         """
         Remove this object from the Catalog Collection
@@ -289,6 +355,15 @@ class DSSDataCollectionItem:
         elif self.data["type"] == "SEMANTIC_MODEL":
             self.data_collection.client._perform_empty(
                 "DELETE", "/data-collections/%s/objects/semantic-model/%s/%s" % (self.data_collection.id, self.data['projectKey'], self.data['id']))
+        elif self.data["type"] == "KNOWLEDGE_BANK":
+            self.data_collection.client._perform_empty(
+                "DELETE", "/data-collections/%s/objects/knowledge-bank/%s/%s" % (self.data_collection.id, self.data['projectKey'], self.data['id']))
+        elif self.data["type"] == "AGENT_SKILL":
+            self.data_collection.client._perform_empty(
+                "DELETE", "/data-collections/%s/objects/agent-skill/%s/%s" % (self.data_collection.id, self.data['projectKey'], self.data['id']))
+        elif self.data["type"] == "MANAGED_FOLDER":
+            self.data_collection.client._perform_empty(
+                "DELETE", "/data-collections/%s/objects/managed-folder/%s/%s" % (self.data_collection.id, self.data['projectKey'], self.data['id']))
 
 class DSSDataCollectionSettings:
     """

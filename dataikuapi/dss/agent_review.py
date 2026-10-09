@@ -304,7 +304,8 @@ class DSSAgentReview(object):
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_test(self, query=None, reference_answer=None, expectations=None, hitl_validation_policy=None):
+    def create_test(self, query=None, reference_answer=None, expectations=None, hitl_validation_policy=None,
+                    mode=None, conversation_guidance=None, max_turns=None):
         """
         Create a new test for this agent review.
 
@@ -312,6 +313,9 @@ class DSSAgentReview(object):
         :param str reference_answer: Reference answer. Optional.
         :param str expectations: Expectations on the agent answer. Optional.
         :param str hitl_validation_policy: Per-test HITL validation policy. Optional.
+        :param str mode: Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``. Optional.
+        :param str conversation_guidance: Instructions for the simulated user in a multi-turn test. Optional.
+        :param int max_turns: Maximum number of agent turns in a multi-turn test. Optional.
         :returns: The created test object.
         :rtype: :class:`DSSAgentReviewTest`
         """
@@ -322,13 +326,19 @@ class DSSAgentReview(object):
             "referenceAnswer": reference_answer,
             "expectations": expectations,
             "hitlValidationPolicy": hitl_validation_policy,
+            "mode": mode,
+            "conversationGuidance": conversation_guidance,
+            "maxTurns": max_turns,
         }
         test = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/tests" % self.project_key, body=body
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None, expectations_column=None, top_n=None, partitions=None, latest_partitions_n=None, hitl_validation_policy_column=None):
+    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None,
+                                  expectations_column=None, top_n=None, partitions=None,
+                                  latest_partitions_n=None, hitl_validation_policy_column=None,
+                                  mode_column=None, conversation_guidance_column=None, max_turns_column=None):
         """
         Create new tests for this agent review by importing them from a dataset.
 
@@ -340,6 +350,9 @@ class DSSAgentReview(object):
         :param list[str] partitions: For partitioned datasets, only consider the given partitions. Optional.
         :param int latest_partitions_n: For partitioned datasets and if partitions is not set, only consider the latest n partitions. Optional.
         :param str hitl_validation_policy_column: Name of the column containing per-test HITL validation policy. Optional.
+        :param str mode_column: Name of the column containing the test mode. Optional.
+        :param str conversation_guidance_column: Name of the column containing multi-turn conversation guidance. Optional.
+        :param str max_turns_column: Name of the column containing the maximum number of agent turns. Optional.
         :returns: A dictionary with keys:
             - "createdTestIds": list of ids of the created tests
             - "error": The error message if any occurred
@@ -354,6 +367,9 @@ class DSSAgentReview(object):
             "referenceAnswerColumn": reference_answer_column,
             "expectationsColumn": expectations_column,
             "hitlValidationPolicyColumn": hitl_validation_policy_column,
+            "modeColumn": mode_column,
+            "conversationGuidanceColumn": conversation_guidance_column,
+            "maxTurnsColumn": max_turns_column,
         }
         if top_n is not None:
             body["samplingMethod"] = "HEAD_SEQUENTIAL"
@@ -594,6 +610,42 @@ class DSSAgentReviewTest(object):
         self.data["query"] = value
 
     @property
+    def mode(self):
+        """
+        Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @mode.setter
+    def mode(self, value):
+        self.data["mode"] = value
+
+    @property
+    def conversation_guidance(self):
+        """
+        Instructions for the simulated user in a multi-turn test.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @conversation_guidance.setter
+    def conversation_guidance(self, value):
+        self.data["conversationGuidance"] = value
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns in a multi-turn test.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
+
+    @max_turns.setter
+    def max_turns(self, value):
+        self.data["maxTurns"] = value
+
+    @property
     def reference_answer(self):
         """
         Expected result of the query.
@@ -761,6 +813,30 @@ class DSSAgentReviewTestListItem(dict):
         :rtype: str
         """
         return self.get("query")
+
+    @property
+    def mode(self):
+        """
+        Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``.
+        :rtype: str
+        """
+        return self.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Instructions for the simulated user in a multi-turn test.
+        :rtype: str
+        """
+        return self.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns in a multi-turn test.
+        :rtype: int
+        """
+        return self.get("maxTurns")
 
     @property
     def reference_answer(self):
@@ -1458,6 +1534,14 @@ class DSSAgentReviewTraitOutcome(object):
         """
         return self.data.get("traitId")
 
+    @property
+    def skip_reason(self):
+        """
+        Reason why the trait result was skipped.
+        :rtype: str
+        """
+        return self.data.get("skipReason")
+
     def get_raw(self):
         """
         Get the raw trait result data.
@@ -1543,6 +1627,30 @@ class DSSAgentReviewExecutionResult(object):
         :rtype: str
         """
         return self.data.get("error")
+
+    @property
+    def termination_type(self):
+        """
+        Reason category for terminating a multi-turn execution.
+        :rtype: str
+        """
+        return self.data.get("terminationType")
+
+    @property
+    def termination_reason(self):
+        """
+        Detailed reason for terminating a multi-turn execution.
+        :rtype: str
+        """
+        return self.data.get("terminationReason")
+
+    @property
+    def turn_trajectories(self):
+        """
+        Ordered trajectory snapshots for each turn of a multi-turn execution.
+        :rtype: list[str]
+        """
+        return self.data.get("turnTrajectories")
 
     @property
     def creation_timestamp(self):
@@ -1639,6 +1747,30 @@ class DSSAgentReviewResult(object):
         :rtype: str
         """
         return self.data.get("query")
+
+    @property
+    def mode(self):
+        """
+        Mode of the test when this result was created.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Multi-turn conversation guidance used to produce this result.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns configured for this result.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
 
     @property
     def raw_query(self):
@@ -1962,6 +2094,30 @@ class DSSAgentReviewResultListItem(object):
         :rtype: str
         """
         return self.data.get("query")
+
+    @property
+    def mode(self):
+        """
+        Mode of the test when this result was created.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Multi-turn conversation guidance used to produce this result.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns configured for this result.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
 
     @property
     def raw_query(self):

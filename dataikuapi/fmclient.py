@@ -5,11 +5,12 @@ from requests.auth import HTTPBasicAuth
 import os.path as osp
 import warnings
 
+from .fm.future import FMFuture
 from .utils import handle_http_exception
 
 from .iam.settings import FMSSOSettings, FMLDAPSettings, FMAzureADSettings
 
-from .fm.tenant import FMCloudCredentials, FMCloudTags
+from .fm.tenant import FMCloudCredentials, FMCloudTags, FMLicensingStatus
 from .fm.cloudaccounts import (
     FMCloudAccount,
     FMAWSCloudAccountCreator,
@@ -178,6 +179,31 @@ class FMClient(object):
         """
         tags = self._perform_tenant_json("GET", "/cloud-tags")
         return FMCloudTags(self, tags)
+
+    def fetch_licensing_usage(self, wait=True):
+        """
+        Fetch the licensing usage information from all instances attached to this Fleet Manager to build a consolidated
+        status.
+
+        :return a :class:`dataikuapi.fm.tenant.FMLicensingStatus` if `wait` is `True`, or a :class:`dataikuapi.fm.future.FMFuture` handle otherwise
+        :rtype: :class:`dataikuapi.fm.tenant.FMLicensingStatus` or :class:`dataikuapi.fm.future.FMFuture`
+        """
+        resp = self._perform_json("POST", "/licensing-usage/fetch")
+        future = FMFuture.from_resp(self, resp, result_wrapper=FMLicensingStatus)
+        if wait:
+            return future.wait_for_result()
+        else:
+            return future
+
+    def get_licensing_summary(self):
+        """
+        Get licensing summary containing the limits for this license.
+
+        :return: The licensing summary containing the license limits
+        :rtype: :class:`dataikuapi.fm.tenant.FMLicensingStatus`
+        """
+        licensing_summary = self._perform_tenant_json("GET", "/licensing-summary")
+        return FMLicensingStatus(licensing_summary)
 
     ########################################################
     # CloudAccount

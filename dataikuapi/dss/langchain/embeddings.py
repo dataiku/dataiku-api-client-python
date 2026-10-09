@@ -104,7 +104,7 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
             embeddings = []
             for i in range(0, len(texts), CHUNK_SIZE):
-                query = self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
+                query = self._new_embeddings_query()
                 if self.context is not None:
                     query.with_context(self.context)
 
@@ -132,6 +132,9 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
             logger.info("Done performing embedding of {num_texts} texts".format(num_texts=len(texts)))
 
             return embeddings
+
+    def _new_embeddings_query(self):
+        return self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()

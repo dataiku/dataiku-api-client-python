@@ -4,7 +4,7 @@ from ..utils import DataikuException, DataikuValueCaster
 from ..utils import DataikuStreamedHttpUTF8CSVReader
 from ..utils import _timestamp_ms_to_zoned_datetime
 import json, warnings
-from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings
+from .utils import DSSTaggableObjectListItem, DSSTaggableObjectSettings, _validate_ai_explanation_language
 from .future import DSSFuture
 from .metrics import ComputedMetrics
 from .discussion import DSSObjectDiscussions
@@ -292,16 +292,16 @@ class DSSDataset(object):
 
         Note: The "Generate Metadata" option must be enabled in the AI Services admin settings.
 
-        :param str language: The language of the generated description. Supported languages are "dutch", "english", "french", "german", "portuguese", and "spanish" (defaults to **english**).
+        :param str language: The language of the generated description. Supported languages are "afrikaans", "arabic", "bengali", "bulgarian", "catalan", "chinese", "chinese_traditional", "croatian", "czech", "danish",
+            "dutch", "english", "estonian", "finnish", "french", "german", "greek", "gujarati", "hebrew", "hindi", "hungarian", "icelandic", "indonesian", "irish", "italian", "japanese", "korean", "latvian", "lithuanian", "malayalam",
+            "marathi", "nepali", "norwegian", "persian", "polish", "portuguese", "romanian", "russian", "serbian", "slovak", "slovenian", "spanish", "swedish", "tamil", "telugu", "thai", "turkish", "ukrainian", "urdu", and "vietnamese"
+            (defaults to **english**).
         :param bool save_description: To save the generated description to this dataset (defaults to **False**).
         
         :returns: a dict object of the dataset schema and descriptions.
         :rtype: dict
         """ 
-        supported_languages = {"dutch", "english", "french", "german", "japanese", "portuguese", "spanish"}
-
-        if language not in supported_languages:
-            raise ValueError("Invalid language: '{}'. Currently supported languages: {}.".format(language, supported_languages))
+        _validate_ai_explanation_language(language)
         
         return self.client._perform_json("POST", "/projects/%s/datasets/%s/generate-ai-description" % (self.project_key, self.dataset_name), params={
             "language": language,

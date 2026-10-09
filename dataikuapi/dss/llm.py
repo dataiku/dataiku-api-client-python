@@ -656,6 +656,10 @@ class DSSLLMEmbeddingsQuery(object):
 
         return self
 
+    def _with_context(self, context):
+        self.eq["settings"]["context"] = dict(context)
+        return self
+
     def new_guardrail(self, type):
         """
         Start adding a guardrail to the request. You need to configure the returned object, and call add() to actually add it
@@ -671,6 +675,8 @@ class DSSLLMEmbeddingsQuery(object):
         :returns: The results of the embedding query.
         :rtype: :class:`DSSLLMEmbeddingsResponse`
         """
+
+        self.eq["settings"] = prepare_query_for_nested_llm_mesh_call(self.eq["settings"])
 
         if self._guardrails is not None:
             self.eq["guardrails"] = self._guardrails
@@ -707,8 +713,11 @@ class DSSLLMEmbeddingsResponse(object):
 
 
 class DSSLLMCompletionsQuerySingleQuery(object):
-    def __init__(self):
-        self.cq = {"messages": []}
+    def __init__(self, data=None):
+        if data is None:
+            self.cq = {"messages": []}
+        else:
+            self.cq = data
 
     def new_multipart_message(self, role="user"):
         """
@@ -839,6 +848,10 @@ class DSSLLMCompletionsQuerySingleQuery(object):
         self.cq["context"] = context
         return self
 
+    @property
+    def messages(self):
+        return self.cq["messages"]
+
 
 class SettingsMixin(object):
     def with_json_output(self, schema=None, strict=None, compatible=None, if_supported=None):
@@ -913,6 +926,121 @@ class DSSLLMRequestGuardrailBuilder(object):
         if self.request._guardrails is None:
             self.request._guardrails = {"guardrails" : []}
         self.request._guardrails["guardrails"].append(self.guardrail)
+
+
+class DSSLLMGuardrailsQuery(object):
+
+    def __init__(self, client, project_key):
+        self.client = client
+        self.project_key = project_key
+        self._guardrails = None
+        self._completion_query = None
+        self._completion_response = None
+
+    def new_guardrail(self, type):
+        return DSSLLMRequestGuardrailBuilder(self, type)
+
+    def with_completion_query(self, query):
+        if isinstance(query, str):
+            self._completion_query = DSSLLMCompletionsQuerySingleQuery().with_message(query)
+        elif isinstance(query, DSSLLMCompletionQuery):
+            self._completion_query = query
+        else:
+            raise ValueError("Unsupported completion query type: %s" % type(query))
+        return self
+
+    def with_completion_response(self, response):
+        if isinstance(response, str):
+            self._completion_response = DSSLLMCompletionResponse(text=response, query=self._completion_query)
+        elif isinstance(response, DSSLLMCompletionResponse) and not isinstance(response, DSSLLMConversationCompletionResponse):
+            if self._completion_query is None and response._query is not None:
+                try:  # attempt to auto-populate the query from the response's query
+                    self.with_completion_query(response._query)
+                except ValueError:
+                    pass
+            self._completion_response = response
+        else:
+            raise ValueError("Unsupported completion response type: %s" % type(response))
+        return self
+
+    def execute(self):
+        body = {"guardrailsPipeline": self._guardrails}
+        if self._completion_query is not None:
+            body["completionQuery"] = self._completion_query.cq
+        if self._completion_response is not None:
+            body["completionResponse"] = self._completion_response._raw
+        response = self.client._perform_json("POST", "/projects/%s/llms/guardrails" % self.project_key, body=body)
+        return DSSLLMGuardrailsResponse(response, self._completion_query, self._completion_response)
+
+class DSSLLMGuardrailsResponse(object):
+
+    def __init__(self, data, query=None, response=None):
+        self._data = data
+        self._query = query
+        self._response = response
+        self._cached_query = None
+        self._cached_response = None
+
+    def get_raw(self):
+        return self._data
+
+    @property
+    def action(self):
+        return self._data.get("action")
+
+    @property
+    def trace(self):
+        return self._data.get("trace")
+
+    @property
+    def completion_query(self):
+        if "completionResponse" in self._data:
+            # guardrails applied on the response, use the original query
+            return self._query
+        # guardrails were applied on the query, use resulting messages
+        if "completionQuery" not in self._data:
+            return None
+        if self._cached_query is None:
+            if self._query is None:
+                # won't have .execute(), no LLM attached
+                self._cached_query = DSSLLMCompletionsQuerySingleQuery()
+            else:  # either CQSingleQ w/o LLM, or a CQ with LLM
+                self._cached_query = copy.copy(self._query)  # shallow copy, only overwriting .cq
+            self._cached_query.cq = self._data["completionQuery"]
+        return self._cached_query
+
+    @property
+    def completion_query_content(self):
+        cq = self.completion_query
+        if cq is None or len(cq.messages) < 1:
+            return None
+        return cq.messages[-1].get("content")
+
+    @property
+    def completion_response(self):
+        if "completionResponse" not in self._data:
+            return None
+        if self._cached_response is None:
+            if self._response is not None:
+                # Override
+                self._cached_response = copy.copy(self._response)
+                self._cached_response._raw = copy.copy(self._response._raw)
+                self._cached_response._raw.update(self._data["completionResponse"])
+                if self._query is not None:
+                    self._cached_response._query = self._query
+            else:  # Somehow not properly known (shouldn't happen), make one from the response data
+                self._cached_response = DSSLLMCompletionResponse(self._data["completionResponse"], query=self.completion_query)
+        return self._cached_response
+
+    @property
+    def error(self):
+        return self._data.get("error")
+
+    @property
+    def error_message(self):
+        if self.error is None:
+            return None
+        return self.error["message"]
 
 
 class DSSLLMConversationCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
@@ -1304,6 +1432,7 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         self.llm = llm
         self._settings = {}
         self._tools_mapping = {}
+        self._skill_loader_tool_mapping = {}
         self._guardrails = None
         self._response_parser = None
 
@@ -1401,6 +1530,25 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         self._settings.setdefault("tools", []).extend(llm_mesh_tools_setting)
         return self
 
+    def with_skill_loader(self, skill_loader):
+        """
+        Add a DSS Agent Skill Loader and its Skill discovery prompt to the completion query.
+
+        :param dataikuapi.dss.agent_skill.DSSAgentSkillLoader skill_loader: The Skill Loader to include in the query's tools setting
+        """
+        from .agent_skill import DSSAgentSkillLoader
+        if not isinstance(skill_loader, DSSAgentSkillLoader):
+            raise TypeError("skill_loader must be a DSSAgentSkillLoader")
+        llm_mesh_tools_setting = skill_loader._as_llm_mesh_tools()
+        self._skill_loader_tool_mapping.update({
+            tool["function"]["name"]: skill_loader for tool in llm_mesh_tools_setting
+        })
+        self._settings.setdefault("tools", []).extend(llm_mesh_tools_setting)
+        skill_prompt = skill_loader.get_prompt()
+        if skill_prompt:
+            self.with_message(skill_prompt, role="system")
+        return self
+
     def _resolve_dss_agent_tool_call(self, tool_name):
         """
         Resolve the DSS Agent Tool, and optional sub-tool name, from a generated tool name (coming from a tool call in a completion response).
@@ -1416,6 +1564,15 @@ class DSSLLMCompletionQuery(DSSLLMCompletionsQuerySingleQuery, SettingsMixin):
         if dss_agent_tool is None:
             return None, None
         return dss_agent_tool, dss_agent_tool._get_subtool_name(tool_name)
+
+    def _resolve_skill_loader_call(self, tool_name):
+        """
+        Resolve the Skill Loader from a generated tool name, if the name belongs
+        to a registered Skill Loader tool.
+
+        :returns: The :class:`~dataikuapi.dss.agent_skill.DSSAgentSkillLoader`, or ``None``.
+        """
+        return self._skill_loader_tool_mapping.get(tool_name)
 
 
 class DSSLLMCompletionsQuery(SettingsMixin):
@@ -1463,6 +1620,7 @@ class DSSLLMCompletionsQuery(SettingsMixin):
         :rtype: :class:`DSSLLMCompletionsResponse`
         """
         for q in self.queries:
+            # Note that 'prepare_query_for_nested_llm_mesh_call' throws an exception when the max LLM mesh stack depth is reached
             q.cq = prepare_query_for_nested_llm_mesh_call(q.cq)
         queries = {"queries": [q.cq for q in self.queries], "settings": self._settings, "llmId": self.llm.llm_id}
 
@@ -1838,18 +1996,26 @@ class _SSEClient(object):
 
 class DSSLLMResolvedToolCall(object):
     """
-    A tool call from a completion response, with resolved DSS Agent Tool (if applicable) and input.
+    A tool call from a completion response, with resolved DSS Agent Tool or
+    Skill Loader (if applicable) and input.
 
     .. important::
 
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionResponse.resolve_tool_calls` instead.
     """
-    def __init__(self, raw_tool_call, dss_agent_tool=None):
+    def __init__(self, raw_tool_call, dss_agent_tool=None, skill_loader=None):
+        if dss_agent_tool is not None and skill_loader is not None:
+            raise ValueError("dss_agent_tool and skill_loader are mutually exclusive")
         if dss_agent_tool is not None:
             from .agent_tool import DSSAgentTool
             if not isinstance(dss_agent_tool, DSSAgentTool):
                 raise TypeError("dss_agent_tool must be a DSSAgentTool")
+        if skill_loader is not None:
+            from .agent_skill import DSSAgentSkillLoader
+            if not isinstance(skill_loader, DSSAgentSkillLoader):
+                raise TypeError("skill_loader must be a DSSAgentSkillLoader")
         self._dss_agent_tool = dss_agent_tool
+        self._skill_loader = skill_loader
         self._raw_tool_call = raw_tool_call
         self._input = json.loads(raw_tool_call["function"]["arguments"])
 
@@ -1860,6 +2026,14 @@ class DSSLLMResolvedToolCall(object):
         :rtype: Optional[dataikuapi.dss.agent_tool.DSSAgentTool]
         """
         return self._dss_agent_tool
+
+    @property
+    def skill_loader(self):
+        """
+        :return: The DSS Agent Skill Loader resolved for this call, or ``None``.
+        :rtype: Optional[dataikuapi.dss.agent_skill.DSSAgentSkillLoader]
+        """
+        return self._skill_loader
 
     @property
     def tool_name(self):
@@ -1904,14 +2078,16 @@ class DSSLLMResolvedToolCall(object):
 
     def run(self):
         """
-        Execute the resolved DSS Agent Tool call.
+        Execute the resolved DSS Agent Tool or Skill Loader call.
 
         :returns: The result of running this tool.
         :rtype: dict
         """
-        if self.dss_agent_tool is None:
-            raise NotImplementedError("This method only supports running DSS Agent Tools")
-        return self.dss_agent_tool.run(self.input, subtool_name=self.subtool_name)
+        if self.dss_agent_tool is not None:
+            return self.dss_agent_tool.run(self.input, subtool_name=self.subtool_name)
+        if self.skill_loader is not None:
+            return self.skill_loader._run_llm_mesh_tool(self.tool_name, self.input)
+        raise NotImplementedError("This method only supports running DSS Agent Tools and Skill Loaders")
 
 
 class DSSLLMCompletionResponse(object):
@@ -1930,6 +2106,7 @@ class DSSLLMCompletionResponse(object):
             self._raw["text"] = text
             self._raw["finishReason"] = finish_reason
             self._raw["trace"] = trace
+            self._raw["ok"] = True
 
         self._json = None
         self._json_lenient = None
@@ -2035,8 +2212,10 @@ class DSSLLMCompletionResponse(object):
         for tool_call in self.tool_calls or []:
             tool_name = tool_call["function"]["name"]
             dss_agent_tool, _ = self._query._resolve_dss_agent_tool_call(tool_name)
+            skill_loader = self._query._resolve_skill_loader_call(tool_name)
             resolved_tool_calls.append(DSSLLMResolvedToolCall(
                 dss_agent_tool=dss_agent_tool,
+                skill_loader=skill_loader,
                 raw_tool_call=tool_call,
             ))
         return resolved_tool_calls
@@ -2547,6 +2726,9 @@ class DSSLLMImageGenerationQuery(object):
         :rtype: :class:`DSSLLMImageGenerationResponse`
         """
 
+        # Note that 'prepare_query_for_nested_llm_mesh_call' throws an exception when the max LLM mesh stack depth is reached
+        self.gq = prepare_query_for_nested_llm_mesh_call(self.gq)
+
         if self._guardrails is not None:
             self.gq["guardrails"] = self._guardrails
 
@@ -2681,9 +2863,12 @@ class DSSLLMRerankingQuery(object):
         :returns: The LLM response.
         :rtype: :class:`DSSLLMRerankingResponse`
         """
+
+        # Note that 'prepare_query_for_nested_llm_mesh_call' throws an exception when the max LLM mesh stack depth is reached
         reranking_query = {
             "llmId": self.llm.llm_id,
-            "queries": [self.rq]
+            "queries": [self.rq],
+            "settings": prepare_query_for_nested_llm_mesh_call({})
         }
         if self.settings is not None:
             reranking_query["settings"] = self.settings

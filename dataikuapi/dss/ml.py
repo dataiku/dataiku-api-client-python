@@ -1572,13 +1572,11 @@ class CatBoostSettings(PredictionAlgorithmSettings):
         self.early_stopping_rounds = self._register_single_value_hyperparameter("early_stopping_rounds", accepted_types=[int])
 
 
-class TabICLSettings(PredictionAlgorithmSettings):
+class AbstractTabICLSettings(PredictionAlgorithmSettings):
 
     def __init__(self, raw_settings, hyperparameter_search_params):
-        super(TabICLSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        super(AbstractTabICLSettings, self).__init__(raw_settings, hyperparameter_search_params)
         self.n_estimators = self._register_numerical_hyperparameter("n_estimators")
-        self.class_shift = self._register_categorical_hyperparameter("class_shift")
-
         self.norm_none = self._register_single_value_hyperparameter("norm_none", accepted_types=[bool])
         self.norm_power = self._register_single_value_hyperparameter("norm_power", accepted_types=[bool])
         self.norm_quantile = self._register_single_value_hyperparameter("norm_quantile", accepted_types=[bool])
@@ -1587,8 +1585,43 @@ class TabICLSettings(PredictionAlgorithmSettings):
         self.random_state = self._register_single_value_hyperparameter("random_state")
         self.n_jobs = self._register_single_value_hyperparameter("n_jobs")
         self.batch_size = self._register_single_value_hyperparameter("batch_size")
-        self.softmax_temperature = self._register_single_value_hyperparameter("softmax_temperature")
         self.outlier_threshold = self._register_single_value_hyperparameter("outlier_threshold")
+
+
+class AbstractTabICLClassificationSettings(AbstractTabICLSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(AbstractTabICLClassificationSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.softmax_temperature = self._register_single_value_hyperparameter("softmax_temperature")
+
+
+class AbstractTabICLv2Settings(AbstractTabICLSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(AbstractTabICLv2Settings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.offload_mode = self._register_single_category_hyperparameter(
+            "offload_mode", accepted_values=["auto", "gpu", "cpu", "disk"]
+        )
+
+
+class TabICLSettings(AbstractTabICLClassificationSettings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(TabICLSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.class_shift = self._register_categorical_hyperparameter("class_shift")
+
+
+class TabICLv2ClassificationSettings(AbstractTabICLClassificationSettings, AbstractTabICLv2Settings):
+
+    def __init__(self, raw_settings, hyperparameter_search_params):
+        super(TabICLv2ClassificationSettings, self).__init__(raw_settings, hyperparameter_search_params)
+        self.class_shuffle_method = self._register_single_category_hyperparameter(
+            "class_shuffle_method", accepted_values=["none", "shift", "random", "latin"]
+        )
+
+
+class TabICLv2RegressionSettings(AbstractTabICLv2Settings):
+    pass
 
 
 class _XGBoostSettingsBase(PredictionAlgorithmSettings):
@@ -2292,7 +2325,9 @@ class DSSPredictionMLTaskSettings(AbstractTabularPredictionMLTaskSettings):
             "VERTICA_LINEAR_REGRESSION": PredictionAlgorithmMeta("vertica_linear_regression"),
             "VERTICA_LOGISTIC_REGRESSION": PredictionAlgorithmMeta("vertica_logistic_regression"),
             "KERAS_CODE": PredictionAlgorithmMeta("keras"),
-            "TABICL_CLASSIFICATION": PredictionAlgorithmMeta("tabicl_classification", TabICLSettings)
+            "TABICL_CLASSIFICATION": PredictionAlgorithmMeta("tabicl_classification", TabICLSettings),
+            "TABICLV2_CLASSIFICATION": PredictionAlgorithmMeta("tabiclv2_classification", TabICLv2ClassificationSettings),
+            "TABICLV2_REGRESSION": PredictionAlgorithmMeta("tabiclv2_regression", TabICLv2RegressionSettings)
         }
 
     class PredictionTypes:
@@ -4871,6 +4906,22 @@ class DSSPartialDependence(object):
             "randomState":  self._internal_dict["randomState"],
             "onSample":  self._internal_dict["onSample"]
         }
+
+    def get_data_by_target(self):
+        """
+        Gets partial dependence data keyed by target variable for a multi-target regression model.
+
+        :returns: a dictionary mapping each target variable to its partial dependence data
+        :rtype: dict
+        """
+        target_variables = self._internal_dict.get("multiTargetVariables")
+        data = self._internal_dict.get("data", [])
+        if target_variables is None:
+            raise ValueError("This partial dependence has no per-target data")
+        if len(target_variables) != len(data):
+            raise ValueError("Partial dependence has {} target variables but {} data rows".format(
+                len(target_variables), len(data)))
+        return dict(zip(target_variables, data))
 
 
 class DSSPartialDependencies(object):
