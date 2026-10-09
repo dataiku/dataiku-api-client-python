@@ -52,7 +52,7 @@ import pydantic
 
 from dataikuapi.dss.langchain.utils import must_use_deprecated_pydantic_config
 from dataikuapi.dss.tools.langchain import StopSequencesAwareStreamer
-from dataikuapi.dss.llm import DSSLLMStreamedCompletionFooter, DSSLLMCompletionsQuerySingleQuery
+from dataikuapi.dss.llm import DSSLLMStreamedCompletionFooter
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def _completion_with_typed_messages(completion, messages):
             completion.with_message(message.content, message.role)
         elif isinstance(message, HumanMessage):
             if isinstance(message.content, list):
-                _parse_multi_part_content(message.content, completion, "user")
+                _add_multi_part_content(message.content, completion.new_multipart_message("user"))
             else:
                 completion.with_message(message.content, "user")
 
@@ -124,7 +124,13 @@ def _completion_with_typed_messages(completion, messages):
             completion.with_message(message.content, "system")
 
         elif isinstance(message, ToolMessage):
-            completion.with_tool_output(message.content, message.tool_call_id, "tool")
+            if _is_multipart_content(message.content):
+                _add_multi_part_content(
+                    message.content,
+                    completion.new_multipart_tool_output(message.tool_call_id, "tool"),
+                )
+            else:
+                completion.with_tool_output(message.content, message.tool_call_id, "tool")
 
         else:
             raise ValueError(f"Got unknown type {message}")
@@ -744,13 +750,31 @@ def _convert_to_llm_mesh_tool_choice(
     )
 
 
-def _parse_multi_part_content(content: List[dict], completion: DSSLLMCompletionsQuerySingleQuery, role: str) -> None:
+def _add_multi_part_content(content: List[dict], multi_part_message) -> None:
     assert isinstance(content, list), "The content must be multi-part"
 
-    multi_part_message = completion.new_multipart_message(role)
     for content_part in content:
         if content_part['type'] == 'text':
             multi_part_message.with_text(content_part['text'])
         elif content_part['type'] == 'image_url':
             multi_part_message.with_image_url(content_part['image_url']['url'])
     multi_part_message.add()
+
+
+def _is_multipart_content(content) -> bool:
+    if not isinstance(content, list) or not content:
+        return False
+
+    for content_part in content:
+        if not isinstance(content_part, dict):
+            return False
+        if content_part.get("type") == "text":
+            if not isinstance(content_part.get("text"), str):
+                return False
+        elif content_part.get("type") == "image_url":
+            image_url = content_part.get("image_url")
+            if not isinstance(image_url, dict) or not isinstance(image_url.get("url"), str):
+                return False
+        else:
+            return False
+    return True

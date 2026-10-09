@@ -3423,8 +3423,9 @@ class DSSLLMCostLimitingCounters(object):
     """
     The LLM cost limiting counters of the instance
     """
-    def __init__(self, data):
+    def __init__(self, data, client):
         self._data = data
+        self.client = client
 
     def get_raw(self):
         """
@@ -3438,20 +3439,33 @@ class DSSLLMCostLimitingCounters(object):
     @property
     def counters(self):
         """
-        Get the list of counters
+        Get the list of counters.
 
         :return: a list of counters
-        :rtype: list
+        :rtype: list[dict]
         """
         return self._data['counters']
 
     def get_counter(self, id):
         """
-        Retrieve the counters from a quota id
+        Retrieve the aggregate counter from a quota id
 
-        :param id identifier of the quota to retrieve
+        :param string id: identifier of the quota to retrieve
 
-        :return: a dictionary containing the counter
+        :return: a dictionary containing the aggregate counter
         :rtype: dict
         """
         return next((counter for counter in self.counters if counter["id"] == id), None)
+
+    def get_counter_details(self, id):
+        """
+        Retrieve the detailed counters from a quota id.
+
+        For a global quota, same as :meth:`get_counter`.
+        For a per-dimension quota, adds the instantiated counters.
+
+        :param string id: identifier of the quota to retrieve
+
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/admin/llm-cost-limiting/counters/%s" % id)

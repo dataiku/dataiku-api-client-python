@@ -34,10 +34,11 @@ from .dss.dam import DAM
 from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
+from .secretsmanager import DSSSecretsManager, DSSVaultsManager
 from .dss.workspace import DSSWorkspace
 from .dss.enterprise_asset_library import DSSEnterpriseAssetLibrary
 import os.path as osp
-from .utils import dku_basestring_type, handle_http_exception
+from .utils import dku_basestring_type, handle_http_exception, stream_multipart_upload
 from .govern_client import GovernClient
 
 
@@ -314,22 +315,47 @@ class DSSClient(object):
         """
         return DSSBusinessApp(self, business_app_id)
 
-    def install_business_app_from_archive(self, fp):
+    def install_business_app_from_archive(self, fp, wait=False):
         """
         Install or upgrade a Business Application from a zip archive.
-        Code-env creation must be done separately by calling DSSClient.create_code_env.
+
+        Code environment creation must be done separately by calling :meth:`dataikuapi.dss.businessapp.DSSBusinessApp.create_code_env`
+        on the created Business Application.
 
         .. note::
 
             This call requires an API key with admin rights
 
         :param object fp: A file-like object pointing to a Business Application zip
-        :return: a future representing the installation/upgrade process
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :param bool wait: if True, wait for the installation/upgrade process to complete and return its result
+        :return: a future, or the installation/upgrade process result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
         """
         files = {'file': fp}
         resp = self._perform_json("POST", "/business-apps/install-from-archive", files=files)
-        return DSSFuture.from_resp(self, resp)
+        future = DSSFuture.from_resp(self, resp)
+        return future.wait_for_result() if wait else future
+
+    def install_business_app_from_store(self, business_app_id, wait=False):
+        """
+        Install a Business Application from the store.
+
+        The Business Application must not be installed yet.
+
+        Code environment creation must be done separately by calling :meth:`dataikuapi.dss.businessapp.DSSBusinessApp.create_code_env`
+        on the created Business Application.
+
+        Note: this call requires an API key with admin rights
+
+        :param str business_app_id: the store identifier of the Business Application
+        :param bool wait: if True, wait for the installation to complete and return its result
+        :return: a future, or the installation result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self._perform_json("POST", "/business-apps/install-from-store",
+                                  body={"businessAppId": business_app_id})
+        future = DSSFuture.from_resp(self, resp)
+        return future.wait_for_result() if wait else future
 
     ########################################################
     # Plugins
@@ -2009,11 +2035,15 @@ class DSSClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body, headers=headers)
 
     def _perform_json_upload(self, method, path, name, f):
-        http_res = self._session.request(
-            method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})},
-            verify=self._session.verify)
-
+        http_res = stream_multipart_upload(
+            self._session,
+            method,
+            "%s/dip/publicapi%s" % (self.host, path),
+            "file",
+            name,
+            f,
+            self._session.verify
+        )
         handle_http_exception(http_res)
         return http_res
 
@@ -2455,8 +2485,33 @@ class DSSClient(object):
         :return: the cost limiting counters
         :rtype: DSSLLMCostLimitingCounters
         """
-        return DSSLLMCostLimitingCounters(self._perform_json("GET", "/admin/llm-cost-limiting/counters"))
+        return DSSLLMCostLimitingCounters(
+            self._perform_json("GET", "/admin/llm-cost-limiting/counters"),
+            client=self)
 
+    ########################################################
+    # Secrets manager
+    ########################################################
+
+    def get_secrets_manager(self):
+        """
+        Gets a handle to work with the Secrets Manager.
+
+        :rtype: :class:`dataikuapi.secretsmanager.secretsmanager.DSSSecretsManager`
+        """
+        return DSSSecretsManager(self)
+
+    def get_vaults_manager(self):
+        """
+        Gets a handle to work with vault administration.
+
+        All methods exposed by this handle require DSS administrator privileges,
+        unlike :meth:`get_secrets_manager` which also exposes non-admin
+        operations depending on secret-level permissions.
+
+        :rtype: :class:`dataikuapi.secretsmanager.vaultsmanager.DSSVaultsManager`
+        """
+        return DSSVaultsManager(self)
 
     ########################################################
     # Objects permission checking

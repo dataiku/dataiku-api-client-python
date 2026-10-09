@@ -698,8 +698,15 @@ class StructuredExtractorResponse(object):
             if node["type"] == "section":
                 deeper_outline.append(node["title"])
             chunks = []
+            previous_was_leaf = False
             for child in node["content"]:
-                chunks.extend(_flatten_using_dfs(child, deeper_outline))
+                child_chunks = _flatten_using_dfs(child, deeper_outline)
+                is_leaf = child["type"] in ["text", "table", "image"]
+                if previous_was_leaf and is_leaf and chunks and child_chunks and chunks[-1]["outline"] == child_chunks[0]["outline"]:
+                    chunks[-1]["text"] += "\n" + child_chunks[0]["text"]
+                else:
+                    chunks.extend(child_chunks)
+                previous_was_leaf = is_leaf
             return chunks
 
         return _flatten_using_dfs(self._data["content"], [])

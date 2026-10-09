@@ -111,6 +111,71 @@ class DSSBusinessApp(object):
         data = self.client._perform_json("GET", "/business-apps/%s/settings" % self.business_app_id)
         return DSSBusinessAppSettings(self.client, self.business_app_id, data)
 
+    def upgrade_from_store(self, wait=False):
+        """
+        Upgrade this Business Application from the store.
+
+        Code environment updates are a separate operation and can be started with
+        :meth:`update_code_env`.
+
+        :param bool wait: if True, wait for the upgrade to complete and return its result
+        :return: a future, or the upgrade result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self.client._perform_json("POST", "/business-apps/%s/upgrade-from-store" % self.business_app_id)
+        future = DSSFuture.from_resp(self.client, resp)
+        return future.wait_for_result() if wait else future
+
+    def create_code_env(self, python_interpreter=None, conda=False, wait=False):
+        """
+        Create the code environment required by this Business Application.
+
+        :param str python_interpreter: optional Python interpreter identifier. If omitted, DSS will select the preferred default interpreter.
+        :param bool conda: whether to use Conda
+        :param bool wait: if True, wait for the creation to complete and return its result
+        :return: a future, or the creation result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        body = {
+            "deploymentMode": "BUSINESS_APP_MANAGED",
+            "conda": conda,
+            "pythonInterpreter": python_interpreter,
+        }
+        resp = self.client._perform_json("POST", "/business-apps/%s/code-env/actions/create" % self.business_app_id, body=body)
+        future = DSSFuture.from_resp(self.client, resp)
+        return future.wait_for_result() if wait else future
+
+    def update_code_env(self, wait=False):
+        """
+        Update the code environment specification and packages of this Business Application.
+
+        :param bool wait: if True, wait for the update to complete and return its result
+        :return: a future, or the update result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self.client._perform_json("POST", "/business-apps/%s/code-env/actions/update" % self.business_app_id)
+        future = DSSFuture.from_resp(self.client, resp)
+        return future.wait_for_result() if wait else future
+
+    def delete(self, force=False, wait=False):
+        """
+        Uninstall this Business Application.
+
+        By default, the operation fails if the Business Application still has instances.
+        Set ``force`` to True to delete the instances as part of the uninstall operation.
+        Requires admin privileges.
+
+        :param bool force: whether to force the deletion of existing instances as part of the uninstall operation
+        :param bool wait: if True, wait for the uninstall operation to complete and return its result
+        :return: a future, or the uninstall operation result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self.client._perform_json(
+            "POST", "/business-apps/%s/actions/delete" % self.business_app_id,
+            body={"force": force})
+        future = DSSFuture.from_resp(self.client, resp)
+        return future.wait_for_result() if wait else future
+
     def list_instances(self):
         """
         List the existing instances of this Business Application.
@@ -256,7 +321,7 @@ class DSSBusinessAppDetails(object):
         :rtype: :class:`DSSBusinessAppSettings`
         :raises Exception: if the user does not have admin privileges
         """
-        return DSSBusinessAppSettings(self.client, self.id, self._data["settings", {}])
+        return DSSBusinessAppSettings(self.client, self.id, self._data.get("settings", {}))
 
 class DSSBusinessAppSettings(object):
     """
@@ -399,11 +464,28 @@ class DSSBusinessAppInstance(object):
         """
         future_resp = self.client._perform_json(
             "POST", "/business-apps/%s/instances/%s/upgrade" % (self.business_app_id, self.project_key))
-        future = DSSFuture(self.client, future_resp.get("jobId", None), future_resp)
-        if wait:
-            return future.wait_for_result()
-        else:
-            return future
+        future = DSSFuture.from_resp(self.client, future_resp)
+        return future.wait_for_result() if wait else future
+
+    def start_or_restart(self, wait=False):
+        """
+        Start or restart the Web App backend of this Business Application instance.
+
+        :param bool wait: if True, wait for the start to complete and return its result
+        :return: a future, or the start result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self.client._perform_json(
+            "POST", "/business-apps/%s/instances/%s/restart" % (self.business_app_id, self.project_key))
+        future = DSSFuture.from_resp(self.client, resp)
+        return future.wait_for_result() if wait else future
+
+    def stop(self):
+        """
+        Stop the Web App backend of this Business Application instance.
+        """
+        self.client._perform_empty(
+            "POST", "/business-apps/%s/instances/%s/stop" % (self.business_app_id, self.project_key))
 
     def delete(self, clear_managed_datasets=True, clear_output_managed_folders=True, clear_job_and_scenario_logs=True):
         """

@@ -1,7 +1,10 @@
 from .future import DSSFuture
 
+ENTERPRISE_ASSET_LIBRARY_COLLECTION_URI_FORMAT = "/enterprise-asset-library/collections/%s"
 ENTERPRISE_ASSET_LIBRARY_PROMPTS_URI_FORMAT = "/enterprise-asset-library/collections/%s/prompts"
 ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT = ENTERPRISE_ASSET_LIBRARY_PROMPTS_URI_FORMAT + "/%s"
+ENTERPRISE_ASSET_LIBRARY_EMAIL_TEMPLATES_URI_FORMAT = "/enterprise-asset-library/collections/%s/email-templates"
+ENTERPRISE_ASSET_LIBRARY_EMAIL_TEMPLATE_URI_FORMAT = ENTERPRISE_ASSET_LIBRARY_EMAIL_TEMPLATES_URI_FORMAT + "/%s"
 
 class DSSEnterpriseAssetLibrary(object):
     """
@@ -44,6 +47,19 @@ class DSSEnterpriseAssetLibrary(object):
         if restrict_collections is None:
             restrict_collections = []
         return self.client._perform_json("GET", "/enterprise-asset-library/prompts", {"restrictCollections": restrict_collections})
+
+    def list_email_templates(self, restrict_collections=None):
+        """
+        Lists the email templates in the collections you have read access to
+
+        :param (optional) list[string] restrict_collections: collection ids you want to get the email templates from
+
+        :returns: the list of email templates in the collections you have access to
+        :rtype: list[dict]
+        """
+        if restrict_collections is None:
+            restrict_collections = []
+        return self.client._perform_json("GET", "/enterprise-asset-library/email-templates", {"restrictCollections": restrict_collections})
 
     def get_export_stream(self):
         """
@@ -113,6 +129,14 @@ class DSSEnterpriseAssetCollection:
         self.client = client
         self.id = collection_id
 
+    def delete(self):
+        """
+        Delete this Enterprise Asset Collection.
+
+        This call requires Administrator rights on the Enterprise Asset Collection.
+        """
+        return self.client._perform_empty("DELETE", ENTERPRISE_ASSET_LIBRARY_COLLECTION_URI_FORMAT % self.id)
+
     def get_prompt(self, prompt_id):
         """
         Get a prompt from the Enterprise Asset Collection.
@@ -124,6 +148,18 @@ class DSSEnterpriseAssetCollection:
         :rtype: :class:`dataikuapi.dss.enterprise_asset_library.EnterpriseAssetLibraryPrompt`
         """
         return EnterpriseAssetLibraryPrompt(self, self.client._perform_json("GET", ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT % (self.id, prompt_id)))
+
+    def get_email_template(self, email_template_id):
+        """
+        Get an email template from the Enterprise Asset Collection.
+
+        :param email_template_id: id of the Enterprise Email Template
+        :type email_template_id: str
+
+        :return: the Enterprise Email Template
+        :rtype: :class:`dataikuapi.dss.enterprise_asset_library.EnterpriseAssetLibraryEmailTemplate`
+        """
+        return EnterpriseAssetLibraryEmailTemplate(self, self.client._perform_json("GET", ENTERPRISE_ASSET_LIBRARY_EMAIL_TEMPLATE_URI_FORMAT % (self.id, email_template_id)))
 
     def create_prompt(self, name=None, description=None, content=None, tags=None, prompt=None):
         """
@@ -260,3 +296,68 @@ class EnterpriseAssetLibraryPrompt(object):
         This call requires at least contributor rights on the Enterprise Asset Collection.
         """
         return self.collection.client._perform_empty("DELETE", ENTERPRISE_ASSET_LIBRARY_PROMPT_URI_FORMAT % (self.collection.id, self.prompt["id"]))
+
+
+class EnterpriseAssetLibraryEmailTemplate(object):
+    """
+    A handle to interact with an Enterprise Email Template on the DSS instance.
+
+    Do not create this class directly, instead use :meth:`dataikuapi.dss.enterprise_asset_library.DSSEnterpriseAssetCollection.get_email_template`
+    """
+    def __init__(self, collection, email_template):
+        self.collection = collection
+        self.email_template = email_template
+
+    def get_raw(self):
+        """
+        Get the raw email template.
+
+        :return: the raw Enterprise Email Template
+        :rtype: :class:`dict`
+        """
+        return self.email_template
+
+    @property
+    def id(self):
+        """
+        The Enterprise Email Template id
+
+        :rtype: str
+        """
+        return self.email_template['id']
+
+    @property
+    def name(self):
+        """
+        Get the name of the Enterprise Email Template
+
+        :rtype: str
+        """
+        return self.email_template['name']
+
+    @property
+    def description(self):
+        """
+        Get the description of the Enterprise Email Template
+
+        :rtype: str
+        """
+        return self.email_template['description']
+
+    @property
+    def tags(self):
+        """
+        Get the tags of the Enterprise Email Template
+
+        :rtype: list[string]
+        """
+        return self.email_template['tags']
+
+    @property
+    def content(self):
+        """
+        Get the content of the Enterprise Email Template
+
+        :rtype: string
+        """
+        return self.email_template['content']

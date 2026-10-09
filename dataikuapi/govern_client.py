@@ -16,7 +16,7 @@ from .govern.blueprint import GovernBlueprintListItem, GovernBlueprint
 from .govern.custom_page import GovernCustomPageListItem, GovernCustomPage
 from .govern.time_series import GovernTimeSeries
 from .govern.uploaded_file import GovernUploadedFile
-from .utils import handle_http_exception
+from .utils import handle_http_exception, stream_multipart_upload
 
 
 class GovernClient(object):
@@ -722,11 +722,15 @@ class GovernClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body, headers=headers)
 
     def _perform_json_upload(self, method, path, name, f):
-        http_res = self._session.request(
-            method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})},
-            verify=self._session.verify)
-
+        http_res = stream_multipart_upload(
+            self._session,
+            method,
+            "%s/dip/publicapi%s" % (self.host, path),
+            "file",
+            name,
+            f,
+            self._session.verify
+        )
         handle_http_exception(http_res)
         return http_res
 
