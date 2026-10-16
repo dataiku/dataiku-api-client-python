@@ -44,7 +44,7 @@ class CobuildPlanImplementationNotes(object):
 
     These notes record the tools that Cobuild planned to use and the reasoning it retained while
     validating and executing the plan. They are provided for inspection only; changing this object
-    does not modify the plan in DSS.
+    does not modify the plan on the server.
     """
 
     def __init__(self, raw):
@@ -73,9 +73,9 @@ class CobuildPlanMilestone(object):
     """
     One ordered unit of work in a :class:`CobuildPlan`.
 
-    Milestones are read-only snapshots of the plan returned by DSS. Their fields describe both the
-    intended work and its current execution state; changing this object does not modify the plan in
-    DSS.
+    Milestones are read-only snapshots of the plan returned by the server. Their fields describe both the
+    intended work and its current execution state; changing this object does not modify the plan on
+    the server.
     """
 
     def __init__(self, raw):
@@ -152,7 +152,8 @@ class CobuildPlan(object):
     A plan is returned by :attr:`CobuildAssistantResponse.updated_plan` whenever Cobuild updates
     it while processing a request. The snapshot contains the complete current plan, not a patch.
     To revise it, send another message in :attr:`CobuildConversationMode.PLAN` mode; to execute a
-    draft, call :meth:`DSSCobuildConversation.approve_plan`.
+    draft, call :meth:`DSSCobuildConversation.approve_plan` or
+    :meth:`dataikuapi.agentmanagement.cobuild.CobuildConversation.approve_plan`.
 
     For example::
 
@@ -234,6 +235,8 @@ class CobuildAssistantResponse(CobuildMessage):
         Do not create this class directly, it is returned by :meth:`DSSCobuildConversation.send_message`
         :meth:`DSSCobuildConversation.answer_confirmation`, and
         :meth:`DSSCobuildConversation.answer_question`, and :meth:`DSSCobuildConversation.approve_plan`.
+        Agent Management conversations return this same response type through
+        :class:`dataikuapi.agentmanagement.cobuild.CobuildConversation`.
     """
 
     @property
@@ -426,6 +429,7 @@ class CobuildUserMessage(CobuildMessage):
         :meth:`DSSCobuildConversation.send_message`, and
         :meth:`DSSCobuildConversation.answer_confirmation`, and
         :meth:`DSSCobuildConversation.answer_question`.
+        It is also used by :class:`dataikuapi.agentmanagement.cobuild.CobuildConversation`.
     """
 
     @property

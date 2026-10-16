@@ -314,6 +314,16 @@ class DSSAgent(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/agents/%s" % (self.project_key, self.id))
 
+    def disable(self):
+        """Disable the agent."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/disable" % (self.project_key, self.id))
+
+    def enable(self):
+        """Enable the agent."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/enable" % (self.project_key, self.id))
+
     def shutdown(self, version_id=None, force=False):
         """
         Shutdown all instances of the given version of this agent
@@ -430,6 +440,14 @@ class DSSAgentSettings(DSSTaggableObjectSettings):
         :rtype: str | None
         """
         return self._settings.get("activeVersion")
+
+    @property
+    def disabled(self):
+        """
+        :returns: whether this agent is disabled
+        :rtype: bool
+        """
+        return self._settings.get("disabled", False)
 
     def get_version_settings(self, version_id):
         """

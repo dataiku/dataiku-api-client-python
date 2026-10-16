@@ -24,7 +24,7 @@ from .flow import DSSProjectFlow
 from .future import DSSFuture
 from .utils import _validate_ai_explanation_language
 from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
-from .job import DSSJob, DSSJobWaiter
+from .job import DSSJob, DSSJobListItem, DSSJobWaiter
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from .labeling_task import DSSLabelingTask
@@ -1534,15 +1534,42 @@ class DSSProject(object):
     # Jobs
     ########################################################
 
-    def list_jobs(self):
+    def list_jobs(self, as_type="listitems"):
         """
         List the jobs in this project
 
-        :returns: a list of the jobs, each one as a python dict, containing both the definition and the state
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :returns: The list of jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
         :rtype: list
         """
-        return self.client._perform_json(
+        items = self.client._perform_json(
             "GET", "/projects/%s/jobs/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self.client, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def list_running_jobs(self, as_type="listitems"):
+        """
+        List the currently-running jobs in this project.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :returns: The list of running jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/jobs/running/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self.client, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_job(self, id):
         """

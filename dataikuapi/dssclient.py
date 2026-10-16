@@ -18,6 +18,7 @@ from .dss.data_directories_footprint import DSSDataDirectoriesFootprint
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
+from .dss.job import DSSJob, DSSJobListItem
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
@@ -30,7 +31,6 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
-from .dss.dam import DAM
 from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
@@ -40,6 +40,7 @@ from .dss.enterprise_asset_library import DSSEnterpriseAssetLibrary
 import os.path as osp
 from .utils import dku_basestring_type, handle_http_exception, stream_multipart_upload
 from .govern_client import GovernClient
+from .agentmanagement_client import AgentManagementClient
 
 
 class DSSClient(object):
@@ -152,6 +153,31 @@ class DSSClient(object):
             return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
         else:
             return notebook_list
+
+    ########################################################
+    # Jobs
+    ########################################################
+
+    def list_running_jobs(self, as_type="listitems", all_users=True):
+        """
+        List the currently-running jobs across all projects.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param boolean all_users: If **True**, include jobs started by all users that are visible to the current
+            authentication context. If **False**, include only jobs started by the user associated with this API call
+            (defaults to **True**).
+        :returns: The list of running jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
+        :rtype: list
+        """
+        items = self._perform_json("GET", "/jobs/running/", params={"allUsers": all_users})
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     ########################################################
     # Project folders
@@ -1709,17 +1735,6 @@ class DSSClient(object):
         return DSSProjectDeployer(self)
 
     ########################################################
-    # DAM
-    ########################################################
-
-    def get_dam(self):
-        """Gets a handle to work with DAM
-
-        :rtype: :class:`~dataikuapi.dss.dam.DAM`
-        """
-        return DAM(self)
-
-    ########################################################
     # Unified Monitoring
     ########################################################
 
@@ -1946,6 +1961,27 @@ class DSSClient(object):
         """
         self._perform_empty(
             "POST", "/admin/licensing/license", body=json.loads(license))
+
+    ########################################################
+    # Agent Management
+    ########################################################
+
+    def get_agent_management_client(self):
+        """
+        Creates an Agent Management client for this DSS instance, reusing this client's
+        host, authentication, HTTP headers and certificate settings.
+
+        :return: an Agent Management client
+        :rtype: :class:`dataikuapi.AgentManagementClient`
+        """
+        amc = AgentManagementClient(self.host, api_key=self.api_key, internal_ticket=self.internal_ticket,
+                                    extra_headers=self._session.headers, client_certificate=self._session.cert, jwt_bearer_token=self.jwt_bearer_token)
+
+        # When the DSSClient is created from a ticket with encrypted RPC, verify is not just a boolean
+        if self._session.verify is not None:
+            amc._session.verify = self._session.verify
+
+        return amc
 
     ########################################################
     # Govern

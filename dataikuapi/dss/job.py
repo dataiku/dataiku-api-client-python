@@ -1,6 +1,46 @@
 import sys
 from ..utils import DataikuException
-from ..utils import _ExponentialBackoff
+from ..utils import _ExponentialBackoff, _timestamp_ms_to_zoned_datetime
+
+
+class DSSJobListItem(dict):
+    """
+    An item in a list of jobs.
+
+    .. important::
+
+        Do not instantiate directly. Use :meth:`dataikuapi.dss.project.DSSProject.list_jobs`,
+        :meth:`dataikuapi.dss.project.DSSProject.list_running_jobs`, or
+        :meth:`dataikuapi.dssclient.DSSClient.list_running_jobs`.
+    """
+
+    def __init__(self, client, data):
+        super(DSSJobListItem, self).__init__(data)
+        self.client = client
+
+    @property
+    def project_key(self):
+        """The key of the project containing the job."""
+        return self.get("projectKey", (self.get("def") or {}).get("projectKey"))
+
+    @property
+    def job_id(self):
+        """The identifier of the job."""
+        return self.get("jobId", (self.get("def") or {}).get("id"))
+
+    @property
+    def start_time(self):
+        """The job start time as a timezone-aware :class:`datetime.datetime`, or ``None``."""
+        return _timestamp_ms_to_zoned_datetime(self.get("startTime"))
+
+    @property
+    def end_time(self):
+        """The job end time as a timezone-aware :class:`datetime.datetime`, or ``None``."""
+        return _timestamp_ms_to_zoned_datetime(self.get("endTime"))
+
+    def to_job(self):
+        """Get a handle for this job."""
+        return DSSJob(self.client, self.project_key, self.job_id)
 
 class DSSJob(object):
     """
