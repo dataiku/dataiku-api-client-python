@@ -1,4 +1,5 @@
-from dataikuapi.dss.future import DSSFuture, DSSFutureWithHistory
+from dataikuapi.dss.future import DSSFuture
+from dataikuapi.utils import _ExponentialBackoff
 from dataikuapi.dss.utils import DSSTaggableObjectListItem
 
 
@@ -423,10 +424,10 @@ class DSSAgentReview(object):
         Execute a run with the specified tests.
 
         :param list[str] test_ids: List of test IDs to run. Optional. If None or empty, all tests will be run.
-        :param bool wait: If True, the call blocks until the run is finished. If False, it returns a future history handle. Defaults to True.
+        :param bool wait: If True, the call blocks until the run is finished. If False, it returns immediately with the run object. Defaults to True.
         :param str run_name: Optional name for the run.
-        :returns: The run object if wait=True, or a future history handle if wait=False.
-        :rtype: :class:`DSSAgentReviewRun` or :class:`dataikuapi.dss.future.DSSFutureWithHistory`
+        :returns: The run object.
+        :rtype: :class:`DSSAgentReviewRun`
         """
         params = {
             "testIds": test_ids or [],
@@ -436,12 +437,7 @@ class DSSAgentReview(object):
         run_data = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/reviews/%s/runs" % (self.project_key, self.id), params=params
         )
-        if wait:
-            return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
-        else:
-            # Name format must match AgentReviewRun.java getFutureHistoryKey()
-            future_name = "agent-review-%s-%s-%s" % (self.project_key, self.id, run_data.get("id"))
-            return DSSFutureWithHistory(self.dss_client, future_name, result_wrapper=lambda data: DSSAgentReviewRun(self.dss_client, self.project_key, data))
+        return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
 
     def list_runs(self, as_type='listitems'):
         """
@@ -988,10 +984,33 @@ class DSSAgentReviewRun(object):
         )
         return DSSAgentReviewResult(self.dss_client, self.project_key, result)
 
+    def wait_for_completion(self):
+        """
+        Wait for this run to finish and refresh its data.
+
+        :returns: This run, including when it was aborted.
+        :rtype: :class:`DSSAgentReviewRun`
+        :raises RuntimeError: If the run failed.
+        """
+        backoff = _ExponentialBackoff()
+        while True:
+            self.data = self.dss_client._perform_json(
+                "GET", "/projects/%s/agent-reviews/reviews/%s/runs/%s" % (self.project_key, self.agent_review_id, self.id)
+            )
+            if not self.data:
+                raise RuntimeError("Agent Review run not found")
+            if self.status in ("FINISHED", "ABORTED"):
+                if self.data.get("errorMessage") and self.status != "ABORTED":
+                    raise RuntimeError("Agent Review run failed: %s" % self.data["errorMessage"])
+                return self
+            if self.status != "RUNNING":
+                raise RuntimeError("Unexpected Agent Review run status: %s" % self.status)
+            backoff.sleep_next()
+
     def abort(self):
         """
         Abort the run.
-        :returns: The terminated run.
+        :returns: The run after requesting cancellation.
         :rtype: :class:`DSSAgentReviewRun`
         """
         run = self.dss_client._perform_json(
@@ -1014,10 +1033,10 @@ class DSSAgentReviewRun(object):
         """
         Execute a new run with the same test selection.
 
-        :param bool wait: If True, the call blocks until the run is finished. If False, it returns a future history handle. Defaults to True.
+        :param bool wait: If True, the call blocks until the run is finished. If False, it returns immediately with the run object. Defaults to True.
         :param str run_name: Optional name for the new run.
-        :returns: The new run object if wait=True, or a future history handle if wait=False.
-        :rtype: :class:`DSSAgentReviewRun` or :class:`dataikuapi.dss.future.DSSFutureWithHistory`
+        :returns: The new run object.
+        :rtype: :class:`DSSAgentReviewRun`
         """
         params = {
             "runId": self.id,
@@ -1027,12 +1046,7 @@ class DSSAgentReviewRun(object):
         run_data = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/reviews/%s/runs/actions/rerun" % (self.project_key, self.agent_review_id), params=params
         )
-        if wait:
-            return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
-        else:
-            # Name format must match AgentReviewRun.java getFutureHistoryKey()
-            future_name = "agent-review-%s-%s-%s" % (self.project_key, self.id, run_data.get("id"))
-            return DSSFutureWithHistory(self.dss_client, future_name, result_wrapper=lambda data: DSSAgentReviewRun(self.dss_client, self.project_key, data))
+        return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
 
     def rename(self, new_name):
         """
