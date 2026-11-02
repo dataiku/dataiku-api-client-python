@@ -18,6 +18,7 @@ from .dss.data_directories_footprint import DSSDataDirectoriesFootprint
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
+from .dss.job import DSSJob, DSSJobListItem
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
@@ -37,7 +38,7 @@ from .dss.utils import DSSInfoMessages, Enum
 from .dss.workspace import DSSWorkspace
 from .dss.enterprise_asset_library import DSSEnterpriseAssetLibrary
 import os.path as osp
-from .utils import dku_basestring_type, handle_http_exception
+from .utils import dku_basestring_type, handle_http_exception, stream_multipart_upload
 from .govern_client import GovernClient
 
 
@@ -151,6 +152,31 @@ class DSSClient(object):
             return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
         else:
             return notebook_list
+
+    ########################################################
+    # Jobs
+    ########################################################
+
+    def list_running_jobs(self, as_type="listitems", all_users=True):
+        """
+        List the currently-running jobs across all projects.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param boolean all_users: If **True**, include jobs started by all users that are visible to the current
+            authentication context. If **False**, include only jobs started by the user associated with this API call
+            (defaults to **True**).
+        :returns: The list of running jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
+        :rtype: list
+        """
+        items = self._perform_json("GET", "/jobs/running/", params={"allUsers": all_users})
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     ########################################################
     # Project folders
@@ -1963,11 +1989,15 @@ class DSSClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body, headers=headers)
 
     def _perform_json_upload(self, method, path, name, f):
-        http_res = self._session.request(
-            method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})},
-            verify=self._session.verify)
-
+        http_res = stream_multipart_upload(
+            self._session,
+            method,
+            "%s/dip/publicapi%s" % (self.host, path),
+            "file",
+            name,
+            f,
+            self._session.verify
+        )
         handle_http_exception(http_res)
         return http_res
 

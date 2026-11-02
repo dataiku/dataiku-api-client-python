@@ -1,12 +1,17 @@
 import csv, sys
 from dateutil import parser as date_iso_parser
 from contextlib import closing
+import io
 import os
+import stat
+import tempfile
 import zipfile
 import itertools
 import sys
 import time
 from datetime import datetime
+
+from ._vendor.requests_toolbelt import MultipartEncoder
 
 if sys.version_info > (3,0):
     import codecs
@@ -162,6 +167,73 @@ def _write_response_content_to_file(response, path):
             if chunk:
                 f.write(chunk)
                 f.flush()
+
+
+def stream_multipart_upload(session, method, url, field_name, filename, content, verify, spool_chunk_size=1024 * 1024):
+    def make_encoder(upload_content):
+        return MultipartEncoder(fields={
+            field_name: (filename, upload_content, None, {'Expires': '0'})
+        })
+
+    temporary_file = None
+    try:
+        if _must_spool_upload_content(content):
+            # Materialize streams whose multipart size cannot be trusted.
+            temporary_file = _spool_upload_content(content, spool_chunk_size)
+        else:
+            encoder = make_encoder(content)
+
+        if temporary_file is not None:
+            encoder = make_encoder(temporary_file)
+
+        return session.request(
+            method,
+            url,
+            data=encoder,
+            headers={'Content-Type': encoder.content_type},
+            verify=verify
+        )
+    finally:
+        if temporary_file is not None:
+            temporary_file.close()
+
+
+def _must_spool_upload_content(content):
+    if isinstance(content, (str, bytes, io.BytesIO)):
+        # In-memory payloads have a reliable size.
+        return False
+
+    if isinstance(content, io.TextIOBase):
+        # Text streams must be encoded before upload.
+        return True
+
+    if not isinstance(content, (io.FileIO, io.BufferedReader, io.BufferedRandom)):
+        # Wrappers and custom streams may transform or hide their content.
+        return True
+
+    try:
+        # Pipes and sockets do not have a reliable file size.
+        return not stat.S_ISREG(os.fstat(content.fileno()).st_mode)
+    except (io.UnsupportedOperation, OSError):
+        # Streams without a usable descriptor require materialization.
+        return True
+
+
+def _spool_upload_content(content, spool_chunk_size):
+    temporary_file = tempfile.TemporaryFile(mode='w+b')
+    try:
+        while True:
+            chunk = content.read(spool_chunk_size)
+            if not chunk:
+                break
+            if isinstance(chunk, str):
+                chunk = chunk.encode('utf-8')
+            temporary_file.write(chunk)
+        temporary_file.seek(0)
+        return temporary_file
+    except Exception:
+        temporary_file.close()
+        raise
 
 if sys.version_info >= (3,3):
     _local_timezone = datetime.now().astimezone().tzinfo
