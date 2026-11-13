@@ -567,7 +567,7 @@ class MicrosoftGraphMailMessagingChannelCreator(MailMessagingChannelCreator):
         """
         Add a client secret to the messaging-channel-to-be-created.
 
-        :param string client_secret: Account used to sent mails with this channel. Must be a User Principal Name with a valid Microsoft 365 license.
+        :param string client_secret: Microsoft application client secret value.
         """
         self.channel_configuration["clientSecret"] = client_secret
 

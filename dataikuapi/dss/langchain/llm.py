@@ -622,7 +622,7 @@ def _lc_tool_call_to_dku_tool_call(
         "id": tool_call["id"],
         "function": {
             "name": tool_call["name"],
-            "arguments": json.dumps(tool_call["args"]),
+            "arguments": json.dumps(tool_call["args"], ensure_ascii=False),
         },
     }
 

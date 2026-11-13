@@ -274,7 +274,7 @@ class GovernGlobalApiKey(object):
 
         :return: the API key definition
 
-        :rtype: :class:GovernGlobalApiKeyDefinition
+        :rtype: :class:`GovernGlobalApiKeyDefinition`
         """
         data = self.client._perform_json(
             "GET", "/admin/global-api-keys/%s" % self.id_)
@@ -493,6 +493,12 @@ class GovernUserInfo(object):
         return self._raw["groups"]
     @property
     def email(self):
+        """
+        Get the user's email address.
+
+        :raises KeyError: if no email address is defined for the user
+        :rtype: string
+        """
         return self._raw["email"]
     @property
     def enabled(self):
@@ -665,6 +671,7 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get or set the label of the API key
 
+        :raises KeyError: if no label is defined for the API key
         :rtype: string
         """
         return self["label"]
@@ -678,7 +685,7 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get or set the description of the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("description")
 
@@ -691,7 +698,7 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get the user associated to the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("dssUserForImpersonation")
 
@@ -717,7 +724,9 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get the timestamp of when the API key was created
 
-        :rtype: :class:`datetime.datetime`
+        Returns None if the creation timestamp is 0.
+
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self["createdOn"]
         return _timestamp_ms_to_zoned_datetime(timestamp)
@@ -727,7 +736,7 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get the login of the user who created the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("createdBy")
 
@@ -736,7 +745,7 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get the timestamp of when the API key will expire, or None if the API key never expires
 
-        :rtype: :class:`datetime.datetime`
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.get("expiresOn")
         if timestamp is None or timestamp == 0:
@@ -748,7 +757,9 @@ class GovernGlobalApiKeyDefinition(dict):
         """
         Get or set the lifetime in days of the API key
 
-        :rtype: string
+        A value of 0 means the API key never expires.
+
+        :rtype: int
         """
         return self.get("expiry")
 
@@ -799,7 +810,7 @@ class GovernGlobalApiKeyListItem(dict):
         """
         Get the user associated to the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("dssUserForImpersonation")
    
@@ -819,6 +830,7 @@ class GovernGlobalApiKeyListItem(dict):
         """
         Get the label of the API key
 
+        :raises KeyError: if no label is defined for the API key
         :rtype: string
         """
         return self["label"]
@@ -828,7 +840,7 @@ class GovernGlobalApiKeyListItem(dict):
         """
         Get the description of the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("description")
    
@@ -837,7 +849,9 @@ class GovernGlobalApiKeyListItem(dict):
         """
         Get the timestamp of when the API key was created
 
-        :rtype: :class:`datetime.datetime`
+        Returns None if the creation timestamp is 0.
+
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self["createdOn"]
         return _timestamp_ms_to_zoned_datetime(timestamp)
@@ -847,7 +861,7 @@ class GovernGlobalApiKeyListItem(dict):
         """
         Get the login of the user who created the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("createdBy")
 

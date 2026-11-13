@@ -214,7 +214,8 @@ class Platform(object):
 
         :param list metrics: qualified metric identifiers
         :param AgentFilter agent_filter: optional additional agent selection
-        :param int or datetime from_time: optional inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
+        :param int or datetime from_time: inclusive lower bound, as epoch milliseconds or a timezone-aware datetime;
+            required unless ``latest_only=True``
         :param int or datetime to_time: optional exclusive upper bound, as epoch milliseconds or a timezone-aware datetime
         :param boolean latest_only: return at most the latest row of each logical series
         :rtype: list of dict
@@ -238,7 +239,7 @@ class Platform(object):
         :param list metrics: qualified metric identifiers
         :param str bucket: ``HOUR``, ``DAY``, ``WEEK`` or ``MONTH``
         :param AgentFilter agent_filter: optional additional agent selection
-        :param int or datetime from_time: optional inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
+        :param int or datetime from_time: required inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
         :param int or datetime to_time: optional exclusive upper bound, as epoch milliseconds or a timezone-aware datetime
         :rtype: dataikuapi.agentmanagement.metrics.BucketedMetricsFetchResults
         """

@@ -29,6 +29,7 @@ from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from .labeling_task import DSSLabelingTask
 from .llm import DSSLLM, DSSLLMConversation, DSSLLMConversationListItem, DSSLLMGuardrailsQuery, DSSLLMListItem, _create_llm_conversation
+from .llm_usages import DSSLLMUsage, DSSLLMReplacementResult
 from .macro import DSSMacro
 from .managedfolder import DSSManagedFolder
 from .ml import DSSMLTask, DSSMLTaskQueues
@@ -2775,6 +2776,32 @@ class DSSProject(object):
         """
         return DSSLLM(self.client, self.project_key, llm_id)
 
+    def list_llm_usages(self):
+        """
+        Usages on inaccessible connections are omitted. References to deleted connections are included.
+
+        :returns: The LLM usages in this project, including historical and trained references.
+        :rtype: list[DSSLLMUsage]
+        """
+        items = self.client._perform_json("GET", "/projects/%s/llms/usages" % self.project_key)
+        return [DSSLLMUsage(item) for item in items]
+
+    def replace_llms(self, replacement_dict):
+        """
+        Replace editable LLM usages in this project.
+
+        :param dict replacement_dict: Source LLM IDs mapped to full target LLM IDs.
+            Internal LLMs (Agents, Retrieval-Augmented LLMs, fine-tuned LLMs) can be replaced by completion LLMs
+            or by internal LLMs of the same type (and the same provider for fine-tuned LLMs).
+            Regular LLMs cannot be replaced by internal LLMs. Targets must be available in this project.
+            All editable usages are replaced. Replacements do not cascade.
+        :returns: Updated objects and their count.
+        :rtype: DSSLLMReplacementResult
+        """
+        result = self.client._perform_json("POST", "/projects/%s/llms/usages/replace" % self.project_key,
+                                           body=replacement_dict)
+        return DSSLLMReplacementResult(result)
+
     def new_llm_guardrails_query(self):
         """Create a direct guardrail query builder for this project."""
         return DSSLLMGuardrailsQuery(self.client, self.project_key)
@@ -2930,6 +2957,7 @@ class DSSProject(object):
             * QDRANT_LOCAL *(not recommended)*
             * MILVUS_LOCAL
             * MILVUS_REMOTE
+            * PGVECTOR
 
         :param Optional[str] embedding_llm_id: The id of the embedding LLM.
             For managed KBs, must have the TEXT_EMBEDDING_EXTRACTION purpose.
@@ -2937,8 +2965,8 @@ class DSSProject(object):
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
             * "managed" (bool) set to False to create an unmanaged knowledge bank
-            * "connection" (str) the connection name, for remote vector stores
-            * "indexName" (str) the index name, for remote vector stores, including Pinecone
+            * "connection" (str) the connection name, for remote vector stores. For ``PGVECTOR``, it should be a PostgreSQL connection.
+            * "indexName" (str) the index name, for remote vector stores, including Pinecone. For ``PGVECTOR``, this is the table name.
             * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
             * "vectorIndexType" (str) for ``MILVUS_REMOTE`` knowledge banks, one of ``DEFAULT``, ``FLAT``, ``IVF_FLAT``, or ``HNSW``
             * "columnMapping" (dict) mappings for vector store columns, used only for unmanaged knowledge banks. Expected format:
@@ -3131,20 +3159,24 @@ class DSSProject(object):
         """
         return DSSAgent(self.client, self.project_key, id)
 
-    def create_agent(self, name, type, plugin_agent_type=None):
+    def create_agent(self, name, type, plugin_agent_type=None, external_agent_type=None):
         """
         Create a new agent in the project, and return a handle to interact with it
 
         :param str name: The name for the new agent. This does not need to be unique
-        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT, TOOLS_USING_AGENT or STRUCTURED_AGENT (Visual Agent)
+        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT, TOOLS_USING_AGENT, STRUCTURED_AGENT (Visual Agent) or EXTERNAL_AGENT
         :param str plugin_agent_type: only if type=PLUGIN_AGENT, the id of the custom plugin component
+        :param str external_agent_type: only if type=EXTERNAL_AGENT, the external agent provider type. One of
+            REMOTE_DSS_AGENT, AZURE_FOUNDRY, BEDROCK_AGENT, BEDROCK_AGENT_CORE,
+            DATABRICKS_ENDPOINT, SALESFORCE_AGENTFORCE, SNOWFLAKE_AGENT or VERTEX_AI.
 
         :returns: a :class:`dataikuapi.dss.agent.DSSAgent` handle to interact with the newly-created agent
         """
         settings = {
             "name": name,
             "type": type,
-            "pluginAgentType": plugin_agent_type
+            "pluginAgentType": plugin_agent_type,
+            "externalAgentType": external_agent_type
         }
 
         ret = self.client._perform_json("POST", "/projects/%s/agents" % self.project_key, body=settings)

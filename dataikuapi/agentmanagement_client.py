@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from requests import Session
 from requests.auth import HTTPBasicAuth
-from .utils import handle_http_exception
+from .utils import dku_basestring_type, handle_http_exception
 from .agentmanagement.metrics import BucketedMetricsFetchResults
 from .agentmanagement._utils import dku_quote_fn, _to_timestamp_ms, _format_list
 from .agentmanagement.agent import AgentFilter, Agent, AgentListItem
@@ -44,6 +44,10 @@ def _consolidate_metric_chunks(chunks):
 class AgentManagementClient(object):
     """
     Entry point for the Dataiku Agent Management API client.
+
+    Instance administration methods delegate to :class:`dataikuapi.DSSClient` on the same
+    Agent Management instance and return the existing DSS handles. Use :meth:`get_dssclient`
+    for projects, datasets, recipes, plugins and code environments.
 
     Usage example:
 
@@ -89,6 +93,812 @@ class AgentManagementClient(object):
 
         if extra_headers is not None:
             self._session.headers.update(extra_headers)
+
+    ########################################################
+    # Running tasks
+    ########################################################
+
+    def list_futures(self, as_objects=False, all_users=False):
+        """
+        List the currently-running generic long tasks (a.k.a futures).
+
+        This does not list all Agent Management operations. Use list_operations() for platform and agent operations.
+
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSFuture`
+        :param boolean all_users: if True, returns futures for all users (requires admin privileges). Else, only returns futures for the user associated with the current authentication context (if any)
+
+        :return: list of futures. if as_objects is True, each future in the list is a :class:`dataikuapi.dss.future.DSSFuture`. Else, each future in the list is a dict. Each dict contains at least a 'jobId' field
+        :rtype: list of :class:`dataikuapi.dss.future.DSSFuture` or list of dict
+        """
+        return self.get_dssclient().list_futures(as_objects=as_objects, all_users=all_users)
+
+    def get_future(self, job_id):
+        """
+        Get a handle to interact with a specific long task (a.k.a future). This notably allows aborting this future.
+
+        :param str job_id: the identifier of the desired future (which can be returned by :py:meth:`list_futures`)
+        :returns: A handle to interact the future
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        return self.get_dssclient().get_future(job_id=job_id)
+
+    ########################################################
+    # User and group directories
+    ########################################################
+
+    def list_users_info(self):
+        """
+        Gets basic information about users on the Agent Management instance.
+
+        You do not need to be admin to call this
+
+        :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUserInfo`
+        """
+        return self.get_dssclient().list_users_info()
+
+    def list_groups_info(self):
+        """
+        Gets basic information about groups on the Agent Management instance.
+
+        You do not need to be admin to call this
+
+        :return: A list of groups, as a list of :class:`dataikuapi.dss.admin.DSSGroupInfo`
+        """
+        return self.get_dssclient().list_groups_info()
+
+    ########################################################
+    # Users
+    ########################################################
+
+    def list_users(self, as_objects=False, include_settings=False):
+        """
+        List all users setup on the Agent Management instance
+
+        Note: this call requires an API key with admin rights
+
+        :param bool as_objects: Return a list of :class:`dataikuapi.dss.admin.DSSUser` instead of dictionaries. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False. Defaults to False.
+
+        :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
+        """
+        return self.get_dssclient().list_users(as_objects=as_objects, include_settings=include_settings)
+
+    def get_user(self, login):
+        """
+        Get a handle to interact with a specific user
+
+        The handle's :meth:`~dataikuapi.dss.admin.DSSUser.get_client_as` method returns
+        a :class:`dataikuapi.DSSClient` authenticated as this user on the same AM instance.
+
+        :param str login: the login of the desired user
+
+        :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
+        """
+        return self.get_dssclient().get_user(login=login)
+
+    def create_user(self, login, password, display_name='', source_type='LOCAL', groups=None, profile='REGULAR_USER', email=None):
+        """
+        Create a user, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param str login: the login of the new user. Must be nonblank.
+        :param str password: the password used for 'LOCAL' authentication, subject to the instance's password policy. Ignored for other sources (pass None).
+        :param str display_name: the displayed name for the new user. Must be nonblank, despite the default value of ''.
+        :param str source_type: the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
+        :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
+        :param str profile: The Agent Management profile of the new user: REGULAR_USER (default) or POWER_USER.
+        :param str email: The email for the new user.
+
+        :return: A :class:`dataikuapi.dss.admin.DSSUser` user handle
+        """
+        return self.get_dssclient().create_user(
+            login=login, password=password, display_name=display_name, source_type=source_type,
+            groups=groups, profile=profile, email=email)
+
+    def create_users(self, users):
+        """
+        Create multiple users, and return a list of creation status
+
+        Note: this call requires an API key with admin rights
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It accepts the following keys:
+
+                           - 'login' (str): the login of the new user. Required and must be nonblank.
+                           - 'password' (str): used only for 'LOCAL' authentication; subject to the instance's password policy when provided. Ignored for other sources.
+                           - 'displayName' (str): the displayed name for the new user. Required and must be nonblank.
+                           - 'sourceType' (str): the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
+                           - 'groups' (list): the names of the groups the new user belongs to. Defaults to []
+                           - 'userProfile' (str): The Agent Management profile: REGULAR_USER (default) or POWER_USER.
+                           - 'email' (str): The email for the new user. Defaults to None
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, where each dictionary represents the creation status of a user. It should contain the following keys:
+
+                 - 'login' (str): the login of the created user
+                 - 'status' (str): the creation status of the user. Can be 'SUCCESS' or 'FAILURE'
+                 - 'error' (str): the error that occurred during that user's creation. Empty if status is not 'FAILURE'.
+        """
+        for user in users:
+            user.setdefault('userProfile', 'REGULAR_USER')
+        return self.get_dssclient().create_users(users=users)
+
+    def edit_users(self, user_changes):
+        """
+        Edits multiple users in a single bulk operation. This method is very permissive and is intended
+        for mass operations. If you are modifying a small number of users, it is advised to get a handle
+        from the get_user method and interact directly with a `DSSUser` object.
+
+        A valid workflow is to get the full users dictionaries from `list_users(include_settings=True)`,
+        modify them and use this method to apply the modifications.
+
+        Note: This call requires an API key with admin rights.
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[dict] user_changes: A list of dictionaries, where each dictionary defines the
+                                        changes for a single user. Each dictionary **must** contain the
+                                        'login' key to identify the user. Other keys can be included
+                                        to modify the user's properties, matching the structure of a
+                                        user settings object (see the output of
+                                        `list_users(include_settings=True))`. Available keys include:
+
+                                        - 'login' (str): The login of the user to modify (mandatory). Cannot be modified.
+                                        - 'displayName' (str): The user's display name.
+                                        - 'email' (str): The user's email address.
+                                        - 'groups' (list[str]): The list of groups for the user.
+                                        - 'userProfile' (str): The user's Agent Management profile (REGULAR_USER or POWER_USER).
+                                        - 'enabled' (bool): Whether the user is enabled.
+                                        - 'sourceType': User provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'.
+                                        - 'adminProperties' (dict): Custom admin properties for the user.
+                                        - 'userProperties' (dict): Custom user properties for the user.
+                                        - 'secrets' (list): A list of user-specific secrets.
+                                        - 'preferences' (dict): A dictionary of user preferences:
+
+                                            - 'uiLanguage' (str): UI language code (e.g., 'en', 'ja', 'fr').
+                                            - 'mentionEmails' (bool): Email notifications for mentions.
+                                            - 'discussionEmails' (bool): Email notifications for discussions.
+                                            - 'accessRequestEmails' (bool): Email notifications for access requests.
+                                            - 'grantedAccessEmails' (bool): Email notifications when access is granted.
+                                            - 'grantedPluginRequestEmails' (bool): Email notifications when a plugin request is granted.
+                                            - 'pluginRequestEmails' (bool): Email notifications for plugin requests.
+                                            - 'instanceAccessRequestsEmails' (bool): Email notifications for instance access requests.
+                                            - 'profileUpgradeRequestsEmails' (bool): Email notifications for profile upgrade requests.
+                                            - 'codeEnvCreationRequestEmails' (bool): Email notifications for code env creation requests.
+                                            - 'grantedCodeEnvCreationRequestEmails' (bool): Email notifications when a code env request is granted.
+                                            - 'dailyDigestsEmails' (bool): Daily digest emails.
+                                            - 'offlineActivityEmails' (bool): Offline activity summary emails.
+                                            - 'rememberPositionFlow' (bool): Remember position in the Flow.
+                                            - 'loginLogoutNotifications' (bool): Notifications for login/logout.
+                                            - 'watchedObjectsEditionsNotifications' (bool): Notifications for edits on watched objects.
+                                            - 'objectOnCurrentProjectCreatedDeletedNotifications' (bool): Notifications for object creation/deletion in the current project.
+                                            - 'anyObjectOnCurrentProjectEditedNotifications' (bool): Notifications for any object edit in the current project.
+                                            - 'watchStarOnCurrentProjectNotifications' (bool): Notifications for watch/star actions in the current project.
+                                            - 'otherUsersJobsTasksNotifications' (bool): Notifications for jobs/tasks from other users.
+                                            - 'requestAccessNotifications' (bool): Notifications for access requests.
+                                            - 'scenarioRunNotifications' (bool): Notifications for scenario runs.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted modification, indicating the status. Each dictionary contains the following keys:
+
+                 - 'login' (str): The login of the user that was modified.
+                 - 'status' (str): The result of the operation, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+        return self.get_dssclient().edit_users(user_changes=user_changes)
+
+    def delete_users(self, user_logins, allow_self_deletion=False):
+        """
+        Bulk deletes multiple users.
+
+        Note: This call requires an API key with admin rights.
+
+        Note: this call is not available to Dataiku Cloud users
+
+        :param list[str] user_logins: A list of logins for the users to be deleted.
+        :param bool allow_self_deletion: Allow the use of this function to delete your own user. Warning: this is very dangerous and used recklessly could lead to the deletion of all users/admins.
+
+        :rtype: list[dict]
+        :return: A list of dictionaries, one for each attempted deletion, indicating the status. Each dictionary contains the following keys:
+
+                 - 'login' (str): The login of the user that was deleted.
+                 - 'status' (str): The result of the deletion, either 'SUCCESS' or 'FAILURE'.
+                 - 'error' (str): The error message if the status is 'FAILURE', otherwise empty.
+        """
+        return self.get_dssclient().delete_users(user_logins=user_logins, allow_self_deletion=allow_self_deletion)
+
+    def get_own_user(self):
+        """
+        Get a handle to interact with the current user
+
+        :return: A :class:`dataikuapi.dss.admin.DSSOwnUser` user handle
+        """
+        return self.get_dssclient().get_own_user()
+
+    def list_users_activity(self, enabled_users_only=False):
+        """
+        List all users activity
+
+        Note: this call requires an API key with admin rights
+
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity`
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity`
+        """
+        return self.get_dssclient().list_users_activity(enabled_users_only=enabled_users_only)
+
+    def start_resync_users_from_supplier(self, logins):
+        """
+        Starts a resync of multiple users from an external supplier (LDAP, Azure AD or custom auth)
+
+        :param list logins: list of logins to resync
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        return self.get_dssclient().start_resync_users_from_supplier(logins=logins)
+
+    def start_resync_all_users_from_supplier(self):
+        """
+        Starts a resync of all users from an external supplier (LDAP, Azure AD or custom auth)
+
+        :return: a :class:`dataikuapi.dss.future.DSSFuture` representing the sync process
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        return self.get_dssclient().start_resync_all_users_from_supplier()
+
+    def start_fetch_external_groups(self, user_source_type):
+        """
+        Fetch groups from external source
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of group names
+        """
+        return self.get_dssclient().start_fetch_external_groups(user_source_type=user_source_type)
+
+    def start_fetch_external_users(self, user_source_type, login=None, email=None, group_name=None):
+        """
+        Fetch users from external source filtered by login or group name:
+         - if login or email is provided, will search for a user with an exact match in the external source (e.g. before login remapping)
+         - else,
+            - if group_name is provided, will search for members of the group in the external source
+            - else will search for all users
+
+        :param user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param login: optional - the login of the user in the external source
+        :param email: optional - the email of the user in the external source
+        :param group_name: optional - the group name of the group in the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :return: a DSSFuture containing a list of ExternalUser
+        """
+        return self.get_dssclient().start_fetch_external_users(
+            user_source_type=user_source_type, login=login, email=email, group_name=group_name)
+
+    def start_provision_users(self, user_source_type, users):
+        """
+        Provision users of given source type
+
+        :param string user_source_type: 'LDAP', 'AZURE_AD' or 'CUSTOM'
+        :param list users: list of user attributes coming form the external source
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        """
+        return self.get_dssclient().start_provision_users(user_source_type=user_source_type, users=users)
+
+    ########################################################
+    # Groups
+    ########################################################
+
+    def list_groups(self):
+        """
+        List all groups setup on the Agent Management instance
+
+        Note: this call requires an API key with admin rights
+
+        :returns: A list of groups, as an list of dicts
+        :rtype: list of dicts
+        """
+        return self.get_dssclient().list_groups()
+
+    def get_group(self, name):
+        """
+        Get a handle to interact with a specific group
+
+        :param str name: the name of the desired group
+        :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
+        """
+        return self.get_dssclient().get_group(name=name)
+
+    def create_group(self, name, description=None, source_type='LOCAL'):
+        """
+        Create a group, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        :param str name: the name of the new group
+        :param str description: (optional) a description of the new group
+        :param source_type: the type of the new group. Admissible values are 'LOCAL' and 'LDAP'
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSGroup` group handle
+        """
+        return self.get_dssclient().create_group(name=name, description=description, source_type=source_type)
+
+    ########################################################
+    # Connections
+    ########################################################
+
+    def list_connections(self, as_type="dictitems"):
+        """
+        List all connections setup on the Agent Management instance.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        :param string as_type: how to return the connection. Possible values are "dictitems", "listitems" and "objects"
+
+        :return: if **as_type** is dictitems, a dict of connection name to :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
+                 if **as_type** is listitems, a list of :class:`dataikuapi.dss.admin.DSSConnectionListItem`.
+                 if **as_type** is objects, a list of :class:`dataikuapi.dss.admin.DSSConnection`.
+
+        :rtype: dict or list
+        """
+        return self.get_dssclient().list_connections(as_type=as_type)
+
+    def list_connections_names(self, connection_type):
+        """
+        List all connections names on the Agent Management instance.
+
+        :param str connection_type: Returns only connections with this type. Use 'all' if you don't want to filter.
+
+        :return: the list of connections names
+        :rtype: List[str]
+        """
+        return self.get_dssclient().list_connections_names(connection_type=connection_type)
+
+    def get_connection(self, name):
+        """
+        Get a handle to interact with a specific connection
+
+        :param str name: the name of the desired connection
+        :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
+        """
+        return self.get_dssclient().get_connection(name=name)
+
+    def create_connection(self, name, type, params=None, usable_by='ALL', allowed_groups=None, description=None):
+        """
+        Create a connection, and return a handle to interact with it
+
+        Note: this call requires an API key with admin rights
+
+        :param name: the name of the new connection
+        :param type: the type of the new connection
+        :param dict params: the parameters of the new connection, as a JSON object (defaults to `{}`)
+        :param usable_by: the type of access control for the connection. Either 'ALL' (=no access control)
+            or 'ALLOWED' (=access restricted to users of a list of groups)
+        :param list allowed_groups: when using access control (that is, setting usable_by='ALLOWED'), the list
+            of names of the groups whose users are allowed to use the new connection (defaults to `[]`)
+        :param str description: (optional) a description of the new connection
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSConnection` connection handle
+        """
+        return self.get_dssclient().create_connection(
+            name=name, type=type, params=params, usable_by=usable_by,
+            allowed_groups=allowed_groups, description=description)
+
+    ########################################################
+    # Global API keys
+    ########################################################
+
+    def list_global_api_keys(self, as_type='listitems'):
+        """
+        List all global API keys set up on the Agent Management instance
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            If the secure API keys feature is enabled, the secret key of the listed
+            API keys will not be present in the returned objects
+
+        :param str as_type: How to return the global API keys. Possible values are "listitems" and "objects"
+
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSGlobalApiKeyListItem`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSGlobalApiKey`.
+        """
+        return self.get_dssclient().list_global_api_keys(as_type=as_type)
+
+    def get_global_api_key_by_id(self, id_):
+        """
+        Get a handle to interact with a specific Global API key
+
+        :param str id_: the id the API key
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        return self.get_dssclient().get_global_api_key_by_id(id_=id_)
+
+    def create_global_api_key(self, label=None, description=None, admin=False):
+        """
+        Create a Global API key, and return a handle to interact with it.
+
+        Use :meth:`AgentManagementClient.create_global_api_key_with_groups` to create global API keys that use groups
+        to manage their permissions.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param boolean admin: has the new API key admin rights (True or False)
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        return self.get_dssclient().create_global_api_key(label=label, description=description, admin=admin)
+
+    def create_global_api_key_with_groups(self, label=None, description=None, groups=None):
+        """
+        Create a Global API key, and return a handle to interact with it.
+
+        .. note::
+
+            This call requires an API key with admin rights
+
+        .. note::
+
+            The secret key of the created API key will always be present in the returned object,
+            even if the secure API keys feature is enabled
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param list groups: the groups the new API key belongs to
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSGlobalApiKey` API key handle
+        """
+        return self.get_dssclient().create_global_api_key_with_groups(label=label, description=description, groups=groups)
+
+    ########################################################
+    # Personal API keys
+    ########################################################
+
+    def list_personal_api_keys(self, as_type='listitems'):
+        """
+        List all your personal API keys.
+
+        :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
+
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
+        """
+        return self.get_dssclient().list_personal_api_keys(as_type=as_type)
+
+    def get_personal_api_key(self, id):
+        """
+        Get a handle to interact with a specific Personal API key.
+
+        :param str id: the id of the desired API key
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSPersonalApiKey` API key handle
+        """
+        return self.get_dssclient().get_personal_api_key(id=id)
+
+    def create_personal_api_key(self, label="", description="", as_type='dict'):
+        """
+        Create a Personal API key associated with your user.
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+
+        :return: if as_type=dict, the new personal API key is returned as a dict.
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
+        """
+        return self.get_dssclient().create_personal_api_key(label=label, description=description, as_type=as_type)
+
+    def list_all_personal_api_keys(self, as_type='listitems'):
+        """
+        List all personal API keys.
+        Only admin can list all the keys.
+
+        :param str as_type: How to return the personal API keys. Possible values are "listitems" and "objects"
+
+        :return: if as_type=listitems, each key as a :class:`dataikuapi.dss.admin.DSSPersonalApiKeyListItem`.
+                 if as_type=objects, each key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
+        """
+        return self.get_dssclient().list_all_personal_api_keys(as_type=as_type)
+
+    def create_personal_api_key_for_user(self, user, label="", description="", as_type='object'):
+        """
+        Create a Personal API key associated on behalf of a user.
+        Only admin can create a key for another user.
+
+        :param str label: the label of the new API key
+        :param str description: the description of the new API key
+        :param str user: the id of the user to impersonate
+        :param str as_type: How to return the personal API keys. Possible values are "dict" and "object"
+
+        :return: if as_type=dict, the new personal API key is returned as a dict.
+                 if as_type=object, the new personal API key is returned as a :class:`dataikuapi.dss.admin.DSSPersonalApiKey`.
+        """
+        return self.get_dssclient().create_personal_api_key_for_user(
+            user=user, label=label, description=description, as_type=as_type)
+
+    ########################################################
+    # Logs and audit
+    ########################################################
+
+    def list_logs(self):
+        """
+        List all available log files on the Agent Management instance
+        This call requires an API key with admin rights
+
+        :returns: A list of log file names
+        """
+        return self.get_dssclient().list_logs()
+
+    def get_log(self, name):
+        """
+        Get the contents of a specific log file
+        This call requires an API key with admin rights
+
+        :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
+        :returns: The contents of the log file, limited to the last 1,000 lines
+        """
+        return self.get_dssclient().get_log(name=name)
+
+    def log_custom_audit(self, custom_type, custom_params=None):
+        """
+        Log a custom entry to the audit trail
+
+        :param str custom_type: value for customMsgType in audit trail item
+        :param dict custom_params: value for customMsgParams in audit trail item (defaults to `{}`)
+        """
+        return self.get_dssclient().log_custom_audit(custom_type=custom_type, custom_params=custom_params)
+
+    ########################################################
+    # Authentication
+    ########################################################
+
+    def get_auth_info(self):
+        """
+        Returns various information about the user currently authenticated using
+        this instance of the API client.
+
+        This method returns a dict that may contain the following keys (may also contain others):
+
+        * authIdentifier: login for a user, id for an API key
+        * groups: list of group names (if  context is an user)
+
+        :returns: a dict
+        :rtype: dict
+        """
+        return self.get_dssclient().get_auth_info()
+
+    ########################################################
+    # Instance information
+    ########################################################
+
+    def get_instance_info(self):
+        """
+        Get global information about the Agent Management instance
+
+        :returns: a :class:`dataikuapi.dssclient.DSSInstanceInfo`
+        """
+        return self.get_dssclient().get_instance_info()
+
+    ########################################################
+    # Licensing
+    ########################################################
+
+    def get_licensing_status(self):
+        """
+        Returns a dictionary with information about licensing status of this Agent Management instance
+
+        :rtype: dict
+        """
+        return self.get_dssclient().get_licensing_status()
+
+    def set_license(self, license):
+        """
+        Sets a new licence for the Agent Management instance.
+
+        :param license: license (content of license file)
+        :return: None
+        """
+        return self.get_dssclient().set_license(license=license)
+
+    ########################################################
+    # Messaging channels
+    ########################################################
+
+    def get_messaging_channel(self, channel_id):
+        """
+        Get the messaging channel with the corresponding ID
+
+        :param channel_id: ID of channel as specified Notifications & Integrations UI
+        :return: A messaging channel object, such as :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel`, or a :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel` for a mail channel
+        """
+        return self.get_dssclient().get_messaging_channel(channel_id=channel_id)
+
+    def list_messaging_channels(self, as_type="listitems", channel_type=None, channel_family=None):
+        """
+        List all available messaging channels
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param str channel_type: a channel type to filter by, e.g. "smtp", "aws-ses-mail", "slack" (see :meth:`AgentManagementClient.create_messaging_channel` for the full list of supported types)
+        :param str channel_family: a str to filter for family of channels with a similar interface - "mail" for all channels that send email-like messages
+        :return: A list of messaging channels after the filtering specified, as listitems (:class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelListItem`) or objects (:class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel` or :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel`)
+        """
+        return self.get_dssclient().list_messaging_channels(
+            as_type=as_type, channel_type=channel_type, channel_family=channel_family)
+
+    def new_messaging_channel(self, type):
+        """
+        Initializes the creation of a new messaging channel. Returns a :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelCreator`
+        or one of its subclasses to complete the creation of the messaging channel. The creation requires admin privileges.
+
+        :param str type: Type of the messaging channel. Can be one of the following: "smtp", "aws-ses-mail", "microsoft-graph-mail", "slack", "msft-teams" or "google-chat".
+        :returns: A new DSS Messaging Channel Creator handle
+        :rtype: :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannelCreator`
+
+        Usage example:
+
+        .. code-block:: python
+
+            smtp_messaging_channel_creator = client.new_messaging_channel("smtp")
+            smtp_messaging_channel_creator.with_id("Some ID")
+            smtp_messaging_channel_creator.with_sender("email@example.com")
+            smtp_messaging_channel_creator.with_authorized_domains(["example.com", "example.org", "something.example.com"])
+            smtp_messaging_channel_creator.with_login("username")
+            smtp_messaging_channel_creator.with_password("password")
+            smtp_messaging_channel_creator.with_host("host.example.com")
+            smtp_messaging_channel_creator.with_port(443)
+            smtp_messaging_channel_creator.with_session_properties([{ "key": "key1", "value": "value1" }, { "key": "key2", "value": "value2" }])
+            smtp_messaging_channel = smtp_messaging_channel_creator.create()
+        """
+        if type in ("twilio", "shell"):
+            raise ValueError("Unsupported messaging channel type for Agent Management: %s" % type)
+        return self.get_dssclient().new_messaging_channel(type=type)
+
+    def create_messaging_channel(self, channel_type, channel_id=None, channel_configuration=None, permissions=None):
+        """
+        Create a messaging channel. Requires admin privileges.
+
+        We strongly recommend that you use the creator helpers instead of calling this directly. See :meth:`AgentManagementClient.new_messaging_channel`.
+
+        :param str channel_type: type of the channel. Common types are "smtp", "aws-ses-mail", "microsoft-graph-mail", "slack", "msft-teams" and "google-chat". Twilio and shell channels are not supported by Agent Management.
+        :param str channel_id: optional ID of the channel, must be unique. If None or empty a random ID will be generated.
+        :param dict channel_configuration: optional specific configuration for the channel depending on the channel type. Every configuration entry is optional but not provided some may lead to a non-functional messaging channel.
+
+            - "smtp", "aws-ses-mail", "microsoft-graph-mail":
+                - "useCurrentUserAsSender": True to use the email of the user triggering the action as sender, False otherwise. Has precedence over 'sender' property;
+                - "sender": sender email, use an adhoc provided email if not provided;
+                - "authorizedDomain": comma-separated list of authorized domains for "To" addresses;
+                - "useSSL": True to use SSL, False otherwise;
+                - "useTLS": True to use TLS, False otherwise;
+                - "login": user login;
+                - "password": user password;
+                - "host": host to connect to;
+                - "port": port to connect to;
+                - "sessionProperties": Array of dictionaries with "key" and "value" keys set for session extra properties;
+                - Additional for "aws-ses-mail":
+                    - "accessKey": AWS access key;
+                    - "secretKey": AWS secret key;
+                    - "regionOrEndpoint": AWS region or custom endpoint.
+                - Additional for "microsoft-graph-mail":
+                    - "clientId": Microsoft application ID;
+                    - "tenantId": Microsoft directory ID;
+                    - "clientSecret": Microsoft application client secret value.
+            - "slack":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "mode": connection mode. Can be "WEBHOOK" or "API";
+                - "webhookUrl": webhook URL for "WEBHOOK" mode;
+                - "authorizationToken": authorization token for "API" mode;
+                - "channel": Slack channel ID.
+            - "msft-teams":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "webhookUrl": webhook URL;
+                - "webhookType": type of webhook to use. Can be "WORKFLOWS" or "OFFICE365" (legacy).
+            - "google-chat":
+                - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
+                - "webhookUrl": webhook URL;
+                - "webhookKey": key parameter for the webhook URL (mandatory if not included in the URL);
+                - "webhookToken": token parameter for the webhook URL (mandatory if not included in the URL).
+
+        :param list[dict] permissions: optional list of permissions objects (all users can use the channel if not defined). Can be:
+
+            - { "group": group_id, canUse: True } to authorize a group to use the channel
+            - { "user": user_login, canUse: True } to authorize a single user to use the channel
+
+        Usage example:
+
+        .. code-block:: python
+
+            channel_type = "smtp"
+            channel_id = "Some ID"
+            sender = "email@example.com"
+            authorized_domains = ["example.com", "example.org", "something.example.com"]
+            login = "username"
+            password = "password"
+            host = "host.example.com"
+            port = 587
+            session_properties = [{ "key": "key1", "value": "value1" }, { "key": "key2", "value": "value2" }]
+            channel_params = {
+                "useCurrentUserAsSender": False,
+                "sender": sender,
+                "authorizedDomain": ",".join(authorized_domains),
+                "useSSL": True,
+                "useTLS": True,
+                "login": login,
+                "password": password,
+                "host": host,
+                "port": port,
+                "sessionProperties": session_properties
+            }
+            client.create_messaging_channel(channel_type, channel_id, channel_params)
+
+        :return: The created messaging channel object, such as :class:`dataikuapi.dss.messaging_channel.DSSMessagingChannel`, or a :class:`dataikuapi.dss.messaging_channel.DSSMailMessagingChannel` for a mail channel
+        """
+        if channel_type in ("twilio", "shell"):
+            raise ValueError("Unsupported messaging channel type for Agent Management: %s" % channel_type)
+        return self.get_dssclient().create_messaging_channel(
+            channel_type=channel_type, channel_id=channel_id,
+            channel_configuration=channel_configuration, permissions=permissions)
+
+    ########################################################
+    # Identity and access management
+    ########################################################
+
+    def get_sso_settings(self):
+        """
+        Get the Single Sign-On (SSO) settings
+
+        :return: SSO settings
+        :rtype: :class:`dataikuapi.iam.settings.SSOSettings`
+        """
+        return self.get_dssclient().get_sso_settings()
+
+    def get_ldap_settings(self):
+        """
+        Get the LDAP settings
+
+        :return: LDAP settings
+        :rtype: :class:`dataikuapi.iam.settings.LDAPSettings`
+        """
+        return self.get_dssclient().get_ldap_settings()
+
+    def get_azure_ad_settings(self):
+        """
+        Get the Azure Active Directory (aka Microsoft Entra ID) settings
+
+        :return: Azure AD settings
+        :rtype: :class:`dataikuapi.iam.settings.AzureADSettings`
+        """
+        return self.get_dssclient().get_azure_ad_settings()
+
+    ########################################################
+    # Cobuild
+    ########################################################
+
+    def get_cobuild_status(self):
+        """
+        Returns whether Cobuild is available to the authenticated caller.
+
+        The result contains enabled and, when access is denied, reason.
+
+        :rtype: dict
+        """
+        return self.get_dssclient().get_cobuild_status()
 
     def new_cobuild_conversation(self):
         """
@@ -607,10 +1417,12 @@ class AgentManagementClient(object):
         return AgentManagementTags(self, self._perform_json("GET", "/agent-management/tags"))
 
 
-
     def get_dssclient(self):
         """
-        Creates a DSSClient to access the capabilities of the underlying DSS instance.
+        Creates a DSSClient targeting the same Agent Management instance with the same authentication context.
+
+        Use this client for projects, datasets, recipes, plugins and code environments.
+        Instance administration methods on AgentManagementClient also use this client internally.
 
         :return: a DSSClient client
         :rtype: :class:`dataikuapi.DSSClient`

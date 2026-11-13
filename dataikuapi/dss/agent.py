@@ -269,6 +269,8 @@ class DSSAgentListItem(DSSTaggableObjectListItem):
 
     def as_llm(self):
         """
+        Get an LLM handle for querying this agent.
+
         :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
         :rtype: dataikuapi.dss.llm.DSSLLM
         """
@@ -294,6 +296,13 @@ class DSSAgent(object):
 
     def as_llm(self):
         """
+        Get an LLM handle for querying this agent.
+
+        This is the recommended way to call a visual agent from Python.
+        Use the returned handle to create and execute a completion query.
+
+        This is equivalent to calling ``project.get_llm("agent:" + agent_id)``.
+
         :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
         :rtype: dataikuapi.dss.llm.DSSLLM
         """
