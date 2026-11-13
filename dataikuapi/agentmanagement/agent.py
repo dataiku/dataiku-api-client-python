@@ -313,7 +313,8 @@ class Agent(object):
         Set ``latest_only=True`` and omit both timestamps to get the latest available values.
 
         :param list metrics: qualified metric identifiers
-        :param int or datetime from_time: optional inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
+        :param int or datetime from_time: inclusive lower bound, as epoch milliseconds or a timezone-aware datetime;
+            required unless ``latest_only=True``
         :param int or datetime to_time: optional exclusive upper bound, as epoch milliseconds or a timezone-aware datetime
         :param boolean latest_only: return at most the latest row of each logical series
         :rtype: list of dict
@@ -335,7 +336,7 @@ class Agent(object):
 
         :param list metrics: qualified metric identifiers
         :param str bucket: ``HOUR``, ``DAY``, ``WEEK`` or ``MONTH``
-        :param int or datetime from_time: optional inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
+        :param int or datetime from_time: required inclusive lower bound, as epoch milliseconds or a timezone-aware datetime
         :param int or datetime to_time: optional exclusive upper bound, as epoch milliseconds or a timezone-aware datetime
         :rtype: dataikuapi.agentmanagement.metrics.AgentBucketedMetricsFetchResults
         """
@@ -348,8 +349,10 @@ class Agent(object):
         """
         Returns the agent uptime test results.
 
-        :param str from_time: optional lower time bound
-        :param str to_time: optional upper time bound
+        Both bounds use ISO-8601 strings with a UTC offset, for example ``2026-10-30T00:00:00Z``.
+
+        :param str from_time: optional inclusive lower time bound
+        :param str to_time: optional exclusive upper time bound
         :rtype: list of dict
         """
         return self.client._perform_json("GET", self._path("uptime-results"), params={"from": from_time, "to": to_time})

@@ -126,15 +126,16 @@ class DSSLLM(object):
         """
         return DSSLLMCompletionsQuery(self)
 
-    def new_embeddings(self, text_overflow_mode="FAIL"):
+    def new_embeddings(self, text_overflow_mode="FAIL", max_parallelism=None):
         """
         Create a new embedding query.
 
         :param str text_overflow_mode: How to handle longer texts than what the model supports. Either 'TRUNCATE' or 'FAIL'.
+        :param int max_parallelism: Maximum concurrent LLM calls. If unset, uses the LLM connection default.
         :returns: A handle on the generated embeddings query.
         :rtype: :class:`DSSLLMEmbeddingsQuery`
         """
-        return DSSLLMEmbeddingsQuery(self, text_overflow_mode)
+        return DSSLLMEmbeddingsQuery(self, text_overflow_mode, max_parallelism)
 
     def new_images_generation(self):
         return DSSLLMImageGenerationQuery(self)
@@ -607,7 +608,7 @@ class DSSLLMEmbeddingsQuery(object):
 
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLM.new_embeddings` instead.
     """
-    def __init__(self, llm, text_overflow_mode):
+    def __init__(self, llm, text_overflow_mode, max_parallelism=None):
         self.llm = llm
         self._guardrails = None
         self.eq = {
@@ -617,6 +618,8 @@ class DSSLLMEmbeddingsQuery(object):
                 "textOverflowMode": text_overflow_mode
             }
         }
+        if max_parallelism is not None:
+            self.eq["maxParallelism"] = max_parallelism
 
     def add_text(self, text):
         """
@@ -1854,7 +1857,7 @@ class DSSLLMStreamedCompletionChunk(object):
     def text(self):
         """
         :return: If this chunk is content and has text, the (partial) text
-        :rtype: bool
+        :rtype: str
         """
         return self.data.get("text", None)
 
@@ -2093,6 +2096,8 @@ class DSSLLMResolvedToolCall(object):
 class DSSLLMCompletionResponse(object):
     """
     A handle to interact with a completion query result.
+
+    The model response is directly accessible in the `.text` field of this object.
 
     .. important::
         Do not create this class directly, use :meth:`dataikuapi.dss.llm.DSSLLMCompletionQuery.execute` or

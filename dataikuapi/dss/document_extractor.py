@@ -86,8 +86,8 @@ class DocumentExtractor(object):
 
         :param images: screenshots of the document's pages from which to extract the fields
         :type images: iterable(:class:`InlineImageRef`) | iterable(:class:`ManagedFolderImageRef`)
-        :param schema: a JSON schema or a Pydantic model class describing the fields to extract.
-                       JSON schema definitions or Pydantic models referencing other models are unsupported.
+        :param schema: a JSON schema or a Pydantic model class describing the fields to extract. Recursive and external references are unsupported.
+                       JSON schema references : definition names must contain only ASCII letters, digits, and underscores.
         :type schema: str | dict | pydantic.BaseModel class or Python type hint.
         :param llm_id: Identifier of a vision LLM
         :type llm_id: str

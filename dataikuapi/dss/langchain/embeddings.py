@@ -55,6 +55,9 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
     context: Optional[Dict[str, Any]] = None
     """Query context to propagate to embedding requests"""
 
+    max_parallelism: Optional[int] = None
+    """Maximum concurrent LLM calls; unset uses the LLM connection default"""
+
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
 
@@ -134,7 +137,9 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
             return embeddings
 
     def _new_embeddings_query(self):
-        return self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
+        return self._llm_handle.new_embeddings(
+            text_overflow_mode="FAIL", max_parallelism=self.max_parallelism
+        )
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()

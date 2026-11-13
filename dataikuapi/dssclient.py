@@ -553,8 +553,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
 
         :param bool as_objects: Return a list of :class:`dataikuapi.dss.admin.DSSUser` instead of dictionaries. Defaults to False.
-        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False, as
-               :class:`dataikuapi.dss.admin.DSSUser` already includes settings by default. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False. Defaults to False.
 
         :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
         :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
@@ -588,10 +587,10 @@ class DSSClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param str login: the login of the new user
-        :param str password: the password of the new user
-        :param str display_name: the displayed name for the new user
-        :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
+        :param str login: the login of the new user. Must be nonblank.
+        :param str password: the password used for 'LOCAL' authentication, subject to the instance's password policy. Ignored for other sources (pass None).
+        :param str display_name: the displayed name for the new user. Must be nonblank, despite the default value of ''.
+        :param str source_type: the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ...
         :param str email: The email for the new user.
@@ -620,13 +619,13 @@ class DSSClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It accepts the following keys:
                            
-                           - 'login' (str): the login of the new user
-                           - 'password' (str): the password of the new user
-                           - 'displayName' (str): the displayed name for the new user
-                           - 'sourceType' (str): the type of new user. Admissible values are 'LOCAL' or 'LDAP'. Defaults to 'LOCAL'
-                           - 'groups' (list): the names of the groups the new user belongs to
+                           - 'login' (str): the login of the new user. Required and must be nonblank.
+                           - 'password' (str): used only for 'LOCAL' authentication; subject to the instance's password policy when provided. Ignored for other sources.
+                           - 'displayName' (str): the displayed name for the new user. Required and must be nonblank.
+                           - 'sourceType' (str): the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
+                           - 'groups' (list): the names of the groups the new user belongs to. Defaults to []
                            - 'userProfile' (str): The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ... Defaults to 'DATA_SCIENTIST'
                            - 'email' (str): The email for the new user. Defaults to None
 
@@ -677,7 +676,7 @@ class DSSClient(object):
                                         - 'groups' (list[str]): The list of groups for the user.
                                         - 'userProfile' (str): The user's profile (e.g., 'FULL_DESIGNER').
                                         - 'enabled' (bool): Whether the user is enabled.
-                                        - 'sourceType': User provisioning source type. Admissible values are 'LOCAL' or 'LDAP'.
+                                        - 'sourceType': User provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'.
                                         - 'adminProperties' (dict): Custom admin properties for the user.
                                         - 'userProperties' (dict): Custom user properties for the user.
                                         - 'secrets' (list): A list of user-specific secrets.
@@ -757,8 +756,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity` if as_objects is True, else as a list of dict
-        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity` or a list of dict
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity`
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity`
         """
         params = {
             "enabledUsersOnly": enabled_users_only
@@ -985,8 +984,9 @@ class DSSClient(object):
         """
         List all code envs setup on the DSS instance
 
-        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
-        :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.admin.DSSCodeEnv`
+        :returns: a list of :class:`dataikuapi.dss.admin.DSSCodeEnv` handles if as_objects is True,
+                  otherwise a list of dicts describing each code env's name, type and language
         """
         list = self._perform_json(
             "GET", "/admin/code-envs/")
@@ -1021,7 +1021,8 @@ class DSSClient(object):
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :param bool wait: wait for the code env to be created or return a future
-        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle or a `dataikuapi.dss.future.DSSFuture` if `wait` is False
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle if wait is True,
+                  otherwise a :class:`dataikuapi.dss.future.DSSFuture` whose result is a dict
         """
         request_params = {
             'dssInternalCodeEnvType': internal_env_type,
@@ -1051,7 +1052,8 @@ class DSSClient(object):
         :param deployment_mode: the type of the new code env
         :param params: the parameters of the new code env, as a JSON object
         :param bool wait: wait for the code env to be created or return a future
-        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle if wait is True,
+                  otherwise a :class:`dataikuapi.dss.future.DSSFuture` whose result is a dict
         """
         body_params = params if params is not None else {}
         body_params['deploymentMode'] = deployment_mode
@@ -1531,7 +1533,7 @@ class DSSClient(object):
         This call requires an API key with admin rights
 
         :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
-        :returns: The full content of the log file, as a string
+        :returns: The contents of the log file, limited to the last 1,000 lines
         """
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
@@ -1803,7 +1805,7 @@ class DSSClient(object):
         * groups: list of group names (if  context is an user)
         * secrets: list of dicts containing user secrets (if context is an user)
 
-        :param: with_secrets boolean: Return user secrets
+        :param bool with_secrets: Return user secrets
         :returns: a dict
         :rtype: dict
         """
@@ -1835,15 +1837,15 @@ class DSSClient(object):
          Returns a ticket for the DSS user authenticated by the dictionary of
          HTTP headers provided in headers_dict.
 
-         This is only used in webapp backends
+         This is only used in webapp backends.
 
-         This method returns a ticket to use as a X-DKU-APITicket header
+         This method returns a ticket to use as an X-DKU-APITicket header or a dkuCallerTicket.
 
-         :param: headers_dict dict: Dictionary of HTTP headers
+         :param: headers_dict dict: Dictionary of HTTP headers. An EnvironHeaders object is also accepted, and will be cast to dict.
          :returns: a string
          :rtype: string
          """
-         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)["msg"]
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=dict(headers_dict))["msg"]
 
     def get_ticket(self):
         """Get a temporary auth ticket for the current user"""
@@ -2380,7 +2382,7 @@ class DSSClient(object):
                 - Additional for "microsoft-graph-mail":
                     - "clientId": Microsoft application ID;
                     - "tenantId": Microsoft directory ID;
-                    - "clientSecret": Account used to sent mails with this channel. Must be a User Principal Name with a valid Microsoft 365 license.
+                    - "clientSecret": Microsoft application client secret value.
             - "slack":
                 - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
                 - "mode": connection mode. Can be "WEBHOOK" or "API";

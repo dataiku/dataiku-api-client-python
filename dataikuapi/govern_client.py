@@ -133,8 +133,7 @@ class GovernClient(object):
         Note: this call requires an API key with admin rights
 
         :param bool as_objects: Return a list of :class:`dataikuapi.govern.admin.GovernUser` instead of dictionaries. Defaults to False.
-        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False, as
-               :class:`dataikuapi.govern.admin.GovernUser` already includes settings by default. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False. Defaults to False.
 
         :return: A list of users, as a list of :class:`dataikuapi.govern.admin.GovernUser` if as_objects is True, else as a list of dicts
         :rtype: list of :class:`dataikuapi.govern.admin.GovernUser` or list of dicts
@@ -167,10 +166,10 @@ class GovernClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param str login: the login of the new user
-        :param str password: the password of the new user
-        :param str display_name: the displayed name for the new user
-        :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
+        :param str login: the login of the new user. Must be nonblank.
+        :param str password: the password used for 'LOCAL' authentication, subject to the instance's password policy. Ignored for other sources (pass None).
+        :param str display_name: the displayed name for the new user. Must be nonblank, despite the default value of ''.
+        :param str source_type: the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ...
         :param str email: The email for the new user.
@@ -199,13 +198,13 @@ class GovernClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It accepts the following keys:
                            
-                           - 'login' (str): the login of the new user
-                           - 'password' (str): the password of the new user
-                           - 'displayName' (str): the displayed name for the new user
-                           - 'sourceType' (str): the type of new user. Admissible values are 'LOCAL' or 'LDAP'. Defaults to 'LOCAL'
-                           - 'groups' (list): the names of the groups the new user belongs to
+                           - 'login' (str): the login of the new user. Required and must be nonblank.
+                           - 'password' (str): used only for 'LOCAL' authentication; subject to the instance's password policy when provided. Ignored for other sources.
+                           - 'displayName' (str): the displayed name for the new user. Required and must be nonblank.
+                           - 'sourceType' (str): the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
+                           - 'groups' (list): the names of the groups the new user belongs to. Defaults to []
                            - 'userProfile' (str): The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ... Defaults to 'DATA_SCIENTIST'
                            - 'email' (str): The email for the new user. Defaults to None
 
@@ -253,7 +252,7 @@ class GovernClient(object):
                                         - 'groups' (list[str]): The list of groups for the user.
                                         - 'userProfile' (str): The user's profile (e.g., 'FULL_DESIGNER').
                                         - 'enabled' (bool): Whether the user is enabled.
-                                        - 'sourceType': User provisioning source type. Admissible values are 'LOCAL' or 'LDAP'.
+                                        - 'sourceType': User provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'.
                                         - 'adminProperties' (dict): Custom admin properties for the user.
                                         - 'userProperties' (dict): Custom user properties for the user.
 
@@ -308,8 +307,8 @@ class GovernClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of user activity logs, as a list of :class:`dataikuapi.govern.admin.GovernUserActivity` if as_objects is True, else as a list of dict
-        :rtype: list of :class:`dataikuapi.govern.admin.GovernUserActivity` or a list of dict
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.govern.admin.GovernUserActivity`
+        :rtype: list of :class:`dataikuapi.govern.admin.GovernUserActivity`
         """
         params = {
             "enabledUsersOnly": enabled_users_only
@@ -585,7 +584,7 @@ class GovernClient(object):
         This call requires an API key with admin rights
 
         :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
-        :returns: The full content of the log file, as a string
+        :returns: The contents of the log file, limited to the last 1,000 lines
         """
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
