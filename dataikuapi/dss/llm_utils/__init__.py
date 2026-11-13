@@ -1,9 +1,7 @@
 import copy
 import json
 
-from six import string_types
-
-from ...utils import DataikuException
+from ...utils import DataikuException, dku_basestring_type
 
 _footer_attributes = [
     # usage metadata
@@ -30,7 +28,7 @@ def get_json_schema_and_parser(schema):
     
     :rtype: Tuple[str, Optional[Callable[[str], Any]]]
     """
-    if isinstance(schema, string_types) and schema:  # schema given directly as string
+    if isinstance(schema, dku_basestring_type) and schema:  # schema given directly as string
         return schema, None
     elif isinstance(schema, dict):
         return json.dumps(schema), None
