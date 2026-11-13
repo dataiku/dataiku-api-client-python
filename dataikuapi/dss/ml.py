@@ -4,12 +4,11 @@ import logging
 import re
 import warnings
 
-from six import string_types
-
 from .future import DSSFuture
 from .utils import DSSDatasetSelectionBuilder
 from .utils import DSSFilterBuilder
 from ..utils import DataikuException
+from ..utils import dku_basestring_type
 from ..utils import _write_response_content_to_file
 from ..utils import _ExponentialBackoff
 
@@ -619,7 +618,7 @@ class HyperparameterSearchSettings(object):
         self._raw_settings = raw_settings
 
     def _key_repr(self, key):
-        if isinstance(self._raw_settings[key], string_types):
+        if isinstance(self._raw_settings[key], dku_basestring_type):
             return "    \"{}\"=\"{}\"\n".format(key, self._raw_settings[key])
         else:
             return "    \"{}\"={}\n".format(key, self._raw_settings[key])
@@ -896,7 +895,7 @@ class HyperparameterSearchSettings(object):
         """
         self._raw_settings["mode"] = "CUSTOM"
         if code is not None:
-            if not isinstance(code, string_types):
+            if not isinstance(code, dku_basestring_type):
                 warnings.warn("HyperparameterSearchSettings.set_custom_validation ignoring invalid input: code")
                 warnings.warn("code must be a Python interpretable string")
             else:
@@ -1256,7 +1255,7 @@ class CategoricalHyperparameterSettings(HyperparameterSettings):
             "Invalid input type {} for categorical hyperparameter {}: must be a list of strings".format(type(values), self.name)
         all_possible_values = self.get_all_possible_values()
         for category in values:
-            assert isinstance(category, string_types), \
+            assert isinstance(category, dku_basestring_type), \
                 "Invalid input type {} for categorical hyperparameter {}: must be a string".format(type(category), self.name)
             assert category in all_possible_values, \
                 "Invalid input value \"{}\" for categorical hyperparameter {}: must be a member of {}".format(category, self.name, all_possible_values)
