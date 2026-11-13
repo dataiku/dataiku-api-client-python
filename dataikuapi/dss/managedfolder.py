@@ -44,16 +44,18 @@ class DSSManagedFolder(object):
     # Managed folder deletion
     ########################################################
     
-    def delete(self):
+    def delete(self, drop_data=False):
         """
         Delete the managed folder from the flow, and objects using it (recipes or labeling tasks)
 
         .. attention::
 
             This call doesn't delete the managed folder's contents
+
+        :param bool drop_data: Should the data of the folder be dropped
         """
-        return self.client._perform_empty(
-            "DELETE", "/projects/%s/managedfolders/%s" % (self.project_key, self.odb_id))
+        return self.client._perform_json(
+            "DELETE", "/projects/%s/managedfolders/%s" % (self.project_key, self.odb_id), params={"dropData": drop_data})
 
 
     ########################################################

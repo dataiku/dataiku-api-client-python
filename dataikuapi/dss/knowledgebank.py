@@ -166,7 +166,7 @@ class DSSKnowledgeBank(object):
         :param float similarity_threshold: only return documents with a similarity score above this threshold, typically between 0 and 1, only applied with search_type=SIMILARITY_THRESHOLD, defaults to 0.5
         :param int mmr_documents_count: number of documents to consider before selecting the documents to retrieve, only applied with search_type=MMR, defaults to 20
         :param float mmr_factor: weight of diversity vs relevancy, between 0 and 1, where 0 favors maximum diversity and 1 favors maximum relevancy, only applied with search_type=MMR, defaults to 0.25
-        :param bool hybrid_use_advanced_reranking: whether to use proprietary rerankers, valid for Azure AI and ElasticSearch vector stores, defaults to False
+        :param bool hybrid_use_advanced_reranking: whether to use proprietary rerankers, valid for Azure AI, ElasticSearch, and Milvus vector stores, defaults to False
         :param int hybrid_rrf_rank_constant: higher values give more weight to lower-ranked documents, valid for ElasticSearch vector stores, defaults to 60
         :param int hybrid_rrf_rank_window_size: number of documents to consider from each search type, valid for ElasticSearch vector stores, defaults to 4
         :param filter: optional metadata filter as a :class:`~dataikuapi.dss.utils.DSSSimpleFilter`
@@ -255,7 +255,7 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
     @property
     def vector_store_type(self):
         """
-        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, VERTEX_AI_GCS_BASED, FAISS, QDRANT_LOCAL)
+        Returns the type of storage backing the vector store (could be CHROMA, PINECONE, ELASTICSEARCH, AZURE_AI_SEARCH, SNOWFLAKE_CORTEX_SEARCH, DATABRICKS_AI_SEARCH (Databricks AI Search), VERTEX_AI_GCS_BASED, VERTEX_AGENT_RETRIEVAL, FAISS, QDRANT_LOCAL, MILVUS_LOCAL, MILVUS_REMOTE, PGVECTOR)
 
         :rtype: str
         """
@@ -272,6 +272,16 @@ class DSSKnowledgeBankSettings(DSSTaggableObjectSettings):
             {"name": k, "type": v}
             for k, v in schema.items()
         )
+
+    def set_vector_index_type(self, vector_index_type):
+        """
+        Sets the Milvus index type for Milvus Remote knowledge banks.
+
+        Accepted values are ``DEFAULT``, ``FLAT``, ``IVF_FLAT``, and ``HNSW``.
+
+        :param str vector_index_type: Vector index type
+        """
+        self._settings["vectorIndexType"] = vector_index_type
 
     def set_images_folder(self, managed_folder_id, project_key=None):
         """

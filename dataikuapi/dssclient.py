@@ -18,6 +18,7 @@ from .dss.data_directories_footprint import DSSDataDirectoriesFootprint
 from .dss.feature_store import DSSFeatureStore
 from .dss.notebook import DSSNotebook
 from .dss.future import DSSFuture
+from .dss.job import DSSJob, DSSJobListItem
 from .dss.projectfolder import DSSProjectFolder
 from .dss.project import DSSProject
 from .dss.app import DSSApp, DSSAppListItem
@@ -30,15 +31,16 @@ from .dss.sqlquery import DSSSQLQuery
 from .dss.discussion import DSSObjectDiscussions
 from .dss.apideployer import DSSAPIDeployer
 from .dss.projectdeployer import DSSProjectDeployer
-from .dss.mira import DSSMIRA
 from .dss.project_standards import DSSProjectStandards
 from .dss.unifiedmonitoring import DSSUnifiedMonitoring
 from .dss.utils import DSSInfoMessages, Enum
+from .secretsmanager import DSSSecretsManager, DSSVaultsManager
 from .dss.workspace import DSSWorkspace
 from .dss.enterprise_asset_library import DSSEnterpriseAssetLibrary
 import os.path as osp
-from .utils import dku_basestring_type, handle_http_exception
+from .utils import dku_basestring_type, handle_http_exception, stream_multipart_upload
 from .govern_client import GovernClient
+from .agentmanagement_client import AgentManagementClient
 
 
 class DSSClient(object):
@@ -151,6 +153,31 @@ class DSSClient(object):
             return [DSSNotebook(self, notebook['projectKey'], notebook['name'], notebook) for notebook in notebook_list]
         else:
             return notebook_list
+
+    ########################################################
+    # Jobs
+    ########################################################
+
+    def list_running_jobs(self, as_type="listitems", all_users=True):
+        """
+        List the currently-running jobs across all projects.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :param boolean all_users: If **True**, include jobs started by all users that are visible to the current
+            authentication context. If **False**, include only jobs started by the user associated with this API call
+            (defaults to **True**).
+        :returns: The list of running jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
+        :rtype: list
+        """
+        items = self._perform_json("GET", "/jobs/running/", params={"allUsers": all_users})
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     ########################################################
     # Project folders
@@ -314,22 +341,47 @@ class DSSClient(object):
         """
         return DSSBusinessApp(self, business_app_id)
 
-    def install_business_app_from_archive(self, fp):
+    def install_business_app_from_archive(self, fp, wait=False):
         """
         Install or upgrade a Business Application from a zip archive.
-        Code-env creation must be done separately by calling DSSClient.create_code_env.
+
+        Code environment creation must be done separately by calling :meth:`dataikuapi.dss.businessapp.DSSBusinessApp.create_code_env`
+        on the created Business Application.
 
         .. note::
 
             This call requires an API key with admin rights
 
         :param object fp: A file-like object pointing to a Business Application zip
-        :return: a future representing the installation/upgrade process
-        :rtype: :class:`dataikuapi.dss.future.DSSFuture`
+        :param bool wait: if True, wait for the installation/upgrade process to complete and return its result
+        :return: a future, or the installation/upgrade process result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
         """
         files = {'file': fp}
         resp = self._perform_json("POST", "/business-apps/install-from-archive", files=files)
-        return DSSFuture.from_resp(self, resp)
+        future = DSSFuture.from_resp(self, resp)
+        return future.wait_for_result() if wait else future
+
+    def install_business_app_from_store(self, business_app_id, wait=False):
+        """
+        Install a Business Application from the store.
+
+        The Business Application must not be installed yet.
+
+        Code environment creation must be done separately by calling :meth:`dataikuapi.dss.businessapp.DSSBusinessApp.create_code_env`
+        on the created Business Application.
+
+        Note: this call requires an API key with admin rights
+
+        :param str business_app_id: the store identifier of the Business Application
+        :param bool wait: if True, wait for the installation to complete and return its result
+        :return: a future, or the installation result if wait is True
+        :rtype: :class:`dataikuapi.dss.future.DSSFuture` or dict
+        """
+        resp = self._perform_json("POST", "/business-apps/install-from-store",
+                                  body={"businessAppId": business_app_id})
+        future = DSSFuture.from_resp(self, resp)
+        return future.wait_for_result() if wait else future
 
     ########################################################
     # Plugins
@@ -501,8 +553,7 @@ class DSSClient(object):
         Note: this call requires an API key with admin rights
 
         :param bool as_objects: Return a list of :class:`dataikuapi.dss.admin.DSSUser` instead of dictionaries. Defaults to False.
-        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False, as
-               :class:`dataikuapi.dss.admin.DSSUser` already includes settings by default. Defaults to False.
+        :param bool include_settings: Include detailed user settings in the response. Only useful if as_objects is False. Defaults to False.
 
         :return: A list of users, as a list of :class:`dataikuapi.dss.admin.DSSUser` if as_objects is True, else as a list of dicts
         :rtype: list of :class:`dataikuapi.dss.admin.DSSUser` or list of dicts
@@ -536,10 +587,10 @@ class DSSClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param str login: the login of the new user
-        :param str password: the password of the new user
-        :param str display_name: the displayed name for the new user
-        :param str source_type: the type of new user. Admissible values are 'LOCAL' or 'LDAP'
+        :param str login: the login of the new user. Must be nonblank.
+        :param str password: the password used for 'LOCAL' authentication, subject to the instance's password policy. Ignored for other sources (pass None).
+        :param str display_name: the displayed name for the new user. Must be nonblank, despite the default value of ''.
+        :param str source_type: the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
         :param list groups: the names of the groups the new user belongs to (defaults to `[]`)
         :param str profile: The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ...
         :param str email: The email for the new user.
@@ -568,13 +619,13 @@ class DSSClient(object):
 
         Note: this call is not available to Dataiku Cloud users
 
-        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It should contain the following keys:
+        :param list users: a list of dictionaries where each dictionary contains the parameters for user creation. It accepts the following keys:
                            
-                           - 'login' (str): the login of the new user
-                           - 'password' (str): the password of the new user
-                           - 'displayName' (str): the displayed name for the new user
-                           - 'sourceType' (str): the type of new user. Admissible values are 'LOCAL' or 'LDAP'. Defaults to 'LOCAL'
-                           - 'groups' (list): the names of the groups the new user belongs to
+                           - 'login' (str): the login of the new user. Required and must be nonblank.
+                           - 'password' (str): used only for 'LOCAL' authentication; subject to the instance's password policy when provided. Ignored for other sources.
+                           - 'displayName' (str): the displayed name for the new user. Required and must be nonblank.
+                           - 'sourceType' (str): the user provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'. Defaults to 'LOCAL'.
+                           - 'groups' (list): the names of the groups the new user belongs to. Defaults to []
                            - 'userProfile' (str): The profile for the new user. Typical values (depend on your license): FULL_DESIGNER, DATA_DESIGNER, AI_CONSUMER, ... Defaults to 'DATA_SCIENTIST'
                            - 'email' (str): The email for the new user. Defaults to None
 
@@ -625,7 +676,7 @@ class DSSClient(object):
                                         - 'groups' (list[str]): The list of groups for the user.
                                         - 'userProfile' (str): The user's profile (e.g., 'FULL_DESIGNER').
                                         - 'enabled' (bool): Whether the user is enabled.
-                                        - 'sourceType': User provisioning source type. Admissible values are 'LOCAL' or 'LDAP'.
+                                        - 'sourceType': User provisioning source type. Examples include 'LOCAL', 'LOCAL_NO_AUTH', 'LDAP', 'PAM', 'AZURE_AD' and 'CUSTOM'.
                                         - 'adminProperties' (dict): Custom admin properties for the user.
                                         - 'userProperties' (dict): Custom user properties for the user.
                                         - 'secrets' (list): A list of user-specific secrets.
@@ -705,8 +756,8 @@ class DSSClient(object):
 
         Note: this call requires an API key with admin rights
 
-        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity` if as_objects is True, else as a list of dict
-        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity` or a list of dict
+        :return: A list of user activity logs, as a list of :class:`dataikuapi.dss.admin.DSSUserActivity`
+        :rtype: list of :class:`dataikuapi.dss.admin.DSSUserActivity`
         """
         params = {
             "enabledUsersOnly": enabled_users_only
@@ -933,8 +984,9 @@ class DSSClient(object):
         """
         List all code envs setup on the DSS instance
 
-        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.future.DSSCodeEnv`
-        :returns: a list of code envs. Each code env is a dict containing at least "name", "type" and "language"
+        :param boolean as_objects: if True, each returned item will be a :class:`dataikuapi.dss.admin.DSSCodeEnv`
+        :returns: a list of :class:`dataikuapi.dss.admin.DSSCodeEnv` handles if as_objects is True,
+                  otherwise a list of dicts describing each code env's name, type and language
         """
         list = self._perform_json(
             "GET", "/admin/code-envs/")
@@ -969,7 +1021,8 @@ class DSSClient(object):
         :param str python_interpreter: Python interpreter version, can be `PYTHON39`, `PYTHON310`, `PYTHON311`, `PYTHON312` or `PYTHON313`. If None, DSS will try to select a supported & available interpreter.
         :param str code_env_version: Version of the code env. Reserved for future use.
         :param bool wait: wait for the code env to be created or return a future
-        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle or a `dataikuapi.dss.future.DSSFuture` if `wait` is False
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle if wait is True,
+                  otherwise a :class:`dataikuapi.dss.future.DSSFuture` whose result is a dict
         """
         request_params = {
             'dssInternalCodeEnvType': internal_env_type,
@@ -999,7 +1052,8 @@ class DSSClient(object):
         :param deployment_mode: the type of the new code env
         :param params: the parameters of the new code env, as a JSON object
         :param bool wait: wait for the code env to be created or return a future
-        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeEnv` code env handle if wait is True,
+                  otherwise a :class:`dataikuapi.dss.future.DSSFuture` whose result is a dict
         """
         body_params = params if params is not None else {}
         body_params['deploymentMode'] = deployment_mode
@@ -1112,6 +1166,51 @@ class DSSClient(object):
         :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
         """
         return DSSCodeStudioTemplate(self, template_id)
+
+    def create_code_studio_template(self, template_label, template_type):
+        """
+        Create a code studio template, and return a handle to interact with it
+
+        :param string template_label: the name of the new code studio template
+        :param string template_type: the type of the new code studio template ( 'block_based', 'manual' or a plugin-provided type)
+
+        :returns: A :class:`dataikuapi.dss.admin.DSSCodeStudioTemplate` code studio template handle
+
+        """
+        definition = {}
+        definition['label'] = template_label
+        definition['type'] = template_type
+        resp = self._perform_json(
+            "POST", "/admin/code-studios/", body=definition)
+        if resp is None:
+            raise Exception('Code studio template creation returned no data')
+        if resp.get('messages', {}).get('error', False):
+            raise Exception('Code studio template creation failed : %s' % (json.dumps(resp.get('messages', {}).get('messages', {}))))
+        return DSSCodeStudioTemplate(self, resp['id'])
+
+    def import_code_studio_template(self, archive_path, label=None, import_spec=None):
+        """
+        Import a code studio template from an exported archive.
+
+        :param str archive_path: path to the exported template zip archive
+        :param str label: optional label for the imported template. If omitted, the exported template label is reused
+        :param dict import_spec: optional import specification
+
+        :return: backend import result, including the created template id and info messages
+        :rtype: dict
+        """
+        if import_spec is None:
+            import_spec = {}
+        with open(archive_path, 'rb') as fp:
+            files = {
+                "file": fp
+            }
+            params = {}
+            if label is not None:
+                params["label"] = label
+            if import_spec:
+                params["importSpec"] = json.dumps(import_spec)
+            return self._perform_json("POST", "/admin/code-studios/import", params=params, files=files)
 
 
     ########################################################
@@ -1434,7 +1533,7 @@ class DSSClient(object):
         This call requires an API key with admin rights
 
         :param str name: the name of the desired log file (obtained with :meth:`list_logs`)
-        :returns: The full content of the log file, as a string
+        :returns: The contents of the log file, limited to the last 1,000 lines
         """
         return self._perform_json(
             "GET", "/admin/logs/%s" % name)
@@ -1550,7 +1649,8 @@ class DSSClient(object):
         READ_ONLY = "READ_ONLY"
         ALL = "ALL"
 
-    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE):
+    def create_project_from_bundle_local_archive(self, archive_path, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE,
+                                                 fail_on_missing_users_or_groups=True):
         """
         Create a project from a bundle archive.
         Warning: this method can only be used on an automation node.
@@ -1560,18 +1660,22 @@ class DSSClient(object):
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
         :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
         :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
+        :param fail_on_missing_users_or_groups: fail the project creation when a propagated user or group is missing on the automation node (default: True)
+        :type fail_on_missing_users_or_groups: bool
         """
         if isinstance(permissions_propagation_policy, DSSClient.PermissionsPropagationPolicy):
             permissions_propagation_policy = permissions_propagation_policy.value
         params = {
             "archivePath": osp.abspath(archive_path),
             "permissionsPropagationPolicy": permissions_propagation_policy,
+            "failOnMissingUsersOrGroups": fail_on_missing_users_or_groups,
         }
         if project_folder is not None:
             params["projectFolderId"] = project_folder.project_folder_id
         return self._perform_json("POST", "/projectsFromBundle/fromArchive", params=params)
 
-    def create_project_from_bundle_archive(self, fp, project_folder=None):
+    def create_project_from_bundle_archive(self, fp, project_folder=None, permissions_propagation_policy=PermissionsPropagationPolicy.NONE,
+                                           fail_on_missing_users_or_groups=True):
         """
         Create a project from a bundle archive (as a file object)
         Warning: this method can only be used on an automation node.
@@ -1579,8 +1683,17 @@ class DSSClient(object):
         :param string fp: A file-like object pointing to a bundle archive zip
         :param project_folder: the project folder in which the project will be created or None for root project folder
         :type project_folder: A :class:`dataikuapi.dss.projectfolder.DSSProjectFolder`
+        :param permissions_propagation_policy: propagate the permissions that were set in the design node to the new project on the automation node (default: False)
+        :type permissions_propagation_policy: A :class:`PermissionsPropagationPolicy`
+        :param fail_on_missing_users_or_groups: fail the project creation when a propagated user or group is missing on the automation node (default: True)
+        :type fail_on_missing_users_or_groups: bool
         """
-        params = {}
+        if isinstance(permissions_propagation_policy, DSSClient.PermissionsPropagationPolicy):
+            permissions_propagation_policy = permissions_propagation_policy.value
+        params = {
+            "permissionsPropagationPolicy": permissions_propagation_policy,
+            "failOnMissingUsersOrGroups": fail_on_missing_users_or_groups,
+        }
         if project_folder is not None:
             params['projectFolderId'] = project_folder.project_folder_id
         files = {'file': fp }
@@ -1593,7 +1706,8 @@ class DSSClient(object):
         Warning: this method can only be used on a design node.
 
         :param file-like fp: the input stream, as a file-like object
-        :returns: a :class:`TemporaryImportHandle` to interact with the prepared import
+        :returns: a handle to interact with the prepared import
+        :rtype: :class:`~dataikuapi.dssclient.TemporaryImportHandle`
         """
         val = self._perform_json_upload(
                 "POST", "/projects/import/upload",
@@ -1623,17 +1737,6 @@ class DSSClient(object):
         return DSSProjectDeployer(self)
 
     ########################################################
-    # MIRA
-    ########################################################
-
-    def get_mira(self):
-        """Gets a handle to work with MIRA
-
-        :rtype: :class:`~dataikuapi.dss.mira.DSSMIRA`
-        """
-        return DSSMIRA(self)
-
-    ########################################################
     # Unified Monitoring
     ########################################################
 
@@ -1656,7 +1759,7 @@ class DSSClient(object):
         return DSSProjectStandards(self)
 
     ########################################################
-    # Data Catalog
+    # Catalog
     ########################################################
 
     def catalog_index_connections(self, connection_names=None, all_connections=False, indexing_mode="FULL"):
@@ -1702,7 +1805,7 @@ class DSSClient(object):
         * groups: list of group names (if  context is an user)
         * secrets: list of dicts containing user secrets (if context is an user)
 
-        :param: with_secrets boolean: Return user secrets
+        :param bool with_secrets: Return user secrets
         :returns: a dict
         :rtype: dict
         """
@@ -1734,15 +1837,15 @@ class DSSClient(object):
          Returns a ticket for the DSS user authenticated by the dictionary of
          HTTP headers provided in headers_dict.
 
-         This is only used in webapp backends
+         This is only used in webapp backends.
 
-         This method returns a ticket to use as a X-DKU-APITicket header
+         This method returns a ticket to use as an X-DKU-APITicket header or a dkuCallerTicket.
 
-         :param: headers_dict dict: Dictionary of HTTP headers
+         :param: headers_dict dict: Dictionary of HTTP headers. An EnvironHeaders object is also accepted, and will be cast to dict.
          :returns: a string
          :rtype: string
          """
-         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=headers_dict)["msg"]
+         return self._perform_json("POST", "/auth/ticket-from-browser-headers", body=dict(headers_dict))["msg"]
 
     def get_ticket(self):
         """Get a temporary auth ticket for the current user"""
@@ -1862,6 +1965,27 @@ class DSSClient(object):
             "POST", "/admin/licensing/license", body=json.loads(license))
 
     ########################################################
+    # Agent Management
+    ########################################################
+
+    def get_agent_management_client(self):
+        """
+        Creates an Agent Management client for this DSS instance, reusing this client's
+        host, authentication, HTTP headers and certificate settings.
+
+        :return: an Agent Management client
+        :rtype: :class:`dataikuapi.AgentManagementClient`
+        """
+        amc = AgentManagementClient(self.host, api_key=self.api_key, internal_ticket=self.internal_ticket,
+                                    extra_headers=self._session.headers, client_certificate=self._session.cert, jwt_bearer_token=self.jwt_bearer_token)
+
+        # When the DSSClient is created from a ticket with encrypted RPC, verify is not just a boolean
+        if self._session.verify is not None:
+            amc._session.verify = self._session.verify
+
+        return amc
+
+    ########################################################
     # Govern
     ########################################################
 
@@ -1949,11 +2073,15 @@ class DSSClient(object):
         return self._perform_http(method, path, params=params, body=body, files=files, stream=True, raw_body=raw_body, headers=headers)
 
     def _perform_json_upload(self, method, path, name, f):
-        http_res = self._session.request(
-            method, "%s/dip/publicapi%s" % (self.host, path),
-            files = {'file': (name, f, {'Expires': '0'})},
-            verify=self._session.verify)
-
+        http_res = stream_multipart_upload(
+            self._session,
+            method,
+            "%s/dip/publicapi%s" % (self.host, path),
+            "file",
+            name,
+            f,
+            self._session.verify
+        )
         handle_http_exception(http_res)
         return http_res
 
@@ -2031,15 +2159,15 @@ class DSSClient(object):
         return DSSWorkspace(self, workspace_key)
 
     ########################################################
-    # Data Collections
+    # Collections
     ########################################################
 
     def list_data_collections(self, as_type="listitems"):
         """
-        List the accessible data collections
+        List the accessible collections
 
         :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
-        :returns: The list of data collections.
+        :returns: The list of collections.
         :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
             a list of :class:`dataikuapi.dss.data_collection.DSSDataCollection` if as_type is "objects",
             a list of dict if as_type is "dict"
@@ -2054,27 +2182,27 @@ class DSSClient(object):
 
     def get_data_collection(self, id):
         """
-        Get a handle to interact with a specific data collection
+        Get a handle to interact with a specific collection
 
-        :param str id: the id of the data collection to fetch
+        :param str id: the id of the collection to fetch
         :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
         """
         return DSSDataCollection(self, id)
 
     def create_data_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
         """
-        Create a new data collection and return a handle to interact with it
+        Create a new collection and return a handle to interact with it
 
-        :param str displayName: the display name for the data collection.
+        :param str displayName: the display name for the collection.
         :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
         :param tags: The list of tags to use (defaults to *[]*)
         :type tags: list of str
-        :param str description: a description for the data collection
+        :param str description: a description for the collection
         :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
-        :param permissions: Initial permissions for the data collection (can be modified later - current user will always be added as admin).
+        :param permissions: Initial permissions for the collection (can be modified later - current user will always be added as admin).
         :type permissions: a list of :class:`dict`
 
-        :returns: Handle of the newly created Data Collection
+        :returns: Handle of the newly created Collection
         :rtype: :class:`dataikuapi.dss.data_collection.DSSDataCollection`
         """
         res = self._perform_json("POST", "/data-collections/", body={
@@ -2086,6 +2214,57 @@ class DSSClient(object):
             "permissions": permissions
         })
         return DSSDataCollection(self, res['id'])
+
+    def list_collections(self, as_type="listitems"):
+        """
+        List the accessible collections.
+
+        This is a compatibility alias for :meth:`list_data_collections`.
+
+        :param str as_type: How to return the list. Supported values are "listitems", "objects" and "dict" (defaults to **listitems**).
+        :returns: The list of collections.
+        :rtype: a list of :class:`dataikuapi.dss.data_collection.DSSDataCollectionListItem` if as_type is "listitems",
+            a list of :class:`dataikuapi.dss.data_collection.DSSCollection` if as_type is "objects",
+            a list of dict if as_type is "dict"
+        """
+        return self.list_data_collections(as_type=as_type)
+
+    def get_collection(self, id):
+        """
+        Get a handle to interact with a specific collection.
+
+        This is a compatibility alias for :meth:`get_data_collection`.
+
+        :param str id: the id of the collection to fetch
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSCollection`
+        """
+        return self.get_data_collection(id)
+
+    def create_collection(self, displayName, id=None, tags=None, description=None, color=None, permissions=None):
+        """
+        Create a new collection and return a handle to interact with it.
+
+        This is a compatibility alias for :meth:`create_data_collection`.
+
+        :param str displayName: the display name for the collection.
+        :param str id: the identifier to use for the data_collection. Must be 8 alphanumerical characters if set, otherwise a random id will be generated.
+        :param tags: The list of tags to use (defaults to *[]*)
+        :type tags: list of str
+        :param str description: a description for the collection
+        :param str color: The color to use (#RRGGBB format). A random color will be assigned if not specified
+        :param permissions: Initial permissions for the collection (can be modified later - current user will always be added as admin).
+        :type permissions: a list of :class:`dict`
+        :returns: Handle of the newly created Collection
+        :rtype: :class:`dataikuapi.dss.data_collection.DSSCollection`
+        """
+        return self.create_data_collection(
+            displayName,
+            id=id,
+            tags=tags,
+            description=description,
+            color=color,
+            permissions=permissions,
+        )
 
     ########################################################
     # Integration Channels
@@ -2203,7 +2382,7 @@ class DSSClient(object):
                 - Additional for "microsoft-graph-mail":
                     - "clientId": Microsoft application ID;
                     - "tenantId": Microsoft directory ID;
-                    - "clientSecret": Account used to sent mails with this channel. Must be a User Principal Name with a valid Microsoft 365 license.
+                    - "clientSecret": Microsoft application client secret value.
             - "slack":
                 - "useProxy": True to use DSS's proxy settings to connect, False otherwise;
                 - "mode": connection mode. Can be "WEBHOOK" or "API";
@@ -2344,8 +2523,33 @@ class DSSClient(object):
         :return: the cost limiting counters
         :rtype: DSSLLMCostLimitingCounters
         """
-        return DSSLLMCostLimitingCounters(self._perform_json("GET", "/admin/llm-cost-limiting/counters"))
+        return DSSLLMCostLimitingCounters(
+            self._perform_json("GET", "/admin/llm-cost-limiting/counters"),
+            client=self)
 
+    ########################################################
+    # Secrets manager
+    ########################################################
+
+    def get_secrets_manager(self):
+        """
+        Gets a handle to work with the Secrets Manager.
+
+        :rtype: :class:`dataikuapi.secretsmanager.secretsmanager.DSSSecretsManager`
+        """
+        return DSSSecretsManager(self)
+
+    def get_vaults_manager(self):
+        """
+        Gets a handle to work with vault administration.
+
+        All methods exposed by this handle require DSS administrator privileges,
+        unlike :meth:`get_secrets_manager` which also exposes non-admin
+        operations depending on secret-level permissions.
+
+        :rtype: :class:`dataikuapi.secretsmanager.vaultsmanager.DSSVaultsManager`
+        """
+        return DSSVaultsManager(self)
 
     ########################################################
     # Objects permission checking
@@ -2357,6 +2561,13 @@ class DSSClient(object):
         :rtype: DSSPermissionsCheckRequest
         """
         return DSSPermissionsCheckRequest(self)
+
+    def get_cobuild_status(self):
+        """Returns whether Cobuild is available to the authenticated caller.
+
+        :rtype: dict
+        """
+        return self._perform_json("GET", "/cobuild/status")
 
     ########################################################
     # Enterprise Asset Library
@@ -2426,7 +2637,14 @@ class TemporaryImportHandle(object):
                       ]
                     }
 
-        @warning: You must check the 'success' flag
+        .. warning::
+            The request itself may succeed while the project import fails:
+
+            * Check the ``success`` flag to know whether the import completed successfully.
+            * Inspect ``messages`` for warnings or error details.
+
+        :returns: the import result as a dict.
+        :rtype: dict
         """
         # Empty JSON dicts can't be parsed properly
         if settings is None:

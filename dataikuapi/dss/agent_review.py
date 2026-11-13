@@ -1,4 +1,5 @@
-from dataikuapi.dss.future import DSSFuture, DSSFutureWithHistory
+from dataikuapi.dss.future import DSSFuture
+from dataikuapi.utils import _ExponentialBackoff
 from dataikuapi.dss.utils import DSSTaggableObjectListItem
 
 
@@ -304,7 +305,8 @@ class DSSAgentReview(object):
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_test(self, query=None, reference_answer=None, expectations=None, hitl_validation_policy=None):
+    def create_test(self, query=None, reference_answer=None, expectations=None, hitl_validation_policy=None,
+                    mode=None, conversation_guidance=None, max_turns=None):
         """
         Create a new test for this agent review.
 
@@ -312,6 +314,9 @@ class DSSAgentReview(object):
         :param str reference_answer: Reference answer. Optional.
         :param str expectations: Expectations on the agent answer. Optional.
         :param str hitl_validation_policy: Per-test HITL validation policy. Optional.
+        :param str mode: Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``. Optional.
+        :param str conversation_guidance: Instructions for the simulated user in a multi-turn test. Optional.
+        :param int max_turns: Maximum number of agent turns in a multi-turn test. Optional.
         :returns: The created test object.
         :rtype: :class:`DSSAgentReviewTest`
         """
@@ -322,13 +327,19 @@ class DSSAgentReview(object):
             "referenceAnswer": reference_answer,
             "expectations": expectations,
             "hitlValidationPolicy": hitl_validation_policy,
+            "mode": mode,
+            "conversationGuidance": conversation_guidance,
+            "maxTurns": max_turns,
         }
         test = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/tests" % self.project_key, body=body
         )
         return DSSAgentReviewTest(self.dss_client, self.project_key, test)
 
-    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None, expectations_column=None, top_n=None, partitions=None, latest_partitions_n=None, hitl_validation_policy_column=None):
+    def create_tests_from_dataset(self, full_dataset_name, query_column, reference_answer_column=None,
+                                  expectations_column=None, top_n=None, partitions=None,
+                                  latest_partitions_n=None, hitl_validation_policy_column=None,
+                                  mode_column=None, conversation_guidance_column=None, max_turns_column=None):
         """
         Create new tests for this agent review by importing them from a dataset.
 
@@ -340,6 +351,9 @@ class DSSAgentReview(object):
         :param list[str] partitions: For partitioned datasets, only consider the given partitions. Optional.
         :param int latest_partitions_n: For partitioned datasets and if partitions is not set, only consider the latest n partitions. Optional.
         :param str hitl_validation_policy_column: Name of the column containing per-test HITL validation policy. Optional.
+        :param str mode_column: Name of the column containing the test mode. Optional.
+        :param str conversation_guidance_column: Name of the column containing multi-turn conversation guidance. Optional.
+        :param str max_turns_column: Name of the column containing the maximum number of agent turns. Optional.
         :returns: A dictionary with keys:
             - "createdTestIds": list of ids of the created tests
             - "error": The error message if any occurred
@@ -354,6 +368,9 @@ class DSSAgentReview(object):
             "referenceAnswerColumn": reference_answer_column,
             "expectationsColumn": expectations_column,
             "hitlValidationPolicyColumn": hitl_validation_policy_column,
+            "modeColumn": mode_column,
+            "conversationGuidanceColumn": conversation_guidance_column,
+            "maxTurnsColumn": max_turns_column,
         }
         if top_n is not None:
             body["samplingMethod"] = "HEAD_SEQUENTIAL"
@@ -407,10 +424,10 @@ class DSSAgentReview(object):
         Execute a run with the specified tests.
 
         :param list[str] test_ids: List of test IDs to run. Optional. If None or empty, all tests will be run.
-        :param bool wait: If True, the call blocks until the run is finished. If False, it returns a future history handle. Defaults to True.
+        :param bool wait: If True, the call blocks until the run is finished. If False, it returns immediately with the run object. Defaults to True.
         :param str run_name: Optional name for the run.
-        :returns: The run object if wait=True, or a future history handle if wait=False.
-        :rtype: :class:`DSSAgentReviewRun` or :class:`dataikuapi.dss.future.DSSFutureWithHistory`
+        :returns: The run object.
+        :rtype: :class:`DSSAgentReviewRun`
         """
         params = {
             "testIds": test_ids or [],
@@ -420,12 +437,7 @@ class DSSAgentReview(object):
         run_data = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/reviews/%s/runs" % (self.project_key, self.id), params=params
         )
-        if wait:
-            return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
-        else:
-            # Name format must match AgentReviewRun.java getFutureHistoryKey()
-            future_name = "agent-review-%s-%s-%s" % (self.project_key, self.id, run_data.get("id"))
-            return DSSFutureWithHistory(self.dss_client, future_name, result_wrapper=lambda data: DSSAgentReviewRun(self.dss_client, self.project_key, data))
+        return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
 
     def list_runs(self, as_type='listitems'):
         """
@@ -592,6 +604,42 @@ class DSSAgentReviewTest(object):
     @query.setter
     def query(self, value):
         self.data["query"] = value
+
+    @property
+    def mode(self):
+        """
+        Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @mode.setter
+    def mode(self, value):
+        self.data["mode"] = value
+
+    @property
+    def conversation_guidance(self):
+        """
+        Instructions for the simulated user in a multi-turn test.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @conversation_guidance.setter
+    def conversation_guidance(self, value):
+        self.data["conversationGuidance"] = value
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns in a multi-turn test.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
+
+    @max_turns.setter
+    def max_turns(self, value):
+        self.data["maxTurns"] = value
 
     @property
     def reference_answer(self):
@@ -763,6 +811,30 @@ class DSSAgentReviewTestListItem(dict):
         return self.get("query")
 
     @property
+    def mode(self):
+        """
+        Test mode. Possible values are ``SINGLE_TURN`` or ``MULTI_TURN_LLM_DRIVEN``.
+        :rtype: str
+        """
+        return self.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Instructions for the simulated user in a multi-turn test.
+        :rtype: str
+        """
+        return self.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns in a multi-turn test.
+        :rtype: int
+        """
+        return self.get("maxTurns")
+
+    @property
     def reference_answer(self):
         """
         Expected result of the query.
@@ -912,10 +984,33 @@ class DSSAgentReviewRun(object):
         )
         return DSSAgentReviewResult(self.dss_client, self.project_key, result)
 
+    def wait_for_completion(self):
+        """
+        Wait for this run to finish and refresh its data.
+
+        :returns: This run, including when it was aborted.
+        :rtype: :class:`DSSAgentReviewRun`
+        :raises RuntimeError: If the run failed.
+        """
+        backoff = _ExponentialBackoff()
+        while True:
+            self.data = self.dss_client._perform_json(
+                "GET", "/projects/%s/agent-reviews/reviews/%s/runs/%s" % (self.project_key, self.agent_review_id, self.id)
+            )
+            if not self.data:
+                raise RuntimeError("Agent Review run not found")
+            if self.status in ("FINISHED", "ABORTED"):
+                if self.data.get("errorMessage") and self.status != "ABORTED":
+                    raise RuntimeError("Agent Review run failed: %s" % self.data["errorMessage"])
+                return self
+            if self.status != "RUNNING":
+                raise RuntimeError("Unexpected Agent Review run status: %s" % self.status)
+            backoff.sleep_next()
+
     def abort(self):
         """
         Abort the run.
-        :returns: The terminated run.
+        :returns: The run after requesting cancellation.
         :rtype: :class:`DSSAgentReviewRun`
         """
         run = self.dss_client._perform_json(
@@ -938,10 +1033,10 @@ class DSSAgentReviewRun(object):
         """
         Execute a new run with the same test selection.
 
-        :param bool wait: If True, the call blocks until the run is finished. If False, it returns a future history handle. Defaults to True.
+        :param bool wait: If True, the call blocks until the run is finished. If False, it returns immediately with the run object. Defaults to True.
         :param str run_name: Optional name for the new run.
-        :returns: The new run object if wait=True, or a future history handle if wait=False.
-        :rtype: :class:`DSSAgentReviewRun` or :class:`dataikuapi.dss.future.DSSFutureWithHistory`
+        :returns: The new run object.
+        :rtype: :class:`DSSAgentReviewRun`
         """
         params = {
             "runId": self.id,
@@ -951,12 +1046,7 @@ class DSSAgentReviewRun(object):
         run_data = self.dss_client._perform_json(
             "POST", "/projects/%s/agent-reviews/reviews/%s/runs/actions/rerun" % (self.project_key, self.agent_review_id), params=params
         )
-        if wait:
-            return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
-        else:
-            # Name format must match AgentReviewRun.java getFutureHistoryKey()
-            future_name = "agent-review-%s-%s-%s" % (self.project_key, self.id, run_data.get("id"))
-            return DSSFutureWithHistory(self.dss_client, future_name, result_wrapper=lambda data: DSSAgentReviewRun(self.dss_client, self.project_key, data))
+        return DSSAgentReviewRun(self.dss_client, self.project_key, run_data)
 
     def rename(self, new_name):
         """
@@ -1458,6 +1548,14 @@ class DSSAgentReviewTraitOutcome(object):
         """
         return self.data.get("traitId")
 
+    @property
+    def skip_reason(self):
+        """
+        Reason why the trait result was skipped.
+        :rtype: str
+        """
+        return self.data.get("skipReason")
+
     def get_raw(self):
         """
         Get the raw trait result data.
@@ -1543,6 +1641,30 @@ class DSSAgentReviewExecutionResult(object):
         :rtype: str
         """
         return self.data.get("error")
+
+    @property
+    def termination_type(self):
+        """
+        Reason category for terminating a multi-turn execution.
+        :rtype: str
+        """
+        return self.data.get("terminationType")
+
+    @property
+    def termination_reason(self):
+        """
+        Detailed reason for terminating a multi-turn execution.
+        :rtype: str
+        """
+        return self.data.get("terminationReason")
+
+    @property
+    def turn_trajectories(self):
+        """
+        Ordered trajectory snapshots for each turn of a multi-turn execution.
+        :rtype: list[str]
+        """
+        return self.data.get("turnTrajectories")
 
     @property
     def creation_timestamp(self):
@@ -1639,6 +1761,30 @@ class DSSAgentReviewResult(object):
         :rtype: str
         """
         return self.data.get("query")
+
+    @property
+    def mode(self):
+        """
+        Mode of the test when this result was created.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Multi-turn conversation guidance used to produce this result.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns configured for this result.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
 
     @property
     def raw_query(self):
@@ -1962,6 +2108,30 @@ class DSSAgentReviewResultListItem(object):
         :rtype: str
         """
         return self.data.get("query")
+
+    @property
+    def mode(self):
+        """
+        Mode of the test when this result was created.
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @property
+    def conversation_guidance(self):
+        """
+        Multi-turn conversation guidance used to produce this result.
+        :rtype: str
+        """
+        return self.data.get("conversationGuidance")
+
+    @property
+    def max_turns(self):
+        """
+        Maximum number of agent turns configured for this result.
+        :rtype: int
+        """
+        return self.data.get("maxTurns")
 
     @property
     def raw_query(self):

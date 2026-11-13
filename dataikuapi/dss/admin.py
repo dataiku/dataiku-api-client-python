@@ -4,6 +4,8 @@ import json
 import warnings
 import logging
 from datetime import datetime
+
+from .utils import DSSInfoMessages
 from ..utils import _timestamp_ms_to_zoned_datetime
 
 logger = logging.getLogger("dataikuapi.dss.admin")
@@ -1378,6 +1380,12 @@ class DSSUserInfo(object):
         return self._raw["groups"]
     @property
     def email(self):
+        """
+        Get the user's email address.
+
+        :raises KeyError: if no email address is defined for the user
+        :rtype: string
+        """
         return self._raw["email"]
     @property
     def enabled(self):
@@ -2208,6 +2216,7 @@ class DSSCodeEnvContainerConfsBearer(object):
         * SYSTEM_LEVEL_CUDA_122_CUDNN_897
         * CUDA_SUPPORT_FOR_TORCH2_WITH_PYPI_NVIDIA_PACKAGES
         * BASIC_GPU_ENABLING
+        * HUGGING_FACE_LOCAL_CPU
         * PYTHON36_SUPPORT
         * PYTHON37_SUPPORT
         * PYTHON38_SUPPORT
@@ -2379,7 +2388,7 @@ class DSSGlobalApiKey(object):
 
         :return: the API key definition
 
-        :rtype: :class:DSSGlobalApiKeyDefinition
+        :rtype: :class:`DSSGlobalApiKeyDefinition`
         """
         data = self.client._perform_json(
             "GET", "/admin/global-api-keys/%s" % self.id_)
@@ -2442,6 +2451,7 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get or set the label of the API key
 
+        :raises KeyError: if no label is defined for the API key
         :rtype: string
         """
         return self["label"]
@@ -2455,7 +2465,7 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get or set the description of the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("description")
 
@@ -2468,7 +2478,7 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get the user associated to the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("dssUserForImpersonation")
 
@@ -2494,7 +2504,9 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get the timestamp of when the API key was created
 
-        :rtype: :class:`datetime.datetime`
+        Returns None if the creation timestamp is 0.
+
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self["createdOn"]
         return _timestamp_ms_to_zoned_datetime(timestamp)
@@ -2504,7 +2516,7 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get the login of the user who created the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("createdBy")
 
@@ -2513,7 +2525,7 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get the timestamp of when the API key will expire, or None if the API key never expires
 
-        :rtype: :class:`datetime.datetime`
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self.get("expiresOn")
         if timestamp is None or timestamp == 0:
@@ -2525,7 +2537,9 @@ class DSSGlobalApiKeyDefinition(dict):
         """
         Get or set the lifetime in days of the API key
 
-        :rtype: string
+        A value of 0 means the API key never expires.
+
+        :rtype: int
         """
         return self.get("expiry")
 
@@ -2576,7 +2590,7 @@ class DSSGlobalApiKeyListItem(dict):
         """
         Get the user associated to the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("dssUserForImpersonation")
    
@@ -2596,6 +2610,7 @@ class DSSGlobalApiKeyListItem(dict):
         """
         Get the label of the API key
 
+        :raises KeyError: if no label is defined for the API key
         :rtype: string
         """
         return self["label"]
@@ -2605,7 +2620,7 @@ class DSSGlobalApiKeyListItem(dict):
         """
         Get the description of the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("description")
    
@@ -2614,7 +2629,9 @@ class DSSGlobalApiKeyListItem(dict):
         """
         Get the timestamp of when the API key was created
 
-        :rtype: :class:`datetime.datetime`
+        Returns None if the creation timestamp is 0.
+
+        :rtype: :class:`datetime.datetime` or None
         """
         timestamp = self["createdOn"]
         return _timestamp_ms_to_zoned_datetime(timestamp)
@@ -2624,7 +2641,7 @@ class DSSGlobalApiKeyListItem(dict):
         """
         Get the login of the user who created the API key
 
-        :rtype: string
+        :rtype: string or None
         """
         return self.get("createdBy")
 
@@ -3305,6 +3322,58 @@ class DSSCodeStudioTemplate(object):
             params={"withNoCache": disable_docker_cache})
         return DSSFuture(self.client, future_response.get('jobId', None), future_response)
 
+    def get_export_stream(self):
+        """
+        Export the template as a zip archive.
+
+        :returns: the exported archive as a stream
+        :rtype: file-like object
+        """
+        return self.client._perform_raw(
+            "GET", "/admin/code-studios/%s/export" % (self.template_id)
+        ).raw
+
+    def export_to_file(self, path):
+        """
+        Export the template to a file.
+
+        This produces a zip file with the template's definition and its resources, if any. The zip can be imported with
+        :meth:`dataikuapi.DSSClient.import_code_studio_template`
+
+        :param str path: the destination file path
+        """
+        with open(path, 'wb') as f:
+            export_stream = self.client._perform_raw(
+                "GET", "/admin/code-studios/%s/export" % (self.template_id)
+            )
+            for chunk in export_stream.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+            f.flush()
+
+    ########################################################
+    # Template deletion
+    ########################################################
+
+    def delete(self, delete_runtime=False, delete_images=False):
+        """
+        Delete the template.
+
+        :param bool delete_runtime: if True, also delete the Code Studio runtimes created from this template
+        :param bool delete_images: if True, also delete the Docker images and build folders associated with this template
+
+        :return: backend info/warning/error messages about the deletion
+        :rtype: dict
+        """
+        resp = self.client._perform_json(
+            "DELETE",
+            "/admin/code-studios/%s" % (self.template_id),
+            params={
+                "deleteRuntime": delete_runtime,
+                "deleteImages": delete_images
+            })
+        return DSSInfoMessages(resp)
+
 class DSSCodeStudioTemplateSettings(object):
     """
     The settings of a code studio template
@@ -3368,8 +3437,9 @@ class DSSLLMCostLimitingCounters(object):
     """
     The LLM cost limiting counters of the instance
     """
-    def __init__(self, data):
+    def __init__(self, data, client):
         self._data = data
+        self.client = client
 
     def get_raw(self):
         """
@@ -3383,20 +3453,33 @@ class DSSLLMCostLimitingCounters(object):
     @property
     def counters(self):
         """
-        Get the list of counters
+        Get the list of counters.
 
         :return: a list of counters
-        :rtype: list
+        :rtype: list[dict]
         """
         return self._data['counters']
 
     def get_counter(self, id):
         """
-        Retrieve the counters from a quota id
+        Retrieve the aggregate counter from a quota id
 
-        :param id identifier of the quota to retrieve
+        :param string id: identifier of the quota to retrieve
 
-        :return: a dictionary containing the counter
+        :return: a dictionary containing the aggregate counter
         :rtype: dict
         """
         return next((counter for counter in self.counters if counter["id"] == id), None)
+
+    def get_counter_details(self, id):
+        """
+        Retrieve the detailed counters from a quota id.
+
+        For a global quota, same as :meth:`get_counter`.
+        For a per-dimension quota, adds the instantiated counters.
+
+        :param string id: identifier of the quota to retrieve
+
+        :rtype: dict
+        """
+        return self.client._perform_json("GET", "/admin/llm-cost-limiting/counters/%s" % id)

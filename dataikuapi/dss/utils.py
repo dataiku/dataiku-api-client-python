@@ -1,3 +1,17 @@
+_SUPPORTED_AI_EXPLANATION_LANGUAGES = frozenset((
+    "afrikaans", "arabic", "bengali", "bulgarian", "catalan", "chinese", "chinese_traditional", "croatian", "czech", "danish",
+    "dutch", "english", "estonian", "finnish", "french", "german", "greek", "gujarati", "hebrew", "hindi", "hungarian", "icelandic",
+    "indonesian", "irish", "italian", "japanese", "korean", "latvian", "lithuanian", "malayalam", "marathi", "nepali", "norwegian", "persian",
+    "polish", "portuguese", "romanian", "russian", "serbian", "slovak", "slovenian", "spanish", "swedish", "tamil", "telugu", "thai", "turkish",
+    "ukrainian", "urdu", "vietnamese"
+))
+
+
+def _validate_ai_explanation_language(language):
+    if language not in _SUPPORTED_AI_EXPLANATION_LANGUAGES:
+        raise ValueError("Invalid language: '{}'. Currently supported languages: [{}].".format(language, ", ".join(sorted(_SUPPORTED_AI_EXPLANATION_LANGUAGES))))
+
+
 class DSSDatasetSelectionBuilder(object):
     """Builder for a "dataset selection". In DSS, a dataset selection is used to select a part of a dataset for processing.
 

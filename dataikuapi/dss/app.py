@@ -264,7 +264,11 @@ class TemporaryDSSAppInstance(DSSAppInstance):
         """
         Delete this app instance.
         """
-        self.get_as_project().delete(clear_managed_datasets=True)
+        self.get_as_project().delete(
+            clear_managed_datasets=True,
+            clear_output_managed_folders=True,
+            clear_managed_knowledge_banks=True,
+            clear_job_and_scenario_logs=True)
 
     def __enter__(self,):
         return self

@@ -94,6 +94,17 @@ class DSSSemanticModel(object):
         definition["activeVersionId"] = version_id
         self._set_definition(definition)
 
+    def rename(self, new_name):
+        """
+        Rename the semantic model
+
+        :param new_name: new name of the semantic model
+        :type new_name: str
+        """
+        definition = self._get_definition()
+        definition["name"] = new_name
+        self._set_definition(definition)
+
     def delete(self):
         """
         Delete the semantic model.

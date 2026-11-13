@@ -7,7 +7,7 @@ import warnings
 from . import agent_tool
 from . import recipe
 from .agent import DSSAgent, DSSAgentListItem
-from .agent_review import DSSAgentReview, DSSAgentReviewListItem
+from .agent_skill import DSSAgentSkill, DSSAgentSkillListItem, DSSAgentSkillLoader
 from .agent_tool import DSSAgentTool, DSSAgentToolListItem, DSSAgentToolCreator
 from .analysis import DSSAnalysis
 from .apiservice import DSSAPIService, DSSAPIServiceListItem
@@ -22,12 +22,14 @@ from .evaluationcomparison import DSSEvaluationComparison
 from .evaluationstore import DSSEvaluationStore
 from .flow import DSSProjectFlow
 from .future import DSSFuture
+from .utils import _validate_ai_explanation_language
 from .insight import DSSInsight, DSSInsightListItem, INSIGHTS_URI_FORMAT
-from .job import DSSJob, DSSJobWaiter
+from .job import DSSJob, DSSJobListItem, DSSJobWaiter
 from .jupyternotebook import DSSJupyterNotebook, DSSJupyterNotebookListItem
 from .knowledgebank import DSSKnowledgeBank, DSSKnowledgeBankListItem
 from .labeling_task import DSSLabelingTask
-from .llm import DSSLLM, DSSLLMListItem
+from .llm import DSSLLM, DSSLLMConversation, DSSLLMConversationListItem, DSSLLMGuardrailsQuery, DSSLLMListItem, _create_llm_conversation
+from .llm_usages import DSSLLMUsage, DSSLLMReplacementResult
 from .macro import DSSMacro
 from .managedfolder import DSSManagedFolder
 from .ml import DSSMLTask, DSSMLTaskQueues
@@ -51,7 +53,6 @@ from .wiki import DSSWiki
 from ..dss_plugin_mlflow import MLflowHandle
 from .agent_review import DSSAgentReview, DSSAgentReviewListItem
 from .cobuild import _DSS_objects_to_selected, CobuildUserMessage, DSSCobuildConversation, CobuildAssistantResponse
-
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class DSSProject(object):
     # Project deletion
     ########################################################
 
-    def delete(self, clear_managed_datasets=False, clear_output_managed_folders=False, clear_job_and_scenario_logs=True,
+    def delete(self, clear_managed_datasets=False, clear_output_managed_folders=False, clear_job_and_scenario_logs=True, clear_managed_knowledge_banks=False,
                **kwargs):
         """
         Delete the project
@@ -113,6 +114,7 @@ class DSSProject(object):
         :param bool clear_managed_datasets: Should the data of managed datasets be cleared (defaults to **False**)
         :param bool clear_output_managed_folders: Should the data of managed folders used as outputs of recipes be cleared (defaults to **False**)
         :param bool clear_job_and_scenario_logs: Should the job and scenario logs be cleared (defaults to **True**)
+        :param bool clear_managed_knowledge_banks: Should the data of managed knowledge banks be cleared (defaults to **False**)
         :param bool wait: Whether to wait for the deletion to complete (defaults to **True**)
 
         :return: if `wait` is True, a dict containing messages about the deletion if errors arose. If `wait` is False,
@@ -131,6 +133,7 @@ class DSSProject(object):
                 "clearManagedDatasets": clear_managed_datasets,
                 "clearOutputManagedFolders": clear_output_managed_folders,
                 "clearJobAndScenarioLogs": clear_job_and_scenario_logs,
+                "clearManagedKnowledgeBanks": clear_managed_knowledge_banks,
                 "wait": wait
             })
         # no need to wait python-side, it's done java-side
@@ -374,7 +377,10 @@ class DSSProject(object):
 
         Note: The "Generate Metadata" option must be enabled in the AI Services admin settings.
 
-        :param str language: The language of the generated description. Supported languages are "dutch", "english", "french", "german", "portuguese", and "spanish" (defaults to **english**).
+        :param str language: The language of the generated description. Supported languages are "afrikaans", "arabic", "bengali", "bulgarian", "catalan", "chinese", "chinese_traditional", "croatian", "czech", "danish",
+            "dutch", "english", "estonian", "finnish", "french", "german", "greek", "gujarati", "hebrew", "hindi", "hungarian", "icelandic", "indonesian", "irish", "italian", "japanese", "korean", "latvian", "lithuanian", "malayalam",
+            "marathi", "nepali", "norwegian", "persian", "polish", "portuguese", "romanian", "russian", "serbian", "slovak", "slovenian", "spanish", "swedish", "tamil", "telugu", "thai", "turkish", "ukrainian", "urdu", and "vietnamese"
+            (defaults to **english**).
         :param str purpose: The purpose of the generated description. Supported purposes are "generic", "technical", "business_oriented", and "executive" (defaults to **generic**).
         :param str length: The length of the generated description. Supported lengths are "low", "medium", and "high" (defaults to **medium**).
         :param bool save_description: To save the generated description to this project (defaults to **False**).
@@ -382,12 +388,10 @@ class DSSProject(object):
         :returns: a message upon successful completion of the generated AI description. Only contains one `msg` field. For example, {'msg': 'An example description generated by AI'}
         :rtype: dict
         """
-        supported_languages = {"dutch", "english", "french", "german", "japanese", "portuguese", "spanish"}
         supported_purposes = {"generic", "technical", "business_oriented", "executive"}
         supported_length = {"low", "medium", "high"}
 
-        if language not in supported_languages:
-            raise ValueError("Invalid language: '{}'. Currently supported languages: {}.".format(language, supported_languages))
+        _validate_ai_explanation_language(language)
         if purpose not in supported_purposes:
             raise ValueError("Invalid purpose: '{}'. Currently supported purposes: {}.".format(purpose, supported_purposes))
         if length not in supported_length:
@@ -409,7 +413,7 @@ class DSSProject(object):
         List the datasets in this project.
 
         :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
-        :param boolean include_shared: If **True**, also lists the datasets from other projects that are shared in this project (defaults to **False**).
+        :param boolean include_shared: If **True**, also list the datasets from other projects that are shared in this project (defaults to **False**).
         :param list[str] tags: List of tags. The query will only return datasets having one of these tags, but no filter by tags will be applied if tags is set to **None** or to **[]** (defaults to **None**).
         :returns: The list of the datasets. If "as_type" is "listitems",
             each one as a :class:`dataikuapi.dss.dataset.DSSDatasetListItem`. If "as_type" is "objects",
@@ -969,6 +973,42 @@ class DSSProject(object):
             ret.wait_guess_complete()
         return ret
 
+    def create_multi_target_prediction_ml_task(self, input_dataset,
+                                               target_variables,
+                                               guess_policy="MULTI_TARGET_DEFAULT",
+                                               wait_guess_complete=True):
+        """Creates a new multi-target regression task in a new visual analysis lab for a dataset.
+
+        :param string input_dataset: The dataset to use for training/testing the model
+        :param list target_variables: List of target variables to predict
+        :param string guess_policy: Policy to use for setting the default parameters.
+                                    Valid values are: MULTI_TARGET_DEFAULT
+        :param boolean wait_guess_complete: If False, the returned ML task will be in 'guessing' state, i.e. analyzing the input dataset to determine feature handling and algorithms.
+                                            You should wait for the guessing to be completed by calling
+                                            ``wait_guess_complete`` on the returned object before doing anything
+                                            else (in particular calling ``train`` or ``get_settings``)
+        :return: :class:`dataiku.dss.ml.DSSMLTask`
+        """
+        obj = {
+            "inputDataset": input_dataset,
+            "taskType": "PREDICTION",
+            "targetVariables": target_variables,
+            "backendType": "PY_MEMORY",
+            "guessPolicy": guess_policy,
+            "predictionType": "MULTI_TARGET_REGRESSION"
+        }
+
+        ref = self.client._perform_json(
+            "POST",
+            "/projects/{project_key}/models/lab/".format(project_key=self.project_key),
+            body=obj
+        )
+        ret = DSSMLTask(self.client, self.project_key, ref["analysisId"], ref["mlTaskId"])
+
+        if wait_guess_complete:
+            ret.wait_guess_complete()
+        return ret
+
     def create_causal_prediction_ml_task(self, input_dataset, outcome_variable,
                                               treatment_variable,
                                               prediction_type=None,
@@ -1078,15 +1118,17 @@ class DSSProject(object):
     # Saved models
     ########################################################
 
-    def list_saved_models(self):
+    def list_saved_models(self, include_shared=False):
         """
         List the saved models in this project
 
+        :param boolean include_shared: If **True**, also lists the saved models from other projects that are shared in this project (defaults to **False**).
         :returns: the list of the saved models, each one as a python dict
         :rtype: list[DSSSavedModel]
         """
         return self.client._perform_json(
-            "GET", "/projects/%s/savedmodels/" % self.project_key)
+            "GET", "/projects/%s/savedmodels/" % self.project_key,
+            params={"foreign": include_shared})
 
     def get_saved_model(self, sm_id):
         """
@@ -1279,7 +1321,9 @@ class DSSProject(object):
         Create a new managed folder in the project, and return a handle to interact with it
 
         :param str name: the name of the managed folder
-        :param str folder_type: type of storage (defaults to **None**)
+        :param str folder_type: type of storage (defaults to **None**). Supported built-in values include
+            ``Filesystem``, ``HDFS``, ``S3``, ``GCS``, ``FTP``, ``SFTP``, ``SCP``, ``SharePointOnline``,
+            ``Azure`` and ``DatabricksVolume``.
         :param str connection_name: the connection name (defaults to **filesystem_folders**)
 
         :returns: A managed folder handle
@@ -1491,15 +1535,42 @@ class DSSProject(object):
     # Jobs
     ########################################################
 
-    def list_jobs(self):
+    def list_jobs(self, as_type="listitems"):
         """
         List the jobs in this project
 
-        :returns: a list of the jobs, each one as a python dict, containing both the definition and the state
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :returns: The list of jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
         :rtype: list
         """
-        return self.client._perform_json(
+        items = self.client._perform_json(
             "GET", "/projects/%s/jobs/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self.client, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def list_running_jobs(self, as_type="listitems"):
+        """
+        List the currently-running jobs in this project.
+
+        :param str as_type: How to return the list. Supported values are "listitems" and "objects" (defaults to **listitems**).
+        :returns: The list of running jobs. If "as_type" is "listitems", each item is a
+            :class:`dataikuapi.dss.job.DSSJobListItem`. If "as_type" is "objects", each item is a
+            :class:`dataikuapi.dss.job.DSSJob`.
+        :rtype: list
+        """
+        items = self.client._perform_json("GET", "/projects/%s/jobs/running/" % self.project_key)
+        if as_type == "listitems" or as_type == "listitem":
+            return [DSSJobListItem(self.client, item) for item in items]
+        elif as_type == "objects" or as_type == "object":
+            return [DSSJobListItem(self.client, item).to_job() for item in items]
+        else:
+            raise ValueError("Unknown as_type")
 
     def get_job(self, id):
         """
@@ -2705,6 +2776,137 @@ class DSSProject(object):
         """
         return DSSLLM(self.client, self.project_key, llm_id)
 
+    def list_llm_usages(self):
+        """
+        Usages on inaccessible connections are omitted. References to deleted connections are included.
+
+        :returns: The LLM usages in this project, including historical and trained references.
+        :rtype: list[DSSLLMUsage]
+        """
+        items = self.client._perform_json("GET", "/projects/%s/llms/usages" % self.project_key)
+        return [DSSLLMUsage(item) for item in items]
+
+    def replace_llms(self, replacement_dict):
+        """
+        Replace editable LLM usages in this project.
+
+        :param dict replacement_dict: Source LLM IDs mapped to full target LLM IDs.
+            Internal LLMs (Agents, Retrieval-Augmented LLMs, fine-tuned LLMs) can be replaced by completion LLMs
+            or by internal LLMs of the same type (and the same provider for fine-tuned LLMs).
+            Regular LLMs cannot be replaced by internal LLMs. Targets must be available in this project.
+            All editable usages are replaced. Replacements do not cascade.
+        :returns: Updated objects and their count.
+        :rtype: DSSLLMReplacementResult
+        """
+        result = self.client._perform_json("POST", "/projects/%s/llms/usages/replace" % self.project_key,
+                                           body=replacement_dict)
+        return DSSLLMReplacementResult(result)
+
+    def new_llm_guardrails_query(self):
+        """Create a direct guardrail query builder for this project."""
+        return DSSLLMGuardrailsQuery(self.client, self.project_key)
+
+    def list_llm_conversations(self, end_user_id=None, include_archived=False, as_type="listitems"):
+        """
+        List persisted LLM conversations in this project.
+
+        :param str end_user_id: If provided, filter on this end-user ID.
+        :param bool include_archived: Whether to include archived conversations.
+        :param str as_type: How to return the list. Supported values are "listitems", "objects", and "dicts".
+        :returns: The list of conversations.
+        :rtype: list
+        """
+        params = {"includeArchived": include_archived}
+        if end_user_id is not None:
+            params["endUserId"] = end_user_id
+
+        conversations = self.client._perform_json(
+            "GET",
+            "/projects/%s/conversations/" % self.project_key,
+            params=params,
+        )
+        if as_type == "listitems":
+            return [
+                DSSLLMConversationListItem(self.client, self.project_key, item)
+                for item in conversations
+            ]
+        elif as_type == "objects":
+            return [
+                DSSLLMConversation(
+                    self.client,
+                    self.project_key,
+                    item["conversationId"],
+                    data=item,
+                )
+                for item in conversations
+            ]
+        elif as_type == "dicts":
+            return conversations
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_llm_conversation(self, conversation_id):
+        """
+        Get a handle to interact with a specific persisted LLM conversation.
+
+        :param str conversation_id: Identifier of the conversation.
+        :returns: A :class:`dataikuapi.dss.llm.DSSLLMConversation` handle.
+        :rtype: :class:`dataikuapi.dss.llm.DSSLLMConversation`
+        """
+        return DSSLLMConversation(
+            self.client,
+            self.project_key,
+            conversation_id,
+        ).refresh()
+
+    def create_llm_conversation(
+        self,
+        conversation_id=None,
+        end_user_id=None,
+        llm_id=None,
+        metadata=None,
+        message=None,
+    ):
+        """
+        Create a persisted LLM conversation.
+
+        If ``message`` is omitted, return the created conversation handle. If it is
+        provided, execute the first turn and return its completion response,
+        with ``success`` set to ``False`` when LLM execution fails. The created
+        conversation is then available through
+        :attr:`dataikuapi.dss.llm.DSSLLMConversationCompletionResponse.conversation`.
+
+        :param str conversation_id: Identifier for the conversation.
+        :param str end_user_id: End-user identifier associated with the conversation.
+        :param str llm_id: Default LLM identifier for the conversation. Required when ``message`` is provided.
+        :param dict metadata: Metadata associated with the conversation.
+        :param message: First-turn message or messages, as a string, raw
+            ``user``/``system`` chat message dict, or list of those values.
+        :returns: The created conversation handle, or the first persisted completion
+            response when ``message`` is provided.
+        :rtype: Union[:class:`dataikuapi.dss.llm.DSSLLMConversation`, :class:`dataikuapi.dss.llm.DSSLLMConversationCompletionResponse`]
+        """
+        if message is not None:
+            if llm_id is None:
+                raise ValueError(
+                    "llm_id is required when creating a conversation with a first message"
+                )
+            return self.get_llm(llm_id).create_conversation(
+                conversation_id=conversation_id,
+                end_user_id=end_user_id,
+                metadata=metadata,
+                message=message,
+            )
+
+        return _create_llm_conversation(
+            self.client,
+            self.project_key,
+            conversation_id=conversation_id,
+            end_user_id=end_user_id,
+            llm_id=llm_id,
+            metadata=metadata,
+        )
+
     ########################################################
     # Knowledge Banks
     ########################################################
@@ -2748,11 +2950,14 @@ class DSSProject(object):
             * ELASTICSEARCH
             * AZURE_AI_SEARCH
             * SNOWFLAKE_CORTEX_SEARCH
+            * DATABRICKS_AI_SEARCH
             * VERTEX_AI_GCS_BASED
+            * VERTEX_AGENT_RETRIEVAL
             * FAISS *(not recommended)*
             * QDRANT_LOCAL *(not recommended)*
             * MILVUS_LOCAL
             * MILVUS_REMOTE
+            * PGVECTOR
 
         :param Optional[str] embedding_llm_id: The id of the embedding LLM.
             For managed KBs, must have the TEXT_EMBEDDING_EXTRACTION purpose.
@@ -2760,9 +2965,10 @@ class DSSProject(object):
         :param Optional[dict] settings: Additional settings for the knowledge bank, including:
 
             * "managed" (bool) set to False to create an unmanaged knowledge bank
-            * "connection" (str) the connection name, for remote vector stores
-            * "indexName" (str) the index name, for remote vector stores, including Pinecone
+            * "connection" (str) the connection name, for remote vector stores. For ``PGVECTOR``, it should be a PostgreSQL connection.
+            * "indexName" (str) the index name, for remote vector stores, including Pinecone. For ``PGVECTOR``, this is the table name.
             * "pineconeIndexName" (str) legacy alias accepted for Pinecone vector stores
+            * "vectorIndexType" (str) for ``MILVUS_REMOTE`` knowledge banks, one of ``DEFAULT``, ``FLAT``, ``IVF_FLAT``, or ``HNSW``
             * "columnMapping" (dict) mappings for vector store columns, used only for unmanaged knowledge banks. Expected format:
               ``{"id": "<column name>", "vector": "<column name>", "content": "<column name>", "metadata": "<column name>"}``
               (keys depend on the selected vector store type; values are remote schema column names)
@@ -2953,20 +3159,24 @@ class DSSProject(object):
         """
         return DSSAgent(self.client, self.project_key, id)
 
-    def create_agent(self, name, type, plugin_agent_type=None):
+    def create_agent(self, name, type, plugin_agent_type=None, external_agent_type=None):
         """
         Create a new agent in the project, and return a handle to interact with it
 
         :param str name: The name for the new agent. This does not need to be unique
-        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT, TOOLS_USING_AGENT or STRUCTURED_AGENT (Visual Agent)
+        :param str type: one of PYTHON_AGENT, PLUGIN_AGENT, TOOLS_USING_AGENT, STRUCTURED_AGENT (Visual Agent) or EXTERNAL_AGENT
         :param str plugin_agent_type: only if type=PLUGIN_AGENT, the id of the custom plugin component
+        :param str external_agent_type: only if type=EXTERNAL_AGENT, the external agent provider type. One of
+            REMOTE_DSS_AGENT, AZURE_FOUNDRY, BEDROCK_AGENT, BEDROCK_AGENT_CORE,
+            DATABRICKS_ENDPOINT, SALESFORCE_AGENTFORCE, SNOWFLAKE_AGENT or VERTEX_AI.
 
         :returns: a :class:`dataikuapi.dss.agent.DSSAgent` handle to interact with the newly-created agent
         """
         settings = {
             "name": name,
             "type": type,
-            "pluginAgentType": plugin_agent_type
+            "pluginAgentType": plugin_agent_type,
+            "externalAgentType": external_agent_type
         }
 
         ret = self.client._perform_json("POST", "/projects/%s/agents" % self.project_key, body=settings)
@@ -3073,6 +3283,56 @@ class DSSProject(object):
         """
         return DSSAgentTool(self.client, self.project_key, tool_id)
 
+    def list_agent_skills(self, as_type="listitems", include_shared=False):
+        """
+        :param str as_type: How to return the list, "listitems" or "objects".
+        :param boolean include_shared: If **True**, also list the agent skills from other projects that are shared in this project (defaults to **False**).
+        :returns: The list of the agent skills in this project.
+        :rtype: list[DSSAgentSkillListItem | DSSAgentSkill]
+        """
+        ret = self.client._perform_json("GET", "/projects/%s/agents/skills" % (self.project_key), params={"foreign": include_shared})
+        if as_type == "listitems":
+            return [DSSAgentSkillListItem(self.client, self.project_key, item) for item in ret]
+        elif as_type == "objects":
+            return [
+                DSSAgentSkill(self.client, item.get("projectKey", self.project_key), item["id"])
+                for item in ret
+            ]
+        else:
+            raise ValueError("Unknown as_type")
+
+    def get_agent_skill(self, skill_id):
+        """
+        Get a handle to interact with a specific skill.
+
+        :rtype: DSSAgentSkill
+        """
+        return DSSAgentSkill(self.client, self.project_key, skill_id)
+
+    def get_agent_skill_loader(self, skill_refs=None):
+        """
+        Create a loader that exposes an explicit set of agent skills to an LLM.
+
+        :param list[str] skill_refs: Optional local skill IDs or shared skill smart references
+        :rtype: DSSAgentSkillLoader
+        """
+        return DSSAgentSkillLoader(self, skill_refs)
+
+    def create_agent_skill(self, name, skill_id=None):
+        """
+        Create a new agent skill in the project, and return a handle to interact with it.
+
+        :param str name: The display name for the new skill
+        :param str skill_id: Optional ID for the new skill. If omitted, DSS generates a slug from the name.
+        :rtype: DSSAgentSkill
+        """
+        params = {"name": name}
+        if skill_id is not None:
+            params["id"] = skill_id
+        ret = self.client._perform_json(
+            "POST", "/projects/%s/agents/skills" % self.project_key, params=params
+        )
+        return DSSAgentSkill(self.client, self.project_key, ret["id"])
     ########################################################
     # Webapps
     ########################################################
@@ -3235,8 +3495,10 @@ class DSSProject(object):
             )
             print(response.message)
 
-        Without ``allow_edit_project=True``, Cobuild asks before using tools that create or edit
-        objects. In the public API, missing permissions are returned as an error response::
+        Without the appropriate edit permission, Cobuild asks before using tools that create or
+        edit objects. Pass ``allow_edit_project=True`` for project objects, or
+        ``allow_edit_managed_folder_contents=["FOLDER_ID"]`` for files in specific managed
+        folders. In the public API, missing permissions are returned as an error response::
 
             project = client.get_project("MY_PROJECT")
             conv = project.new_cobuild_conversation()
@@ -3260,6 +3522,17 @@ class DSSProject(object):
                     used_custom_answer=False
                 )
                 print(response.message)
+
+        Cobuild can draft a plan before making changes. Continue sending messages with
+        ``conversation_mode=CobuildConversationMode.PLAN`` while revising the draft, then
+        approve it to execute the plan and return its final response. Discard an active plan
+        before switching back to plan mode::
+
+            from dataikuapi.dss.cobuild import CobuildConversationMode
+
+            conv = project.new_cobuild_conversation()
+            conv.send_message("Plan a cleanup of stale datasets", conversation_mode=CobuildConversationMode.PLAN)
+            conv.approve_plan()
 
         :returns: a handle to the newly created empty conversation
         :rtype: :class:`dataikuapi.dss.cobuild.DSSCobuildConversation`

@@ -393,6 +393,9 @@ class DSSScenarioStatus(object):
         This is an approximate indication as scenario run may be delayed, especially in the case of
         multiple triggers or high load.
 
+        The next run excludes past occurrences that remain executable only because of a trigger's
+        tolerance window (about three days for monthly triggers).
+
         :rtype: :class:`datetime.datetime`
         """
         if not "nextRun" in self.data or self.data["nextRun"] == 0:
@@ -705,7 +708,8 @@ class DSSScenarioRun(object):
         """
         updated_run_details = self.client._perform_json("GET", "/projects/%s/scenarios/%s/%s/" % \
                  (self.run["scenario"]["projectKey"], self.run["scenario"]["id"], self.run["runId"]))
-        self.run = updated_run_details["scenarioRun"]
+        if "scenarioRun" in updated_run_details:
+            self.run = updated_run_details["scenarioRun"]
 
     def wait_for_completion(self, no_fail=False):
         """

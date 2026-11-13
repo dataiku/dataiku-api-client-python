@@ -5,7 +5,7 @@ import logging
 import threading
 import itertools
 
-from typing import Callable, List, Any, Union
+from typing import Callable, List, Any, Dict, Optional, Union
 
 import pydantic
 
@@ -51,6 +51,12 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
     llm_id: str
     """LLM identifier to use"""
+
+    context: Optional[Dict[str, Any]] = None
+    """Query context to propagate to embedding requests"""
+
+    max_parallelism: Optional[int] = None
+    """Maximum concurrent LLM calls; unset uses the LLM connection default"""
 
     _llm_handle = None
     """:class:`dataikuapi.dss.llm.DSSLLM` object to wrap."""
@@ -101,7 +107,9 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
 
             embeddings = []
             for i in range(0, len(texts), CHUNK_SIZE):
-                query = self._llm_handle.new_embeddings(text_overflow_mode="FAIL")
+                query = self._new_embeddings_query()
+                if self.context is not None:
+                    query.with_context(self.context)
 
                 for text in texts[i:i+CHUNK_SIZE]:
                     query.add_text(text)
@@ -127,6 +135,11 @@ class DKUEmbeddings(LockedDownBaseModel, Embeddings):
             logger.info("Done performing embedding of {num_texts} texts".format(num_texts=len(texts)))
 
             return embeddings
+
+    def _new_embeddings_query(self):
+        return self._llm_handle.new_embeddings(
+            text_overflow_mode="FAIL", max_parallelism=self.max_parallelism
+        )
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()

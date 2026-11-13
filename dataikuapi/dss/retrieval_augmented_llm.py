@@ -80,6 +80,16 @@ class DSSRetrievalAugmentedLLM(object):
         """
         return self.client._perform_empty("DELETE", "/projects/%s/retrieval-augmented-llms/%s" % (self.project_key, self.id))
 
+    def disable(self):
+        """Disable the retrieval-augmented LLM."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/retrieval-augmented-llms/%s/actions/disable" % (self.project_key, self.id))
+
+    def enable(self):
+        """Enable the retrieval-augmented LLM."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/retrieval-augmented-llms/%s/actions/enable" % (self.project_key, self.id))
+
     def get_metrics_series(self, from_timestamp_ms=None, to_timestamp_ms=None, aggregation="MINUTE", timezone=None):
         """
         Get the operational metrics series for this retrieval-augmented LLM.
@@ -147,6 +157,14 @@ class DSSRetrievalAugmentedLLMSettings(DSSTaggableObjectSettings):
         """Returns the active version of this retrieval-augmented LLM. May return None if no version is declared as active"""
         return self._settings.get("activeVersion")
 
+    @property
+    def disabled(self):
+        """
+        :returns: whether this retrieval-augmented LLM is disabled
+        :rtype: bool
+        """
+        return self._settings.get("disabled", False)
+
     def get_version_settings(self, version_id):
 
         version_settings = None
@@ -197,7 +215,7 @@ class DSSRetrievalAugmentedLLMVersionSettings(object):
     @property
     def llm_id(self):
         """
-        Get or set the name of the Data Collection
+        Get or set the name of the Collection
 
         :rtype: :class:`str`
         """

@@ -269,6 +269,8 @@ class DSSAgentListItem(DSSTaggableObjectListItem):
 
     def as_llm(self):
         """
+        Get an LLM handle for querying this agent.
+
         :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
         :rtype: dataikuapi.dss.llm.DSSLLM
         """
@@ -294,6 +296,13 @@ class DSSAgent(object):
 
     def as_llm(self):
         """
+        Get an LLM handle for querying this agent.
+
+        This is the recommended way to call a visual agent from Python.
+        Use the returned handle to create and execute a completion query.
+
+        This is equivalent to calling ``project.get_llm("agent:" + agent_id)``.
+
         :returns: this agent as a usable :class:`dataikuapi.dss.llm.DSSLLM` for querying
         :rtype: dataikuapi.dss.llm.DSSLLM
         """
@@ -313,6 +322,16 @@ class DSSAgent(object):
         Delete the agent
         """
         return self.client._perform_empty("DELETE", "/projects/%s/agents/%s" % (self.project_key, self.id))
+
+    def disable(self):
+        """Disable the agent."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/disable" % (self.project_key, self.id))
+
+    def enable(self):
+        """Enable the agent."""
+        return self.client._perform_empty(
+            "POST", "/projects/%s/agents/%s/actions/enable" % (self.project_key, self.id))
 
     def shutdown(self, version_id=None, force=False):
         """
@@ -430,6 +449,14 @@ class DSSAgentSettings(DSSTaggableObjectSettings):
         :rtype: str | None
         """
         return self._settings.get("activeVersion")
+
+    @property
+    def disabled(self):
+        """
+        :returns: whether this agent is disabled
+        :rtype: bool
+        """
+        return self._settings.get("disabled", False)
 
     def get_version_settings(self, version_id):
         """

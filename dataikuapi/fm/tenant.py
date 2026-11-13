@@ -203,3 +203,10 @@ class FMCloudAuthentication(dict):
         }
 
         return FMCloudAuthentication(data)
+
+class FMLicensingStatus(dict):
+    def __init__(self, data):
+        """
+        A class holding the licensing information.
+        """
+        super(FMLicensingStatus, self).__init__(data)

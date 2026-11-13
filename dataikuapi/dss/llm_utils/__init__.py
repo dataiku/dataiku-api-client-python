@@ -1,9 +1,7 @@
 import copy
 import json
 
-from six import string_types
-
-from ...utils import DataikuException
+from ...utils import DataikuException, dku_basestring_type
 
 _footer_attributes = [
     # usage metadata
@@ -30,7 +28,7 @@ def get_json_schema_and_parser(schema):
     
     :rtype: Tuple[str, Optional[Callable[[str], Any]]]
     """
-    if isinstance(schema, string_types) and schema:  # schema given directly as string
+    if isinstance(schema, dku_basestring_type) and schema:  # schema given directly as string
         return schema, None
     elif isinstance(schema, dict):
         return json.dumps(schema), None
@@ -108,7 +106,17 @@ def _stream_from_single_response(response):
         yield {"footer": footer}
 
 
-def _process_tool_call_chunk(tool_call_chunk, tool_calls_map, tool_calls_list):
+def _process_tool_call_chunk(
+    tool_call_chunk,
+    tool_calls_map,
+    tool_calls_list,
+):
+    """
+    Processes a single tool call chunk, aggregating it into the
+    tool_calls_map (for streamable tool calls) or tool_calls_list
+    (for non-streamable tool calls).
+    This method should be kept in sync with StreamingConsumer.java, method updateCompleteToolCalls
+    """
     if "index" not in tool_call_chunk or tool_call_chunk["index"] is None:
         # tool call does not have an index, we won't be able to aggregate chunks, so assume it's full
         tool_calls_list.append(tool_call_chunk)
@@ -146,9 +154,9 @@ def _process_tool_call_chunk(tool_call_chunk, tool_calls_map, tool_calls_list):
 
 
 def _process_artifact_chunk(
-        incoming_artifact,
-        artifacts_map,
-        artifacts_list
+    incoming_artifact,
+    artifacts_map,
+    artifacts_list
 ):
     """
     Processes a single artifact chunk, aggregating it into the
@@ -216,6 +224,7 @@ class _BaseChunkAggregator(object):
         self._response = None
         self.chunk_data = {}
         self.footer_data = {}
+        self.response_data = {}
         self.error_data = None
 
         self.text_chunks = []
@@ -229,6 +238,7 @@ class _BaseChunkAggregator(object):
     def _extract_data_from_chunk(self, res):
         chunk = res.get("chunk")
         footer = res.get("footer")
+        response_data = res.get("responseData")
         if chunk:
             # text
             if "text" in chunk and chunk["text"]:
@@ -261,6 +271,9 @@ class _BaseChunkAggregator(object):
                 if key in footer and footer[key]:
                     self.footer_data[key] = footer[key]
 
+        if response_data:
+            self.response_data.update(response_data)
+
     @property
     def response(self):
         if self._response is None:
@@ -273,6 +286,7 @@ class _BaseChunkAggregator(object):
         try:
             self._response = {}
             self._response.update(self.footer_data)
+            self._response.update(self.response_data)
 
             if self.error_data is not None:
                 self._response["ok"] = False

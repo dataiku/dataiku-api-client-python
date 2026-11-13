@@ -232,11 +232,11 @@ class FlowCodeGenerator(object):
         # And some per-type cleanup
         def cleanup_grouping():
             for grouping_key in settings.obj_payload.get("keys", []):
-                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "avg", "concat", "first"]:
+                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "mode", "avg", "concat", "first"]:
                     if item in grouping_key and grouping_key[item] == False:
                         del grouping_key[item]
             for aggregation in settings.obj_payload.get("values", []):
-                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "avg", "concat", "first",
+                for item in ["count", "last", "min", "max", "sum", "countDistinct", "stddev", "mode", "avg", "concat", "first",
                             "concatDistinct", "$idx", "sum2", "firstLastNotNull"]:
                     if item in aggregation and aggregation.get(item, None) == False:
                         del aggregation[item]
